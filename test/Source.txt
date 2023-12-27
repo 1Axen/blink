@@ -9,18 +9,23 @@ enum State = ( None, Dead, Down, Alive )?
 struct Entity = {
 	Identifier = u8?,
 	Health = Health,
-    LocalState = ( Replicated, Unreplicated )
+    LocalState = ( Replicated, Unreplicated )?,
     Character = State,
 	Direction = UnitVector,
     Deep = {
         Empty = u8[0],
-        Complex = u8[1..12]
-    }
+        Complex = u8[1..12],
+        Vector = UnitVector,
+    }?
+}?
+
+type struct = {
+    
 }
 
 packet ServerReliable = {
-    From = Server,
     Type = Reliable,
+    From = Server,
     Data = Entity
 }
 

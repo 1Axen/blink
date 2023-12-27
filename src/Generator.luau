@@ -21,6 +21,7 @@ type AssertPrefab = {
 
 type Generate = (Array: boolean, Range: NumberRange?, Value: string?) -> (string, string)
 
+local OptionalCondition = `if buffer.readu8(RecieveBuffer, Read(1)) == 1 then`
 local EventBody =
 	"\tRecieveCursor = 0\n\tRecieveBuffer = Buffer\n\tlocal Size = buffer.len(RecieveBuffer)\n\twhile RecieveCursor < Size do\n\t\tlocal Index = buffer.readu8(RecieveBuffer, Read(1))"
 
@@ -164,7 +165,7 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, Assert: AssertPrefab?
 			end
 		end
 
-		return Write.Dump(), Read.Dump()
+		return Read.Dump(), Write.Dump()
 	end
 end
 
@@ -207,16 +208,16 @@ local Primitives: { [string]: { Type: string, Generate: Generate } } = {
 	},
 }
 
-function Writers.Type(Identifier: string, Type: string, Optional: boolean, Write: string, Read: string, Reference: string?, Simple: boolean?): string
+function Writers.Type(Identifier: string, Type: string, Optional: boolean, Read: string, Write: string, Reference: string?, Simple: boolean?): string
 	if Optional then
-		Type = `({Type})?`
+		Type = `{Type}?`
 	end
 
 	local Result = Builder.new("\n")
 	if not Reference then
         Result.Push(`export type {Identifier} = {Type}`, 2)
 	end
-
+	
 	Result.Push(`function Types.Write{Identifier}(Value: {Reference or Identifier})`)
 	Result.Push(Write, 0)
 	Result.Push(`end`, 2)
@@ -240,13 +241,13 @@ function Writers.Optional(ReadBody: string, WriteBody: string, Variable: string)
 	local ReadLines = string.split(ReadBody, "\n")
 	local WriteLines = string.split(WriteBody, "\n")
 
-	Read.Push(`if buffer.readu8(RecieveBuffer, Read(1)) == 1 then`, 1, 1)
-	Read.Multiline(ReadLines, 0, 1)
+	Read.Push(OptionalCondition, 1, 1)
+	Read.PushLines(ReadLines, 0, 1)
 	Read.Push("end", 1, 1)
 
 	Write.Push(string.format(Prefabs.u8.Write, `({Variable} ~= nil) and 1 or 0`), 1, 1)
 	Write.Push(`if {Variable} ~= nil then`, 1, 1)
-	Write.Multiline(WriteLines, 0, 1)
+	Write.PushLines(WriteLines, 0, 1)
 	Write.Push("end", 1, 1)
 
 	return Read.Dump(), Write.Dump()
@@ -267,12 +268,12 @@ function Writers.TypeDeclaration(
 		Type = `\{{Type}\}`
 	end
 
-	local Write, Read = Primitive.Generate(Value.Array, Value.Range, Variable)
-	if TypeDeclaration.Value.Optional then
+	local Read, Write = Primitive.Generate(Value.Array, Value.Range, Variable)
+	if Value.Optional then
 		Read, Write = Writers.Optional(Read, Write, Variable or "Value")
 	end
 
-	return Type, Write, Read
+	return Type, Read, Write
 end
 
 function Writers.EnumDeclaration(
@@ -307,7 +308,14 @@ function Writers.EnumDeclaration(
 	Read.Push(`error(\`Unexpected enum: \{{Variable}\}\`)`, 1, 2)
 	Read.Push("end", 1, 1)
 
-	return Type, Write.Dump(), Read.Dump()
+	Read = Read.Dump()
+	Write = Write.Dump()
+
+	if Value.Optional then
+		Read, Write = Writers.Optional(Read, Write, Variable or "Value")
+	end
+
+	return Type, Read, Write
 end
 
 function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration): string
@@ -315,15 +323,22 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 	local Read = Builder.new()
 	local Write = Builder.new()
 
-	Read.Push("Value = {}", 1, 1)
+	local function BuildStructType(StructDeclaration: Parser.StructDeclaration, Tabs: number, Indent: number, Path: string)
+		--local StructRead = Builder.new()
+		--local StructWrite = Builder.new()
 
-	local function BuildStructType(StructDeclaration: Parser.StructDeclaration, Indent: number, Path: string)
 		local Value = StructDeclaration.Value
-		Type.Push(`{Indent > 0 and `{Value.Identifier}: ` or ""}\{`, 1, Indent)
+		local Optional = Value.Optional
+		local StructTabs = Tabs
 
-		if Indent > 0 then
-			Read.Push(`{Path} = \{\}`, 1, 1)
+		if Optional then
+			Read.Push(OptionalCondition, 1, StructTabs)
+			Write.Push(`if {Path} ~= nil then`, 1, StructTabs)
+			Tabs += 1
 		end
+
+		Type.Push(`{Indent > 0 and `{Value.Identifier}: ` or ""}\{`, 1, Indent)
+		Read.Push(`{Path} = \{\} :: any`, 1, Tabs)
 
 		for Index, Field in Value.Fields do
 			local FieldType: string
@@ -333,25 +348,23 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 
 			if Field.Type == "TypeDeclaration" or Field.Type == "EnumDeclaration" then
 				local Writer = Writers[Field.Type]
-				local DeclarationType, DeclarationWrite, DeclarationRead = Writer(Field, Variable)
+				local DeclarationType, DeclarationRead, DeclarationWrite = Writer(Field, Variable)
 
-				if Field.Type == "TypeDeclaration" then
-					DeclarationRead = string.gsub(DeclarationRead, `{Variable}`, Variable)
-				else
+				if Field.Type == "EnumDeclaration" then
 					DeclarationRead = string.gsub(DeclarationRead, `{Variable} ==`, `{FieldIdentifier} ==`)
 				end
 
 				FieldType = DeclarationType
-				Read.Push(DeclarationRead, 0, 0)
-				Write.Push(DeclarationWrite, 0, 0)
+				Read.PushLines(string.split(DeclarationRead, "\n"), 0, Tabs - 1)
+				Write.PushLines(string.split(DeclarationWrite, "\n"), 0, Tabs - 1)
 			elseif Field.Type == "StructDeclaration" then
-				BuildStructType(Field, Indent + 1, Variable)
+				BuildStructType(Field, Tabs, Indent + 1, Variable)
 				continue
 			elseif Field.Type == "TypeReference" then
 				local TypeReference: Parser.TypeReference = Field
 				FieldType = TypeReference.Value.Reference
-				Read.Push(`{Variable} = Types.Read{FieldType}()`, 1, 1)
-				Write.Push(`Types.Write{FieldType}({Variable})`, 1, 1)
+				Read.Push(`{Variable} = Types.Read{FieldType}()`, 1, Tabs)
+				Write.Push(`Types.Write{FieldType}({Variable})`, 1, Tabs)
 			end
 
 			if FieldValue.Optional then
@@ -361,12 +374,17 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 			Type.Push(`{FieldIdentifier}: {FieldType}{Index < #Value.Fields and "," or ""}`, 1, Indent + 1)
 		end
 
+		if Optional then
+			Read.Push("end", 1, StructTabs)
+			Write.Push("end", 1, StructTabs)
+		end
+
 		Type.Push("}", Indent > 0 and 1 or 0, Indent)
 	end
 
-	BuildStructType(StructDeclaration, 0, "Value")
+	BuildStructType(StructDeclaration, 1, 0, "Value")
 
-	return Type.Dump(), Write.Dump(), Read.Dump()
+	return Type.Dump(), Read.Dump(), Write.Dump()
 end
 
 function Writers.PacketDeclaration(
@@ -408,7 +426,7 @@ function Writers.PacketDeclaration(
 		Write.Push(`Types.Write{Reference}(Value)`, 1, 1)
 	else
 		local Writer = Writers[Data.Type]
-		local DeclarationType, DeclarationWrite, DeclarationRead = Writer(Data)
+		local DeclarationType, DeclarationRead, DeclarationWrite = Writer(Data)
 		DeclarationType = string.gsub(DeclarationType, "\n", " ")
 		DeclarationType = string.gsub(DeclarationType, "\t", "")
 
@@ -417,7 +435,7 @@ function Writers.PacketDeclaration(
 		Write.Push(DeclarationWrite, 0)
 	end
 
-	Types.Push(Writers.Type(Identifier, Type, DataValue.Optional, Write.Dump(), Read.Dump(), Type, Reference ~= nil), 0)
+	Types.Push(Writers.Type(Identifier, Type, DataValue.Optional, Read.Dump(), Write.Dump(), Type, Reference ~= nil), 0)
 
 	--> Body generation
 	if Value.From ~= Context then
@@ -555,8 +573,8 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body): 
 			continue
 		end
 
-		local Type, Write, Read = Writer(Declaration)
-		Types.Push(Writers.Type(Declaration.Value.Identifier, Type, Declaration.Value.Optional, Write, Read), 0)
+		local Type, Read, Write = Writer(Declaration)
+		Types.Push(Writers.Type(Declaration.Value.Identifier, Type, Declaration.Value.Optional, Read, Write), 0)
 	end
 
 	--> Close remote connection functions

@@ -368,12 +368,12 @@ function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): Struct
         table.insert(Fields, Declaration)
 
         local Next = self:GetSafeLookAhead().Type
-        if Next == "Next" then
-            self:Consume("Next")
-        elseif Next == "Close" then
+        if Next == "Close" then
             self:Consume("Close")
             break
         end
+
+        self:Consume("Next")
     end
 
     return {

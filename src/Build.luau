@@ -8,8 +8,11 @@ local Generator = require("Generator")
 local SourceParser = Parser.new()
 
 local Arguments = process.args
-assert(#Arguments > 1, "Too few arguments!")
-assert(#Arguments < 3, "Too many arguments!")
+if #Arguments < 2 then
+    error("Too few arguments!")
+elseif #Arguments > 2 then
+    error("Too many arguments!")
+end
 
 local SourcePath = Arguments[1]
 local OutputPath = Arguments[2]

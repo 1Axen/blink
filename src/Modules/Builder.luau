@@ -7,7 +7,7 @@ function Builder.new(String: string?): Builder
             String ..= (string.rep("\t", Tabs or 0) .. Text .. string.rep("\n", Returns or 1))
         end,
 
-        Multiline = function(Lines: {string}, Returns: number?, Tabs: number?)
+        PushLines = function(Lines: {string}, Returns: number?, Tabs: number?)
             local Indent = string.rep("\t", Tabs or 0)
             table.remove(Lines, #Lines)
 
