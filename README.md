@@ -2,7 +2,7 @@
 A lightning fast, IDL-based networking solution for ROBLOX
 
 # Installation
-Download the source from GitHub
+Download the source from GitHub  
 Install Lune using Aftman in the repository directory  
 
 # Generating code
