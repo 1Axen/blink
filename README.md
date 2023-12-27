@@ -1,5 +1,5 @@
 # DeclareNet
-A lightning fast, IDL-based networking solution for ROBLOX
+An IDL-based networking solution for ROBLOX
 
 # Installation
 Download the source from GitHub  
