@@ -1,5 +1,5 @@
 # DeclareNet
-An IDL-based networking solution for ROBLOX
+An IDL compiler written in Luau for ROBLOX buffer networking
 
 # Installation
 Download the source from GitHub  
