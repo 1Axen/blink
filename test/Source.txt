@@ -19,13 +19,9 @@ struct Entity = {
     }?
 }?
 
-type struct = {
-    
-}
-
 packet ServerReliable = {
-    Type = Reliable,
     From = Server,
+    Type = Reliable,
     Data = Entity
 }
 
