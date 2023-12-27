@@ -1,0 +1,7 @@
+{
+  "luau-lsp.plugin.enabled": true,
+  "luau-lsp.require.mode": "relativeToFile",
+  "luau-lsp.require.directoryAliases": {
+    "@lune/": "~/.lune/.typedefs/0.7.11/"
+  }
+}

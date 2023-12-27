@@ -1,0 +1,59 @@
+local SendCursor = 0
+local SendBuffer = buffer.create(64)
+
+local RecieveCursor = 0
+local RecieveBuffer = buffer.create(64)
+
+type BufferSave = {Cursor: number, Buffer: buffer}
+
+local function Read(Bytes: number)
+    local Offset = RecieveCursor
+    RecieveCursor += Bytes
+    return Offset
+end
+
+local function Save(): BufferSave
+    return {
+        Cursor = SendCursor,
+        Buffer = SendBuffer,
+    }
+end
+
+local function Load(Save: BufferSave?)
+    if Save then
+        SendCursor = Save.Cursor
+        SendBuffer = Save.Buffer
+        return
+    end
+
+    SendCursor = 0
+    SendBuffer = buffer.create(64)
+end
+
+local function Allocate(Bytes: number)
+    local Len = buffer.len(SendBuffer)
+
+    local Size = Len
+    local InUse = (SendCursor + Bytes)
+    
+    if InUse > Size then
+        --> Avoid resizing the buffer for every write
+        while InUse > Size do
+            Size *= 2
+        end
+
+        local Buffer = buffer.create(Size)
+        buffer.copy(Buffer, 0, SendBuffer, 0, Len)
+    end
+
+    local Offset = SendCursor
+    SendCursor += Bytes
+    
+    return Offset
+end
+
+local Types = {}
+local Events = {
+    Reliable = {},
+    Unreliable = {}
+}

@@ -1,0 +1,49 @@
+type Health = u8(0..100)
+type Array = u8[8]
+type ArrayVariant = u8[1..200]
+type Booleans = bool[8]?
+type Username = string(3..20)?
+type UnitVector = vector(0..1)
+
+enum State = ( None, Dead, Down, Alive )?
+struct Entity = {
+	Identifier = u8?,
+	Health = Health,
+    LocalState = ( Replicated, Unreplicated )
+    Character = State,
+	Direction = UnitVector,
+    Deep = {
+        Empty = u8[0],
+        Complex = u8[1..12]
+    }
+}
+
+packet ServerReliable = {
+    From = Server,
+    Type = Reliable,
+    Data = Entity
+}
+
+packet ServerUnreliable = {
+    From = Server,
+    Type = Unreliable,
+    Data = Entity
+}
+
+packet ClientReliable = {
+    From = Client,
+    Type = Reliable,
+    Data = Entity
+}
+
+packet ClientUnreliable = {
+    From = Client,
+    Type = Unreliable,
+    Data = Entity
+}
+
+packet Custom = {
+    From = Client,
+    Type = Unreliable,
+    Data = u8[1]
+}

@@ -1,0 +1,44 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Reliable = Instance.new("RemoteEvent")
+Reliable.Name = "DECLARE_NET_RELIABLE_REMOTE"
+Reliable.Parent = ReplicatedStorage
+
+local Unreliable = Instance.new("UnreliableRemoteEvent")
+Unreliable.Name = "DECLARE_NET_UNRELIABLE_REMOTE"
+Unreliable.Parent = ReplicatedStorage
+
+-- SPLIT --
+local PlayersMap: {[Player]: {Cursor: number, Buffer: buffer}} = {}
+
+Players.PlayerAdded:Connect(function(Player)
+    PlayersMap[Player] = {
+        Cursor = 0,
+        Buffer = buffer.create(64)
+    }
+end)
+
+Players.PlayerRemoving:Connect(function(Player)
+    PlayersMap[Player] = {
+        Cursor = 0,
+        Buffer = buffer.create(64)
+    }
+end)
+
+RunService.Heartbeat:Connect(function()
+    for Player, Send in PlayersMap do
+        if Send.Cursor <= 0 then
+            continue
+        end
+
+        local Buffer = buffer.create(Send.Cursor)
+        buffer.copy(Buffer, 0, Send.Buffer, 0, Send.Cursor)
+        Reliable:FireClient(Player, Buffer)
+
+        Send.Cursor = 0
+        buffer.fill(Send.Buffer, 0, 0)
+    end
+end)
+
