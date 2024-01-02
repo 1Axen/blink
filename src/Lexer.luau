@@ -1,8 +1,3 @@
---[[
-    Axen @ 2023
-    Lexer class
---]]
-
 local Error = require("./Modules/Error")
 
 export type Types = "Text" | "Next" | "Open" | "Close" | "OpenEnum" | "CloseEnum" | "Array" | "Range" | "Number" | "Assign" | "Optional" | "Keyword" | "Primitive" | "Identifier" | "Unknown"

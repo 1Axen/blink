@@ -1,12 +1,12 @@
 local fs = require("@lune/fs")
 
-local Parser = require("Parser")
+local Parser = require("./Parser")
 local Builder = require("./Modules/Builder")
 
 local Sources = {
-	Base = fs.readFile("./Templates/Base.luau"),
-	Client = string.split(fs.readFile("./Templates/Client.luau"), "-- SPLIT --"),
-	Server = string.split(fs.readFile("./Templates/Server.luau"), "-- SPLIT --"),
+	Base = if _G.BUNDLED then require("Base") else fs.readFile("./Templates/Base.txt"),
+	Client = string.split(if _G.BUNDLED then require("Client") else fs.readFile("./Templates/Client.txt"), "-- SPLIT --"),
+	Server = string.split(if _G.BUNDLED then require("Server") else fs.readFile("./Templates/Server.txt"), "-- SPLIT --"),
 }
 
 type TypePrefab = {
@@ -526,7 +526,7 @@ function Writers.PacketDeclaration(
             Packet.Push(`Types.Write{Identifier}(Value)`, 1, 3)
             Packet.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
             Packet.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
-            Packet.Push(`Unreliable:FireServer(Buffer)`, 1, 4)
+            Packet.Push(`Unreliable:FireServer(Buffer)`, 1, 3)
             Packet.Push(`Load(Previous)`, 1, 3)
         end
         Packet.Push(`end`, 1, 2)

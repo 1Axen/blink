@@ -9,13 +9,20 @@ function Builder.new(String: string?): Builder
 
         PushLines = function(Lines: {string}, Returns: number?, Tabs: number?)
             local Indent = string.rep("\t", Tabs or 0)
-            table.remove(Lines, #Lines)
+            local Last = Lines[#Lines]
+            if string.gsub(Last, "%c", "") == "" then
+                table.remove(Lines, #Lines)
+            end
 
             for Index, Line in Lines do
                 String ..= Indent .. Line .. "\n"
             end
 
             String ..= string.rep("\n", Returns or 0)
+        end,
+
+        Print = function()
+            print(String)
         end,
 
         Dump = function(): string

@@ -1,8 +1,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Reliable = ReplicatedStorage:WaitForChild("DECLARE_NET_RELIABLE_REMOTE")
-local Unreliable = ReplicatedStorage:WaitForChild("DECLARE_NET_UNRELIABLE_REMOTE")
+local Reliable: RemoteEvent = ReplicatedStorage:WaitForChild("DECLARE_NET_RELIABLE_REMOTE") :: RemoteEvent
+local Unreliable: UnreliableRemoteEvent = ReplicatedStorage:WaitForChild("DECLARE_NET_UNRELIABLE_REMOTE") :: UnreliableRemoteEvent
 
 -- SPLIT --
 RunService.Heartbeat:Connect(function()

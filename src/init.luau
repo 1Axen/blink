@@ -2,8 +2,8 @@ local fs = require("@lune/fs")
 local stdio = require("@lune/stdio")
 local process = require("@lune/process")
 
-local Parser = require("Parser")
-local Generator = require("Generator")
+local Parser = require("./Parser.luau")
+local Generator = require("./Generator.luau")
 
 local SourceParser = Parser.new()
 

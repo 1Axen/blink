@@ -5,3 +5,4 @@
 [tools]
 selene = "Kampfkarren/selene@0.26.1"
 lune = "filiptibell/lune@0.7.11"
+darklua = "seaofvoices/darklua@0.12.1"

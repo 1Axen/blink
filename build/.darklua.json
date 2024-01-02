@@ -1,0 +1,25 @@
+{
+    "generator": "readable",
+    "bundle": {
+        "modules_identifier": "__DARKLUA_BUNDLE_MODULES",
+        "excludes": [
+            "@lune/**"
+        ],
+        "require_mode": {
+            "name": "path",
+            "sources": {
+                "Base": "../src/Templates/Base.txt",
+                "Client": "../src/Templates/Client.txt",
+                "Server": "../src/Templates/Server.txt"
+            }
+        }
+    },
+    "rules": [
+        "remove_types",
+        {
+            "rule": "inject_global_value",
+            "identifier": "BUNDLED",
+            "value": true
+        }
+    ]
+}

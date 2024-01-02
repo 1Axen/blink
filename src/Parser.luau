@@ -1,14 +1,6 @@
 --!strict
 
---[[
-    Axen @ 2023
-    Recursive descent parser
-    Returns an AST of the source    
---]]
-
-local roblox = require("@lune/roblox")
-
-local Lexer = require("Lexer")
+local Lexer = require("./Lexer")
 local Error = require("./Modules/Error")
 
 type NumberRange = {Min: number, Max: number}
