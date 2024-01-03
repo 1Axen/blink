@@ -1,6 +1,6 @@
 local Error = require("./Modules/Error")
 
-export type Types = "Text" | "Next" | "Open" | "Close" | "OpenEnum" | "CloseEnum" | "Array" | "Range" | "Number" | "Assign" | "Optional" | "Keyword" | "Primitive" | "Identifier" | "Unknown"
+export type Types = "Next" | "String" | "Boolean" | "OpenBrackets" | "CloseBrackets" | "OpenCurlyBrackets" | "CloseCurlyBrackets" | "Array" | "Range" | "Number" | "Assign" | "Optional" | "Keyword" | "Primitive" | "Identifier" | "Unknown"
 export type Keywords = "type" | "enum" | "struct" | "packet"
 
 export type Token = {
@@ -39,7 +39,13 @@ local Keywords = {
     type = true,
     enum = true,
     struct = true,
-    packet = true
+    packet = true,
+    option = true
+}
+
+local Booleans = {
+    ["true"] = true,
+    ["false"] = true
 }
 
 local Number = "[%+%-]?%d+"
@@ -48,8 +54,8 @@ local Matches = {
     --> Simple patterns
     {"^%s+", nil},     
     {"^=", "Assign"},
-    {"^{", "Open"},
-    {"^}", "Close"},
+    {"^{", "OpenBrackets"},
+    {"^}", "CloseBrackets"},
     {"^,", "Next"},
 
     --> Attribute patterns
@@ -58,8 +64,10 @@ local Matches = {
     {`^%[{Number}]`, "Array"},
     {`^%[{Number}..{Number}]`, "Array"},
 
-    {"^%(", "OpenEnum"},
-    {"^%)", "CloseEnum"},
+    {"^%(", "OpenCurlyBrackets"},
+    {"^%)", "CloseCurlyBrackets"},
+
+    {[[^(['"]).-[^\](\*)%2%1]], "String"},
 
     --> Complex patterns
     {"^[%a_][%w_]*", function(Token: string)
@@ -67,10 +75,12 @@ local Matches = {
             return "Keyword"
         elseif Primitives[Token] then
             return "Primitive"
+        elseif Booleans[Token] then
+            return "Boolean"
         end
 
         return "Identifier"
-    end}
+    end},
 }
 
 local Lexer = {}
@@ -100,12 +110,14 @@ function Lexer.GetNextToken(self: Lexer): Token?
     local Slice = string.sub(self.Source, self.Cursor)
 
     local function Match(Pattern: string): (string?, number, number)
-        local Matched = string.match(Slice, Pattern)
-        if not Matched then
+        local Start, End = string.find(Slice, Pattern)
+        if not Start or not End then
             return nil, 0, 0
         end
 
-        local Start = self.Cursor
+        local Matched = string.sub(Slice, Start, End)
+
+        Start = self.Cursor
         self.Cursor += #Matched
 
         return Matched, Start, math.min(self.Cursor, self.Size)

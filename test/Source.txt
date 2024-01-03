@@ -1,3 +1,6 @@
+option ClientOutput = "../Network/Client.luau"
+option ServerOutput = "../Network/Server.luau"
+
 type Health = u8(0..100)
 type Array = u8[8]
 type ArrayVariant = u8[1..200]

@@ -53,6 +53,12 @@ export type PacketDeclaration = Node<"PacketDeclaration", {
     Data: Declaration
 }>
 
+export type Options = {
+    ClientOutput: string?,
+    ServerOutput: string?,
+    ManualReplicationLoop: boolean?,
+}
+
 export type Parser = {
     Source: string,
     Lexer: Lexer.Lexer,
@@ -60,12 +66,13 @@ export type Parser = {
     Types: {[string]: Declaration},
     LookAhead: Lexer.Token?,
 
-    Parse: (self: Parser, Source: string) -> Body,
+    Parse: (self: Parser, Source: string) -> (Body, Options),
     Consume: (self: Parser, Type: Lexer.Types) -> Lexer.Token,
     GetSafeLookAhead: (self: Parser) -> Lexer.Token,
 
     --> Parsable types
     Body: (self: Parser) -> Body,
+    Options: (self: Parser) -> Options,
 
     Declaration: (self: Parser) -> Declaration,
     Declarations: (self: Parser) -> {Declaration},
@@ -97,6 +104,12 @@ local RangePrimitives = {
     buffer = true,
 }
 
+local OptionsTypes: {[string]: Lexer.Types} = {
+    ClientOutput = "String",
+    ServerOutput = "String",
+    ManualReplicationLoop = "Boolean",
+}
+
 local PacketStructure: {{Key: string, Type: Lexer.Types, Values: {string}}} = {
     {Key = "From", Type = "Identifier", Values = {"Client", "Server"}},
     {Key = "Type", Type = "Identifier", Values = {"Reliable", "Unreliable"}},
@@ -125,7 +138,7 @@ function Parser.new(): Parser
     } :: any, Parser)
 end
 
-function Parser.Parse(self: Parser, Source: string)
+function Parser.Parse(self: Parser, Source: string): (Body, Options)
     self.Source = Source
     table.clear(self.Types)
     self.Lexer:Initialize(Source)
@@ -133,8 +146,11 @@ function Parser.Parse(self: Parser, Source: string)
     --> Prime the lexer
     self.LookAhead = self.Lexer:GetNextToken()
 
+    --> Parse options
+    local Options = self:Options()
+
     --> Start parsing recursively from the body (Program)
-    return self:Body()
+    return self:Body(), Options
 end
 
 function Parser.Consume(self: Parser, Type: string): Lexer.Token
@@ -171,6 +187,35 @@ function Parser.Body(self: Parser): Body
         Type = "Body",
         Value = self:Declarations()
     }
+end
+
+function Parser.Options(self: Parser): Options
+    local Options: Options = {}
+    local function ParseOption()
+        local LookAhead = self:GetSafeLookAhead()
+        if LookAhead.Value ~= "option" then
+            print(LookAhead)
+            return
+        end
+
+        self:Consume("Keyword")
+        local Key = self:Consume("Identifier")
+        self:Consume("Assign")
+
+        local Type: Lexer.Types = OptionsTypes[Key.Value]
+        if not Type then
+            Error.ThrowTokenError(self.Source, Key, `Unexpected option: "{Key.Value}", expected one of: "ClientOutput" or "ServerOutput" or "ManualReplicationLoop".`)
+            return 
+        end
+
+        local Value = self:Consume(Type)
+        Options[Key.Value] = Value.Value
+
+        ParseOption()
+    end
+
+    ParseOption()
+    return Options
 end
 
 function Parser.Declarations(self: Parser): {Declaration}
@@ -294,13 +339,13 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
 end
 
 function Parser.EnumDeclaration(self: Parser, Identifier: Lexer.Token): EnumDeclaration
-    self:Consume("OpenEnum")
+    self:Consume("OpenCurlyBrackets")
 
     local Enums: {string} = {}
     while (self.LookAhead) do
         --> Allows trailing commas in struct definitions
-        if self.LookAhead.Type == "CloseEnum" then
-            self:Consume("CloseEnum")
+        if self.LookAhead.Type == "CloseCurlyBrackets" then
+            self:Consume("CloseCurlyBrackets")
             break
         end
 
@@ -314,8 +359,8 @@ function Parser.EnumDeclaration(self: Parser, Identifier: Lexer.Token): EnumDecl
         local Next = self.LookAhead.Type
         if Next == "Next" then
             self:Consume("Next")
-        elseif Next == "CloseEnum" then
-            self:Consume("CloseEnum")
+        elseif Next == "CloseCurlyBrackets" then
+            self:Consume("CloseCurlyBrackets")
             break
         end
     end
@@ -331,15 +376,15 @@ function Parser.EnumDeclaration(self: Parser, Identifier: Lexer.Token): EnumDecl
 end
 
 function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): StructDeclaration
-    self:Consume("Open")
+    self:Consume("OpenBrackets")
 
     local Keys: {[string]: boolean} = {}
     local Fields = {}
 
     while (self.LookAhead) do
         --> Allows trailing commas in struct definitions
-        if self:GetSafeLookAhead().Type == "Close" then
-            self:Consume("Close")
+        if self:GetSafeLookAhead().Type == "CloseBrackets" then
+            self:Consume("CloseBrackets")
             break
         end
 
@@ -360,8 +405,8 @@ function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): Struct
         table.insert(Fields, Declaration)
 
         local Next = self:GetSafeLookAhead().Type
-        if Next == "Close" then
-            self:Consume("Close")
+        if Next == "CloseBrackets" then
+            self:Consume("CloseBrackets")
             break
         end
 
@@ -379,7 +424,7 @@ function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): Struct
 end
 
 function Parser.PacketDeclaration(self: Parser, Identifier: Lexer.Token): PacketDeclaration
-    self:Consume("Open")
+    self:Consume("OpenBrackets")
 
     local Packet: PacketDeclaration = {
         Type = "PacketDeclaration",
@@ -425,15 +470,15 @@ function Parser.PacketDeclaration(self: Parser, Identifier: Lexer.Token): Packet
         end
     end
 
-    self:Consume("Close")
+    self:Consume("CloseBrackets")
 
     return Packet
 end
 
 function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identifier: Lexer.Token): Declaration
-    if Token.Type == "Open" then
+    if Token.Type == "OpenBrackets" then
         return self:StructDeclaration(Identifier)
-    elseif Token.Type == "OpenEnum" then
+    elseif Token.Type == "OpenCurlyBrackets" then
         return self:EnumDeclaration(Identifier)
     elseif Token.Type == "Primitive" then
         return self:TypeDeclaration(Identifier)
