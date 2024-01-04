@@ -27,7 +27,7 @@ Players.PlayerRemoving:Connect(function(Player)
     }
 end)
 
-RunService.Heartbeat:Connect(function()
+local function StepReplication()
     for Player, Send in PlayersMap do
         if Send.Cursor <= 0 then
             continue
@@ -40,5 +40,7 @@ RunService.Heartbeat:Connect(function()
         Send.Cursor = 0
         buffer.fill(Send.Buffer, 0, 0)
     end
-end)
+end
+
+
 

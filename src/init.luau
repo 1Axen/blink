@@ -8,10 +8,8 @@ local Generator = require("./Generator.luau")
 local SourceParser = Parser.new()
 
 local Arguments = process.args
-if #Arguments < 1 then
-    error("Too few arguments!")
-elseif #Arguments > 1 then
-    error("Too many arguments!")
+if #Arguments ~= 1 then
+    error(`Expected 1 argument, got {#Arguments} instead.`)
 end
 
 local SourcePath = Arguments[1]
@@ -30,8 +28,8 @@ assert(Options.ClientOutput, "A client output path must be defined.")
 assert(Options.ServerOutput, "A server output path must be defined.")
 
 print("Parsing AST.")
-fs.writeFile(`{Options.ServerOutput}`, Generator("Server", AbstractSyntaxTree))
-fs.writeFile(`{Options.ClientOutput}`, Generator("Client", AbstractSyntaxTree))
+fs.writeFile(`{Options.ServerOutput}`, Generator("Server", AbstractSyntaxTree, Options))
+fs.writeFile(`{Options.ClientOutput}`, Generator("Client", AbstractSyntaxTree, Options))
 
 stdio.write(stdio.color("green"))
 print("Network files generated!")

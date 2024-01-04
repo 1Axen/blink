@@ -1,5 +1,6 @@
-option ClientOutput = "../Network/Client.luau"
-option ServerOutput = "../Network/Server.luau"
+option ClientOutput = "../test/Client.luau"
+option ServerOutput = "../test/Server.luau"
+option ManualReplication = true
 
 type Health = u8(0..100)
 type Array = u8[8]

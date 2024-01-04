@@ -30,6 +30,8 @@ local Packets = Builder.new()
 local ReliableEvents = Builder.new()
 local UnreliableEvents = Builder.new()
 
+local Options: Parser.Options = {}
+
 local Channels: { [string]: { Count: number, Listening: boolean } } = {
 	Reliable = { Count = 0, Listening = false },
 	Unreliable = { Count = 0, Listening = false },
@@ -536,13 +538,14 @@ function Writers.PacketDeclaration(
 	return Packet.Dump()
 end
 
-return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body): string
+return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, UserOptions: Parser.Options): string
 	--> Reset previous generation
 	Types.Dump()
 	Packets.Dump()
 	ReliableEvents.Dump()
 	UnreliableEvents.Dump()
 
+	Options = UserOptions
 	Channels.Reliable.Count = 0
 	Channels.Unreliable.Count = 0
 	Channels.Reliable.Listening = false
@@ -557,6 +560,13 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body): 
 
 	ReliableEvents.Push(EventBody)
 	UnreliableEvents.Push(EventBody)
+
+	--> Generate replication loop
+	local Replication = "\nRunService.Heartbeat:Connect(StepReplication)\n"
+	if Options.ManualReplication then
+		Replication = ""
+		Packets.Push("StepReplication = StepReplication,", 1, 1)
+	end
 
 	--> Generate types & packets
 	for Index, Declaration in AbstractSyntaxTree.Value do
@@ -599,6 +609,7 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body): 
 		.. Sources.Base
 		.. Types.Dump()
 		.. Source[2]
+		.. Replication
 		.. ReliableEvents.Dump()
 		.. UnreliableEvents.Dump()
 		.. `\nreturn \{\n{Packets.Dump()}\}`

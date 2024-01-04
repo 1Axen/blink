@@ -5,7 +5,7 @@ local Reliable: RemoteEvent = ReplicatedStorage:WaitForChild("DECLARE_NET_RELIAB
 local Unreliable: UnreliableRemoteEvent = ReplicatedStorage:WaitForChild("DECLARE_NET_UNRELIABLE_REMOTE") :: UnreliableRemoteEvent
 
 -- SPLIT --
-RunService.Heartbeat:Connect(function()
+local function StepReplication()
     if SendCursor <= 0 then
         return
     end
@@ -16,5 +16,5 @@ RunService.Heartbeat:Connect(function()
 
     SendCursor = 0
     buffer.fill(SendBuffer, 0, 0)
-end)
+end
 

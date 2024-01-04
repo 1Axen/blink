@@ -56,7 +56,7 @@ export type PacketDeclaration = Node<"PacketDeclaration", {
 export type Options = {
     ClientOutput: string?,
     ServerOutput: string?,
-    ManualReplicationLoop: boolean?,
+    ManualReplication: boolean?,
 }
 
 export type Parser = {
@@ -107,7 +107,7 @@ local RangePrimitives = {
 local OptionsTypes: {[string]: Lexer.Types} = {
     ClientOutput = "String",
     ServerOutput = "String",
-    ManualReplicationLoop = "Boolean",
+    ManualReplication = "Boolean",
 }
 
 local PacketStructure: {{Key: string, Type: Lexer.Types, Values: {string}}} = {
@@ -194,7 +194,6 @@ function Parser.Options(self: Parser): Options
     local function ParseOption()
         local LookAhead = self:GetSafeLookAhead()
         if LookAhead.Value ~= "option" then
-            print(LookAhead)
             return
         end
 

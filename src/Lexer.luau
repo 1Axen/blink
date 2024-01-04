@@ -67,19 +67,21 @@ local Matches = {
     {"^%(", "OpenCurlyBrackets"},
     {"^%)", "CloseCurlyBrackets"},
 
-    {[[^(['"]).-[^\](\*)%2%1]], "String"},
+    {[[^(['"]).-[^\](\*)%2%1]], function(Token: string)
+        return "String", string.sub(Token, 2, #Token - 1)
+    end},
 
     --> Complex patterns
     {"^[%a_][%w_]*", function(Token: string)
         if Keywords[Token] then
-            return "Keyword"
+            return "Keyword", Token
         elseif Primitives[Token] then
-            return "Primitive"
+            return "Primitive", Token
         elseif Booleans[Token] then
-            return "Boolean"
+            return "Boolean", (Token == "true")
         end
 
-        return "Identifier"
+        return "Identifier", Token
     end},
 }
 
@@ -140,7 +142,7 @@ function Lexer.GetNextToken(self: Lexer): Token?
         end
 
         if type(Type) == "function" then
-            Type = Type(Matched)
+            Type, Matched = Type(Matched)
         end
         
         return {
