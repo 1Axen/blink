@@ -67,7 +67,11 @@ local function Allocate(Bytes: number)
 end
 
 local Types = {}
-local Events = {
+local Events: any = {
+    Reliable = {},
+    Unreliable = {}
+}
+local Queue: any = {
     Reliable = {},
     Unreliable = {}
 }
@@ -399,7 +403,12 @@ Reliable.OnServerEvent:Connect(function(Player: Player, Buffer: buffer)
 		local Index = buffer.readu8(RecieveBuffer, Read(1))
 		if Index == 1 then
 			local Value = Types.ReadPACKET_ClientReliable()
-			if Events.Reliable[1] then Events.Reliable[1](Player, Value) end
+			if Events.Reliable[1] then
+				Events.Reliable[1](Player, Value)
+			else
+				if not Queue.Reliable[1] then Queue.Reliable[1] = {} end
+				table.insert(Queue.Reliable[1], {Player, Value})
+			end
 		end
 	end
 end)
@@ -412,10 +421,20 @@ Unreliable.OnServerEvent:Connect(function(Player: Player, Buffer: buffer)
 		local Index = buffer.readu8(RecieveBuffer, Read(1))
 		if Index == 1 then
 			local Value = Types.ReadPACKET_ClientUnreliable()
-			if Events.Unreliable[1] then Events.Unreliable[1](Player, Value) end
+			if Events.Unreliable[1] then
+				Events.Unreliable[1](Player, Value)
+			else
+				if not Queue.Unreliable[1] then Queue.Unreliable[1] = {} end
+				table.insert(Queue.Unreliable[1], {Player, Value})
+			end
 		elseif Index == 2 then
 			local Value = Types.ReadPACKET_Custom()
-			if Events.Unreliable[2] then Events.Unreliable[2](Player, Value) end
+			if Events.Unreliable[2] then
+				Events.Unreliable[2](Player, Value)
+			else
+				if not Queue.Unreliable[2] then Queue.Unreliable[2] = {} end
+				table.insert(Queue.Unreliable[2], {Player, Value})
+			end
 		end
 	end
 end)
@@ -489,16 +508,37 @@ return {
 	ClientReliable = {
 		Listen = function(Listener: (Player, Entity) -> ())
 			Events.Reliable[1] = Listener
+			task.spawn(function()
+				local Queue = Queue.Reliable[1] or {}
+				Queue.Reliable[1] = nil
+				for Index, Arguments in Queue do
+					Listener(table.unpack(Arguments))
+				end
+			end)
 		end
 	},
 	ClientUnreliable = {
 		Listen = function(Listener: (Player, Entity) -> ())
 			Events.Unreliable[1] = Listener
+			task.spawn(function()
+				local Queue = Queue.Unreliable[1] or {}
+				Queue.Unreliable[1] = nil
+				for Index, Arguments in Queue do
+					Listener(table.unpack(Arguments))
+				end
+			end)
 		end
 	},
 	Custom = {
 		Listen = function(Listener: (Player, {number}) -> ())
 			Events.Unreliable[2] = Listener
+			task.spawn(function()
+				local Queue = Queue.Unreliable[2] or {}
+				Queue.Unreliable[2] = nil
+				for Index, Arguments in Queue do
+					Listener(table.unpack(Arguments))
+				end
+			end)
 		end
 	},
 }

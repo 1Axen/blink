@@ -110,6 +110,10 @@ local OptionsTypes: {[string]: Lexer.Types} = {
     ManualReplication = "Boolean",
 }
 
+local ReservedMembers = {
+	ManualReplication = true
+}
+
 local PacketStructure: {{Key: string, Type: Lexer.Types, Values: {string}}} = {
     {Key = "From", Type = "Identifier", Values = {"Client", "Server"}},
     {Key = "Type", Type = "Identifier", Values = {"Reliable", "Unreliable"}},
@@ -424,6 +428,10 @@ end
 
 function Parser.PacketDeclaration(self: Parser, Identifier: Lexer.Token): PacketDeclaration
     self:Consume("OpenBrackets")
+
+    if ReservedMembers[Identifier.Value] then
+        Error.ThrowTokenError(self.Source, Identifier, `"{Identifier.Value}" is reserved and cannot be used as a packet identifier`)
+    end
 
     local Packet: PacketDeclaration = {
         Type = "PacketDeclaration",

@@ -61,7 +61,11 @@ local function Allocate(Bytes: number)
 end
 
 local Types = {}
-local Events = {
+local Events: any = {
+    Reliable = {},
+    Unreliable = {}
+}
+local Queue: any = {
     Reliable = {},
     Unreliable = {}
 }
@@ -373,7 +377,12 @@ Reliable.OnClientEvent:Connect(function(Buffer: buffer)
 		local Index = buffer.readu8(RecieveBuffer, Read(1))
 		if Index == 0 then
 			local Value = Types.ReadPACKET_ServerReliable()
-			if Events.Reliable[0] then Events.Reliable[0](Value) end
+			if Events.Reliable[0] then
+				Events.Reliable[0](Value)
+			else
+				if not Queue.Reliable[0] then Queue.Reliable[0] = {} end
+				table.insert(Queue.Reliable[0], {Value})
+			end
 		end
 	end
 end)
@@ -386,7 +395,12 @@ Unreliable.OnClientEvent:Connect(function(Buffer: buffer)
 		local Index = buffer.readu8(RecieveBuffer, Read(1))
 		if Index == 0 then
 			local Value = Types.ReadPACKET_ServerUnreliable()
-			if Events.Unreliable[0] then Events.Unreliable[0](Value) end
+			if Events.Unreliable[0] then
+				Events.Unreliable[0](Value)
+			else
+				if not Queue.Unreliable[0] then Queue.Unreliable[0] = {} end
+				table.insert(Queue.Unreliable[0], {Value})
+			end
 		end
 	end
 end)
@@ -396,11 +410,25 @@ return {
 	ServerReliable = {
 		Listen = function(Listener: (Entity) -> ())
 			Events.Reliable[0] = Listener
+			task.spawn(function()
+				local Queue = Queue.Reliable[0] or {}
+				Queue.Reliable[0] = nil
+				for Index, Arguments in Queue do
+					Listener(table.unpack(Arguments))
+				end
+			end)
 		end
 	},
 	ServerUnreliable = {
 		Listen = function(Listener: (Entity) -> ())
 			Events.Unreliable[0] = Listener
+			task.spawn(function()
+				local Queue = Queue.Unreliable[0] or {}
+				Queue.Unreliable[0] = nil
+				for Index, Arguments in Queue do
+					Listener(table.unpack(Arguments))
+				end
+			end)
 		end
 	},
 	ClientReliable = {

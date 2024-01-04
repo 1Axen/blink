@@ -53,7 +53,11 @@ local function Allocate(Bytes: number)
 end
 
 local Types = {}
-local Events = {
+local Events: any = {
+    Reliable = {},
+    Unreliable = {}
+}
+local Queue: any = {
     Reliable = {},
     Unreliable = {}
 }

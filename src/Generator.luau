@@ -441,15 +441,31 @@ function Writers.PacketDeclaration(
 
 	--> Body generation
 	if Value.From ~= Context then
-        local Events = `Events.{Value.Type}[{PacketIndex}]`
+		local Index = `{Value.Type}[{PacketIndex}]`
+		local Queue = `Queue.{Index}`
+        local Events = `Events.{Index}`
 		Packet.Push(`Listen = function(Listener: ({Arguments}{Type}) -> ())`, 1, 2)
 		Packet.Push(`{Events} = Listener`, 1, 3)
+		Packet.Push(`task.spawn(function()`, 1, 3)
+		Packet.Push(`local Queue = {Queue} or \{\}`, 1, 4)
+		--Packet.Push(`if not Queue then return end`, 1, 4)
+		Packet.Push(`{Queue} = nil`, 1, 4)
+		Packet.Push(`for Index, Arguments in Queue do`, 1, 4)
+		Packet.Push(`Listener(table.unpack(Arguments))`, 1, 5)
+		Packet.Push(`end`, 1, 4)
+		Packet.Push(`end)`, 1, 3)
 		Packet.Push(`end`, 1, 2)
 
 		local EventBuilder = (IsReliable and ReliableEvents or UnreliableEvents)
 		EventBuilder.Push(`{Channel.Listening and "elseif" or "if"} Index == {PacketIndex} then`, 1, 2)
 		EventBuilder.Push(`local Value = Types.Read{Identifier}()`, 1, 3)
-		EventBuilder.Push(`if {Events} then {Events}({Arguments}Value) end`, 1, 3)
+		EventBuilder.Push(`if {Events} then`, 1, 3)
+		EventBuilder.Push(`{Events}({Arguments}Value)`, 1, 4)
+		EventBuilder.Push("else", 1, 3)
+		-- TODO: Optimise this so the queue table is created at require time instead of at runtime
+		EventBuilder.Push(`if not {Queue} then {Queue} = \{\} end`, 1, 4)
+		EventBuilder.Push(`table.insert({Queue}, \{{Arguments}Value\})`, 1, 4)
+		EventBuilder.Push("end", 1, 3)
 
 		Channel.Listening = true
 	elseif IsServer then
