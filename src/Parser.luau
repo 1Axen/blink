@@ -288,21 +288,27 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
             end
         else
             Lower, Upper = string.match(Token.Value, `^%(({Number})..({Number})%)`)
+            if not Upper then
+                Lower = string.match(Token.Value, `^%(({Number})%)`)
+            end
         end
 
-        if not Lower or not Upper then
+        if not Lower then
             error(`Unexpected error while trying to parse range.`)
         end
 
         local Min = tonumber(Lower) or 0
-        local Max = tonumber(Upper) or 0
+        local Max;
 
         if Min < 0 then
             Error.ThrowTokenError(self.Source, Token, "Invalid range bounds, range cannot be negative")
         end
 
-        if Min >= Max then
-            Error.ThrowTokenError(self.Source, Token, "Invalid range bounds, max must be greater than min")
+        if Upper then
+            Max = tonumber(Upper) or 0
+            if Min >= Max then
+                Error.ThrowTokenError(self.Source, Token, "Invalid range bounds, max must be greater than min")
+            end
         end
 
         return NumberRange.new(Min, Max)
@@ -310,6 +316,7 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
 
     --> Attempt to read type attributes [Primitive][Range/Array][Optional] [u8(0..1)?]
     local Token = self.LookAhead
+    --print(Identifier.Value, Token)
     if Token then
         local Type: Lexer.Types = Token.Type
         if Attributes[Type] then

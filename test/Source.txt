@@ -9,6 +9,12 @@ type Booleans = bool[8]?
 type Username = string(3..20)?
 type UnitVector = vector(0..1)
 
+type Buffer = buffer
+type VariantSizeBuffer = buffer(5..10)
+type Location = CFrame
+type Locations = CFrame[8]
+type OptionalLocation = CFrame?
+
 enum State = ( None, Dead, Down, Alive )?
 struct Entity = {
 	Identifier = u8?,

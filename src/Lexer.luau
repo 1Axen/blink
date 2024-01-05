@@ -33,6 +33,7 @@ local Primitives = {
     string = true,
     vector = true,
     buffer = true,
+    CFrame = true,
 }
 
 local Keywords = {
@@ -60,6 +61,7 @@ local Matches = {
 
     --> Attribute patterns
     {"^?", "Optional"},
+    {`^%({Number}%)`, "Range"},
     {`^%({Number}..{Number}%)`, "Range"},
     {`^%[{Number}]`, "Array"},
     {`^%[{Number}..{Number}]`, "Array"},

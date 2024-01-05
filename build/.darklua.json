@@ -16,6 +16,8 @@
     },
     "rules": [
         "remove_types",
+        "compute_expression",
+        "remove_unused_if_branch",
         {
             "rule": "inject_global_value",
             "identifier": "BUNDLED",

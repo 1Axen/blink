@@ -25,6 +25,10 @@ function Builder.new(String: string?): Builder
             print(String)
         end,
 
+        DumpNoClear = function()
+            return String
+        end,
+
         Dump = function(): string
             local Text = String
             String = ""

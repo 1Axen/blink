@@ -1,28 +1,17 @@
 local fs = require("@lune/fs")
 
-local Parser = require("./Parser")
-local Builder = require("./Modules/Builder")
+local Parser = require("../Parser")
+local Builder = require("../Modules/Builder")
+local Prefabs = require("./Prefabs")
 
 local Sources = {
-	Base = if _G.BUNDLED then require("Base") else fs.readFile("./Templates/Base.txt"),
-	Client = string.split(if _G.BUNDLED then require("Client") else fs.readFile("./Templates/Client.txt"), "-- SPLIT --"),
-	Server = string.split(if _G.BUNDLED then require("Server") else fs.readFile("./Templates/Server.txt"), "-- SPLIT --"),
+	Base = if _G.BUNDLED then (require("Base") :: any) else fs.readFile("./Templates/Base.txt"),
+	Client = string.split(if _G.BUNDLED then (require("Client") :: any) else fs.readFile("./Templates/Client.txt"), "-- SPLIT --"),
+	Server = string.split(if _G.BUNDLED then (require("Server") :: any) else fs.readFile("./Templates/Server.txt"), "-- SPLIT --"),
 }
 
-type TypePrefab = {
-	Read: string,
-	Write: string,
-}
-
-type AssertPrefab = {
-	Lower: string,
-	Upper: string,
-}
-
-type Generate = (Array: boolean, Range: NumberRange?, Value: string?) -> (string, string)
-
-local OptionalCondition = `if buffer.readu8(RecieveBuffer, Read(1)) == 1 then`
-local EventBody =
+local OPTIONAL = `if buffer.readu8(RecieveBuffer, Read(1)) == 1 then`
+local EVENT_BODY =
 	"\tRecieveCursor = 0\n\tRecieveBuffer = Buffer\n\tlocal Size = buffer.len(RecieveBuffer)\n\twhile RecieveCursor < Size do\n\t\tlocal Index = buffer.readu8(RecieveBuffer, Read(1))"
 
 local Types = Builder.new()
@@ -38,82 +27,10 @@ local Channels: { [string]: { Count: number, Listening: boolean } } = {
 }
 
 local Writers = {}
-local Prefabs = {
-	u8 = {
-		Read = "%s = buffer.readu8(RecieveBuffer, Read(1))",
-		Write = "buffer.writeu8(SendBuffer, Allocate(1), %s)",
-	},
 
-	u16 = {
-		Read = "%s = buffer.readu16(RecieveBuffer, Read(2))",
-		Write = "buffer.writeu16(SendBuffer, Allocate(2), %s)",
-	},
-
-	u32 = {
-		Read = "%s = buffer.readu32(RecieveBuffer, Read(4))",
-		Write = "buffer.writeu32(SendBuffer, Allocate(4), %s)",
-	},
-
-	i8 = {
-		Read = "%s = buffer.readi8(RecieveBuffer, Read(1))",
-		Write = "buffer.writei8(SendBuffer, Allocate(1), %s)",
-	},
-
-	i16 = {
-		Read = "%s = buffer.readi16(RecieveBuffer, Read(2))",
-		Write = "buffer.writei16(SendBuffer, Allocate(2), %s)",
-	},
-
-	i32 = {
-		Read = "%s = buffer.readi32(RecieveBuffer, Read(4))",
-		Write = "buffer.writei32(SendBuffer, Allocate(4), %s)",
-	},
-
-	f32 = {
-		Read = "%s = buffer.readf32(RecieveBuffer, Read(4))",
-		Write = "buffer.writef32(SendBuffer, Allocate(4), %s)",
-	},
-
-	f64 = {
-		Read = "%s = buffer.readf64(RecieveBuffer, Read(8))",
-		Write = "buffer.writef64(SendBuffer, Allocate(8), %s)",
-	},
-
-	bool = {
-		Read = "%s = (buffer.readu8(RecieveBuffer, Read(1)) == 1)",
-		Write = "buffer.writeu8(RecieveBuffer, Allocate(1), %s and 1 or 0)",
-	},
-
-	string = {
-		Read = "local Length = buffer.readu16(RecieveBuffer, Read(1))\n\t%s = buffer.readstring(RecieveBuffer, Read(Length), Length)",
-		Write = "buffer.writeu8(RecieveBuffer, Allocate(1), %s and 1 or 0)",
-	},
-
-	vector = {
-		Read = "%s = Vector3.new(buffer.readf32(RecieveBuffer, Read(4)), buffer.readf32(RecieveBuffer, Read(4)), buffer.readf32(RecieveBuffer, Read(4)))",
-		Write = "local Vector = %s\n\tbuffer.writef32(RecieveBuffer, Allocate(4), Vector.X)\n\tbuffer.writef32(RecieveBuffer, Allocate(4), Vector.Y)\n\tbuffer.writef32(RecieveBuffer, Allocate(4), Vector.Z)",
-	},
-
-	assert = {
-		number = {
-			Lower = "assert(%s >= %d)",
-			Upper = "assert(%s <= %d)",
-		},
-		string = {
-			Lower = "assert(#%s >= %d)",
-			Upper = "assert(#%s <= %d)",
-		},
-		vector = {
-			Lower = "assert(%s.Magnitude >= %d)",
-			Upper = "assert(%s.Magnitude <= %d)",
-		},
-	},
-
-	--buffer = {
-	--Read = "local %s = buffer.copy()",
-	--Write = "buffer.writeu8(RecieveBuffer, Allocate(1), %s and 1 or 0)"
-	--}
-}
+local TypePrefabs = Prefabs.Types
+local AssertPrefabs = Prefabs.Asserts
+local Primitives = Prefabs.Primitives
 
 local function GenerateEnumLiterals(Enums: { string }): string
 	local Literal = ""
@@ -122,93 +39,6 @@ local function GenerateEnumLiterals(Enums: { string }): string
 	end
 	return Literal
 end
-
-local function GeneratePrimitivePrefab(Prefab: TypePrefab, Assert: AssertPrefab?): Generate
-	return function(Array: boolean, Range: NumberRange?, Variable: string?): (string, string)
-		local Read = Builder.new()
-		local Write = Builder.new()
-		local Variable = Variable or "Value"
-
-		if Array and Range then
-			if Range.Min ~= Range.Max then
-				Read.Push(string.format(Prefab.Read, "local Length"), 1, 1)
-
-				if Assert then
-					Read.Push(string.format(Assert.Lower, "Length", Range.Min), 1, 1)
-					Read.Push(string.format(Assert.Upper, "Length", Range.Max), 1, 1)
-				end
-
-				Read.Push(`{Variable} = table.create(Length)`, 1, 1)
-				Read.Push(`for Index = 1, Length do`, 1, 1)
-				Read.Push(string.format(Prefab.Read, "local Item"), 1, 2)
-				Read.Push(`table.insert({Variable}, Item)`, 1, 2)
-				Read.Push(`end`, 1, 1)
-				Write.Push(string.format(Prefab.Write, `#{Variable}`), 1, 1)
-			else
-				Read.Push(`{Variable} = table.create({Range.Max})`, 1, 1)
-				if Range.Max > 0 then
-					Read.Push(`for Index = 1, {Range.Max} do`, 1, 1)
-					Read.Push(string.format(Prefab.Read, "local Item"), 1, 2)
-					Read.Push(`table.insert({Variable}, Item)`, 1, 2)
-					Read.Push(`end`, 1, 1)
-				end
-			end
-
-			Write.Push(`for _, Item in {Variable} do`, 1, 1)
-			Write.Push(string.format(Prefab.Write, "Item"), 1, 2)
-			Write.Push("end", 1, 1)
-		else
-			Read.Push(string.format(Prefab.Read, Variable), 1, 1)
-			Write.Push(string.format(Prefab.Write, Variable), 1, 1)
-
-			if Range and Assert then
-				Read.Push(string.format(Assert.Lower, Variable, Range.Min), 1, 1)
-				Read.Push(string.format(Assert.Upper, Variable, Range.Max), 1, 1)
-			end
-		end
-
-		return Read.Dump(), Write.Dump()
-	end
-end
-
-local Primitives: { [string]: { Type: string, Generate: Generate } } = {
-	u8 = {
-		Type = "number",
-		Generate = GeneratePrimitivePrefab(Prefabs.u8, Prefabs.assert.number),
-	},
-	u16 = {
-		Type = "number",
-		Generate = GeneratePrimitivePrefab(Prefabs.u16, Prefabs.assert.number),
-	},
-	u32 = {
-		Type = "number",
-		Generate = GeneratePrimitivePrefab(Prefabs.u32, Prefabs.assert.number),
-	},
-	i8 = {
-		Type = "number",
-		Generate = GeneratePrimitivePrefab(Prefabs.i8, Prefabs.assert.number),
-	},
-	i16 = {
-		Type = "number",
-		Generate = GeneratePrimitivePrefab(Prefabs.i16, Prefabs.assert.number),
-	},
-	i32 = {
-		Type = "number",
-		Generate = GeneratePrimitivePrefab(Prefabs.i32, Prefabs.assert.number),
-	},
-	bool = {
-		Type = "boolean",
-		Generate = GeneratePrimitivePrefab(Prefabs.bool),
-	},
-	string = {
-		Type = "string",
-		Generate = GeneratePrimitivePrefab(Prefabs.string, Prefabs.assert.string),
-	},
-	vector = {
-		Type = "Vector3",
-		Generate = GeneratePrimitivePrefab(Prefabs.vector, Prefabs.assert.vector),
-	},
-}
 
 function Writers.Type(Identifier: string, Type: string, Optional: boolean, Read: string, Write: string, Reference: string?, Simple: boolean?): string
 	if Optional then
@@ -243,11 +73,11 @@ function Writers.Optional(ReadBody: string, WriteBody: string, Variable: string)
 	local ReadLines = string.split(ReadBody, "\n")
 	local WriteLines = string.split(WriteBody, "\n")
 
-	Read.Push(OptionalCondition, 1, 1)
+	Read.Push(OPTIONAL, 1, 1)
 	Read.PushLines(ReadLines, 0, 1)
 	Read.Push("end", 1, 1)
 
-	Write.Push(string.format(Prefabs.u8.Write, `({Variable} ~= nil) and 1 or 0`), 1, 1)
+	Write.Push(Prefabs.Types.u8.Write(`({Variable} ~= nil) and 1 or 0`), 1, 1)
 	Write.Push(`if {Variable} ~= nil then`, 1, 1)
 	Write.PushLines(WriteLines, 0, 1)
 	Write.Push("end", 1, 1)
@@ -294,14 +124,14 @@ function Writers.EnumDeclaration(
 	--> Write operation
 	for Index, EnumItem in Enums do
 		Write.Push(`{Index > 1 and "else" or ""}if {Variable} == "{EnumItem}" then`, 1, 1)
-		Write.Push(string.format(Prefabs.u8.Write, Index - 1), 1, 2)
+		Write.Push(TypePrefabs.u8.Write(Index - 1), 1, 2)
 	end
 	Write.Push("else", 1, 1)
 	Write.Push(`error(\`Unexpected enum: \{{Variable}\}, expectd one of {Type}.\`)`, 1, 2)
 	Write.Push("end", 1, 1)
 
 	-- Read operation
-	Read.Push(string.format(Prefabs.u8.Read, "local Index"), 1, 1)
+	Read.Push(TypePrefabs.u8.Read("local Index"), 1, 1)
 	for Index, EnumItem in Enums do
 		Read.Push(`{Index > 1 and "else" or ""}if Index == {Index - 1} then`, 1, 1)
 		Read.Push(`{Variable} = "{EnumItem}"`, 1, 2)
@@ -334,7 +164,7 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 		local StructTabs = Tabs
 
 		if Optional then
-			Read.Push(OptionalCondition, 1, StructTabs)
+			Read.Push(OPTIONAL, 1, StructTabs)
 			Write.Push(`if {Path} ~= nil then`, 1, StructTabs)
 			Tabs += 1
 		end
@@ -416,7 +246,7 @@ function Writers.PacketDeclaration(
 
 	--> Type generation
 	Packet.Push(`{Value.Identifier} = \{`, 1, 1)
-	Write.Push(string.format(Prefabs.u8.Write, PacketIndex), 1, 1)
+	Write.Push(TypePrefabs.u8.Write(PacketIndex), 1, 1)
 
 	if Data.Type == "TypeReference" then
 		local TypeReference: Parser.TypeReference = Value.Data
@@ -574,8 +404,8 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 	ReliableEvents.Push(`Reliable.{Signal}:Connect(function({Arguments})`)
 	UnreliableEvents.Push(`Unreliable.{Signal}:Connect(function({Arguments})`)
 
-	ReliableEvents.Push(EventBody)
-	UnreliableEvents.Push(EventBody)
+	ReliableEvents.Push(EVENT_BODY)
+	UnreliableEvents.Push(EVENT_BODY)
 
 	--> Generate replication loop
 	local Replication = "\nRunService.Heartbeat:Connect(StepReplication)\n"
