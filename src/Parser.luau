@@ -483,7 +483,7 @@ function Parser.PacketDeclaration(self: Parser, Identifier: Lexer.Token): Packet
         Packet.Value[Structure.Key] = Value 
 
         if Index ~= #PacketStructure then
-            self:Consume("Next")
+            self:Consume("Comma")
         end
     end
 
