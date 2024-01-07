@@ -13,6 +13,7 @@ local Sources = {
 	Server = string.split(if _G.BUNDLED then (require("Server") :: any) else fs.readFile("./Templates/Server.txt"), "-- SPLIT --"),
 }
 
+local DIRECTIVES = "--!strict\n--!native\n--!optimize 2\n\n"
 local OPTIONAL = `if buffer.readu8(RecieveBuffer, Read(1)) == 1 then`
 local EVENT_BODY =
 	"\tRecieveCursor = 0\n\tRecieveBuffer = Buffer\n\tlocal Size = buffer.len(RecieveBuffer)\n\twhile RecieveCursor < Size do\n\t\tlocal Index = buffer.readu8(RecieveBuffer, Read(1))"
@@ -296,7 +297,7 @@ function Writers.PacketDeclaration(
 		EventBuilder.Push(`if {Events} then`, 1, 3)
 		EventBuilder.Push(`{Events}({Arguments}Value)`, 1, 4)
 		EventBuilder.Push("else", 1, 3)
-		EventBuilder.Push(`if #{Queue} > 256 then warn("[DeclareNet]: Packet queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement Listen?") end`, 1, 4)
+		EventBuilder.Push(`if #{Queue} > 256 then warn("[Blink]: Packet queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement Listen?") end`, 1, 4)
 		EventBuilder.Push(`table.insert({Queue}, \{{Arguments}Value\})`, 1, 4)
 		EventBuilder.Push("end", 1, 3)
 
@@ -453,7 +454,7 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 
 	--> Generate context source
 	local Source = Sources[Context]
-	return "--!strict\n\n"
+	return DIRECTIVES
         .. Source[1]
 		.. Sources.Base
 		.. Types.Dump()

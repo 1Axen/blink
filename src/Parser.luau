@@ -133,6 +133,48 @@ local NumberRange = {
     end
 }
 
+local function GetAttributeRange(Token: Lexer.Token, Array: boolean, Source: string): NumberRange
+    local Lower, Upper;
+    if Array then
+        Lower, Upper = string.match(Token.Value, `^%[({Number})..({Number})]`)
+        Lower = Lower or string.match(Token.Value, `^%[({Number})]`)
+
+        if not Upper then
+            local Size = tonumber(Lower) or -1
+            if Size < 0 then
+                Error.ThrowTokenError(Source, Token, "Invalid array size, array cannot be smaller than 1 element")
+            end
+
+            return NumberRange.new(Size) :: NumberRange
+        end
+    else
+        Lower, Upper = string.match(Token.Value, `^%(({Number})..({Number})%)`)
+        if not Upper then
+            Lower = string.match(Token.Value, `^%(({Number})%)`)
+        end
+    end
+
+    if not Lower then
+        error(`Unexpected error while trying to parse range.`)
+    end
+
+    local Min = tonumber(Lower) or 0
+    local Max;
+
+    if Min < 0 then
+        Error.ThrowTokenError(Source, Token, "Invalid range bounds, range cannot be negative")
+    end
+
+    if Upper then
+        Max = tonumber(Upper) or 0
+        if Min >= Max then
+            Error.ThrowTokenError(Source, Token, "Invalid range bounds, max must be greater than min")
+        end
+    end
+
+    return NumberRange.new(Min, Max)
+end
+
 local Parser = {}
 Parser.__index = Parser
 
@@ -276,66 +318,24 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
     local Range: NumberRange?;
     local Array = false
 
-    local function GetAttributeRange(Token: Lexer.Token): NumberRange
-        local Lower, Upper;
-        if Array then
-            Lower, Upper = string.match(Token.Value, `^%[({Number})..({Number})]`)
-            Lower = Lower or string.match(Token.Value, `^%[({Number})]`)
-
-            if not Upper then
-                local Size = tonumber(Lower) or -1
-                if Size < 0 then
-                    Error.ThrowTokenError(self.Source, Token, "Invalid array size, array cannot be smaller than 1 element")
-                end
-
-                return NumberRange.new(Size) :: NumberRange
-            end
-        else
-            Lower, Upper = string.match(Token.Value, `^%(({Number})..({Number})%)`)
-            if not Upper then
-                Lower = string.match(Token.Value, `^%(({Number})%)`)
-            end
-        end
-
-        if not Lower then
-            error(`Unexpected error while trying to parse range.`)
-        end
-
-        local Min = tonumber(Lower) or 0
-        local Max;
-
-        if Min < 0 then
-            Error.ThrowTokenError(self.Source, Token, "Invalid range bounds, range cannot be negative")
-        end
-
-        if Upper then
-            Max = tonumber(Upper) or 0
-            if Min >= Max then
-                Error.ThrowTokenError(self.Source, Token, "Invalid range bounds, max must be greater than min")
-            end
-        end
-
-        return NumberRange.new(Min, Max)
-    end
-
     --> Attempt to read type attributes [Primitive][Range/Array][Optional] [u8(0..1)?]
-    local Token = self.LookAhead
-    --print(Identifier.Value, Token)
-    if Token then
-        local Type: Lexer.Types = Token.Type
+    local LookAhead = self.LookAhead
+    if LookAhead then
+        local Type: Lexer.Types = LookAhead.Type
         if Attributes[Type] then
             self:Consume(Type)
         end
         
         if Type == "Array" then
             Array = true
-            Range = GetAttributeRange(Token)
-        elseif Type == "Range" then
-            if not RangePrimitives[Primitive.Value] then
-                Error.ThrowTokenError(self.Source, Token, `"{Primitive.Value}" does not support ranges`)
-            end
+        end
 
-            Range = GetAttributeRange(Token)
+        if Type == "Range" and not RangePrimitives[Primitive.Value] then
+            Error.ThrowTokenError(self.Source, LookAhead, `"{Primitive.Value}" does not support ranges`)
+        end
+
+        if Array or Type == "Range" then
+            Range = GetAttributeRange(LookAhead, Array, self.Source)
         end
     end
 

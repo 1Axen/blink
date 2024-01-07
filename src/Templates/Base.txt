@@ -1,6 +1,3 @@
---!native
---!optimize 2
-
 local SendCursor = 0
 local SendBuffer = buffer.create(64)
 

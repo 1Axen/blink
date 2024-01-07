@@ -1,5 +1,5 @@
-option ClientOutput = "../test/Client.luau"
-option ServerOutput = "../test/Server.luau"
+option ClientOutput = "../Network/Client.luau"
+option ServerOutput = "../Network/Server.luau"
 option ManualReplication = true
 
 type Health = u8(0..100)
@@ -17,7 +17,7 @@ type OptionalLocation = CFrame?
 
 enum State = ( None, Dead, Down, Alive )?
 struct Entity = {
-	Identifier = u8?,
+	Identifier = u8,
 	Health = Health,
     LocalState = ( Replicated, Unreplicated )?,
     Character = State,
@@ -57,4 +57,52 @@ packet Custom = {
     From = Client,
     Type = Unreliable,
     Data = u8[1]
+}
+
+packet ServerReliable2 = {
+    From = Server,
+    Type = Reliable,
+    Data = Entity
+}
+
+packet ServerReliable3 = {
+    From = Server,
+    Type = Reliable,
+    Data = Entity
+}
+
+packet ServerReliable4 = {
+    From = Server,
+    Type = Reliable,
+    Data = Entity
+}
+
+packet ServerReliable5 = {
+    From = Server,
+    Type = Reliable,
+    Data = Entity
+}
+
+packet ServerReliable6 = {
+    From = Server,
+    Type = Reliable,
+    Data = Entity
+}
+
+packet ServerReliable7 = {
+    From = Server,
+    Type = Reliable,
+    Data = Entity
+}
+
+packet ServerReliable8 = {
+    From = Server,
+    Type = Reliable,
+    Data = Entity
+}
+
+packet ServerReliable9 = {
+    From = Server,
+    Type = Reliable,
+    Data = Entity
 }
