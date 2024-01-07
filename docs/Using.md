@@ -14,6 +14,12 @@ These options allow you to specify where Blink will generate files.
 option ServerOutput = "../Network/Server.luau"
 option ClientOutput = "../Network/Client.luau"
 ```
+## `FutureLibrary` and `PromiseLibrary`
+In order to use future and promise yield types with functions a path to each library used must be specified  
+```
+option FutureLibrary = "ReplicatedStorage.Packages.Future"
+option PromiseLibrary = "ReplicatedStorage.Packages.Promise"
+```
 ## `ManualReplication`
 Default: `false`  
 Controls wether Blink will replicate events and functions automatically at the end of every frame.  
@@ -58,7 +64,9 @@ Coming soon!
 Coming whenever ROBLOX gives us access to instance ids.
 ## Events
 You can define events using the `event` keyword  
-Events have 3 fields which must be defined in the **correct order**: `From`, `Type`, `Data`  
+Events have 4 fields which must be defined in the **correct order**: 
+
+`From`, `Type`, `Data`  
 `From` - `Client` or `Server`  
 `Type` - `Reliable` or `Unreliable`  
 `Call` - `SingleSync` or `ManySync` or `SingleAsync` or `ManyAsync`  
@@ -85,6 +93,33 @@ event Complex = {
     Data = {
         Field = u8
     }
+}
+```
+## Functions
+You can define functions using the `function` keyword  
+Functions have 3 fields which must be defined in the **correct order**:
+
+`Yield` - `Coroutine` or `Future` or `Promise`  
+**Deifnes what library will be used to handle invocations**  
+`Data` - Can hold either a type definition or a reference to an already defined type  
+`Return` - Can hold either a type definition or a reference to an already defined type 
+```
+function Example = {
+    Yield = Coroutine,
+    Data = u8,
+    Return = u8
+}
+
+function ExampleFuture = {
+    Yield = Future,
+    Data = u8,
+    Return = u8
+}
+
+function ExamplePromise = {
+    Yield = Promise,
+    Data = u8,
+    Return = u8
 }
 ```
 # Limitations
