@@ -1,22 +1,22 @@
 # Navigation
-[Home](https://github.com/1Axen/DeclareNet/blob/main/README.md)  
-[Installation](https://github.com/1Axen/DeclareNet/blob/main/docs/Installation.md)  
-[Getting Started](https://github.com/1Axen/DeclareNet/blob/main/docs/Getting-Started.md)  
-[Using DeclareNet](https://github.com/1Axen/DeclareNet/blob/main/docs/Using.md)
+[Home](https://github.com/1Axen/Blink/blob/main/README.md)  
+[Installation](https://github.com/1Axen/Blink/blob/main/docs/Installation.md)  
+[Getting Started](https://github.com/1Axen/Blink/blob/main/docs/Getting-Started.md)  
+[Using Blink](https://github.com/1Axen/Blink/blob/main/docs/Using.md)
 # Options
-Options go at the top of a source file and are used to configure the output of DeclareNet.
+Options go at the top of a source file and are used to configure the output of Blink.
 ```
 option [OPTION] = [VALUE]
 ```
 ## `ServerOutput` and `ClientOutput`
-These options allow you to specify where DeclareNet will generate files.
+These options allow you to specify where Blink will generate files.
 ```
 option ServerOutput = "../Network/Server.luau"
 option ClientOutput = "../Network/Client.luau"
 ```
 ## `ManualReplication`
 Default: `false`  
-Controls wether DeclareNet will replicate packets automatically at the end of every frame.  
+Controls wether Blink will replicate packets automatically at the end of every frame.  
 When set to `true` automatic replication will be disabled and instead a `StepReplication` function will be exposed.
 # Basic syntax and supported types
 You can mark any type (`struct`, `enum`, `type`) as optional by appending `?` after it

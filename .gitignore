@@ -6,7 +6,7 @@
 /*.rbxl.lock
 
 /Network
-/DeclareNet
+/Blink
 /release.rar
 test/Client.luau
 test/Server.luau

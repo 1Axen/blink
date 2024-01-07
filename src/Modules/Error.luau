@@ -31,7 +31,7 @@ function Error.ThrowTokenError(Source: string, Token: Token, Error: string)
         if not Start or not End then
             Start = Token.Start
             End = Token.End
-            warn("[DeclareNet:Error]: Unable to find token value bounds.")
+            warn("[Blink:Error]: Unable to find token value bounds.")
         end
 
         Line = Index
