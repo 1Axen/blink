@@ -10,7 +10,7 @@ export type Types =
     | "Assign" | "Keyword" | "Primitive" | "Identifier" --> Reserved
     | "Unknown" 
 
-export type Keywords = "type" | "enum" | "struct" | "packet"
+export type Keywords = "type" | "enum" | "struct" | "event" | "function"
 
 export type Token = {
     Type: Types,
@@ -49,8 +49,11 @@ local Keywords = {
     type = true,
     enum = true,
     struct = true,
-    packet = true,
-    option = true
+
+    event = true,
+    ["function"] = true,
+
+    option = true,
 }
 
 local Booleans = {

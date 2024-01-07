@@ -8,6 +8,8 @@ end
 local Reliable: RemoteEvent = ReplicatedStorage:WaitForChild("DECLARE_NET_RELIABLE_REMOTE") :: RemoteEvent
 local Unreliable: UnreliableRemoteEvent = ReplicatedStorage:WaitForChild("DECLARE_NET_UNRELIABLE_REMOTE") :: UnreliableRemoteEvent
 
+local Invocation = 0
+
 -- SPLIT --
 local function StepReplication()
     if SendCursor <= 0 then
@@ -18,7 +20,7 @@ local function StepReplication()
     buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)
     Reliable:FireServer(Buffer)
 
+    Invocation = 0
     SendCursor = 0
     buffer.fill(SendBuffer, 0, 0)
 end
-

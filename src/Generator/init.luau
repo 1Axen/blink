@@ -19,7 +19,8 @@ local EVENT_BODY =
 	"\tRecieveCursor = 0\n\tRecieveBuffer = Buffer\n\tlocal Size = buffer.len(RecieveBuffer)\n\twhile RecieveCursor < Size do\n\t\tlocal Index = buffer.readu8(RecieveBuffer, Read(1))"
 
 local Types = Builder.new()
-local Packets = Builder.new()
+local Imports = Builder.new()
+local Return = Builder.new()
 local ReliableEvents = Builder.new()
 local UnreliableEvents = Builder.new()
 
@@ -220,13 +221,13 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 	return Type.Dump(), Read.Dump(), Write.Dump()
 end
 
-function Writers.PacketDeclaration(
-	PacketDeclaration: Parser.PacketDeclaration,
+function Writers.EventDeclaration(
+	EventDeclaration: Parser.EventDeclaration,
 	Context: "Client" | "Server",
 	ReliableEvents: Builder.Builder,
 	UnreliableEvents: Builder.Builder
 ): string
-	local Value = PacketDeclaration.Value
+	local Value = EventDeclaration.Value
 	local IsServer = (Context == "Server")
 	local IsReliable = (Value.Type == "Reliable")
 	local Arguments = (IsServer and "Player, " or "")
@@ -235,19 +236,19 @@ function Writers.PacketDeclaration(
 	local DataValue = Data.Value
 
     local Channel = Channels[Value.Type]
-	local PacketIndex = Channel.Count
+	local EventIndex = Channel.Count
 
 	local Type: string
     local Reference: string?
-	local Identifier = `PACKET_{Value.Identifier}`
+	local Identifier = `EVENT_{Value.Identifier}`
 
 	local Read = Builder.new()
 	local Write = Builder.new()
-	local Packet = Builder.new()
+	local Event = Builder.new()
 
 	--> Type generation
-	Packet.Push(`{Value.Identifier} = \{`, 1, 1)
-	Write.Push(TypePrefabs.u8.Write(PacketIndex), 1, 1)
+	Event.Push(`{Value.Identifier} = \{`, 1, 1)
+	Write.Push(TypePrefabs.u8.Write(EventIndex), 1, 1)
 
 	if Data.Type == "TypeReference" then
 		local TypeReference: Parser.TypeReference = Value.Data
@@ -272,126 +273,188 @@ function Writers.PacketDeclaration(
 
 	--> Body generation
 	if Value.From ~= Context then
-		local Index = `{Value.Type}[{PacketIndex}]`
+		local Index = `{Value.Type}[{EventIndex}]`
 		local Queue = `Queue.{Index}`
         local Events = `Events.{Index}`
 
 		--> Allocate queue table at require time instead of creating one at runtime
 		Types.PushFront(`{Queue} = table.create(256)`)
 
-		Packet.Push(`Listen = function(Listener: ({Arguments}{Type}) -> ())`, 1, 2)
-		Packet.Push(`{Events} = Listener`, 1, 3)
-		Packet.Push(`task.spawn(function()`, 1, 3)
-		Packet.Push(`local Queue = {Queue} or \{\}`, 1, 4)
-		--Packet.Push(`if not Queue then return end`, 1, 4)
-		Packet.Push(`{Queue} = nil`, 1, 4)
-		Packet.Push(`for Index, Arguments in Queue do`, 1, 4)
-		Packet.Push(`Listener(table.unpack(Arguments))`, 1, 5)
-		Packet.Push(`end`, 1, 4)
-		Packet.Push(`end)`, 1, 3)
-		Packet.Push(`end`, 1, 2)
+		Event.Push(`Listen = function(Listener: ({Arguments}{Type}) -> ())`, 1, 2)
+		Event.Push(`{Events} = Listener`, 1, 3)
+		Event.Push(`task.spawn(function()`, 1, 3)
+		Event.Push(`local Queue = {Queue} or \{\}`, 1, 4)
+		--Event.Push(`if not Queue then return end`, 1, 4)
+		Event.Push(`{Queue} = nil`, 1, 4)
+		Event.Push(`for Index, Arguments in Queue do`, 1, 4)
+		Event.Push(`Listener(table.unpack(Arguments))`, 1, 5)
+		Event.Push(`end`, 1, 4)
+		Event.Push(`end)`, 1, 3)
+		Event.Push(`end`, 1, 2)
 
 		local EventBuilder = (IsReliable and ReliableEvents or UnreliableEvents)
-		EventBuilder.Push(`{Channel.Listening and "elseif" or "if"} Index == {PacketIndex} then`, 1, 2)
+		EventBuilder.Push(`{Channel.Listening and "elseif" or "if"} Index == {EventIndex} then`, 1, 2)
 		EventBuilder.Push(`local Value = Types.Read{Identifier}()`, 1, 3)
 		EventBuilder.Push(`if {Events} then`, 1, 3)
 		EventBuilder.Push(`{Events}({Arguments}Value)`, 1, 4)
 		EventBuilder.Push("else", 1, 3)
-		EventBuilder.Push(`if #{Queue} > 256 then warn("[Blink]: Packet queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement Listen?") end`, 1, 4)
+		EventBuilder.Push(`if #{Queue} > 256 then warn("[Blink]: Event queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement Listen?") end`, 1, 4)
 		EventBuilder.Push(`table.insert({Queue}, \{{Arguments}Value\})`, 1, 4)
 		EventBuilder.Push("end", 1, 3)
 
 		Channel.Listening = true
 	elseif IsServer then
         --> Single fire
-        Packet.Push(`Fire = function(Player: Player, Value: {Type})`, 1, 2)
+        Event.Push(`Fire = function(Player: Player, Value: {Type})`, 1, 2)
         if IsReliable then
-            Packet.Push(`Load(PlayersMap[Player])`, 1, 3)
-            Packet.Push(`Types.Write{Identifier}(Value)`, 1, 3)
-            Packet.Push(`PlayersMap[Player] = Save()`, 1, 3)
+            Event.Push(`Load(PlayersMap[Player])`, 1, 3)
+            Event.Push(`Types.Write{Identifier}(Value)`, 1, 3)
+            Event.Push(`PlayersMap[Player] = Save()`, 1, 3)
         else
-            Packet.Push(`Load()`, 1, 3)
-            Packet.Push(`Types.Write{Identifier}(Value)`, 1, 3)
-            Packet.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
-            Packet.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
-            Packet.Push(`Unreliable:FireClient(Player, Buffer)`, 1, 3)
+            Event.Push(`Load()`, 1, 3)
+            Event.Push(`Types.Write{Identifier}(Value)`, 1, 3)
+            Event.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
+            Event.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
+            Event.Push(`Unreliable:FireClient(Player, Buffer)`, 1, 3)
         end
-        Packet.Push(`end,`, 1, 2)
+        Event.Push(`end,`, 1, 2)
 
         --> Fire all
-        Packet.Push(`FireAll = function(Value: {Type})`, 1, 2)
-        Packet.Push(`Load()`, 1, 3)
-        Packet.Push(`Types.Write{Identifier}(Value)`, 1, 3)
+        Event.Push(`FireAll = function(Value: {Type})`, 1, 2)
+		Event.Push(`Load()`, 1, 3)
+		Event.Push(`Types.Write{Identifier}(Value)`, 1, 3)
         if IsReliable then
-            Packet.Push(`for _, Player in Players:GetPlayers() do`, 1, 3)
-            Packet.Push(`PlayersMap[Player] = Save()`, 1, 4)
-            Packet.Push(`end`, 1, 3)
+            Event.Push(`for _, Player in Players:GetPlayers() do`, 1, 3)
+			Event.Push(`PlayersMap[Player] = Save()`, 1, 4)
+			Event.Push(`end`, 1, 3)
         else
-            Packet.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
-            Packet.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
-            Packet.Push(`Unreliable:FireAllClients(Buffer)`, 1, 3)
+            Event.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
+            Event.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
+            Event.Push(`Unreliable:FireAllClients(Buffer)`, 1, 3)
         end
-        Packet.Push(`end,`, 1, 2)
+        Event.Push(`end,`, 1, 2)
 
         --> Fire list
-        Packet.Push(`FireList = function(List: \{Player\}, Value: {Type})`, 1, 2)
-        Packet.Push(`Load()`, 1, 3)
-        Packet.Push(`Types.Write{Identifier}(Value)`, 1, 3)
+        Event.Push(`FireList = function(List: \{Player\}, Value: {Type})`, 1, 2)
+		Event.Push(`Load()`, 1, 3)
+		Event.Push(`Types.Write{Identifier}(Value)`, 1, 3)
         if IsReliable then
-            Packet.Push(`for _, Player in List do`, 1, 3)
-            Packet.Push(`PlayersMap[Player] = Save()`, 1, 4)
-            Packet.Push(`end`, 1, 3)
+            Event.Push(`for _, Player in List do`, 1, 3)
+			Event.Push(`PlayersMap[Player] = Save()`, 1, 4)
+			Event.Push(`end`, 1, 3)
         else
-            Packet.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
-            Packet.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
-            Packet.Push(`for _, Player in List do`, 1, 3)
-            Packet.Push(`Unreliable:FireClient(Player, Buffer)`, 1, 4)
-            Packet.Push(`end`, 1, 3)
+            Event.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
+            Event.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
+            Event.Push(`for _, Player in List do`, 1, 3)
+			Event.Push(`Unreliable:FireClient(Player, Buffer)`, 1, 4)
+			Event.Push(`end`, 1, 3)
         end
-        Packet.Push(`end,`, 1, 2)
+        Event.Push(`end,`, 1, 2)
 
         --> Fire except
-        Packet.Push(`FireExcept = function(Except: Player, Value: {Type})`, 1, 2)
-        Packet.Push(`Load()`, 1, 3)
-        Packet.Push(`Types.Write{Identifier}(Value)`, 1, 3)
+        Event.Push(`FireExcept = function(Except: Player, Value: {Type})`, 1, 2)
+		Event.Push(`Load()`, 1, 3)
+		Event.Push(`Types.Write{Identifier}(Value)`, 1, 3)
         if IsReliable then
-            Packet.Push(`for _, Player in Players:GetPlayers() do`, 1, 3)
-            Packet.Push(`if Player == Except then continue end`, 1, 4)
-            Packet.Push(`PlayersMap[Player] = Save()`, 1, 4)
-            Packet.Push(`end`, 1, 3)
+            Event.Push(`for _, Player in Players:GetPlayers() do`, 1, 3)
+			Event.Push(`if Player == Except then continue end`, 1, 4)
+            Event.Push(`PlayersMap[Player] = Save()`, 1, 4)
+            Event.Push(`end`, 1, 3)
         else
-            Packet.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
-            Packet.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
-            Packet.Push(`for _, Player in Players:GetPlayers() do`, 1, 3)
-            Packet.Push(`if Player == Except then continue end`, 1, 4)
-            Packet.Push(`Unreliable:FireClient(Player, Buffer)`, 1, 4)
-            Packet.Push(`end`, 1, 3)
+            Event.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
+            Event.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
+            Event.Push(`for _, Player in Players:GetPlayers() do`, 1, 3)
+			Event.Push(`if Player == Except then continue end`, 1, 4)
+			Event.Push(`Unreliable:FireClient(Player, Buffer)`, 1, 4)
+			Event.Push(`end`, 1, 3)
         end
-        Packet.Push(`end`, 1, 2)
+        Event.Push(`end`, 1, 2)
     else
-        Packet.Push(`Fire = function(Value: {Type})`, 1, 2)
+        Event.Push(`Fire = function(Value: {Type})`, 1, 2)
         if IsReliable then
-            Packet.Push(`Types.Write{Identifier}(Value)`, 1, 3)
+            Event.Push(`Types.Write{Identifier}(Value)`, 1, 3)
         else
-            Packet.Push(`local Previous = Save()`, 1, 3)
-            Packet.Push(`Load()`, 1, 3)
-            Packet.Push(`Types.Write{Identifier}(Value)`, 1, 3)
-            Packet.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
-            Packet.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
-            Packet.Push(`Unreliable:FireServer(Buffer)`, 1, 3)
-            Packet.Push(`Load(Previous)`, 1, 3)
+            Event.Push(`local Previous = Save()`, 1, 3)
+            Event.Push(`Load()`, 1, 3)
+            Event.Push(`Types.Write{Identifier}(Value)`, 1, 3)
+            Event.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
+            Event.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
+            Event.Push(`Unreliable:FireServer(Buffer)`, 1, 3)
+            Event.Push(`Load(Previous)`, 1, 3)
         end
-        Packet.Push(`end`, 1, 2)
+        Event.Push(`end`, 1, 2)
     end
 
-	Packet.Push(`},`, 1, 1)
-	return Packet.Dump()
+	Event.Push(`},`, 1, 1)
+	return Event.Dump()
+end
+
+function Writers.FunctionDeclaration(
+	FunctionDeclaration: Parser.FunctionDeclaration,
+	Context: "Client" | "Server",
+	ReliableEvents: Builder.Builder
+): string
+	local Value = FunctionDeclaration.Value
+	local Yield = Value.Yield
+
+	local Channel = Channels.Reliable
+	local FunctionIndex = Channel.Count
+
+	local Data = Value.Data
+	local Return = Value.Return
+	local DataValue = Data.Value
+	local ReturnValue = Return.Value
+
+	--[[local DataType: string
+	local ReturnType: string
+	local DataReference: string?
+	local ReturnReference: string?
+
+	local DataIdentifier = `FUNCTION_DATA_{Value.Identifier}`
+	local ReturnIdentifier = `FUNCTION_RETURN_{Value.Identifier}`
+
+	local Read = Builder.new()
+	local Write = Builder.new()
+	local Function = Builder.new()
+
+	--> Type generation
+	Function.Push(`{Value.Identifier} = \{`, 1, 1)
+	Write.Push(TypePrefabs.u8.Write(FunctionIndex), 1, 1)
+
+	--> Data type
+	if Data.Type == "TypeReference" then
+		local TypeReference: Parser.TypeReference = Value.Data
+
+		DataType = TypeReference.Value.Reference
+		DataReference = TypeReference.Value.Reference
+
+		Read.Push(`return Types.Read{DataReference}()`, 1, 1)
+		Write.Push(`Types.Write{DataReference}(Value)`, 1, 1)
+	else
+		local Writer = Writers[Data.Type]
+		local DeclarationType, DeclarationRead, DeclarationWrite = Writer(Data)
+		DeclarationType = string.gsub(DeclarationType, "\n", " ")
+		DeclarationType = string.gsub(DeclarationType, "\t", "")
+
+		DataType = DeclarationType
+		Read.Push(DeclarationRead, 0)
+		Write.Push(DeclarationWrite, 0)
+	end
+
+	Types.Push(Writers.Type(DataIdentifier, Type, DataValue.Optional, Read.Dump(), Write.Dump(), Type, Reference ~= nil), 0)
+
+	--> Body generation
+
+	Function.Push(`},`, 1, 1)
+	return Function.Dump()]]
+	return ""
 end
 
 return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, UserOptions: Parser.Options): string
 	--> Reset previous generation
 	Types.Dump()
-	Packets.Dump()
+	Imports.Dump()
+	Return.Dump()
 	ReliableEvents.Dump()
 	UnreliableEvents.Dump()
 
@@ -400,6 +463,15 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 	Channels.Unreliable.Count = 0
 	Channels.Reliable.Listening = false
 	Channels.Unreliable.Listening = false
+
+	--> Import async libraries
+	if UserOptions.FutureLibrary then
+		Imports.Push(`local Future = require("{UserOptions.FutureLibrary}")`)
+	end
+
+	if UserOptions.PromiseLibrary then
+		Imports.Push(`local Promise = require("{UserOptions.PromiseLibrary}")`)
+	end
 
 	--> Generate remote connections
 	local Signal = (Context == "Client" and "OnClientEvent" or "OnServerEvent")
@@ -415,10 +487,10 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 	local Replication = "\nRunService.Heartbeat:Connect(StepReplication)\n"
 	if Options.ManualReplication then
 		Replication = ""
-		Packets.Push("StepReplication = StepReplication,", 1, 1)
+		Return.Push("StepReplication = StepReplication,", 1, 1)
 	end
 
-	--> Generate types & packets
+	--> Generate types & events/functions
 	for Index, Declaration in AbstractSyntaxTree.Value do
 		local Writer = Writers[Declaration.Type]
 		if not Writer then
@@ -426,10 +498,9 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 			continue
 		end
 
-		if Declaration.Type == "PacketDeclaration" then
-			Packets.Push(Writer(Declaration, Context, ReliableEvents, UnreliableEvents), 0)
-			Channels[Declaration.Value.Type].Count += 1
-
+		if Declaration.Type == "EventDeclaration" or Declaration.Type == "FunctionDeclaration" then
+			Return.Push(Writer(Declaration, Context, ReliableEvents, UnreliableEvents), 0)
+			;(Channels[Declaration.Value.Type] or Channels.Reliable).Count += 1
 			continue
 		end
 
@@ -455,6 +526,7 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 	--> Generate context source
 	local Source = Sources[Context]
 	return DIRECTIVES
+		.. Imports.Dump()
         .. Source[1]
 		.. Sources.Base
 		.. Types.Dump()
@@ -462,5 +534,5 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 		.. Replication
 		.. ReliableEvents.Dump()
 		.. UnreliableEvents.Dump()
-		.. `\nreturn \{\n{Packets.Dump()}\}`
+		.. `\nreturn \{\n{Return.Dump()}\}`
 end

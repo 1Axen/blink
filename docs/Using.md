@@ -16,7 +16,7 @@ option ClientOutput = "../Network/Client.luau"
 ```
 ## `ManualReplication`
 Default: `false`  
-Controls wether Blink will replicate packets automatically at the end of every frame.  
+Controls wether Blink will replicate events and functions automatically at the end of every frame.  
 When set to `true` automatic replication will be disabled and instead a `StepReplication` function will be exposed.
 # Basic syntax and supported types
 You can mark any type (`struct`, `enum`, `type`) as optional by appending `?` after it
@@ -56,28 +56,32 @@ struct Entity = {
 Coming soon!
 ## Instances
 Coming whenever ROBLOX gives us access to instance ids.
-## Packets
-You can define packets using the `packet` keyword  
-Packets have 3 fields which must be defined in the **correct order**: `From`, `Type`, `Data`  
+## Events
+You can define events using the `event` keyword  
+Events have 3 fields which must be defined in the **correct order**: `From`, `Type`, `Data`  
 `From` - `Client` or `Server`  
 `Type` - `Reliable` or `Unreliable`  
+`Call` - `SingleSync` or `ManySync` or `SingleAsync` or `ManyAsync`  
 `Data` - Can hold either a type definition or a reference to an already defined type  
 ```
-packet Simple = {
+event Simple = {
     From = Client,
     Type = Unreliable,
+    Call = SingleSync,
     Data = u8
 }
 
-packet Reference = {
+event Reference = {
     From = Client,
     Type = Unreliable,
+    Call = SingleSync,
     Data = Entity
 }
 
-packet Complex = {
+event Complex = {
     From = Client,
     Type = Unreliable,
+    Call = SingleSync,
     Data = {
         Field = u8
     }
@@ -98,12 +102,13 @@ type Number = u8
 002 |     Field = Number
     |             ^^^^^^ Unknown type referenced.
 ```
-## Packet order
-Packet fields must be in the exact order specified in the Packets section.
+## Events order
+Event fields must be in the exact order specified in the Events section.
 ```
-packet Example = {
+event Example = {
     Type = Reliable,
     From = Server,
+    Call = SingleSync,
     Data = u8
 }
 ```

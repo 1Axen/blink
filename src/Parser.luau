@@ -6,7 +6,7 @@ local Lexer = require("./Lexer")
 local Error = require("./Modules/Error")
 
 type NumberRange = {Min: number, Max: number}
-type Declarations = "TypeReference" | "TypeDeclaration" | "EnumDeclaration" | "StructDeclaration" | "PacketDeclaration"
+type Declarations = "TypeReference" | "TypeDeclaration" | "EnumDeclaration" | "StructDeclaration" | "EventDeclaration" | "FunctionDeclaration"
 
 type Node<Type, Value> = {
     Type: Type,
@@ -47,17 +47,28 @@ export type StructDeclaration = Node<"StructDeclaration", {
     Optional: boolean,
 }>
 
-export type PacketDeclaration = Node<"PacketDeclaration", {
+export type EventDeclaration = Node<"EventDeclaration", {
     Identifier: string,
     Optional: boolean,
     From: "Client" | "Server",
     Type: "Reliable" | "Unreliable",
+    Call: "SingleSync" | "ManySync" | "SingleAsync" | "ManyAsync",
     Data: Declaration
+}>
+
+export type FunctionDeclaration = Node<"FunctionDeclaration", {
+    Identifier: string,
+    Optional: boolean,
+    Yield: "Future" | "Promise" | "Coroutine",
+    Data: Declaration,
+    Return: Declaration
 }>
 
 export type Options = {
     ClientOutput: string?,
     ServerOutput: string?,
+    FutureLibrary: string?,
+    PromiseLibrary: string?,
     ManualReplication: boolean?,
 }
 
@@ -82,7 +93,8 @@ export type Parser = {
     TypeDeclaration: (self: Parser, Identifier: Lexer.Token) -> TypeDeclaration,
     EnumDeclaration: (self: Parser, Identifier: Lexer.Token) -> EnumDeclaration,
     StructDeclaration: (self: Parser, Identifier: Lexer.Token) -> StructDeclaration,
-    PacketDeclaration: (self: Parser, Identifier: Lexer.Token) -> PacketDeclaration,
+    EventDeclaration: (self: Parser, Identifier: Lexer.Token) -> EventDeclaration,
+    FunctionDeclaration: (self: Parser, Identifier: Lexer.Token) -> FunctionDeclaration,
 
     GetDeclarationFromToken: (self: Parser, Token: Lexer.Token, Identifier: Lexer.Token) -> Declaration,
 }
@@ -109,17 +121,26 @@ local RangePrimitives = {
 local OptionsTypes: {[string]: Lexer.Types} = {
     ClientOutput = "String",
     ServerOutput = "String",
+    FutureLibrary = "String",
+    PromiseLibrary = "String",
     ManualReplication = "Boolean",
 }
 
 local ReservedMembers = {
-	ManualReplication = true
+	StepReplication = true
 }
 
-local PacketStructure: {{Key: string, Type: Lexer.Types, Values: {string}}} = {
+local EventStructure: {{Key: string, Type: Lexer.Types, Values: {string}}} = {
     {Key = "From", Type = "Identifier", Values = {"Client", "Server"}},
     {Key = "Type", Type = "Identifier", Values = {"Reliable", "Unreliable"}},
+    {Key = "Call", Type = "Identifier", Values = {"SingleSync", "ManySync", "SingleAsync", "ManyAsync"}},
     {Key = "Data", Type = "Identifier", Values = {}}
+}
+
+local FunctionStructure: {{Key: string, Type: Lexer.Types, Values: {string}}} = {
+    {Key = "Yield", Type = "Identifier", Values = {"Future", "Promise", "Coroutine"}},
+    {Key = "Data", Type = "Identifier", Values = {}},
+    {Key = "Return", Type = "Identifier", Values = {}}
 }
 
 local Number = "[%+%-]?%d+"
@@ -292,15 +313,17 @@ function Parser.Declaration(self: Parser): Declaration
         Declaration = self:EnumDeclaration(Identifier)
     elseif Keyword.Value == "struct" then
         Declaration = self:StructDeclaration(Identifier)
-    elseif Keyword.Value == "packet" then
-        Declaration = self:PacketDeclaration(Identifier)
+    elseif Keyword.Value == "event" then
+        Declaration = self:EventDeclaration(Identifier)
+    elseif Keyword.Value == "function" then
+        Declaration = self:FunctionDeclaration(Identifier)
     end
     
     if not Declaration then
         error(`{Keyword.Value} has no declaration handler.`)
     end
 
-    if Keyword.Value ~= "packet" then
+    if Keyword.Value ~= "event" and Keyword.Value ~= "function" then
         if self:GetSafeLookAhead().Type == "Optional" then
             self:Consume("Optional")
             Declaration.Value.Optional = true
@@ -436,37 +459,38 @@ function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): Struct
     }
 end
 
-function Parser.PacketDeclaration(self: Parser, Identifier: Lexer.Token): PacketDeclaration
+function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDeclaration
     self:Consume("OpenBrackets")
 
     if ReservedMembers[Identifier.Value] then
-        Error.ThrowTokenError(self.Source, Identifier, `"{Identifier.Value}" is reserved and cannot be used as a packet identifier`)
+        Error.ThrowTokenError(self.Source, Identifier, `"{Identifier.Value}" is reserved and cannot be used as an event identifier`)
     end
 
-    local Packet: PacketDeclaration = {
-        Type = "PacketDeclaration",
+    local Event: EventDeclaration = {
+        Type = "EventDeclaration",
         Value = {
             Identifier = Identifier.Value,
             From = "Client",
             Type = "Reliable",
+            Call = "SingleSync",
             Data = nil :: any,
             Optional = false
         }
     }
 
-    for Index, Structure in PacketStructure do
+    for Index, Entry in EventStructure do
         local Key = self:Consume("Identifier")
-        if Key.Value ~= Structure.Key then
-            Error.ThrowTokenError(self.Source, Key, `Unexpected key: {Key.Value}, expected: "{Structure.Key}"`)
+        if Key.Value ~= Entry.Key then
+            Error.ThrowTokenError(self.Source, Key, `Unexpected key: {Key.Value}, expected: "{Entry.Key}"`)
         end
 
         local Value: unknown;
         local Assign = self:Consume("Assign")
         
-        if Structure.Key ~= "Data" then
-            local Token = self:Consume(Structure.Type)
-            if not table.find(Structure.Values, Token.Value) then
-                Error.ThrowTokenError(self.Source, Token, `Unexpected value: {Token.Value}, expected one of {table.concat(Structure.Values, " or ")}`)
+        if Entry.Key ~= "Data" then
+            local Token = self:Consume(Entry.Type)
+            if not table.find(Entry.Values, Token.Value) then
+                Error.ThrowTokenError(self.Source, Token, `Unexpected value: {Token.Value}, expected one of "{table.concat(Entry.Values, "\" or \"")}"`)
             end
 
             Value = Token.Value
@@ -480,16 +504,72 @@ function Parser.PacketDeclaration(self: Parser, Identifier: Lexer.Token): Packet
             Value = self:GetDeclarationFromToken(Token, Identifier)
         end
 
-        Packet.Value[Structure.Key] = Value 
+        Event.Value[Entry.Key] = Value 
 
-        if Index ~= #PacketStructure then
+        if Index ~= #EventStructure then
             self:Consume("Comma")
         end
     end
 
     self:Consume("CloseBrackets")
 
-    return Packet
+    return Event
+end
+
+function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): FunctionDeclaration
+    self:Consume("OpenBrackets")
+
+    if ReservedMembers[Identifier.Value] then
+        Error.ThrowTokenError(self.Source, Identifier, `"{Identifier.Value}" is reserved and cannot be used as a function identifier`)
+    end
+
+    local Function: FunctionDeclaration = {
+        Type = "FunctionDeclaration",
+        Value = {
+            Identifier = Identifier.Value,
+            Optional = false,
+            Yield = "Coroutine",
+            Data = nil :: any,
+            Return = nil :: any
+        }
+    }
+
+    for Index, Entry in FunctionStructure do
+        local Key = self:Consume("Identifier")
+        if Key.Value ~= Entry.Key then
+            Error.ThrowTokenError(self.Source, Key, `Unexpected key: {Key.Value}, expected: "{Entry.Key}"`)
+        end
+
+        local Value: unknown;
+        local Assign = self:Consume("Assign")
+        
+        if Entry.Key ~= "Data" and Entry.Key ~= "Return" then
+            local Token = self:Consume(Entry.Type)
+            if not table.find(Entry.Values, Token.Value) then
+                Error.ThrowTokenError(self.Source, Token, `Unexpected value: {Token.Value}, expected one of "{table.concat(Entry.Values, "\" or \"")}"`)
+            end
+
+            Value = Token.Value
+        else
+            local Token = self.LookAhead
+            if not Token then
+                Error.ThrowTokenError(self.Source, Assign, "Expected value after assignment")
+                break
+            end
+
+            Value = self:GetDeclarationFromToken(Token, Identifier)
+        end
+
+        Function.Value[Entry.Key] = Value 
+
+        if Index ~= #FunctionStructure then
+            self:Consume("Comma")
+        end
+    end
+
+    self:Consume("CloseBrackets")
+
+    return Function
 end
 
 function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identifier: Lexer.Token): Declaration

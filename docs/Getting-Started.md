@@ -14,17 +14,17 @@ To generate output code run the following command in the directory in which you 
 lune init [PATH_TO_SOURCE]
 ``` 
 ## Using the generated code
-When requiring the code generated it will return a table which contains all defined packets, you can use this table to fire and listen to packets.
+When requiring the code generated it will return a table which contains all defined events & functions, you can use this table to fire/invoke and listen to events/functions.
 ```lua
 local Blink = require(PATH_TO_MODULE)
 
---> Firing packets
+--> Firing events
 Blink.Example.Fire(1)
 Blink.Example.FireAll(1)
 Blink.Example.FireList(List, 1)
 Blink.Example.FireExcept(Player, 1)
 
---> Listening to packets
+--> Listening to events
 Blink.AnotherExample.Listen(function(...)
     print(...)
 end)

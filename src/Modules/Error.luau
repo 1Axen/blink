@@ -21,7 +21,7 @@ function Error.ThrowTokenError(Source: string, Token: Token, Error: string)
     for Index, String in Lines do
         --> Ignore lines which are before the current one
         Seek += (#String + 1)
-        if Token.End > Seek then
+        if Token.End >= Seek then
             continue
         end
 
@@ -29,8 +29,8 @@ function Error.ThrowTokenError(Source: string, Token: Token, Error: string)
         local Start, End = string.find(String, Token.Value, 1, true)
 
         if not Start or not End then
-            Start = Token.Start
-            End = Token.End
+            Start = Seek - 1
+            End = Seek
             warn("[Blink:Error]: Unable to find token value bounds.")
         end
 

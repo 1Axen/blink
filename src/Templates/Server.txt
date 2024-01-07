@@ -38,4 +38,3 @@ local function StepReplication()
         buffer.fill(Send.Buffer, 0, 0)
     end
 end
-

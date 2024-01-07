@@ -1,6 +1,6 @@
 option ClientOutput = "../Network/Client.luau"
 option ServerOutput = "../Network/Server.luau"
-option ManualReplication = true
+option ManualReplication = false
 
 type Health = u8(0..100)
 type Array = u8[8]
@@ -29,80 +29,43 @@ struct Entity = {
     }?
 }?
 
-packet ServerReliable = {
+event ServerReliable = {
     From = Server,
     Type = Reliable,
+    Call = SingleSync,
     Data = Entity
 }
 
-packet ServerUnreliable = {
+event ServerUnreliable = {
     From = Server,
     Type = Unreliable,
+    Call = SingleSync,
     Data = Entity
 }
 
-packet ClientReliable = {
+event ClientReliable = {
     From = Client,
     Type = Reliable,
+    Call = SingleSync,
     Data = Entity
 }
 
-packet ClientUnreliable = {
+event ClientUnreliable = {
     From = Client,
     Type = Unreliable,
+    Call = SingleSync,
     Data = Entity
 }
 
-packet Custom = {
+event Custom = {
     From = Client,
     Type = Unreliable,
+    Call = SingleSync,
     Data = u8[1]
 }
 
-packet ServerReliable2 = {
-    From = Server,
-    Type = Reliable,
-    Data = Entity
-}
-
-packet ServerReliable3 = {
-    From = Server,
-    Type = Reliable,
-    Data = Entity
-}
-
-packet ServerReliable4 = {
-    From = Server,
-    Type = Reliable,
-    Data = Entity
-}
-
-packet ServerReliable5 = {
-    From = Server,
-    Type = Reliable,
-    Data = Entity
-}
-
-packet ServerReliable6 = {
-    From = Server,
-    Type = Reliable,
-    Data = Entity
-}
-
-packet ServerReliable7 = {
-    From = Server,
-    Type = Reliable,
-    Data = Entity
-}
-
-packet ServerReliable8 = {
-    From = Server,
-    Type = Reliable,
-    Data = Entity
-}
-
-packet ServerReliable9 = {
-    From = Server,
-    Type = Reliable,
-    Data = Entity
+function Example = {
+    Yield = Future,
+    Data = u8,
+    Return = u8
 }
