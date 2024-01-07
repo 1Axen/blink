@@ -155,14 +155,16 @@ function Parser.Parse(self: Parser, Source: string): (Body, Options)
     --> Parse options
     local Options = self:Options()
 
-    --> Start parsing recursively from the body (Program)
-    return self:Body(), Options
+    --> Parse source body
+    local Body = self:Body()
+
+    return Body, Options
 end
 
 function Parser.Consume(self: Parser, Type: string): Lexer.Token
     local Token = self.LookAhead
     if not Token then
-        error(`Unexpected end of input, expected: "{Type}".`) 
+        error(`Unexpected end of file, expected: "{Type}".`) 
     end
 
     if Token.Type ~= Type then
@@ -330,7 +332,7 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
             Range = GetAttributeRange(Token)
         elseif Type == "Range" then
             if not RangePrimitives[Primitive.Value] then
-                Error.ThrowTokenError(self.Source, Token, `{Primitive.Value} cannot have a range`)
+                Error.ThrowTokenError(self.Source, Token, `"{Primitive.Value}" does not support ranges`)
             end
 
             Range = GetAttributeRange(Token)
@@ -368,10 +370,10 @@ function Parser.EnumDeclaration(self: Parser, Identifier: Lexer.Token): EnumDecl
 
         table.insert(Enums, Token.Value)
 
-        local Next = self.LookAhead.Type
-        if Next == "Next" then
-            self:Consume("Next")
-        elseif Next == "CloseCurlyBrackets" then
+        local LookAhead = self:GetSafeLookAhead().Type
+        if LookAhead == "Comma" then
+            self:Consume("Comma")
+        elseif LookAhead == "CloseCurlyBrackets" then
             self:Consume("CloseCurlyBrackets")
             break
         end
@@ -416,13 +418,12 @@ function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): Struct
         Keys[Key.Value] = true
         table.insert(Fields, Declaration)
 
-        local Next = self:GetSafeLookAhead().Type
-        if Next == "CloseBrackets" then
+        if self:GetSafeLookAhead().Type == "CloseBrackets" then
             self:Consume("CloseBrackets")
             break
         end
 
-        self:Consume("Next")
+        self:Consume("Comma")
     end
 
     return {

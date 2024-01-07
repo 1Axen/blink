@@ -3,7 +3,7 @@
 
 local Error = require("./Modules/Error")
 
-export type Types = "Next" | "String" | "Boolean" | "OpenBrackets" | "CloseBrackets" | "OpenCurlyBrackets" | "CloseCurlyBrackets" | "Array" | "Range" | "Number" | "Assign" | "Optional" | "Keyword" | "Primitive" | "Identifier" | "Unknown"
+export type Types = "Comma" | "String" | "Boolean" | "OpenBrackets" | "CloseBrackets" | "OpenCurlyBrackets" | "CloseCurlyBrackets" | "Array" | "Range" | "Number" | "Assign" | "Optional" | "Keyword" | "Primitive" | "Identifier" | "Unknown"
 export type Keywords = "type" | "enum" | "struct" | "packet"
 
 export type Token = {
@@ -60,7 +60,7 @@ local Matches = {
     {"^=", "Assign"},
     {"^{", "OpenBrackets"},
     {"^}", "CloseBrackets"},
-    {"^,", "Next"},
+    {"^,", "Comma"},
 
     --> Attribute patterns
     {"^?", "Optional"},

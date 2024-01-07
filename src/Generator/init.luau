@@ -159,9 +159,6 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 	local Write = Builder.new()
 
 	local function BuildStructType(StructDeclaration: Parser.StructDeclaration, Tabs: number, Indent: number, Path: string)
-		--local StructRead = Builder.new()
-		--local StructWrite = Builder.new()
-
 		local Value = StructDeclaration.Value
 		local Optional = Value.Optional
 		local StructTabs = Tabs

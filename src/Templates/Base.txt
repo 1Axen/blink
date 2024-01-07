@@ -57,10 +57,10 @@ end
 
 local Types = {}
 local Events: any = {
-    Reliable = {},
-    Unreliable = {}
+    Reliable = table.create(256),
+    Unreliable = table.create(256)
 }
 local Queue: any = {
-    Reliable = {},
-    Unreliable = {}
+    Reliable = table.create(256),
+    Unreliable = table.create(256)
 }
