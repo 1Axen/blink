@@ -1,0 +1,9 @@
+option ClientOutput = "../Network/Client_Event.luau"
+option ServerOutput = "../Network/Server_Event.luau"
+
+event Custom = {
+    From = Client,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = u8[1]
+}

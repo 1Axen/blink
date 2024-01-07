@@ -15,6 +15,12 @@ local Sources = {
 
 local DIRECTIVES = "--!strict\n--!native\n--!optimize 2\n\n"
 local OPTIONAL = `if buffer.readu8(RecieveBuffer, Read(1)) == 1 then`
+local YIELD_BODY = {
+	"Calls[InvocationIdentifier] = coroutine.running()",
+	"local Success, Return = coroutine.yield()",
+	"if not Success then error(Return) end",
+	"return Return"
+}
 local EVENT_BODY =
 	"\tRecieveCursor = 0\n\tRecieveBuffer = Buffer\n\tlocal Size = buffer.len(RecieveBuffer)\n\twhile RecieveCursor < Size do\n\t\tlocal Index = buffer.readu8(RecieveBuffer, Read(1))"
 
@@ -45,7 +51,7 @@ local function GenerateEnumLiterals(Enums: { string }): string
 	return Literal
 end
 
-function Writers.Type(Identifier: string, Type: string, Optional: boolean, Read: string, Write: string, Reference: string?, Simple: boolean?): string
+function Writers.Type(Identifier: string, Type: string, Optional: boolean, Read: string, Write: string, Reference: string?, Simple: boolean?, Arguments: string?): string
 	if Optional then
 		Type = `{Type}?`
 	end
@@ -55,7 +61,7 @@ function Writers.Type(Identifier: string, Type: string, Optional: boolean, Read:
         Result.Push(`export type {Identifier} = {Type}`, 2)
 	end
 	
-	Result.Push(`function Types.Write{Identifier}(Value: {Reference or Identifier})`)
+	Result.Push(`function Types.Write{Identifier}(Value: {Reference or Identifier}{Arguments and ", " .. Arguments or ""})`)
 	Result.Push(Write, 0)
 	Result.Push(`end`, 2)
 	Result.Push(`function Types.Read{Identifier}(): {Reference or Identifier}`)
@@ -167,6 +173,7 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 
 		if Optional then
 			Read.Push(OPTIONAL, 1, StructTabs)
+			Write.Push(Prefabs.Types.u8.Write(`({Path} ~= nil) and 1 or 0`), 1, StructTabs)
 			Write.Push(`if {Path} ~= nil then`, 1, StructTabs)
 			Tabs += 1
 		end
@@ -221,38 +228,27 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 	return Type.Dump(), Read.Dump(), Write.Dump()
 end
 
-function Writers.EventDeclaration(
-	EventDeclaration: Parser.EventDeclaration,
-	Context: "Client" | "Server",
-	ReliableEvents: Builder.Builder,
-	UnreliableEvents: Builder.Builder
-): string
-	local Value = EventDeclaration.Value
-	local IsServer = (Context == "Server")
-	local IsReliable = (Value.Type == "Reliable")
-	local Arguments = (IsServer and "Player, " or "")
-
-	local Data = Value.Data
-	local DataValue = Data.Value
-
-    local Channel = Channels[Value.Type]
-	local EventIndex = Channel.Count
-
-	local Type: string
-    local Reference: string?
-	local Identifier = `EVENT_{Value.Identifier}`
-
+local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: number, Invocation: true?): string
 	local Read = Builder.new()
 	local Write = Builder.new()
-	local Event = Builder.new()
 
-	--> Type generation
-	Event.Push(`{Value.Identifier} = \{`, 1, 1)
-	Write.Push(TypePrefabs.u8.Write(EventIndex), 1, 1)
+	local Type, Reference;
+	Write.Push(TypePrefabs.u8.Write(Index), 1, 1)
+	
+	if Invocation then
+		Write.Push(TypePrefabs.u8.Write("InvocationIdentifier"), 1, 1)
+		Write.Push(TypePrefabs.u8.Write("1"), 1, 1)
+
+		Read.Push(`local {TypePrefabs.u8.Read("Success")} == 1`, 1, 1)
+		Read.Push(`if not Success then`, 1, 1)
+		local ErrorRead = string.gsub(TypePrefabs.string.Read("Error"), "\t", "")
+		Read.PushLines(string.split(ErrorRead, "\n"), 0, 2)
+		Read.Push("error(Error)", 1, 2)
+		Read.Push(`end`, 1, 1)
+	end
 
 	if Data.Type == "TypeReference" then
-		local TypeReference: Parser.TypeReference = Value.Data
-
+		local TypeReference: Parser.TypeReference = Data :: Parser.TypeReference
 		Type = TypeReference.Value.Reference
 		Reference = TypeReference.Value.Reference
 
@@ -269,9 +265,32 @@ function Writers.EventDeclaration(
 		Write.Push(DeclarationWrite, 0)
 	end
 
-	Types.Push(Writers.Type(Identifier, Type, DataValue.Optional, Read.Dump(), Write.Dump(), Type, Reference ~= nil), 0)
+	Types.Push(Writers.Type(Identifier, Type, Data.Value.Optional, Read.Dump(), Write.Dump(), Type, Reference ~= nil, Invocation and "InvocationIdentifier: number"), 0)
+	return Type
+end
+
+function Writers.EventDeclaration(
+	EventDeclaration: Parser.EventDeclaration,
+	Context: "Client" | "Server",
+	ReliableEvents: Builder.Builder,
+	UnreliableEvents: Builder.Builder
+): string
+	local Value = EventDeclaration.Value
+	local IsServer = (Context == "Server")
+	local IsReliable = (Value.Type == "Reliable")
+	local Arguments = (IsServer and "Player, " or "")
+
+    local Channel = Channels[Value.Type]
+	local EventIndex = Channel.Count
+	local Identifier = `EVENT_{Value.Identifier}`
+
+	--> Type generation
+	local Type = WriteBody(Identifier, Value.Data, EventIndex)
 
 	--> Body generation
+	local Event = Builder.new()
+	Event.Push(`{Value.Identifier} = \{`, 1, 1)
+	
 	if Value.From ~= Context then
 		local Index = `{Value.Type}[{EventIndex}]`
 		local Queue = `Queue.{Index}`
@@ -280,13 +299,13 @@ function Writers.EventDeclaration(
 		--> Allocate queue table at require time instead of creating one at runtime
 		Types.PushFront(`{Queue} = table.create(256)`)
 
-		Event.Push(`Listen = function(Listener: ({Arguments}{Type}) -> ())`, 1, 2)
+		Event.Push(`On = function(Listener: ({Arguments}{Type}) -> ())`, 1, 2)
 		Event.Push(`{Events} = Listener`, 1, 3)
 		Event.Push(`task.spawn(function()`, 1, 3)
-		Event.Push(`local Queue = {Queue} or \{\}`, 1, 4)
+		Event.Push(`local EventQueue = {Queue} or \{\}`, 1, 4)
 		--Event.Push(`if not Queue then return end`, 1, 4)
 		Event.Push(`{Queue} = nil`, 1, 4)
-		Event.Push(`for Index, Arguments in Queue do`, 1, 4)
+		Event.Push(`for Index, Arguments in EventQueue do`, 1, 4)
 		Event.Push(`Listener(table.unpack(Arguments))`, 1, 5)
 		Event.Push(`end`, 1, 4)
 		Event.Push(`end)`, 1, 3)
@@ -298,7 +317,7 @@ function Writers.EventDeclaration(
 		EventBuilder.Push(`if {Events} then`, 1, 3)
 		EventBuilder.Push(`{Events}({Arguments}Value)`, 1, 4)
 		EventBuilder.Push("else", 1, 3)
-		EventBuilder.Push(`if #{Queue} > 256 then warn("[Blink]: Event queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement Listen?") end`, 1, 4)
+		EventBuilder.Push(`if #{Queue} > 256 then warn("[Blink]: Event queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement a listener?") end`, 1, 4)
 		EventBuilder.Push(`table.insert({Queue}, \{{Arguments}Value\})`, 1, 4)
 		EventBuilder.Push("end", 1, 3)
 
@@ -397,57 +416,119 @@ function Writers.FunctionDeclaration(
 	local Value = FunctionDeclaration.Value
 	local Yield = Value.Yield
 
+	local IsFuture = (Yield == "Future")
+	local IsPromise = (Yield == "Promise")
+	local IsCoroutine = (Yield == "Coroutine")
+
+	if IsFuture and not Options.FutureLibrary then
+		error(`Cannot use yield type: "Future", without providing a path to the future library.`)
+	end
+
+	if IsPromise and not Options.PromiseLibrary then
+		error(`Cannot use yield type: "Promise", without providing a path to the promise library.`)
+	end
+
 	local Channel = Channels.Reliable
 	local FunctionIndex = Channel.Count
 
-	local Data = Value.Data
-	local Return = Value.Return
-	local DataValue = Data.Value
-	local ReturnValue = Return.Value
-
-	--[[local DataType: string
-	local ReturnType: string
-	local DataReference: string?
-	local ReturnReference: string?
+	local Index = `Reliable[{FunctionIndex}]`
+	local Queue = `Queue.{Index}`
+    local Events = `Events.{Index}`
 
 	local DataIdentifier = `FUNCTION_DATA_{Value.Identifier}`
-	local ReturnIdentifier = `FUNCTION_RETURN_{Value.Identifier}`
-
-	local Read = Builder.new()
-	local Write = Builder.new()
-	local Function = Builder.new()
+	local ReturnIdentifier = `FUNCTION_RETURN_{Value.Identifier}` 
 
 	--> Type generation
-	Function.Push(`{Value.Identifier} = \{`, 1, 1)
-	Write.Push(TypePrefabs.u8.Write(FunctionIndex), 1, 1)
+	local DataType = WriteBody(DataIdentifier, Value.Data, FunctionIndex, true)
+	local ReturnType = WriteBody(ReturnIdentifier, Value.Return, FunctionIndex, true)
 
-	--> Data type
-	if Data.Type == "TypeReference" then
-		local TypeReference: Parser.TypeReference = Value.Data
-
-		DataType = TypeReference.Value.Reference
-		DataReference = TypeReference.Value.Reference
-
-		Read.Push(`return Types.Read{DataReference}()`, 1, 1)
-		Write.Push(`Types.Write{DataReference}(Value)`, 1, 1)
-	else
-		local Writer = Writers[Data.Type]
-		local DeclarationType, DeclarationRead, DeclarationWrite = Writer(Data)
-		DeclarationType = string.gsub(DeclarationType, "\n", " ")
-		DeclarationType = string.gsub(DeclarationType, "\t", "")
-
-		DataType = DeclarationType
-		Read.Push(DeclarationRead, 0)
-		Write.Push(DeclarationWrite, 0)
-	end
-
-	Types.Push(Writers.Type(DataIdentifier, Type, DataValue.Optional, Read.Dump(), Write.Dump(), Type, Reference ~= nil), 0)
+	--> Allocate queue table at require time instead of creating one at runtime
+	Types.PushFront(`{Queue} = table.create(256)`)
 
 	--> Body generation
+	local Function = Builder.new()
+	Function.Push(`{Value.Identifier} = \{`, 1, 1)
 
+	if Context == "Server" then
+		Function.Push(`On = function(Callback: (Player, {DataType}) -> ({ReturnType}))`, 1, 2)
+		Function.Push(`assert({Events} == nil, "A function callback can only bet set once")`, 1, 3)
+		Function.Push(`{Events} = function(Player: Player, Value: {DataType}, InvocationIdentifier: number)`, 1, 3)
+
+		Function.Push(`local Return: {DataType};`, 1, 4)
+		Function.Push(`local Success, Trace = pcall(function() Return = Callback(Player, Value) end)`, 1, 4)
+
+		Function.Push(`Load(PlayersMap[Player])`, 1, 4)
+		Function.Push(`if not Success then`, 1, 4)
+		Function.Push(`buffer.writeu8(SendBuffer, Allocate(1), {FunctionIndex})`, 1, 5)
+		Function.Push(`buffer.writeu8(SendBuffer, Allocate(1), InvocationIdentifier)`, 1, 5)
+		Function.Push(`buffer.writeu8(SendBuffer, Allocate(1), 0)`, 1, 5)
+		
+		local ErrorWrite = TypePrefabs.string.Write("Trace") 
+		ErrorWrite = string.gsub(ErrorWrite, "\t", "")
+		Function.PushLines(string.split(ErrorWrite, "\n"), 0, 5)
+
+		Function.Push(`else`, 1, 4)
+		Function.Push(`Types.Write{ReturnIdentifier}(Return, InvocationIdentifier)`, 1, 5)
+		Function.Push(`end`, 1, 4)
+        Function.Push(`PlayersMap[Player] = Save()`, 1, 4)
+		Function.Push(`end`, 1, 3)
+
+		Function.Push(`task.defer(function()`, 1, 3)
+		Function.Push(`local FunctionQueue = {Queue} or \{\}`, 1, 4)
+		Function.Push(`{Queue} = nil`, 1, 4)
+		Function.Push(`for Index, Arguments in FunctionQueue do`, 1, 4)
+		Function.Push(`{Events}(table.unpack(Arguments))`, 1, 5)
+		Function.Push(`end`, 1, 4)
+		Function.Push(`end)`, 1, 3)
+
+		Function.Push(`end`, 1, 2)
+
+		ReliableEvents.Push(`{Channel.Listening and "elseif" or "if"} Index == {FunctionIndex} then`, 1, 2)
+		ReliableEvents.Push(`local {TypePrefabs.u8.Read("InvocationIdentifier")}`, 1, 3)
+		ReliableEvents.Push(`local Value = Types.Read{DataIdentifier}()`, 1, 3)
+		ReliableEvents.Push(`if {Events} then`, 1, 3)
+		ReliableEvents.Push(`{Events}(Player, Value, InvocationIdentifier)`, 1, 4)
+		ReliableEvents.Push(`else`, 1, 3)
+		ReliableEvents.Push(`if #{Queue} > 256 then warn("[Blink]: Function queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement a callback?") end`, 1, 4)
+		ReliableEvents.Push(`table.insert({Queue}, \{Player, Value, InvocationIdentifier\})`, 1, 4)
+		ReliableEvents.Push(`end`, 1, 3)
+	else
+		Function.Push(`Invoke = function(Value: {DataType})`, 1, 2)
+		Function.Push(`local InvocationIdentifier = Invoke()`, 1, 3)
+		Function.Push(`Types.Write{DataIdentifier}(Value, InvocationIdentifier)`, 1, 3)
+		
+		if IsCoroutine then
+			Function.PushLines(YIELD_BODY, 0, 3)
+		elseif IsFuture then
+			Function.Push(`return Future.Try(function()`, 1, 3)
+			Function.PushLines(YIELD_BODY, 0, 4)
+			Function.Push(`end)`, 1, 3)
+		elseif IsPromise then
+			Function.Push(`return Promise.new(function(Resolve, Reject, OnCancel)`, 1, 3)
+			Function.Push("OnCancel(function()", 1, 4)
+			Function.Push(`Calls[InvocationIdentifier] = nil`, 1, 5)
+			Function.Push("end)", 1, 4)
+			Function.Push(YIELD_BODY[1], 1, 4)
+			Function.Push(YIELD_BODY[2], 1, 4)
+			Function.Push("if not Success then Reject(Return) end", 1, 4)
+			Function.Push("Resolve(Return)", 1, 4)
+			Function.Push(`end)`, 1, 3)
+		end
+
+		Function.Push(`end`, 1, 2)
+
+		ReliableEvents.Push(`{Channel.Listening and "elseif" or "if"} Index == {FunctionIndex} then`, 1, 2)
+		ReliableEvents.Push(`local {TypePrefabs.u8.Read("InvocationIdentifier")}`, 1, 3)
+		ReliableEvents.Push(`if Calls[InvocationIdentifier] then`, 1, 3)
+		ReliableEvents.Push(`local Success, Value = pcall(function() return Types.Read{ReturnIdentifier}() end)`, 1, 4)
+		ReliableEvents.Push(`task.spawn(Calls[InvocationIdentifier], Success, Value)`, 1, 4)
+		ReliableEvents.Push(`end`, 1, 3)
+	end
+
+	Channel.Listening = true
 	Function.Push(`},`, 1, 1)
-	return Function.Dump()]]
-	return ""
+
+	return Function.Dump()
 end
 
 return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, UserOptions: Parser.Options): string
@@ -466,11 +547,11 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 
 	--> Import async libraries
 	if UserOptions.FutureLibrary then
-		Imports.Push(`local Future = require("{UserOptions.FutureLibrary}")`)
+		Imports.Push(`local Future = require({UserOptions.FutureLibrary})`)
 	end
 
 	if UserOptions.PromiseLibrary then
-		Imports.Push(`local Promise = require("{UserOptions.PromiseLibrary}")`)
+		Imports.Push(`local Promise = require({UserOptions.PromiseLibrary})`)
 	end
 
 	--> Generate remote connections
@@ -526,8 +607,8 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 	--> Generate context source
 	local Source = Sources[Context]
 	return DIRECTIVES
-		.. Imports.Dump()
         .. Source[1]
+		.. Imports.Dump()
 		.. Sources.Base
 		.. Types.Dump()
 		.. Source[2]

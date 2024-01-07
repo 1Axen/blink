@@ -1,3 +1,5 @@
+local Invocations = 0
+
 local SendCursor = 0
 local SendBuffer = buffer.create(64)
 
@@ -30,6 +32,16 @@ local function Load(Save: BufferSave?)
     SendBuffer = buffer.create(64)
 end
 
+local function Invoke()
+    if Invocations == 255 then
+        Invocations = 0
+    end
+
+    local Invocation = Invocations
+    Invocations += 1
+    return Invocation
+end
+
 local function Allocate(Bytes: number)
     local Len = buffer.len(SendBuffer)
 
@@ -53,12 +65,14 @@ local function Allocate(Bytes: number)
 end
 
 local Types = {}
+local Calls = table.create(256)
+
 local Events: any = {
     Reliable = table.create(256),
     Unreliable = table.create(256)
 }
+
 local Queue: any = {
     Reliable = table.create(256),
     Unreliable = table.create(256)
 }
-
