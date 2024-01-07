@@ -1,3 +1,6 @@
+--!native
+--!optimize 2
+
 export type Token = {
     Type: any,
     Value: string,

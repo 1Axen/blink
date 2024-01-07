@@ -1,3 +1,6 @@
+--!native
+--!optimize 2
+
 local Error = require("./Modules/Error")
 
 export type Types = "Next" | "String" | "Boolean" | "OpenBrackets" | "CloseBrackets" | "OpenCurlyBrackets" | "CloseCurlyBrackets" | "Array" | "Range" | "Number" | "Assign" | "Optional" | "Keyword" | "Primitive" | "Identifier" | "Unknown"

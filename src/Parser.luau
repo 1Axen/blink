@@ -1,4 +1,6 @@
 --!strict
+--!native
+--!optimize 2
 
 local Lexer = require("./Lexer")
 local Error = require("./Modules/Error")

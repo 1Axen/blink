@@ -1,3 +1,6 @@
+--!native
+--!optimize 2
+
 local fs = require("@lune/fs")
 
 local Parser = require("../Parser")

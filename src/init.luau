@@ -1,3 +1,6 @@
+--!native
+--!optimize 2
+
 local fs = require("@lune/fs")
 local stdio = require("@lune/stdio")
 local process = require("@lune/process")

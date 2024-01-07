@@ -2,6 +2,10 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+if not RunService:IsServer() then
+    error("Server network module can only be required from the server.")
+end
+
 local Reliable = Instance.new("RemoteEvent")
 Reliable.Name = "DECLARE_NET_RELIABLE_REMOTE"
 Reliable.Parent = ReplicatedStorage

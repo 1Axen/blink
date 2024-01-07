@@ -1,6 +1,10 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+if not RunService:IsClient() then
+    error("Client network module can only be required from the client.")
+end
+
 local Reliable: RemoteEvent = ReplicatedStorage:WaitForChild("DECLARE_NET_RELIABLE_REMOTE") :: RemoteEvent
 local Unreliable: UnreliableRemoteEvent = ReplicatedStorage:WaitForChild("DECLARE_NET_UNRELIABLE_REMOTE") :: UnreliableRemoteEvent
 

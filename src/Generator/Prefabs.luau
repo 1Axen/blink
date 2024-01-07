@@ -1,3 +1,6 @@
+--!native
+--!optimize 2
+
 local Builder = require("../Modules/Builder")
 
 type Reader = (Variable: string, Range: NumberRange?) -> string

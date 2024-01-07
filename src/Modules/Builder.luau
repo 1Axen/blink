@@ -1,3 +1,6 @@
+--!native
+--!optimize 2
+
 local Builder = {}
 
 function Builder.new(String: string?): Builder
