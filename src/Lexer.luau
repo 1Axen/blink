@@ -3,7 +3,13 @@
 
 local Error = require("./Modules/Error")
 
-export type Types = "Comma" | "String" | "Boolean" | "OpenBrackets" | "CloseBrackets" | "OpenCurlyBrackets" | "CloseCurlyBrackets" | "Array" | "Range" | "Number" | "Assign" | "Optional" | "Keyword" | "Primitive" | "Identifier" | "Unknown"
+export type Types = 
+    "Comma" | "OpenBrackets" | "CloseBrackets" | "OpenCurlyBrackets" | "CloseCurlyBrackets" --> Structs & enums
+    | "String" | "Boolean" | "Number"   --> Literals
+    | "Array" | "Range" | "Optional"    --> Attributes
+    | "Assign" | "Keyword" | "Primitive" | "Identifier" --> Reserved
+    | "Unknown" 
+
 export type Keywords = "type" | "enum" | "struct" | "packet"
 
 export type Token = {

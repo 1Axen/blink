@@ -17,13 +17,6 @@ Unreliable.Parent = ReplicatedStorage
 -- SPLIT --
 local PlayersMap: {[Player]: {Cursor: number, Buffer: buffer}} = {}
 
-Players.PlayerAdded:Connect(function(Player)
-    PlayersMap[Player] = {
-        Cursor = 0,
-        Buffer = buffer.create(64)
-    }
-end)
-
 Players.PlayerRemoving:Connect(function(Player)
     PlayersMap[Player] = {
         Cursor = 0,
@@ -45,6 +38,4 @@ local function StepReplication()
         buffer.fill(Send.Buffer, 0, 0)
     end
 end
-
-
 

@@ -10,6 +10,10 @@ function Builder.new(String: string?): Builder
             String ..= (string.rep("\t", Tabs or 0) .. Text .. string.rep("\n", Returns or 1))
         end,
 
+        PushFront = function(Text: string, Returns: number?, Tabs: number?)
+            String = (string.rep("\t", Tabs or 0) .. Text .. string.rep("\n", Returns or 1)) .. String
+        end,
+
         PushLines = function(Lines: {string}, Returns: number?, Tabs: number?)
             local Indent = string.rep("\t", Tabs or 0)
             local Last = Lines[#Lines]

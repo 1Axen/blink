@@ -274,6 +274,10 @@ function Writers.PacketDeclaration(
 		local Index = `{Value.Type}[{PacketIndex}]`
 		local Queue = `Queue.{Index}`
         local Events = `Events.{Index}`
+
+		--> Allocate queue table at require time instead of creating one at runtime
+		Types.PushFront(`{Queue} = table.create(256)`)
+
 		Packet.Push(`Listen = function(Listener: ({Arguments}{Type}) -> ())`, 1, 2)
 		Packet.Push(`{Events} = Listener`, 1, 3)
 		Packet.Push(`task.spawn(function()`, 1, 3)
@@ -292,8 +296,7 @@ function Writers.PacketDeclaration(
 		EventBuilder.Push(`if {Events} then`, 1, 3)
 		EventBuilder.Push(`{Events}({Arguments}Value)`, 1, 4)
 		EventBuilder.Push("else", 1, 3)
-		-- TODO: Optimise this so the queue table is created at require time instead of at runtime
-		EventBuilder.Push(`if not {Queue} then {Queue} = \{\} end`, 1, 4)
+		EventBuilder.Push(`if #{Queue} > 256 then warn("[DeclareNet]: Packet queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement Listen?") end`, 1, 4)
 		EventBuilder.Push(`table.insert({Queue}, \{{Arguments}Value\})`, 1, 4)
 		EventBuilder.Push("end", 1, 3)
 

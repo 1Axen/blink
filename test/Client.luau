@@ -3,8 +3,15 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+if not RunService:IsClient() then
+    error("Client network module can only be required from the client.")
+end
+
 local Reliable: RemoteEvent = ReplicatedStorage:WaitForChild("DECLARE_NET_RELIABLE_REMOTE") :: RemoteEvent
 local Unreliable: UnreliableRemoteEvent = ReplicatedStorage:WaitForChild("DECLARE_NET_UNRELIABLE_REMOTE") :: UnreliableRemoteEvent
+
+--!native
+--!optimize 2
 
 local SendCursor = 0
 local SendBuffer = buffer.create(64)
@@ -62,13 +69,17 @@ end
 
 local Types = {}
 local Events: any = {
-    Reliable = {},
-    Unreliable = {}
+    Reliable = table.create(256),
+    Unreliable = table.create(256)
 }
 local Queue: any = {
-    Reliable = {},
-    Unreliable = {}
+    Reliable = table.create(256),
+    Unreliable = table.create(256)
 }
+
+Queue.Unreliable[0] = table.create(256)
+Queue.Reliable[0] = table.create(256)
+
 export type Health = number
 
 function Types.WriteHealth(Value: Health)
@@ -93,8 +104,9 @@ end
 
 function Types.ReadArray(): Array
 	local Value: Array;
-	Value = table.create(8)
-	for Index = 1, 8 do
+	local Length = 8
+	Value = table.create(Length)
+	for Index = 1, Length do
 		local Item = buffer.readu8(RecieveBuffer, Read(1))
 		table.insert(Value, Item)
 	end
@@ -129,7 +141,7 @@ function Types.WriteBooleans(Value: Booleans)
 	buffer.writeu8(SendBuffer, Allocate(1), (Value ~= nil) and 1 or 0)
 	if Value ~= nil then
 		for _, Item in Value do
-			buffer.writeu8(RecieveBuffer, Allocate(1), Item and 1 or 0)
+			buffer.writeu8(SendBuffer, Allocate(1), Item and 1 or 0)
 		end
 	end
 end
@@ -137,8 +149,9 @@ end
 function Types.ReadBooleans(): Booleans
 	local Value: Booleans;
 	if buffer.readu8(RecieveBuffer, Read(1)) == 1 then
-		Value = table.create(8)
-		for Index = 1, 8 do
+		local Length = 8
+		Value = table.create(Length)
+		for Index = 1, Length do
 			local Item = (buffer.readu8(RecieveBuffer, Read(1)) == 1)
 			table.insert(Value, Item)
 		end
@@ -151,7 +164,9 @@ export type Username = string?
 function Types.WriteUsername(Value: Username)
 	buffer.writeu8(SendBuffer, Allocate(1), (Value ~= nil) and 1 or 0)
 	if Value ~= nil then
-		buffer.writeu8(RecieveBuffer, Allocate(1), Value and 1 or 0)
+		local Length = #Value
+		buffer.writeu16(SendBuffer, Allocate(Length), Length)
+		buffer.writestring(SendBuffer, Allocate(Length), Value, Length)
 	end
 end
 
@@ -170,9 +185,9 @@ export type UnitVector = Vector3
 
 function Types.WriteUnitVector(Value: UnitVector)
 	local Vector = Value
-	buffer.writef32(RecieveBuffer, Allocate(4), Vector.X)
-	buffer.writef32(RecieveBuffer, Allocate(4), Vector.Y)
-	buffer.writef32(RecieveBuffer, Allocate(4), Vector.Z)
+	buffer.writef32(SendBuffer, Allocate(4), Vector.X)
+	buffer.writef32(SendBuffer, Allocate(4), Vector.Y)
+	buffer.writef32(SendBuffer, Allocate(4), Vector.Z)
 end
 
 function Types.ReadUnitVector(): UnitVector
@@ -180,6 +195,123 @@ function Types.ReadUnitVector(): UnitVector
 	Value = Vector3.new(buffer.readf32(RecieveBuffer, Read(4)), buffer.readf32(RecieveBuffer, Read(4)), buffer.readf32(RecieveBuffer, Read(4)))
 	assert(Value.Magnitude >= 0)
 	assert(Value.Magnitude <= 1)
+	return Value
+end
+
+export type Buffer = buffer
+
+function Types.WriteBuffer(Value: Buffer)
+	local Length = buffer.len(Value)
+	buffer.writeu16(SendBuffer, Allocate(2), Length)
+	buffer.copy(SendBuffer, Allocate(Length), Value, 0, Length)
+end
+
+function Types.ReadBuffer(): Buffer
+	local Value: Buffer;
+	local Length = buffer.readu16(RecieveBuffer, Read(2))
+	local Buffer = buffer.create(Length)
+	buffer.copy(Buffer, 0, RecieveBuffer, Read(Length))
+	Value = Buffer
+	return Value
+end
+
+export type VariantSizeBuffer = buffer
+
+function Types.WriteVariantSizeBuffer(Value: VariantSizeBuffer)
+	local Length = buffer.len(Value)
+	buffer.writeu16(SendBuffer, Allocate(2), Length)
+	buffer.copy(SendBuffer, Allocate(Length), Value, 0, Length)
+end
+
+function Types.ReadVariantSizeBuffer(): VariantSizeBuffer
+	local Value: VariantSizeBuffer;
+	local Length = buffer.readu16(RecieveBuffer, Read(2))
+	local Buffer = buffer.create(Length)
+	buffer.copy(Buffer, 0, RecieveBuffer, Read(Length))
+	Value = Buffer
+	assert(buffer.len(Value) >= 5)
+	assert(buffer.len(Value) <= 10)
+	return Value
+end
+
+export type Location = CFrame
+
+function Types.WriteLocation(Value: Location)
+	local Vector = Value.Position
+	buffer.writef32(SendBuffer, Allocate(4), Vector.X)
+	buffer.writef32(SendBuffer, Allocate(4), Vector.Y)
+	buffer.writef32(SendBuffer, Allocate(4), Vector.Z)
+	local rX, rY, rZ = Value:ToOrientation()
+	buffer.writef32(SendBuffer, Allocate(4), rX)
+	buffer.writef32(SendBuffer, Allocate(4), rY)
+	buffer.writef32(SendBuffer, Allocate(4), rZ)
+end
+
+function Types.ReadLocation(): Location
+	local Value: Location;
+	local Position = Vector3.new(buffer.readf32(RecieveBuffer, Read(4)), buffer.readf32(RecieveBuffer, Read(4)), buffer.readf32(RecieveBuffer, Read(4)))
+	local rX = buffer.readf32(RecieveBuffer, Read(4))
+	local rY = buffer.readf32(RecieveBuffer, Read(4))
+	local rZ = buffer.readf32(RecieveBuffer, Read(4))
+	Value = CFrame.new(Position) * CFrame.fromOrientation(rX, rY, rZ)
+	return Value
+end
+
+export type Locations = {CFrame}
+
+function Types.WriteLocations(Value: Locations)
+	for _, Item in Value do
+		local Vector = Item.Position
+	buffer.writef32(SendBuffer, Allocate(4), Vector.X)
+	buffer.writef32(SendBuffer, Allocate(4), Vector.Y)
+	buffer.writef32(SendBuffer, Allocate(4), Vector.Z)
+	local rX, rY, rZ = Item:ToOrientation()
+	buffer.writef32(SendBuffer, Allocate(4), rX)
+	buffer.writef32(SendBuffer, Allocate(4), rY)
+	buffer.writef32(SendBuffer, Allocate(4), rZ)
+	end
+end
+
+function Types.ReadLocations(): Locations
+	local Value: Locations;
+	local Length = 8
+	Value = table.create(Length)
+	for Index = 1, Length do
+		local Position = Vector3.new(buffer.readf32(RecieveBuffer, Read(4)), buffer.readf32(RecieveBuffer, Read(4)), buffer.readf32(RecieveBuffer, Read(4)))
+	local rX = buffer.readf32(RecieveBuffer, Read(4))
+	local rY = buffer.readf32(RecieveBuffer, Read(4))
+	local rZ = buffer.readf32(RecieveBuffer, Read(4))
+	local Item = CFrame.new(Position) * CFrame.fromOrientation(rX, rY, rZ)
+		table.insert(Value, Item)
+	end
+	return Value
+end
+
+export type OptionalLocation = CFrame?
+
+function Types.WriteOptionalLocation(Value: OptionalLocation)
+	buffer.writeu8(SendBuffer, Allocate(1), (Value ~= nil) and 1 or 0)
+	if Value ~= nil then
+		local Vector = Value.Position
+		buffer.writef32(SendBuffer, Allocate(4), Vector.X)
+		buffer.writef32(SendBuffer, Allocate(4), Vector.Y)
+		buffer.writef32(SendBuffer, Allocate(4), Vector.Z)
+		local rX, rY, rZ = Value:ToOrientation()
+		buffer.writef32(SendBuffer, Allocate(4), rX)
+		buffer.writef32(SendBuffer, Allocate(4), rY)
+		buffer.writef32(SendBuffer, Allocate(4), rZ)
+	end
+end
+
+function Types.ReadOptionalLocation(): OptionalLocation
+	local Value: OptionalLocation;
+	if buffer.readu8(RecieveBuffer, Read(1)) == 1 then
+		local Position = Vector3.new(buffer.readf32(RecieveBuffer, Read(4)), buffer.readf32(RecieveBuffer, Read(4)), buffer.readf32(RecieveBuffer, Read(4)))
+		local rX = buffer.readf32(RecieveBuffer, Read(4))
+		local rY = buffer.readf32(RecieveBuffer, Read(4))
+		local rZ = buffer.readf32(RecieveBuffer, Read(4))
+		Value = CFrame.new(Position) * CFrame.fromOrientation(rX, rY, rZ)
+	end
 	return Value
 end
 
@@ -288,7 +420,8 @@ function Types.ReadEntity(): Entity
 		Value.Direction = Types.ReadUnitVector()
 		if buffer.readu8(RecieveBuffer, Read(1)) == 1 then
 			Value.Deep = {} :: any
-			Value.Deep.Empty = table.create(0)
+			local Length = 0
+			Value.Deep.Empty = table.create(Length)
 			local Length = buffer.readu8(RecieveBuffer, Read(1))
 			assert(Length >= 1)
 			assert(Length <= 12)
@@ -348,8 +481,9 @@ end
 
 function Types.ReadPACKET_Custom(): {number}
 	local Value: {number};
-	Value = table.create(1)
-	for Index = 1, 1 do
+	local Length = 1
+	Value = table.create(Length)
+	for Index = 1, Length do
 		local Item = buffer.readu8(RecieveBuffer, Read(1))
 		table.insert(Value, Item)
 	end
@@ -380,7 +514,7 @@ Reliable.OnClientEvent:Connect(function(Buffer: buffer)
 			if Events.Reliable[0] then
 				Events.Reliable[0](Value)
 			else
-				if not Queue.Reliable[0] then Queue.Reliable[0] = {} end
+				if #Queue.Reliable[0] > 256 then warn("[DeclareNet]: Packet queue of \"PACKET_ServerReliable\" exceeded 256, did you forget to implement Listen?") end
 				table.insert(Queue.Reliable[0], {Value})
 			end
 		end
@@ -398,7 +532,7 @@ Unreliable.OnClientEvent:Connect(function(Buffer: buffer)
 			if Events.Unreliable[0] then
 				Events.Unreliable[0](Value)
 			else
-				if not Queue.Unreliable[0] then Queue.Unreliable[0] = {} end
+				if #Queue.Unreliable[0] > 256 then warn("[DeclareNet]: Packet queue of \"PACKET_ServerUnreliable\" exceeded 256, did you forget to implement Listen?") end
 				table.insert(Queue.Unreliable[0], {Value})
 			end
 		end

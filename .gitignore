@@ -8,3 +8,5 @@
 /Network
 /DeclareNet
 /release.rar
+test/Client.luau
+test/Server.luau
