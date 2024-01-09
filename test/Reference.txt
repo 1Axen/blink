@@ -1,0 +1,9 @@
+option ClientOutput = "../Network/Client.luau"
+option ServerOutput = "../Network/Server.luau"
+
+type Example = u8
+type ArrayExample = Example[1]
+
+struct ExampleStruct = {
+    ReferenceArray = Example[5]
+}

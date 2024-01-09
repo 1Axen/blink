@@ -4,6 +4,7 @@
 
 local Lexer = require("./Lexer")
 local Error = require("./Modules/Error")
+local Table = require("./Modules/Table")
 
 type NumberRange = {Min: number, Max: number}
 type Declarations = "TypeReference" | "TypeDeclaration" | "EnumDeclaration" | "StructDeclaration" | "EventDeclaration" | "FunctionDeclaration"
@@ -23,6 +24,9 @@ export type Declaration = Node<Declarations, {
 export type TypeReference = Node<"TypeReference", {
     Identifier: string,
     Reference: string,
+    
+    Array: boolean,
+    Range: NumberRange?,
     Optional: boolean,
 }>
 
@@ -96,6 +100,7 @@ export type Parser = {
     EventDeclaration: (self: Parser, Identifier: Lexer.Token) -> EventDeclaration,
     FunctionDeclaration: (self: Parser, Identifier: Lexer.Token) -> FunctionDeclaration,
 
+    GetTypeAttributes: (self: Parser, Primitive: Lexer.Token?) -> (boolean, NumberRange?),
     GetDeclarationFromToken: (self: Parser, Token: Lexer.Token, Identifier: Lexer.Token) -> Declaration,
 }
 
@@ -336,43 +341,41 @@ function Parser.Declaration(self: Parser): Declaration
 end
 
 function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDeclaration
-    local Primitive = self:Consume("Primitive")
+    local LookAhead = self:GetSafeLookAhead()
 
-    local Range: NumberRange?;
-    local Array = false
+    local Primitive: Lexer.Token;
+    local Declaration: TypeDeclaration; 
 
-    --> Attempt to read type attributes [Primitive][Range/Array][Optional] [u8(0..1)?]
-    local LookAhead = self.LookAhead
-    if LookAhead then
-        local Type: Lexer.Types = LookAhead.Type
-        if Attributes[Type] then
-            self:Consume(Type)
-        end
-        
-        if Type == "Array" then
-            Array = true
+    if LookAhead.Type == "Identifier" then
+        local Reference = self.Types[LookAhead.Value]
+        if not Reference then
+            Error.ThrowTokenError(self.Source, LookAhead, "Unknown type referenced")
+        elseif Reference.Type ~= "TypeDeclaration" then
+            Error.ThrowTokenError(self.Source, LookAhead, "Primitives can only reference other primitives")
         end
 
-        if Type == "Range" and not RangePrimitives[Primitive.Value] then
-            Error.ThrowTokenError(self.Source, LookAhead, `"{Primitive.Value}" does not support ranges`)
-        end
-
-        if Array or Type == "Range" then
-            Range = GetAttributeRange(LookAhead, Array, self.Source)
-        end
+        self:Consume("Identifier")
+        Declaration = Table.DeepClone(Reference)
+        Declaration.Value.Identifier = Identifier.Value
+    else
+        Primitive = self:Consume("Primitive")
+        Declaration = {
+            Type = "TypeDeclaration",
+            Value = {
+                Identifier = Identifier.Value,
+                Primitive = Primitive.Value,
+                Array = false,
+                Optional = false
+            }
+        }
     end
 
-    return {
-        Type = "TypeDeclaration",
-        Value = {
-            Identifier = Identifier.Value,
-            Primitive = Primitive.Value,
+    --> Attempt to read type attributes [Primitive][Range/Array][Optional] [u8(0..1)?]
+    local Array, Range = self:GetTypeAttributes(Primitive)
+    Declaration.Value.Array = Array
+    Declaration.Value.Range = Range
 
-            Array = Array,
-            Range = Range,
-            Optional = false
-        }
-    }
+    return Declaration
 end
 
 function Parser.EnumDeclaration(self: Parser, Identifier: Lexer.Token): EnumDeclaration
@@ -572,6 +575,34 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): Func
     return Function
 end
 
+function Parser.GetTypeAttributes(self: Parser, Primitive: Lexer.Token?): (boolean, NumberRange?)
+    local LookAhead = self.LookAhead
+    if not LookAhead then 
+        return false
+    end
+
+    local Array, Range;
+    local Type: Lexer.Types = LookAhead.Type
+
+    if not Attributes[Type] then
+        return false
+    end
+    
+    if Type == "Range" then
+        if not Primitive then
+            Error.ThrowTokenError(self.Source, LookAhead, `"References do not support ranges`)
+        elseif not RangePrimitives[Primitive.Value] then
+            Error.ThrowTokenError(self.Source, LookAhead, `"{Primitive.Value}" does not support ranges`)
+        end
+    end
+
+    self:Consume(Type)
+    Array = (Type == "Array")
+    Range = GetAttributeRange(LookAhead, Array, self.Source)
+
+    return Array, Range
+end
+
 function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identifier: Lexer.Token): Declaration
     if Token.Type == "OpenBrackets" then
         return self:StructDeclaration(Identifier)
@@ -586,11 +617,15 @@ function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identi
             Error.ThrowTokenError(self.Source, Type, "Unknown type referenced")
         end
 
+        local Array, Range = self:GetTypeAttributes()
         local Reference: TypeReference = {
             Type = "TypeReference",
             Value = {
                 Identifier = Identifier.Value,
                 Reference = Type.Value,
+
+                Array = Array,
+                Range = Range,
                 Optional = false
             }
         }

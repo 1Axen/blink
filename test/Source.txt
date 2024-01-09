@@ -1,5 +1,5 @@
-option ClientOutput = "C:\Users\User\Documents\GitHub\GoblinShenanigans\Network\Client.luau"
-option ServerOutput = "C:\Users\User\Documents\GitHub\GoblinShenanigans\Network\Server.luau"
+option ClientOutput = "../Network/Client.luau"
+option ServerOutput = "../Network/Server.luau"
 option FutureLibrary = "ReplicatedStorage.Packages.Future"
 option PromiseLibrary = "ReplicatedStorage.Packages.Promise"
 option ManualReplication = false
@@ -17,6 +17,8 @@ type Location = CFrame
 type Locations = CFrame[8]
 type OptionalLocation = CFrame?
 
+
+
 enum State = ( None, Dead, Down, Alive )?
 struct Entity = {
 	Identifier = u8,
@@ -30,6 +32,11 @@ struct Entity = {
         Vector = UnitVector,
     }?
 }?
+
+struct Character = {
+    Identifier = u8,
+    Health = u8(0..100)
+}
 
 event ServerReliable = {
     From = Server,

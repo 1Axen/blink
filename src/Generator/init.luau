@@ -204,6 +204,10 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 			elseif Field.Type == "TypeReference" then
 				local TypeReference: Parser.TypeReference = Field
 				FieldType = TypeReference.Value.Reference
+
+				--local ReferenceRead, ReferenceWrite = Prefabs.Primitives.Reference.Generate(FieldType)
+				--print(ReferenceRead, ReferenceWrite)
+				
 				Read.Push(`{Variable} = Types.Read{FieldType}()`, 1, Tabs)
 				Write.Push(`Types.Write{FieldType}({Variable})`, 1, Tabs)
 			end

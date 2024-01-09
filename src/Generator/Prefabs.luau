@@ -48,14 +48,15 @@ local Numbers = {
 
 local Types = {}
 local Asserts = {
-	number = function(Variable: string, Min: boolean, Max: number): AssertPrefab
+	number = function(Variable: string, Min: number, Max: number): AssertPrefab
 		return {
 			Lower = `if {Variable} < {Min} then error(\`Expected \\"{Variable}\\" to be larger than {Min}, got \{{Variable}}.\`) end`,
 			Upper = `if {Variable} > {Max} then error(\`Expected \\"{Variable}\\" to be smaller than {Max}, got \{{Variable}}.\`) end`,
+			Exact = `if {Variable} ~= {Max} then error(\`Expected \\"{Variable}\\" to be equal to {Max}, got \{{Variable}\}.\`)`
 		}
 	end,
 
-	string = function(Variable: string, Min: boolean, Max: number): AssertPrefab
+	string = function(Variable: string, Min: number, Max: number): AssertPrefab
 		return {
 			Lower = `if #{Variable} < {Min} then error(\`Expected length of \\"{Variable}\\" to be larger than {Min}, got \{#{Variable}}.\`) end`,
 			Upper = `if #{Variable} > {Max} then error(\`Expected length of \\"{Variable}\\" to be smaller than {Max}, got \{#{Variable}}.\`) end`,
@@ -63,7 +64,7 @@ local Asserts = {
 		}
 	end,
 
-	vector = function(Variable: string, Min: boolean, Max: number): AssertPrefab
+	vector = function(Variable: string, Min: number, Max: number): AssertPrefab
 		return {
 			Lower = `if {Variable}.Magnitude < {Min} then error(\`Expected magnitude of \\"{Variable}\\" to be larger than {Min}, got \{{Variable}.Magnitude}.\`) end`,
 			Upper = `if {Variable}.Magnitude > {Max} then error(\`Expected magnitude of \\"{Variable}\\" to be smaller than {Max}, got \{{Variable}.Magnitude}.\`) end`,
@@ -71,7 +72,7 @@ local Asserts = {
 		}
 	end,
 
-	buffer = function(Variable: string, Min: boolean, Max: number): AssertPrefab
+	buffer = function(Variable: string, Min: number, Max: number): AssertPrefab
 		return {
 			Lower = `if buffer.len({Variable}) < {Min} then error(\`Expected size of \\"{Variable}\\" to be larger than {Min}, got \{buffer.len({Variable})}.\`) end`,
 			Upper = `if buffer.len({Variable}) > {Max} then error(\`Expected size of \\"{Variable}\\" to be smaller than {Max}, got \{buffer.len({Variable})}.\`) end`,
@@ -79,6 +80,7 @@ local Asserts = {
 		}
 	end
 }
+local Structures = {}
 local Primitives = {}
 
 local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: AssertGenerator?): Generate
@@ -89,38 +91,15 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 		local IsVariableSize = (Range and Range.Max ~= Range.Min)
 
 		if Array and Range then
-			local Length = Range.Max
-			if IsVariableSize then
-				Read.Push(Prefab.Read("local Length"), 1, 1)
-
-				if AssertGenerator then
-					local Assert = AssertGenerator("Length", Range.Min, Range.Max)
-					Read.Push(Assert.Lower, 1, 1)
-					Read.Push(Assert.Upper, 1, 1)
-				end
-
-				Write.Push(Prefab.Write(`#{Variable}`, Range), 1, 1)
-			else
-				Read.Push(`local Length = {Length}`, 1, 1)
-			end
-
-			Read.Push(`{Variable} = table.create(Length)`, 1, 1)
-
-			if Length > 0 then
-				Read.Push(`for Index = 1, Length do`, 1, 1)
-				Read.Push(Prefab.Read("local Item", Range), 1, 2)
-				Read.Push(`table.insert({Variable}, Item)`, 1, 2)
-				Read.Push(`end`, 1, 1)
-			end
-
-			if IsVariableSize then
-				Write.Push(`for Index = 1, math.min(#{Variable}, {Length}) do`, 1, 1)
-			else
-				Write.Push(`for Index = 1, {Length} do`, 1, 1)
-			end
-
-			Write.Push(Prefab.Write(`{Variable}[Index]`, Range), 1, 2)
-			Write.Push("end", 1, 1)
+			Structures.Array(
+				Variable, 
+				{
+					Type = "Inline",
+					Read = Prefab.Read("local Item"),
+					Write = Prefab.Write(`{Variable}[Index]`),
+				}, 
+				Range, Read, Write, 1
+			)
 		else
 			Read.Push(Prefab.Read(Variable, Range), 1, 1)
 			Write.Push(Prefab.Write(Variable, Range), 1, 1)
@@ -165,6 +144,76 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 	end
 end
 
+--> Numbers
+for Index, Size in Numbers do
+	Types[Index] = {
+		Read = function(Variable: string): string
+			return `{Variable} = buffer.read{Index}({RECIEVE_BUFFER}, Read({Size}))`
+		end,
+		Write = function(Value: string): string
+			return `buffer.write{Index}({SEND_BUFFER}, Allocate({Size}), {Value})`
+		end
+	}
+	Primitives[Index] = {
+		Type = "number",
+		Generate = GeneratePrimitivePrefab(Types[Index], Asserts.number)
+	}
+end
+
+function Structures.Array(Variable: string, Body: {Type: "Inline" | "Reference", Read: string, Write: string}, Length: NumberRange, Read: Builder.Builder, Write: Builder.Builder, Tabs: number)
+	local Lower = Length.Min
+	local Upper = Length.Max
+
+	local IsInlined = (Body.Type == "Inline")
+	local IsVariableSize = (Lower ~= Upper)
+
+	--> Length
+	if IsVariableSize then
+		Read.Push(Types.u16.Read("local Length"), 1, Tabs)
+		local Assert = Asserts.number("Length", Lower, Upper)
+
+		if IsVariableSize then
+			Read.Push(Assert.Lower, 1, Tabs)
+			Read.Push(Assert.Upper, 1, Tabs)
+		else
+			Read.Push(Assert.Exact, 1, Tabs)
+		end
+
+		Write.Push(Types.u16.Write(`#{Variable}`, Upper), 1, Tabs)
+	else
+		Read.Push(`local Length = {Upper}`, 1, Tabs)
+	end
+
+	--> Array
+	Read.Push(`{Variable} = table.create(Length)`, 1, Tabs)
+
+	--> Body
+	if Upper > 0 then
+		Read.Push(`for Index = 1, Length do`, 1, Tabs)
+
+		if IsInlined then
+			Read.Push(Body.Read, 1, Tabs + 1)
+		end
+
+		Read.Push(`table.insert({Variable}, {IsInlined and "Item" or Read})`, 1, Tabs + 1)
+		Read.Push(`end`, 1, Tabs)
+
+		if IsVariableSize then
+			Write.Push(`for Index = 1, math.min(#{Variable}, {Upper}) do`, 1, Tabs)
+		else
+			Write.Push(`for Index = 1, {Upper} do`, 1, Tabs)
+		end
+
+		if IsInlined then
+			Write.Push(Body.Write, 1, Tabs + 1)
+		else
+			Write.Push(`{Body.Write}({Variable}[Index])`, 1, Tabs + 1)
+		end
+
+		Write.Push("end", 1, Tabs)
+	end
+end
+
 --> Boolean
 do
 	Types.bool = {
@@ -191,14 +240,14 @@ do
 				return `{Variable} = buffer.readstring({RECIEVE_BUFFER}, Read({Range.Min}), {Range.Min})`
 			end
 	
-			return `local Length = buffer.readu16({RECIEVE_BUFFER}, Read({SHORT}))\n\t{Variable} = buffer.readstring({RECIEVE_BUFFER}, Read(Length), Length)`
+			return `{Types.u16.Read("local Length")}\n\t{Variable} = buffer.readstring({RECIEVE_BUFFER}, Read(Length), Length)`
 		end,
 		Write = function(Value: string, Range: NumberRange?): string
 			if Range and Range.Min == Range.Max then
 				return `buffer.writestring({SEND_BUFFER}, Allocate({Range.Min}), {Value}, {Range.Min})`
 			end
 			
-			return `local Length = #{Value}\n\tbuffer.writeu16({SEND_BUFFER}, Allocate({SHORT}), Length)\n\tbuffer.writestring({SEND_BUFFER}, Allocate(Length), {Value}, Length)`
+			return `local Length = #{Value}\n\t{Types.u16.Write("Length")}\n\tbuffer.writestring({SEND_BUFFER}, Allocate(Length), {Value}, Length)`
 		end
 	}
 	
@@ -233,7 +282,7 @@ do
 			if Range and Range.Min == Range.Max then
 				Read.Push(`local Length = {Range.Min}`, 1)
 			else
-				Read.Push(`local Length = buffer.readu16({RECIEVE_BUFFER}, Read({SHORT}))`, 1)
+				Read.Push(`{Types.u16.Read("local Length")}`, 1)
 			end
 			
 			Read.Push(`local Buffer = buffer.create(Length)`, 1, 1)
@@ -248,7 +297,7 @@ do
 				Write.Push(`local Length = {Range.Max}`, 1)
 			else
 				Write.Push(`local Length = buffer.len({Value})`, 1)
-				Write.Push(`buffer.writeu16({SEND_BUFFER}, Allocate({SHORT}), Length)`, 1, 1)
+				Write.Push(`{Types.u16.Write("Length")}`, 1, 1)
 			end
 			
 			Write.Push(`buffer.copy({SEND_BUFFER}, Allocate(Length), {Value}, 0, Length)`, 0, 1)
@@ -260,22 +309,6 @@ do
 	Primitives.buffer = {
 		Type = "buffer",
 		Generate = GeneratePrimitivePrefab(Types.buffer, Asserts.buffer)
-	}
-end
-
---> Numbers
-for Index, Size in Numbers do
-	Types[Index] = {
-		Read = function(Variable: string): string
-			return `{Variable} = buffer.read{Index}({RECIEVE_BUFFER}, Read({Size}))`
-		end,
-		Write = function(Value: string): string
-			return `buffer.write{Index}({SEND_BUFFER}, Allocate({Size}), {Value})`
-		end
-	}
-	Primitives[Index] = {
-		Type = "number",
-		Generate = GeneratePrimitivePrefab(Types[Index], Asserts.number)
 	}
 end
 
