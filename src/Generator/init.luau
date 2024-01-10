@@ -161,6 +161,34 @@ function Writers.EnumDeclaration(
 	return Type, Read, Write
 end
 
+function Writers.TypeReference(TypeReference: Parser.TypeReference, Tabs: number, Variable: string, Read: Builder.Builder, Write: Builder.Builder): string
+	local Value = TypeReference.Value
+
+	local Array = Value.Array
+	local Range = Value.Range
+	local Reference = Value.Reference
+
+	local ReadReference = `Types.Read{Reference}`
+	local WriteReference = `Types.Write{Reference}`
+
+	if Array and Range then
+		Prefabs.Structures.Array(
+			Variable, 
+			{
+				Type = "Reference", 
+				Read = ReadReference, 
+				Write = WriteReference
+			},
+			Range, Read, Write, 1
+		)
+	else
+		Read.Push(`{Variable} = {ReadReference}()`, 1, Tabs)
+		Write.Push(`{WriteReference}({Variable})`, 1, Tabs)
+	end
+
+	return Reference
+end
+
 function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration): string
 	local Type = Builder.new()
 	local Read = Builder.new()
@@ -208,28 +236,7 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 				continue
 			elseif Field.Type == "TypeReference" then
 				local TypeReference: Parser.TypeReference = Field
-				FieldType = TypeReference.Value.Reference
-
-				local Array = FieldValue.Array
-				local Range = FieldValue.Range
-
-				local ReadReference = `{Variable} = Types.Read{FieldType}()`
-				local WriteReference = `Types.Write{FieldType}({Variable})`
-
-				if Array and Range then
-					Prefabs.Structures.Array(
-						Variable, 
-						{
-							Type = "Reference", 
-							Read = `Types.Read{FieldType}`, 
-							Write = `Types.Write{FieldType}`
-						},
-						Range, Read, Write, 1
-					)
-				else
-					Read.Push(ReadReference, 1, Tabs)
-					Write.Push(WriteReference, 1, Tabs)
-				end
+				FieldType = Writers.TypeReference(TypeReference, Tabs, Variable, Read, Write)
 			end
 
 			if FieldValue.Array then
@@ -261,6 +268,7 @@ local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: nu
 	local Write = Builder.new()
 
 	local Type, Reference
+	local DataValue = Data.Value
 	Write.Push(TypePrefabs.u8.Write(Index), 1, 1)
 	
 	if Invocation then
@@ -277,11 +285,10 @@ local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: nu
 
 	if Data.Type == "TypeReference" then
 		local TypeReference: Parser.TypeReference = Data :: Parser.TypeReference
-		Type = TypeReference.Value.Reference
-		Reference = TypeReference.Value.Reference
+		Type = Writers.TypeReference(TypeReference, 1, "Value", Read, Write)
+		Reference = Type
 
-		Read.Push(`return Types.Read{Reference}()`, 1, 1)
-		Write.Push(`Types.Write{Reference}(Value)`, 1, 1)
+		Read.Push(`return Value`, 1, 1)
 	else
 		local Writer = Writers[Data.Type]
 		local DeclarationType, DeclarationRead, DeclarationWrite = Writer(Data)
@@ -293,7 +300,17 @@ local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: nu
 		Write.Push(DeclarationWrite, 0)
 	end
 
+	if DataValue.Array then
+		Type = `\{{Type}\}`
+	end
+
+	if DataValue.Optional then
+		Type = `({Type})?`
+	end
+
+	Read.PushFront(`local Value: {Type};`, 1, 1)
 	Types.Push(Writers.Type(Identifier, Type, Data.Value.Optional, Read.Dump(), Write.Dump(), Type, Reference ~= nil, Invocation and "InvocationIdentifier: number"), 0)
+	
 	return Type
 end
 

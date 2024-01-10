@@ -1,9 +1,27 @@
 option ClientOutput = "../Network/Client.luau"
 option ServerOutput = "../Network/Server.luau"
 
-type Example = u8
+type Example = string
 type ArrayExample = Example[1]
 
 struct ExampleStruct = {
     ReferenceArray = Example[5]
+}
+
+struct Instance = {
+    Name = string,
+    ClassName = string,
+    Position = vector,
+    Location = CFrame,
+    Parent = string
+}
+
+event Event = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = {
+        Type = string,
+        Instances = Instance[0..65535]
+    }
 }
