@@ -166,7 +166,12 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 	local Read = Builder.new()
 	local Write = Builder.new()
 
-	local function BuildStructType(StructDeclaration: Parser.StructDeclaration, Tabs: number, Indent: number, Path: string)
+	local function BuildStructType(
+		StructDeclaration: Parser.StructDeclaration,
+		Tabs: number,
+		Indent: number,
+		Path: string
+	)
 		local Value = StructDeclaration.Value
 		local Optional = Value.Optional
 		local StructTabs = Tabs
@@ -205,11 +210,30 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 				local TypeReference: Parser.TypeReference = Field
 				FieldType = TypeReference.Value.Reference
 
-				--local ReferenceRead, ReferenceWrite = Prefabs.Primitives.Reference.Generate(FieldType)
-				--print(ReferenceRead, ReferenceWrite)
-				
-				Read.Push(`{Variable} = Types.Read{FieldType}()`, 1, Tabs)
-				Write.Push(`Types.Write{FieldType}({Variable})`, 1, Tabs)
+				local Array = FieldValue.Array
+				local Range = FieldValue.Range
+
+				local ReadReference = `{Variable} = Types.Read{FieldType}()`
+				local WriteReference = `Types.Write{FieldType}({Variable})`
+
+				if Array and Range then
+					Prefabs.Structures.Array(
+						Variable, 
+						{
+							Type = "Reference", 
+							Read = `Types.Read{FieldType}`, 
+							Write = `Types.Write{FieldType}`
+						},
+						Range, Read, Write, 1
+					)
+				else
+					Read.Push(ReadReference, 1, Tabs)
+					Write.Push(WriteReference, 1, Tabs)
+				end
+			end
+
+			if FieldValue.Array then
+				FieldType = `\{{FieldType}\}`
 			end
 
 			if FieldValue.Optional then
@@ -236,7 +260,7 @@ local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: nu
 	local Read = Builder.new()
 	local Write = Builder.new()
 
-	local Type, Reference;
+	local Type, Reference
 	Write.Push(TypePrefabs.u8.Write(Index), 1, 1)
 	
 	if Invocation then

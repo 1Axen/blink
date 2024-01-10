@@ -80,7 +80,9 @@ local Asserts = {
 		}
 	end
 }
-local Structures = {}
+local Structures = {
+	Array = nil :: any
+}
 local Primitives = {}
 
 local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: AssertGenerator?): Generate
@@ -160,7 +162,7 @@ for Index, Size in Numbers do
 	}
 end
 
-function Structures.Array(Variable: string, Body: {Type: "Inline" | "Reference", Read: string, Write: string}, Length: NumberRange, Read: Builder.Builder, Write: Builder.Builder, Tabs: number)
+Structures.Array = function(Variable: string, Body: {Type: "Inline" | "Reference", Read: string, Write: string}, Length: NumberRange, Read: Builder.Builder, Write: Builder.Builder, Tabs: number)
 	local Lower = Length.Min
 	local Upper = Length.Max
 
@@ -195,7 +197,7 @@ function Structures.Array(Variable: string, Body: {Type: "Inline" | "Reference",
 			Read.Push(Body.Read, 1, Tabs + 1)
 		end
 
-		Read.Push(`table.insert({Variable}, {IsInlined and "Item" or Read})`, 1, Tabs + 1)
+		Read.Push(`table.insert({Variable}, {IsInlined and "Item" or Body.Read .. "()"})`, 1, Tabs + 1)
 		Read.Push(`end`, 1, Tabs)
 
 		if IsVariableSize then
@@ -344,5 +346,6 @@ end
 return {
 	Types = Types,
 	Asserts = Asserts,
-	Primitives = Primitives
+	Primitives = Primitives,
+	Structures = Structures
 }
