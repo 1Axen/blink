@@ -1,0 +1,24 @@
+option ClientOutput = "../Network/Client.luau"
+option ServerOutput = "../Network/Server.luau"
+
+type MainScopeType = u8
+event MainScopeEvent = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = MainScopeType
+}
+
+scope ScopeExample {
+    type InScopeType = u8
+    event InScopeEvent = {
+        From = Server,
+        Type = Reliable,
+        Call = SingleSync,
+        Data = MainScopeType
+    }
+}
+
+struct TypeReferencingScopeType = {
+    Reference = ScopeExample.InScopeType
+}

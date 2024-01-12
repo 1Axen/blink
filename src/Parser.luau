@@ -6,6 +6,8 @@ local Lexer = require("./Lexer")
 local Error = require("./Modules/Error")
 local Table = require("./Modules/Table")
 
+local DEFAULT_SCOPE = ""
+
 type NumberRange = {Min: number, Max: number}
 type Declarations = "TypeReference" | "TypeDeclaration" | "EnumDeclaration" | "StructDeclaration" | "EventDeclaration" | "FunctionDeclaration"
 
@@ -16,12 +18,15 @@ type Node<Type, Value> = {
 
 export type Body = Node<"Body", {Declaration}>
 export type Declaration = Node<Declarations, {
+    Scope: string,
     Identifier: string,
     Optional: boolean,
+    
     [any]: any,
 }>
 
 export type TypeReference = Node<"TypeReference", {
+    Scope: string,
     Identifier: string,
     Reference: string,
     
@@ -31,6 +36,7 @@ export type TypeReference = Node<"TypeReference", {
 }>
 
 export type TypeDeclaration = Node<"TypeDeclaration", {
+    Scope: string,
     Identifier: string,
     Primitive: string,
 
@@ -40,18 +46,21 @@ export type TypeDeclaration = Node<"TypeDeclaration", {
 }>
 
 export type EnumDeclaration = Node<"EnumDeclaration", {
+    Scope: string,
     Identifier: string,
     Enums: {string},
     Optional: boolean,
 }>
 
 export type StructDeclaration = Node<"StructDeclaration", {
+    Scope: string,
     Identifier: string,
     Fields: {Declaration},
     Optional: boolean,
 }>
 
 export type EventDeclaration = Node<"EventDeclaration", {
+    Scope: string,
     Identifier: string,
     Optional: boolean,
     From: "Client" | "Server",
@@ -61,6 +70,7 @@ export type EventDeclaration = Node<"EventDeclaration", {
 }>
 
 export type FunctionDeclaration = Node<"FunctionDeclaration", {
+    Scope: string,
     Identifier: string,
     Optional: boolean,
     Yield: "Future" | "Promise" | "Coroutine",
@@ -80,7 +90,9 @@ export type Parser = {
     Source: string,
     Lexer: Lexer.Lexer,
 
+    Scope: string,
     Types: {[string]: Declaration},
+    Scopes: {[string]: true},
     LookAhead: Lexer.Token?,
 
     Parse: (self: Parser, Source: string) -> (Body, Options),
@@ -207,14 +219,18 @@ Parser.__index = Parser
 function Parser.new(): Parser
     return setmetatable({
         Source = "",
+        Scope = DEFAULT_SCOPE,
         Types = {},
+        Scopes = {},
         Lexer = Lexer.new()
     } :: any, Parser)
 end
 
 function Parser.Parse(self: Parser, Source: string): (Body, Options)
+    self.Scope = DEFAULT_SCOPE
     self.Source = Source
     table.clear(self.Types)
+    table.clear(self.Scopes)
     self.Lexer:Initialize(Source)
 
     --> Prime the lexer
@@ -303,8 +319,36 @@ function Parser.Declarations(self: Parser): {Declaration}
 end
 
 function Parser.Declaration(self: Parser): Declaration
+    --> Scopes
+    print(self:GetSafeLookAhead().Type, self.Scope, DEFAULT_SCOPE)
+    if self:GetSafeLookAhead().Type == "CloseCurlyBrackets" and self.Scope ~= DEFAULT_SCOPE then
+        print(`Left scope: {self.Scope}`)
+        self.Scope = DEFAULT_SCOPE
+        self:Consume("CloseCurlyBrackets")
+        return nil :: any
+    end
+
     local Keyword = self:Consume("Keyword")
     local Identifier = self:Consume("Identifier")
+
+    if Keyword.Value == "scope" then
+        if self.Scope ~= DEFAULT_SCOPE then
+            Error.ThrowTokenError(self.Source, Keyword, `Blink doesn't support declaring scopes within scopes`)
+        end
+
+        local Scope = Identifier.Value
+        if self.Scopes[Scope] then
+            Error.ThrowTokenError(self.Source, Identifier, `A scope with identifier: "{Scope}", was already declared earlier.`)
+        end
+
+        self.Scope = Scope
+        self.Scopes[Scope] = true
+        self:Consume("OpenCurlyBrackets")
+        print(`Entered scope: {Scope}`)
+
+        return nil :: any
+    end
+
     self:Consume("Assign")
 
     if self.Types[Identifier.Value] then
@@ -334,7 +378,13 @@ function Parser.Declaration(self: Parser): Declaration
             Declaration.Value.Optional = true
         end
         
-        self.Types[Identifier.Value] = Declaration
+        print(`New type declared: {Declaration.Value.Identifier}`)
+        local Reference = Declaration.Value.Identifier
+        if self.Scope ~= DEFAULT_SCOPE then
+            Reference = `{self.Scope}.{Reference}`
+        end
+        
+        self.Types[Reference] = Declaration
     end
 
     return Declaration
@@ -362,6 +412,7 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
         Declaration = {
             Type = "TypeDeclaration",
             Value = {
+                Scope = self.Scope,
                 Identifier = Identifier.Value,
                 Primitive = Primitive.Value,
                 Array = false,
@@ -379,13 +430,13 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
 end
 
 function Parser.EnumDeclaration(self: Parser, Identifier: Lexer.Token): EnumDeclaration
-    self:Consume("OpenCurlyBrackets")
+    self:Consume("OpenBrackets")
 
     local Enums: {string} = {}
     while (self.LookAhead) do
         --> Allows trailing commas in struct definitions
-        if self.LookAhead.Type == "CloseCurlyBrackets" then
-            self:Consume("CloseCurlyBrackets")
+        if self.LookAhead.Type == "CloseBrackets" then
+            self:Consume("CloseBrackets")
             break
         end
 
@@ -399,8 +450,8 @@ function Parser.EnumDeclaration(self: Parser, Identifier: Lexer.Token): EnumDecl
         local LookAhead = self:GetSafeLookAhead().Type
         if LookAhead == "Comma" then
             self:Consume("Comma")
-        elseif LookAhead == "CloseCurlyBrackets" then
-            self:Consume("CloseCurlyBrackets")
+        elseif LookAhead == "CloseBrackets" then
+            self:Consume("CloseBrackets")
             break
         end
     end
@@ -408,6 +459,7 @@ function Parser.EnumDeclaration(self: Parser, Identifier: Lexer.Token): EnumDecl
     return {
         Type = "EnumDeclaration",
         Value = {
+            Scope = self.Scope,
             Identifier = Identifier.Value,
             Enums = Enums,
             Optional = false
@@ -416,15 +468,15 @@ function Parser.EnumDeclaration(self: Parser, Identifier: Lexer.Token): EnumDecl
 end
 
 function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): StructDeclaration
-    self:Consume("OpenBrackets")
+    self:Consume("OpenCurlyBrackets")
 
     local Keys: {[string]: boolean} = {}
     local Fields = {}
 
     while (self.LookAhead) do
         --> Allows trailing commas in struct definitions
-        if self:GetSafeLookAhead().Type == "CloseBrackets" then
-            self:Consume("CloseBrackets")
+        if self:GetSafeLookAhead().Type == "CloseCurlyBrackets" then
+            self:Consume("CloseCurlyBrackets")
             break
         end
 
@@ -444,8 +496,8 @@ function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): Struct
         Keys[Key.Value] = true
         table.insert(Fields, Declaration)
 
-        if self:GetSafeLookAhead().Type == "CloseBrackets" then
-            self:Consume("CloseBrackets")
+        if self:GetSafeLookAhead().Type == "CloseCurlyBrackets" then
+            self:Consume("CloseCurlyBrackets")
             break
         end
 
@@ -455,6 +507,7 @@ function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): Struct
     return {
         Type = "StructDeclaration",
         Value = {
+            Scope = self.Scope,
             Identifier = Identifier.Value,
             Fields = Fields,
             Optional = false,
@@ -463,7 +516,7 @@ function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): Struct
 end
 
 function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDeclaration
-    self:Consume("OpenBrackets")
+    self:Consume("OpenCurlyBrackets")
 
     if ReservedMembers[Identifier.Value] then
         Error.ThrowTokenError(self.Source, Identifier, `"{Identifier.Value}" is reserved and cannot be used as an event identifier`)
@@ -472,6 +525,7 @@ function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDe
     local Event: EventDeclaration = {
         Type = "EventDeclaration",
         Value = {
+            Scope = self.Scope,
             Identifier = Identifier.Value,
             From = "Client",
             Type = "Reliable",
@@ -514,13 +568,13 @@ function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDe
         end
     end
 
-    self:Consume("CloseBrackets")
+    self:Consume("CloseCurlyBrackets")
 
     return Event
 end
 
 function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): FunctionDeclaration
-    self:Consume("OpenBrackets")
+    self:Consume("OpenCurlyBrackets")
 
     if ReservedMembers[Identifier.Value] then
         Error.ThrowTokenError(self.Source, Identifier, `"{Identifier.Value}" is reserved and cannot be used as a function identifier`)
@@ -529,6 +583,7 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): Func
     local Function: FunctionDeclaration = {
         Type = "FunctionDeclaration",
         Value = {
+            Scope = self.Scope,
             Identifier = Identifier.Value,
             Optional = false,
             Yield = "Coroutine",
@@ -570,7 +625,7 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): Func
         end
     end
 
-    self:Consume("CloseBrackets")
+    self:Consume("CloseCurlyBrackets")
 
     return Function
 end
@@ -604,9 +659,9 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Lexer.Token?): (boole
 end
 
 function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identifier: Lexer.Token): Declaration
-    if Token.Type == "OpenBrackets" then
+    if Token.Type == "OpenCurlyBrackets" then
         return self:StructDeclaration(Identifier)
-    elseif Token.Type == "OpenCurlyBrackets" then
+    elseif Token.Type == "OpenBrackets" then
         return self:EnumDeclaration(Identifier)
     elseif Token.Type == "Primitive" then
         return self:TypeDeclaration(Identifier)
@@ -621,6 +676,7 @@ function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identi
         local Reference: TypeReference = {
             Type = "TypeReference",
             Value = {
+                Scope = self.Scope,
                 Identifier = Identifier.Value,
                 Reference = Type.Value,
 

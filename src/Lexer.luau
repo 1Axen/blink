@@ -53,6 +53,7 @@ local Keywords = {
     event = true,
     ["function"] = true,
 
+    scope = true,
     option = true,
 }
 
@@ -67,8 +68,8 @@ local Matches = {
     --> Simple patterns
     {"^%s+", nil},     
     {"^=", "Assign"},
-    {"^{", "OpenBrackets"},
-    {"^}", "CloseBrackets"},
+    {"^{", "OpenCurlyBrackets"},
+    {"^}", "CloseCurlyBrackets"},
     {"^,", "Comma"},
 
     --> Attribute patterns
@@ -78,14 +79,15 @@ local Matches = {
     {`^%[{Number}]`, "Array"},
     {`^%[{Number}..{Number}]`, "Array"},
 
-    {"^%(", "OpenCurlyBrackets"},
-    {"^%)", "CloseCurlyBrackets"},
+    {"^%(", "OpenBrackets"},
+    {"^%)", "CloseBrackets"},
 
     {[[^(['"]).-[^\](\*)%2%1]], function(Token: string)
         return "String", string.sub(Token, 2, #Token - 1)
     end},
 
     --> Complex patterns
+    {"^%a+%.%a+", "Identifier"},
     {"^[%a_][%w_]*", function(Token: string)
         if Keywords[Token] then
             return "Keyword", Token
@@ -96,7 +98,7 @@ local Matches = {
         end
 
         return "Identifier", Token
-    end},
+    end},   
 }
 
 local Lexer = {}
