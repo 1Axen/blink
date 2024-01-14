@@ -9,7 +9,7 @@ local Table = require("./Modules/Table")
 local DEFAULT_SCOPE = ""
 
 type NumberRange = {Min: number, Max: number}
-type Declarations = "TypeReference" | "TypeDeclaration" | "EnumDeclaration" | "StructDeclaration" | "EventDeclaration" | "FunctionDeclaration"
+type Declarations = "TypeReference" | "TypeDeclaration" | "EnumDeclaration" | "StructDeclaration" | "EventDeclaration" | "FunctionDeclaration" | "ScopeDeclaration"
 
 type Node<Type, Value> = {
     Type: Type,
@@ -18,7 +18,6 @@ type Node<Type, Value> = {
 
 export type Body = Node<"Body", {Declaration}>
 export type Declaration = Node<Declarations, {
-    Scope: string,
     Identifier: string,
     Optional: boolean,
     
@@ -26,7 +25,7 @@ export type Declaration = Node<Declarations, {
 }>
 
 export type TypeReference = Node<"TypeReference", {
-    Scope: string,
+    Scope: string?,
     Identifier: string,
     Reference: string,
     
@@ -36,7 +35,7 @@ export type TypeReference = Node<"TypeReference", {
 }>
 
 export type TypeDeclaration = Node<"TypeDeclaration", {
-    Scope: string,
+    Scope: string?,
     Identifier: string,
     Primitive: string,
 
@@ -46,21 +45,21 @@ export type TypeDeclaration = Node<"TypeDeclaration", {
 }>
 
 export type EnumDeclaration = Node<"EnumDeclaration", {
-    Scope: string,
+    Scope: string?,
     Identifier: string,
     Enums: {string},
     Optional: boolean,
 }>
 
 export type StructDeclaration = Node<"StructDeclaration", {
-    Scope: string,
+    Scope: string?,
     Identifier: string,
     Fields: {Declaration},
     Optional: boolean,
 }>
 
 export type EventDeclaration = Node<"EventDeclaration", {
-    Scope: string,
+    Scope: string?,
     Identifier: string,
     Optional: boolean,
     From: "Client" | "Server",
@@ -70,12 +69,18 @@ export type EventDeclaration = Node<"EventDeclaration", {
 }>
 
 export type FunctionDeclaration = Node<"FunctionDeclaration", {
-    Scope: string,
+    Scope: string?,
     Identifier: string,
     Optional: boolean,
     Yield: "Future" | "Promise" | "Coroutine",
     Data: Declaration,
     Return: Declaration
+}>
+
+export type ScopeDeclaration = Node<"ScopeDeclaration", {
+    Identifier: string,
+    Declarations: {Declaration},
+    Optional: boolean,
 }>
 
 export type Options = {
@@ -90,9 +95,8 @@ export type Parser = {
     Source: string,
     Lexer: Lexer.Lexer,
 
-    Scope: string,
+    Scope: string?,
     Types: {[string]: Declaration},
-    Scopes: {[string]: true},
     LookAhead: Lexer.Token?,
 
     Parse: (self: Parser, Source: string) -> (Body, Options),
@@ -111,6 +115,7 @@ export type Parser = {
     StructDeclaration: (self: Parser, Identifier: Lexer.Token) -> StructDeclaration,
     EventDeclaration: (self: Parser, Identifier: Lexer.Token) -> EventDeclaration,
     FunctionDeclaration: (self: Parser, Identifier: Lexer.Token) -> FunctionDeclaration,
+    ScopeDeclaration: (self: Parser, Identifier: Lexer.Token) -> ScopeDeclaration,
 
     GetTypeAttributes: (self: Parser, Primitive: Lexer.Token?) -> (boolean, NumberRange?),
     GetDeclarationFromToken: (self: Parser, Token: Lexer.Token, Identifier: Lexer.Token) -> Declaration,
@@ -219,7 +224,6 @@ Parser.__index = Parser
 function Parser.new(): Parser
     return setmetatable({
         Source = "",
-        Scope = DEFAULT_SCOPE,
         Types = {},
         Scopes = {},
         Lexer = Lexer.new()
@@ -227,10 +231,9 @@ function Parser.new(): Parser
 end
 
 function Parser.Parse(self: Parser, Source: string): (Body, Options)
-    self.Scope = DEFAULT_SCOPE
+    self.Scope = nil
     self.Source = Source
     table.clear(self.Types)
-    table.clear(self.Scopes)
     self.Lexer:Initialize(Source)
 
     --> Prime the lexer
@@ -319,39 +322,12 @@ function Parser.Declarations(self: Parser): {Declaration}
 end
 
 function Parser.Declaration(self: Parser): Declaration
-    --> Scopes
-    print(self:GetSafeLookAhead().Type, self.Scope, DEFAULT_SCOPE)
-    if self:GetSafeLookAhead().Type == "CloseCurlyBrackets" and self.Scope ~= DEFAULT_SCOPE then
-        print(`Left scope: {self.Scope}`)
-        self.Scope = DEFAULT_SCOPE
-        self:Consume("CloseCurlyBrackets")
-        return nil :: any
-    end
-
     local Keyword = self:Consume("Keyword")
     local Identifier = self:Consume("Identifier")
-
-    if Keyword.Value == "scope" then
-        if self.Scope ~= DEFAULT_SCOPE then
-            Error.ThrowTokenError(self.Source, Keyword, `Blink doesn't support declaring scopes within scopes`)
-        end
-
-        local Scope = Identifier.Value
-        if self.Scopes[Scope] then
-            Error.ThrowTokenError(self.Source, Identifier, `A scope with identifier: "{Scope}", was already declared earlier.`)
-        end
-
-        self.Scope = Scope
-        self.Scopes[Scope] = true
-        self:Consume("OpenCurlyBrackets")
-        print(`Entered scope: {Scope}`)
-
-        return nil :: any
-    end
-
     self:Consume("Assign")
 
-    if self.Types[Identifier.Value] then
+    local ScopedIdentifier = `{self.Scope and `{self.Scope}.` or ""}{Identifier.Value}`
+    if self.Types[ScopedIdentifier] then
         Error.ThrowTokenError(self.Source, Identifier, `Duplicate type declared`)
     end
 
@@ -366,25 +342,22 @@ function Parser.Declaration(self: Parser): Declaration
         Declaration = self:EventDeclaration(Identifier)
     elseif Keyword.Value == "function" then
         Declaration = self:FunctionDeclaration(Identifier)
+    elseif Keyword.Value == "scope" then
+        Declaration = self:ScopeDeclaration(Identifier)
     end
     
     if not Declaration then
         error(`{Keyword.Value} has no declaration handler.`)
     end
 
-    if Keyword.Value ~= "event" and Keyword.Value ~= "function" then
+    if Keyword.Value ~= "event" and Keyword.Value ~= "function" and Keyword.Value ~= "scope" then
         if self:GetSafeLookAhead().Type == "Optional" then
             self:Consume("Optional")
             Declaration.Value.Optional = true
         end
         
-        print(`New type declared: {Declaration.Value.Identifier}`)
-        local Reference = Declaration.Value.Identifier
-        if self.Scope ~= DEFAULT_SCOPE then
-            Reference = `{self.Scope}.{Reference}`
-        end
-        
-        self.Types[Reference] = Declaration
+        self.Types[ScopedIdentifier] = Declaration
+        print(`New type declared: {ScopedIdentifier}`)
     end
 
     return Declaration
@@ -630,6 +603,46 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): Func
     return Function
 end
 
+function Parser.ScopeDeclaration(self: Parser, Identifier: Lexer.Token): ScopeDeclaration
+    if self.Scope then
+        Error.ThrowTokenError(self.Source, Identifier, `Blink doesn't support declaring scopes within scopes`)
+    end
+
+    local Scope = Identifier.Value
+    local Declarations = {}
+    local Declaration: ScopeDeclaration = {
+        Type = "ScopeDeclaration",
+        Value = {
+            Identifier = Scope,
+            Optional = false,
+            Declarations = Declarations
+        }
+    }
+
+    if self.Types[Scope] then
+        Error.ThrowTokenError(self.Source, Identifier, `Duplicate declaration`)
+    end
+
+    self.Scope = Scope
+    self.Types[Scope] = Declaration
+    self:Consume("OpenCurlyBrackets")
+    print(`Entered scope: {Scope}`)
+
+    while (self.LookAhead) do
+        if self.LookAhead.Type == "CloseCurlyBrackets" then
+            self:Consume("CloseCurlyBrackets")
+            break
+        end
+
+        table.insert(Declarations, self:Declaration())
+    end 
+
+    self.Scope = nil
+    print(`Left scope`)
+
+    return Declaration
+end
+
 function Parser.GetTypeAttributes(self: Parser, Primitive: Lexer.Token?): (boolean, NumberRange?)
     local LookAhead = self.LookAhead
     if not LookAhead then 
@@ -676,9 +689,9 @@ function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identi
         local Reference: TypeReference = {
             Type = "TypeReference",
             Value = {
-                Scope = self.Scope,
+                Scope = Declaration.Value.Scope,
                 Identifier = Identifier.Value,
-                Reference = Type.Value,
+                Reference = Declaration.Value.Identifier,
 
                 Array = Array,
                 Range = Range,

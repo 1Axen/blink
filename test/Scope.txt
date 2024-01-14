@@ -9,16 +9,24 @@ event MainScopeEvent = {
     Data = MainScopeType
 }
 
-scope ScopeExample {
+scope ScopeExample = {
     type InScopeType = u8
+    type SecondInScopeType = bool
+
     event InScopeEvent = {
         From = Server,
         Type = Reliable,
         Call = SingleSync,
         Data = MainScopeType
     }
+
+    function InScopeFunction = {
+        Yield = Coroutine,
+        Data = u8,
+        Return = u8
+    }
 }
 
 struct TypeReferencingScopeType = {
-    Reference = ScopeExample.InScopeType
+    Field = ScopeExample.InScopeType
 }

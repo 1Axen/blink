@@ -25,11 +25,13 @@ local EVENT_BODY =
 	"\tRecieveCursor = 0\n\tRecieveBuffer = Buffer\n\tlocal Size = buffer.len(RecieveBuffer)\n\twhile RecieveCursor < Size do\n\t\tlocal Index = buffer.readu8(RecieveBuffer, Read(1))"
 
 local Types = Builder.new()
+local LuauTypes = Builder.new()
 local Imports = Builder.new()
 local Return = Builder.new()
 local ReliableEvents = Builder.new()
 local UnreliableEvents = Builder.new()
 
+local Scope: string?;
 local Options: Parser.Options = {}
 
 local Channels: { [string]: { Count: number, Listening: boolean } } = {
@@ -51,22 +53,31 @@ local function GenerateEnumLiterals(Enums: { string }): string
 	return Literal
 end
 
+local function GetTypesPath(Identifier: string, Scope: string?, Write: boolean): string
+	return `Types.{Scope and `{Scope}.` or ""}{Write and "Write" or "Read"}{Identifier}`
+end
+
 function Writers.Type(Identifier: string, Type: string, Optional: boolean, Read: string, Write: string, Reference: string?, Simple: boolean?, Arguments: string?): string
 	if Optional then
 		Type = `{Type}?`
 	end
 
 	local Result = Builder.new("\n")
+	
+	local Path = Scope and `.{Scope}` or ""
+	local Prefix = (not Reference and Scope) and `{Scope}_` or ""
+	local LuauType = `{Prefix}{Reference or Identifier}`
+
 	if not Reference then
-        Result.Push(`export type {Identifier} = {Type}`, 2)
+        LuauTypes.Push(`export type {Prefix}{Identifier} = {Type}`, 1)
 	end
 	
-	Result.Push(`function Types.Write{Identifier}(Value: {Reference or Identifier}{Arguments and ", " .. Arguments or ""})`)
+	Result.Push(`function {GetTypesPath(Identifier, Scope, true)}(Value: {LuauType}{Arguments and ", " .. Arguments or ""})`)
 	Result.Push(Write, 0)
 	Result.Push(`end`, 2)
-	Result.Push(`function Types.Read{Identifier}(): {Reference or Identifier}`)
+	Result.Push(`function {GetTypesPath(Identifier, Scope, false)}(): {LuauType}`)
 	if not Simple then
-		Result.Push(`local Value: {Reference or Identifier};`, 1, 1)
+		Result.Push(`local Value: {LuauType};`, 1, 1)
 	end
 	Result.Push(Read, 0)
 	if not Simple then
@@ -167,9 +178,11 @@ function Writers.TypeReference(TypeReference: Parser.TypeReference, Tabs: number
 	local Array = Value.Array
 	local Range = Value.Range
 	local Reference = Value.Reference
+	local ReferenceScope = Value.Scope
 
-	local ReadReference = `Types.Read{Reference}`
-	local WriteReference = `Types.Write{Reference}`
+	local Prefix = ReferenceScope and `{ReferenceScope}_` or ""
+	local ReadReference = GetTypesPath(Reference, ReferenceScope, false)
+	local WriteReference = GetTypesPath(Reference, ReferenceScope, true)
 
 	if Array and Range then
 		Prefabs.Structures.Array(
@@ -186,7 +199,7 @@ function Writers.TypeReference(TypeReference: Parser.TypeReference, Tabs: number
 		Write.Push(`{WriteReference}({Variable})`, 1, Tabs)
 	end
 
-	return Reference
+	return `{Prefix}{Reference}`
 end
 
 function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration): string
@@ -263,7 +276,7 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 	return Type.Dump(), Read.Dump(), Write.Dump()
 end
 
-local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: number, Invocation: true?): string
+local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: number, Invoking: boolean?): string
 	local Read = Builder.new()
 	local Write = Builder.new()
 
@@ -271,16 +284,17 @@ local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: nu
 	local DataValue = Data.Value
 	Write.Push(TypePrefabs.u8.Write(Index), 1, 1)
 	
-	if Invocation then
+	if Invoking ~= nil then
 		Write.Push(TypePrefabs.u8.Write("InvocationIdentifier"), 1, 1)
-		Write.Push(TypePrefabs.u8.Write("1"), 1, 1)
+		
+		if not Invoking then
+			Write.Push(TypePrefabs.u8.Write("1"), 1, 1)
 
-		Read.Push(`local {TypePrefabs.u8.Read("Success")} == 1`, 1, 1)
-		Read.Push(`if not Success then`, 1, 1)
-		local ErrorRead = string.gsub(TypePrefabs.string.Read("Error"), "\t", "")
-		Read.PushLines(string.split(ErrorRead, "\n"), 0, 2)
-		Read.Push("error(Error)", 1, 2)
-		Read.Push(`end`, 1, 1)
+			Read.Push(`local {TypePrefabs.u8.Read("Success")} == 1`, 1, 1)
+			Read.Push(`if not Success then`, 1, 1)
+			Read.Push(`error("Server encountered an error.")`, 1, 2)
+			Read.Push(`end`, 1, 1)
+		end
 	end
 
 	if Data.Type == "TypeReference" then
@@ -288,6 +302,7 @@ local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: nu
 		Type = Writers.TypeReference(TypeReference, 1, "Value", Read, Write)
 		Reference = Type
 
+		Read.PushFront(`local Value: {Type};`, 1, 1)
 		Read.Push(`return Value`, 1, 1)
 	else
 		local Writer = Writers[Data.Type]
@@ -308,22 +323,20 @@ local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: nu
 		Type = `({Type})?`
 	end
 
-	Read.PushFront(`local Value: {Type};`, 1, 1)
-	Types.Push(Writers.Type(Identifier, Type, Data.Value.Optional, Read.Dump(), Write.Dump(), Type, Reference ~= nil, Invocation and "InvocationIdentifier: number"), 0)
+	--Read.PushFront(`local Value: {Type};`, 1, 1)
+	Types.Push(Writers.Type(Identifier, Type, Data.Value.Optional, Read.Dump(), Write.Dump(), Type, Reference ~= nil, (Invoking ~= nil) and "InvocationIdentifier: number" or nil), 0)
 	
 	return Type
 end
 
 function Writers.EventDeclaration(
 	EventDeclaration: Parser.EventDeclaration,
-	Context: "Client" | "Server",
-	ReliableEvents: Builder.Builder,
-	UnreliableEvents: Builder.Builder
+	Context: "Client" | "Server"
 ): string
 	local Value = EventDeclaration.Value
 	local IsServer = (Context == "Server")
 	local IsReliable = (Value.Type == "Reliable")
-	local Arguments = (IsServer and "Player, " or "")
+	local Arguments = (IsServer and "Player :: any, " or "")
 
     local Channel = Channels[Value.Type]
 	local EventIndex = Channel.Count
@@ -333,7 +346,8 @@ function Writers.EventDeclaration(
 	local Type = WriteBody(Identifier, Value.Data, EventIndex)
 
 	--> Body generation
-	local Event = Builder.new()
+	local Event = Builder.new(nil, Scope and 1 or 0)
+	local WritePath = `{GetTypesPath(Identifier, Scope, true)}(Value)`
 	Event.Push(`{Value.Identifier} = \{`, 1, 1)
 	
 	if Value.From ~= Context then
@@ -358,7 +372,7 @@ function Writers.EventDeclaration(
 
 		local EventBuilder = (IsReliable and ReliableEvents or UnreliableEvents)
 		EventBuilder.Push(`{Channel.Listening and "elseif" or "if"} Index == {EventIndex} then`, 1, 2)
-		EventBuilder.Push(`local Value = Types.Read{Identifier}()`, 1, 3)
+		EventBuilder.Push(`local Value = {GetTypesPath(Identifier, Scope, false)}`, 1, 3)
 		EventBuilder.Push(`if {Events} then`, 1, 3)
 		EventBuilder.Push(`{Events}({Arguments}Value)`, 1, 4)
 		EventBuilder.Push("else", 1, 3)
@@ -372,11 +386,11 @@ function Writers.EventDeclaration(
         Event.Push(`Fire = function(Player: Player, Value: {Type})`, 1, 2)
         if IsReliable then
             Event.Push(`Load(PlayersMap[Player])`, 1, 3)
-            Event.Push(`Types.Write{Identifier}(Value)`, 1, 3)
+            Event.Push(WritePath, 1, 3)
             Event.Push(`PlayersMap[Player] = Save()`, 1, 3)
         else
             Event.Push(`Load()`, 1, 3)
-            Event.Push(`Types.Write{Identifier}(Value)`, 1, 3)
+            Event.Push(WritePath, 1, 3)
             Event.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
             Event.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
             Event.Push(`Unreliable:FireClient(Player, Buffer)`, 1, 3)
@@ -386,7 +400,7 @@ function Writers.EventDeclaration(
         --> Fire all
         Event.Push(`FireAll = function(Value: {Type})`, 1, 2)
 		Event.Push(`Load()`, 1, 3)
-		Event.Push(`Types.Write{Identifier}(Value)`, 1, 3)
+		Event.Push(WritePath, 1, 3)
         if IsReliable then
             Event.Push(`for _, Player in Players:GetPlayers() do`, 1, 3)
 			Event.Push(`PlayersMap[Player] = Save()`, 1, 4)
@@ -401,7 +415,7 @@ function Writers.EventDeclaration(
         --> Fire list
         Event.Push(`FireList = function(List: \{Player\}, Value: {Type})`, 1, 2)
 		Event.Push(`Load()`, 1, 3)
-		Event.Push(`Types.Write{Identifier}(Value)`, 1, 3)
+		Event.Push(WritePath, 1, 3)
         if IsReliable then
             Event.Push(`for _, Player in List do`, 1, 3)
 			Event.Push(`PlayersMap[Player] = Save()`, 1, 4)
@@ -418,7 +432,7 @@ function Writers.EventDeclaration(
         --> Fire except
         Event.Push(`FireExcept = function(Except: Player, Value: {Type})`, 1, 2)
 		Event.Push(`Load()`, 1, 3)
-		Event.Push(`Types.Write{Identifier}(Value)`, 1, 3)
+		Event.Push(WritePath, 1, 3)
         if IsReliable then
             Event.Push(`for _, Player in Players:GetPlayers() do`, 1, 3)
 			Event.Push(`if Player == Except then continue end`, 1, 4)
@@ -436,11 +450,11 @@ function Writers.EventDeclaration(
     else
         Event.Push(`Fire = function(Value: {Type})`, 1, 2)
         if IsReliable then
-            Event.Push(`Types.Write{Identifier}(Value)`, 1, 3)
+            Event.Push(WritePath, 1, 3)
         else
             Event.Push(`local Previous = Save()`, 1, 3)
             Event.Push(`Load()`, 1, 3)
-            Event.Push(`Types.Write{Identifier}(Value)`, 1, 3)
+            Event.Push(WritePath, 1, 3)
             Event.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
             Event.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
             Event.Push(`Unreliable:FireServer(Buffer)`, 1, 3)
@@ -455,8 +469,7 @@ end
 
 function Writers.FunctionDeclaration(
 	FunctionDeclaration: Parser.FunctionDeclaration,
-	Context: "Client" | "Server",
-	ReliableEvents: Builder.Builder
+	Context: "Client" | "Server"
 ): string
 	local Value = FunctionDeclaration.Value
 	local Yield = Value.Yield
@@ -485,13 +498,13 @@ function Writers.FunctionDeclaration(
 
 	--> Type generation
 	local DataType = WriteBody(DataIdentifier, Value.Data, FunctionIndex, true)
-	local ReturnType = WriteBody(ReturnIdentifier, Value.Return, FunctionIndex, true)
+	local ReturnType = WriteBody(ReturnIdentifier, Value.Return, FunctionIndex, false)
 
 	--> Allocate queue table at require time instead of creating one at runtime
 	Types.PushFront(`{Queue} = table.create(256)`)
 
 	--> Body generation
-	local Function = Builder.new()
+	local Function = Builder.new(nil, Scope and 1 or 0)
 	Function.Push(`{Value.Identifier} = \{`, 1, 1)
 
 	if Context == "Server" then
@@ -499,21 +512,15 @@ function Writers.FunctionDeclaration(
 		Function.Push(`assert({Events} == nil, "A function callback can only bet set once")`, 1, 3)
 		Function.Push(`{Events} = function(Player: Player, Value: {DataType}, InvocationIdentifier: number)`, 1, 3)
 
-		Function.Push(`local Return: {DataType};`, 1, 4)
-		Function.Push(`local Success, Trace = pcall(function() Return = Callback(Player, Value) end)`, 1, 4)
+		Function.Push(`local Success, Return = pcall(function() return Callback(Player, Value) end)`, 1, 4)
 
 		Function.Push(`Load(PlayersMap[Player])`, 1, 4)
 		Function.Push(`if not Success then`, 1, 4)
 		Function.Push(`buffer.writeu8(SendBuffer, Allocate(1), {FunctionIndex})`, 1, 5)
 		Function.Push(`buffer.writeu8(SendBuffer, Allocate(1), InvocationIdentifier)`, 1, 5)
 		Function.Push(`buffer.writeu8(SendBuffer, Allocate(1), 0)`, 1, 5)
-		
-		local ErrorWrite = TypePrefabs.string.Write("Trace") 
-		ErrorWrite = string.gsub(ErrorWrite, "\t", "")
-		Function.PushLines(string.split(ErrorWrite, "\n"), 0, 5)
-
 		Function.Push(`else`, 1, 4)
-		Function.Push(`Types.Write{ReturnIdentifier}(Return, InvocationIdentifier)`, 1, 5)
+		Function.Push(`{GetTypesPath(ReturnIdentifier, Scope, true)}(Return, InvocationIdentifier)`, 1, 5)
 		Function.Push(`end`, 1, 4)
         Function.Push(`PlayersMap[Player] = Save()`, 1, 4)
 		Function.Push(`end`, 1, 3)
@@ -530,17 +537,17 @@ function Writers.FunctionDeclaration(
 
 		ReliableEvents.Push(`{Channel.Listening and "elseif" or "if"} Index == {FunctionIndex} then`, 1, 2)
 		ReliableEvents.Push(`local {TypePrefabs.u8.Read("InvocationIdentifier")}`, 1, 3)
-		ReliableEvents.Push(`local Value = Types.Read{DataIdentifier}()`, 1, 3)
+		ReliableEvents.Push(`local Value = {GetTypesPath(ReturnIdentifier, Scope, false)}()`, 1, 3)
 		ReliableEvents.Push(`if {Events} then`, 1, 3)
 		ReliableEvents.Push(`{Events}(Player, Value, InvocationIdentifier)`, 1, 4)
 		ReliableEvents.Push(`else`, 1, 3)
 		ReliableEvents.Push(`if #{Queue} > 256 then warn("[Blink]: Function queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement a callback?") end`, 1, 4)
-		ReliableEvents.Push(`table.insert({Queue}, \{Player, Value, InvocationIdentifier\})`, 1, 4)
+		ReliableEvents.Push(`table.insert({Queue}, \{Player :: any, Value, InvocationIdentifier\})`, 1, 4)
 		ReliableEvents.Push(`end`, 1, 3)
 	else
 		Function.Push(`Invoke = function(Value: {DataType})`, 1, 2)
 		Function.Push(`local InvocationIdentifier = Invoke()`, 1, 3)
-		Function.Push(`Types.Write{DataIdentifier}(Value, InvocationIdentifier)`, 1, 3)
+		Function.Push(`{GetTypesPath(DataIdentifier, Scope, true)}(Value, InvocationIdentifier)`, 1, 3)
 		
 		if IsCoroutine then
 			Function.PushLines(YIELD_BODY, 0, 3)
@@ -565,7 +572,7 @@ function Writers.FunctionDeclaration(
 		ReliableEvents.Push(`{Channel.Listening and "elseif" or "if"} Index == {FunctionIndex} then`, 1, 2)
 		ReliableEvents.Push(`local {TypePrefabs.u8.Read("InvocationIdentifier")}`, 1, 3)
 		ReliableEvents.Push(`if Calls[InvocationIdentifier] then`, 1, 3)
-		ReliableEvents.Push(`local Success, Value = pcall(function() return Types.Read{ReturnIdentifier}() end)`, 1, 4)
+		ReliableEvents.Push(`local Success, Value = pcall(function() return {GetTypesPath(ReturnIdentifier, Scope, false)}() end)`, 1, 4)
 		ReliableEvents.Push(`task.spawn(Calls[InvocationIdentifier], Success, Value)`, 1, 4)
 		ReliableEvents.Push(`end`, 1, 3)
 	end
@@ -576,9 +583,46 @@ function Writers.FunctionDeclaration(
 	return Function.Dump()
 end
 
+function Writers.ScopeDeclaration(ScopeDeclaration: Parser.ScopeDeclaration, Context: "Client" | "Server")
+	local Value = ScopeDeclaration.Value
+
+	local Identifier = Value.Identifier
+	local Declarations = Value.Declarations
+
+	Scope = Identifier
+	Types.Push(`Types.{Identifier} = \{\}`)
+	Return.Push(`{Identifier} = \{`, 1, 1)
+	Writers.Declarations(Declarations, Context)
+	Return.Push(`\}`, 1, 1)
+	Scope = nil
+end
+
+function Writers.Declarations(Declarations: {Parser.Declaration}, Context: "Client" | "Server")
+	for Index, Declaration in Declarations do
+		local Writer = Writers[Declaration.Type]
+		if not Writer then
+			warn(`{Declaration.Type} has no writer.`)
+			continue
+		end
+
+		if Declaration.Type == "EventDeclaration" or Declaration.Type == "FunctionDeclaration" then
+			Return.Push(Writer(Declaration, Context), 0)
+			;(Channels[Declaration.Value.Type] or Channels.Reliable).Count += 1
+			continue
+		elseif Declaration.Type == "ScopeDeclaration" then
+			Writer(Declaration, Context)
+			continue
+		end
+
+		local Type, Read, Write = Writer(Declaration)
+		Types.Push(Writers.Type(Declaration.Value.Identifier, Type, Declaration.Value.Optional, Read, Write), 0)
+	end
+end
+
 return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, UserOptions: Parser.Options): string
 	--> Reset previous generation
 	Types.Dump()
+	LuauTypes.Dump()
 	Imports.Dump()
 	Return.Dump()
 	ReliableEvents.Dump()
@@ -617,22 +661,7 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 	end
 
 	--> Generate types & events/functions
-	for Index, Declaration in AbstractSyntaxTree.Value do
-		local Writer = Writers[Declaration.Type]
-		if not Writer then
-			warn(`{Declaration.Type} has no writer.`)
-			continue
-		end
-
-		if Declaration.Type == "EventDeclaration" or Declaration.Type == "FunctionDeclaration" then
-			Return.Push(Writer(Declaration, Context, ReliableEvents, UnreliableEvents), 0)
-			;(Channels[Declaration.Value.Type] or Channels.Reliable).Count += 1
-			continue
-		end
-
-		local Type, Read, Write = Writer(Declaration)
-		Types.Push(Writers.Type(Declaration.Value.Identifier, Type, Declaration.Value.Optional, Read, Write), 0)
-	end
+	Writers.Declarations(AbstractSyntaxTree.Value, Context)
 
 	--> Close remote connection functions
 	if Channels.Reliable.Listening then
@@ -655,6 +684,7 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
         .. Source[1]
 		.. Imports.Dump()
 		.. Sources.Base
+		.. LuauTypes.Dump()
 		.. Types.Dump()
 		.. Source[2]
 		.. Replication
