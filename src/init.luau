@@ -29,6 +29,7 @@ end
 
 local SourcePath = Arguments[1]
 
+print(`Blink v{_G.VERSION or "DEBUG"}`)
 stdio.write(stdio.color("cyan"))
 print(`Reading source from {SourcePath}...`)
 local Source = fs.readFile(SourcePath)

@@ -4,5 +4,5 @@
 # To add a new tool, add an entry to this table.
 [tools]
 selene = "Kampfkarren/selene@0.26.1"
-lune = "filiptibell/lune@0.7.11"
+lune = "filiptibell/lune@0.8.0"
 darklua = "seaofvoices/darklua@0.12.1"

@@ -22,6 +22,11 @@
             "rule": "inject_global_value",
             "identifier": "BUNDLED",
             "value": true
+        },
+        {
+            "rule": "inject_global_value",
+            "identifier": "VERSION",
+            "value": "0.4.0"
         }
     ]
 }

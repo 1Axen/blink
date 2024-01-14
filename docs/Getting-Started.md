@@ -11,7 +11,7 @@ For a guide on the syntax of Blink head over to [Writing network descriptions](h
 Blink currently only supports code generation through CLI.  
 To generate output code run the following command in the directory in which you installed Blink:
 ```
-lune init [PATH_TO_SOURCE]
+blink [INPUT]
 ``` 
 ## Using the generated code
 When requiring the code generated it will return a table which contains all defined events & functions, you can use this table to fire/invoke and listen to events/functions.

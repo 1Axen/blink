@@ -5,9 +5,9 @@
 /*.rbxlx.lock
 /*.rbxl.lock
 
+/release
 /Network
 /Blink
-/release.rar
 test/Client.luau
 test/Server.luau
 test/Sources/Game.txt
