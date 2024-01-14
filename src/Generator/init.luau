@@ -343,6 +343,14 @@ local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: nu
 		local TypeReference: Parser.TypeReference = Data :: Parser.TypeReference
 		Type = Writers.TypeReference(TypeReference, 1, "Value", Read, Write)
 		Reference = Type
+
+		if DataValue.Array then
+			Type = `\{{Type}\}`
+		end
+	
+		if DataValue.Optional then
+			Type = `({Type})?`
+		end
 	else
 		local Writer = Writers[Data.Type]
 		local DeclarationType, DeclarationRead, DeclarationWrite = Writer(Data)
@@ -352,14 +360,6 @@ local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: nu
 		Type = DeclarationType
 		Read.Push(DeclarationRead, 0)
 		Write.Push(DeclarationWrite, 0)
-	end
-
-	if DataValue.Array then
-		Type = `\{{Type}\}`
-	end
-
-	if DataValue.Optional then
-		Type = `({Type})?`
 	end
 
 	if Reference then
