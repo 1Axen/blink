@@ -1,0 +1,27 @@
+option ClientOutput = "../Network/Client.luau"
+option ServerOutput = "../Network/Server.luau"
+
+type A = CFrame
+type B = CFrame[10]
+type C = CFrame?
+type D = Color3
+
+enum States = ( A, B, C, D )
+
+type Number = u8
+struct Example = {
+    Field = u8,
+    EnumArray = States[10],
+    Nested = {
+        Guh = u8,
+        Array = u8[10],
+        OptionalArray = u8[2]?
+    }
+}
+
+event MyEvent = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = States[10]    
+}

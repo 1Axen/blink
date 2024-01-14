@@ -42,6 +42,7 @@ local Primitives = {
     string = true,
     vector = true,
     buffer = true,
+    Color3 = true,
     CFrame = true,
 }
 

@@ -11,6 +11,21 @@ function Builder.new(String: string?, BaseIndentation: number?): Builder
         return string.rep("\t", Indentation + (Tabs or 0))
     end
 
+    local function PushLines(Lines: {string}, Returns: number?, Tabs: number?)
+        local Indent = GetIndentation(Tabs)
+        local Last = Lines[#Lines]
+        if string.gsub(Last, "%c", "") == "" then
+            table.remove(Lines, #Lines)
+        end
+
+        for Index, Line in Lines do
+            --print(#Indent, Line)
+            String ..= Indent .. Line .. "\n"
+        end
+
+        String ..= string.rep("\n", Returns or 0)
+    end
+
     return {
         Push = function(Text: string, Returns: number?, Tabs: number?)
             String ..= (GetIndentation(Tabs) .. Text .. string.rep("\n", Returns or 1))
@@ -20,18 +35,14 @@ function Builder.new(String: string?, BaseIndentation: number?): Builder
             String = (GetIndentation(Tabs) .. Text .. string.rep("\n", Returns or 1)) .. String
         end,
 
-        PushLines = function(Lines: {string}, Returns: number?, Tabs: number?)
-            local Indent = GetIndentation(Tabs)
-            local Last = Lines[#Lines]
-            if string.gsub(Last, "%c", "") == "" then
-                table.remove(Lines, #Lines)
+        PushLines = PushLines,
+        PushMultiline = function(Text: string, Returns: number?, Tabs: number?, RemoveExistingTabs: boolean?)
+            --> Remove existing tabs
+            if RemoveExistingTabs then
+                Text = string.gsub(Text, "\t", "")
             end
 
-            for Index, Line in Lines do
-                String ..= Indent .. Line .. "\n"
-            end
-
-            String ..= string.rep("\n", Returns or 0)
+            PushLines(string.split(Text, "\n"), Returns, Tabs)
         end,
 
         SetIndentation = function(NewIndentation: number)

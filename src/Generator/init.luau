@@ -73,13 +73,13 @@ function Writers.Type(Identifier: string, Type: string, Optional: boolean, Read:
 	end
 	
 	Result.Push(`function {GetTypesPath(Identifier, Scope, true)}(Value: {LuauType}{Arguments and ", " .. Arguments or ""})`)
-	Result.Push(Write, 0)
+	Result.PushMultiline(Write, 0, 0)
 	Result.Push(`end`, 2)
 	Result.Push(`function {GetTypesPath(Identifier, Scope, false)}(): {LuauType}`)
 	if not Simple then
 		Result.Push(`local Value: {LuauType};`, 1, 1)
 	end
-	Result.Push(Read, 0)
+	Result.PushMultiline(Read, 0, 0)
 	if not Simple then
 		Result.Push("return Value", 1, 1)
 	end
@@ -92,16 +92,13 @@ function Writers.Optional(ReadBody: string, WriteBody: string, Variable: string)
 	local Read = Builder.new()
 	local Write = Builder.new()
 
-	local ReadLines = string.split(ReadBody, "\n")
-	local WriteLines = string.split(WriteBody, "\n")
-
 	Read.Push(OPTIONAL, 1, 1)
-	Read.PushLines(ReadLines, 0, 1)
+	Read.PushMultiline(ReadBody, 0, 1)
 	Read.Push("end", 1, 1)
 
 	Write.Push(Prefabs.Types.u8.Write(`({Variable} ~= nil) and 1 or 0`), 1, 1)
 	Write.Push(`if {Variable} ~= nil then`, 1, 1)
-	Write.PushLines(WriteLines, 0, 1)
+	Write.PushMultiline(WriteBody, 0, 1)
 	Write.Push("end", 1, 1)
 
 	return Read.Dump(), Write.Dump()
@@ -250,10 +247,10 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 			elseif Field.Type == "TypeReference" then
 				local TypeReference: Parser.TypeReference = Field
 				FieldType = Writers.TypeReference(TypeReference, Tabs, Variable, Read, Write)
-			end
 
-			if FieldValue.Array then
-				FieldType = `\{{FieldType}\}`
+				if FieldValue.Array then
+					FieldType = `\{{FieldType}\}`
+				end
 			end
 
 			if FieldValue.Optional then
@@ -301,9 +298,6 @@ local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: nu
 		local TypeReference: Parser.TypeReference = Data :: Parser.TypeReference
 		Type = Writers.TypeReference(TypeReference, 1, "Value", Read, Write)
 		Reference = Type
-
-		Read.PushFront(`local Value: {Type};`, 1, 1)
-		Read.Push(`return Value`, 1, 1)
 	else
 		local Writer = Writers[Data.Type]
 		local DeclarationType, DeclarationRead, DeclarationWrite = Writer(Data)
@@ -321,6 +315,11 @@ local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: nu
 
 	if DataValue.Optional then
 		Type = `({Type})?`
+	end
+
+	if Reference then
+		Read.PushFront(`local Value: {Type};`, 1, 1)
+		Read.Push(`return Value`, 1, 1)
 	end
 
 	--Read.PushFront(`local Value: {Type};`, 1, 1)

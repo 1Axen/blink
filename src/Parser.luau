@@ -357,7 +357,6 @@ function Parser.Declaration(self: Parser): Declaration
         end
         
         self.Types[ScopedIdentifier] = Declaration
-        print(`New type declared: {ScopedIdentifier}`)
     end
 
     return Declaration

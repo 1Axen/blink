@@ -78,7 +78,7 @@ local Asserts = {
 			Upper = `if buffer.len({Variable}) > {Max} then error(\`Expected size of \\"{Variable}\\" to be smaller than {Max}, got \{buffer.len({Variable})}.\`) end`,
 			Exact = `if buffer.len({Variable}) ~= {Max} then error(\`Expected size of \\"{Variable}\\" to equal to {Max}, got \{buffer.len({Variable})}.\`) end`
 		}
-	end
+	end,
 }
 local Structures = {
 	Array = nil :: any
@@ -103,8 +103,8 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 				Range, Read, Write, 1
 			)
 		else
-			Read.Push(Prefab.Read(Variable, Range), 1, 1)
-			Write.Push(Prefab.Write(Variable, Range), 1, 1)
+			Read.PushMultiline(Prefab.Read(Variable, Range), 0, 1, true)
+			Write.PushMultiline(Prefab.Write(Variable, Range), 0, 1, true)
 
 			if Range and AssertGenerator then
 				local Assert = AssertGenerator(Variable, Range.Min, Range.Max)
@@ -117,6 +117,7 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 			end
 		end
 
+		--> TODO: Move to a dedicate test
 		--> Used to detect any issues with prefabs, should only run when running from source code
 		if not _G.BUNDLED then
 			local Dictionary = {
@@ -194,7 +195,7 @@ Structures.Array = function(Variable: string, Body: {Type: "Inline" | "Reference
 		Read.Push(`for Index = 1, Length do`, 1, Tabs)
 
 		if IsInlined then
-			Read.Push(Body.Read, 1, Tabs + 1)
+			Read.PushMultiline(Body.Read, 0, Tabs + 1)
 		end
 
 		Read.Push(`table.insert({Variable}, {IsInlined and "Item" or Body.Read .. "()"})`, 1, Tabs + 1)
@@ -207,7 +208,7 @@ Structures.Array = function(Variable: string, Body: {Type: "Inline" | "Reference
 		end
 
 		if IsInlined then
-			Write.Push(Body.Write, 1, Tabs + 1)
+			Write.PushMultiline(Body.Write, 0, Tabs + 1)
 		else
 			Write.Push(`{Body.Write}({Variable}[Index])`, 1, Tabs + 1)
 		end
@@ -242,14 +243,14 @@ do
 				return `{Variable} = buffer.readstring({RECIEVE_BUFFER}, Read({Range.Min}), {Range.Min})`
 			end
 	
-			return `{Types.u16.Read("local Length")}\n\t{Variable} = buffer.readstring({RECIEVE_BUFFER}, Read(Length), Length)`
+			return `{Types.u16.Read("local Length")}\n{Variable} = buffer.readstring({RECIEVE_BUFFER}, Read(Length), Length)`
 		end,
 		Write = function(Value: string, Range: NumberRange?): string
 			if Range and Range.Min == Range.Max then
 				return `buffer.writestring({SEND_BUFFER}, Allocate({Range.Min}), {Value}, {Range.Min})`
 			end
 			
-			return `local Length = #{Value}\n\t{Types.u16.Write("Length")}\n\tbuffer.writestring({SEND_BUFFER}, Allocate(Length), {Value}, Length)`
+			return `local Length = #{Value}\n{Types.u16.Write("Length")}\nbuffer.writestring({SEND_BUFFER}, Allocate(Length), {Value}, Length)`
 		end
 	}
 	
@@ -266,7 +267,7 @@ do
 			return `{Variable} = Vector3.new(buffer.readf32({RECIEVE_BUFFER}, Read({FLOAT})), buffer.readf32({RECIEVE_BUFFER}, Read({FLOAT})), buffer.readf32({RECIEVE_BUFFER}, Read({FLOAT})))`
 		end,
 		Write = function(Value: string)
-			return `local Vector = {Value}\n\tbuffer.writef32({SEND_BUFFER}, Allocate({FLOAT}), Vector.X)\n\tbuffer.writef32({SEND_BUFFER}, Allocate({FLOAT}), Vector.Y)\n\tbuffer.writef32({SEND_BUFFER}, Allocate({FLOAT}), Vector.Z)`
+			return `local Vector = {Value}\nbuffer.writef32({SEND_BUFFER}, Allocate({FLOAT}), Vector.X)\nbuffer.writef32({SEND_BUFFER}, Allocate({FLOAT}), Vector.Y)\nbuffer.writef32({SEND_BUFFER}, Allocate({FLOAT}), Vector.Z)`
 		end
 	}
 	
@@ -320,19 +321,19 @@ do
 		Read = function(Variable: string): string
 			local Read = Builder.new()
 			Read.Push(`local {Types.vector.Read("Position")}`, 1)
-			Read.Push(`local {Types.f32.Read("rX")}`, 1, 1)
-			Read.Push(`local {Types.f32.Read("rY")}`, 1, 1)
-			Read.Push(`local {Types.f32.Read("rZ")}`, 1, 1)
-			Read.Push(`{Variable} = CFrame.new(Position) * CFrame.fromOrientation(rX, rY, rZ)`, 0, 1)
+			Read.Push(`local {Types.f32.Read("rX")}`, 1)
+			Read.Push(`local {Types.f32.Read("rY")}`, 1)
+			Read.Push(`local {Types.f32.Read("rZ")}`, 1)
+			Read.Push(`{Variable} = CFrame.new(Position) * CFrame.fromOrientation(rX, rY, rZ)`, 0)
 			return Read.Dump()
 		end,
 		Write = function(Value: string): string
 			local Write = Builder.new()
-			Write.Push(Types.vector.Write(`{Value}.Position`))
-			Write.Push(`local rX, rY, rZ = {Value}:ToOrientation()`, 1, 1)
-			Write.Push(Types.f32.Write("rX"), 1, 1)
-			Write.Push(Types.f32.Write("rY"), 1, 1)
-			Write.Push(Types.f32.Write("rZ"), 0, 1)
+			Write.Push(Types.vector.Write(`{Value}.Position`), 1)
+			Write.Push(`local rX, rY, rZ = {Value}:ToOrientation()`, 1)
+			Write.Push(Types.f32.Write("rX"), 1)
+			Write.Push(Types.f32.Write("rY"), 1)
+			Write.Push(Types.f32.Write("rZ"), 0)
 			return Write.Dump()
 		end
 	}
@@ -340,6 +341,23 @@ do
 	Primitives.CFrame = {
 		Type = "CFrame",
 		Generate = GeneratePrimitivePrefab(Types.CFrame)
+	}
+end
+
+--> Color3
+do
+	Types.Color3 = {
+		Read = function(Variable: string)
+			return `{Variable} = Color3.new(buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})), buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})), buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})))`
+		end,
+		Write = function(Value: string)
+			return `local Color = {Value}\nbuffer.writeu8({SEND_BUFFER}, Allocate({BYTE}), Color.R * 8)\nbuffer.writeu8({SEND_BUFFER}, Allocate({BYTE}), Color.G * 8)\nbuffer.writeu8({SEND_BUFFER}, Allocate({BYTE}), Color.B * 8)`
+		end
+	}
+	
+	Primitives.Color3 = {
+		Type = "Color3",
+		Generate = GeneratePrimitivePrefab(Types.Color3)
 	}
 end
 
