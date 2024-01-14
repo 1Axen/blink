@@ -23,7 +23,7 @@ PrettyPrint("blue", "Compiling source files...")
 for _, File in Sources do
     local AbsolutePath = `C:/Users/User/Documents/GitHub/Blink/test/Sources/{File}`
     PrettyPrint("cyan", `Compiling: {File}...`, true)
-    local Result = process.spawn("lune", {Compiler, AbsolutePath}, {cwd = "C:/Users/User/Documents/GitHub/Blink/src/"})
+    local Result = process.spawn("lune", {"run", Compiler, AbsolutePath}, {cwd = "C:/Users/User/Documents/GitHub/Blink/src/"})
     if not Result.ok then
         ErrorPrint(`{File} failed to compile!\n{Result.stderr}`)
     else

@@ -642,7 +642,7 @@ function Writers.ScopeDeclaration(ScopeDeclaration: Parser.ScopeDeclaration, Con
 	Types.Push(`Types.{Identifier} = \{\}`)
 	Return.Push(`{Identifier} = \{`, 1, 1)
 	Writers.Declarations(Declarations, Context)
-	Return.Push(`\}`, 1, 1)
+	Return.Push(`\},`, 1, 1)
 	Scope = nil
 end
 
