@@ -122,6 +122,35 @@ function ExamplePromise = {
     Return = u8
 }
 ```
+# Scopes (Namespaces)
+You can define a scope (namespace) using the `scope` keyword  
+Scopes allow you to group similiar types together for further organization  
+
+Defining scopes:  
+```
+scope ExampleScope = {
+    type InScopeType = u8
+
+    event InScopeEvent = {
+        From = Server,
+        Type = Reliable,
+        Call = SingleSync,
+        Data = u8
+    }
+}
+
+struct Example = {
+    Reference = ExampleScope.InScopeType
+}
+```
+
+Using scopes in code:  
+```lua
+local Blink = require(PATH_TO_BLINK)
+Blink.ExampleScope.InScopeEvent.FireAll(0)
+
+local Number: Blink.ExampleScope_InScopeEvent = 0
+```
 # Limitations
 ## Referencing types
 A type must be defined earlier in the source for it to be referenceable, you cannot reference a type before it has been defined.
