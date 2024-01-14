@@ -72,6 +72,13 @@ event ClientToServerUnreliableEvent = {
     Data = u8    
 }
 
+event StreamedInstance = {
+    From = Server,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = Instance?
+}
+
 function RemoteFunction = {
     Yield = Coroutine,
     Data = u8,

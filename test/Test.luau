@@ -82,6 +82,37 @@ function CompareTables(a, b)
     return true
 end
 
+local function FireAndFail(Name: string, OutgoingEvent: any, IncomingEvent: any, Data: any)
+    PrettyPrint("cyan", `Testing event: {Name}...`, true)
+
+    local Result: unknown;
+    IncomingEvent.On(function(First, Second)
+        Result = if (Second ~= nil) then Second else First
+    end)
+
+    local Success, Error = pcall(function()
+        if OutgoingEvent.FireAll then
+            OutgoingEvent.FireAll(Data)
+        else
+            OutgoingEvent.Fire(Data)
+        end
+    end)
+
+    if not Success then
+        OkPrint(`Event "{Name}" passed!`)
+        return
+    end
+
+    --> Wait for replication
+    task.wait(1 / 30)
+
+    if Result ~= nil then
+        ErrorPrint(`Fired "{Name}" and expected it to fail, got "{Result}" instead.`)
+    end
+
+    OkPrint(`Event "{Name}" passed!`)
+end
+
 local function FireAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: any, Expect: any)
     PrettyPrint("cyan", `Testing event: {Name}...`, true)
 
@@ -157,10 +188,17 @@ FireAndExpect("ServerToClientUnreliable", Server.ServerToClientUnreliableEvent, 
 InvokeAndExpect("RemoteFunction", Client.RemoteFunction, Server.RemoteFunction, 5, true)
 InvokeAndExpect("RemoteFunction_Fail", Client.RemoteFunction, Server.RemoteFunction, 5, false)
 
-local Sound = {
+local Instance = {
     __typeof = "Instance",
     IsA = function(self)
         return true
+    end
+}
+
+local InstanceNeverIsA = {
+    __typeof = "Instance",
+    IsA = function(self)
+        return false
     end
 }
 
@@ -175,8 +213,14 @@ local Example: Client.Example = {
 
 FireAndExpect("StructEvent", Server.StructEvent, Client.StructEvent, Example)
 
-FireAndExpect("ChantReliable", Server.Chant, Client.Chant, Sound)
-FireAndExpect("ChantUnreliable", Server.UnreliableChant, Client.UnreliableChant, Sound)
+FireAndExpect("ChantReliable", Server.Chant, Client.Chant, Instance)
+FireAndExpect("ChantUnreliable", Server.UnreliableChant, Client.UnreliableChant, Instance)
+
+FireAndExpect("Streamed", Server.StreamedInstance, Client.StreamedInstance, Instance)
+FireAndExpect("Not streamed", Server.StreamedInstance, Client.StreamedInstance, nil)
+
+FireAndFail("Invalid type", Server.SeverToClientEvent, Client.SeverToClientEvent, true)
+FireAndFail("Invalid instance class", Server.StreamedInstance, Client.StreamedInstance, InstanceNeverIsA)
 
 PrettyPrint("green", `All tests passed successfully!`)
 

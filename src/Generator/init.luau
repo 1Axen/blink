@@ -50,7 +50,7 @@ local AUTOMATIC_REPLICATION = {
 	}
 }
 
-local DEBUUG_GLOBALS = "local og_typeof = typeof\nlocal typeof = function(a: any)\n\tif type(a) == \"table\" then return a.__typeof or \"table\" end\n\treturn og_typeof(a)\nend\nlocal task = require(\"@lune/task\")\nlocal game = _G.%s.game\nlocal buffer = _G.%s.buffer\n\n"
+local DEBUUG_GLOBALS = "local og_typeof = typeof\nlocal typeof = function(a: any)\n\tif type(a) == \"table\" then return a.__typeof or \"table\" end\n\treturn og_typeof(a)\nend\nlocal task = require(\"@lune/task\")\nlocal game = _G.%s.game\n\n"
 
 local Types = Builder.new()
 local LuauTypes = Builder.new()
@@ -310,7 +310,7 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 			Write.Push("end", 1, StructTabs)
 		end
 
-		Type.Push(`}{Indent > 0 and "," or ""}`, Indent > 0 and 1 or 0, Indent)
+		Type.Push(`}{StructDeclaration.Value.Optional and "?" or ""}{Indent > 0 and "," or ""}`, Indent > 0 and 1 or 0, Indent)
 	end
 
 	BuildStructType(StructDeclaration, 1, 0, "Value")
@@ -347,10 +347,6 @@ local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: nu
 		if DataValue.Array then
 			Type = `\{{Type}\}`
 		end
-	
-		if DataValue.Optional then
-			Type = `({Type})?`
-		end
 	else
 		local Writer = Writers[Data.Type]
 		local DeclarationType, DeclarationRead, DeclarationWrite = Writer(Data)
@@ -362,12 +358,17 @@ local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: nu
 		Write.Push(DeclarationWrite, 0)
 	end
 
+	if DataValue.Optional then
+		Type = `({Type})?`
+	end
+
 	if Reference then
 		Read.PushFront(`local Value: {Type};`, 1, 1)
 		Read.Push(`return Value`, 1, 1)
 	end
 
 	--Read.PushFront(`local Value: {Type};`, 1, 1)
+	--LuauTypes.Push(`export type {Identifier} = {Type}`)
 	Types.Push(Writers.Type(Identifier, Type, Data.Value.Optional, Read.Dump(), Write.Dump(), Type, Reference ~= nil, (Invoking ~= nil) and "InvocationIdentifier: number" or nil), 0)
 	
 	return Type
@@ -394,6 +395,7 @@ function Writers.EventDeclaration(
 	--> Body generation
 	local Event = Builder.new(nil, Scope and 1 or 0)
 	local WritePath = `{GetTypesPath(Identifier, Scope, true)}(Value)`
+
 	Event.Push(`{Value.Identifier} = \{`, 1, 1)
 	
 	if Value.From ~= Context then
