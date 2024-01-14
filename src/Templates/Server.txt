@@ -37,7 +37,7 @@ local function StepReplication()
 
         local Buffer = buffer.create(Send.Cursor)
         buffer.copy(Buffer, 0, Send.Buffer, 0, Send.Cursor)
-        Reliable:FireClient(Player, Buffer)
+        Reliable:FireClient(Player, Buffer, Send.Instances)
 
         Send.Cursor = 0
         buffer.fill(Send.Buffer, 0, 0)

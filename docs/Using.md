@@ -28,7 +28,7 @@ When set to `true` automatic replication will be disabled and instead a `StepRep
 You can mark any type (`struct`, `enum`, `type`) as optional by appending `?` after it
 ## Primitives
 You can define a primitive using the `type` keyword  
-Supported primitives are `u8 u16 u32 i8 i16 i32 f32 f64 bool string vector buffer CFrame`  
+Supported primitives are `u8 u16 u32 i8 i16 i32 f32 f64 boolean string vector buffer CFrame`  
 Arrays can be defined by appending `[SIZE]` or `[[MIN]..[MAX]]` after the primitive type  
 Primitives can be constrained to ranges by writing `([MIN]..[MAX])` after the primitive type. Ranges are inclusive.  
 ```

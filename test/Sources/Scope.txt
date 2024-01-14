@@ -11,7 +11,7 @@ event MainScopeEvent = {
 
 scope ScopeExample = {
     type InScopeType = u8
-    type SecondInScopeType = bool
+    type SecondInScopeType = boolean
 
     event InScopeEvent = {
         From = Server,

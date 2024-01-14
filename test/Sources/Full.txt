@@ -7,7 +7,7 @@ option ManualReplication = false
 type Health = u8(0..100)
 type Array = u8[8]
 type ArrayVariant = u8[1..200]
-type Booleans = bool[8]?
+type Booleans = boolean[8]?
 type Username = string(3..20)?
 type UnitVector = vector(0..1)
 

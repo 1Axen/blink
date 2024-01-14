@@ -8,7 +8,7 @@ struct ExampleStruct = {
     ReferenceArray = Example[5]
 }
 
-struct Instance = {
+struct RBXInstance = {
     Name = string,
     ClassName = string,
     Position = vector,
@@ -22,6 +22,6 @@ event Event = {
     Call = SingleSync,
     Data = {
         Type = string,
-        Instances = Instance[0..65535]
+        Instances = RBXInstance[0..65535]
     }
 }

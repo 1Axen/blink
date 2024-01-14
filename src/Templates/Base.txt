@@ -8,7 +8,7 @@ local RecieveCursor = 0
 local RecieveBuffer = buffer.create(64)
 
 local RecieveInstances = {}
-local ReciveveInstanceCursor = 0
+local RecieveInstanceCursor = 0
 
 type BufferSave = {Cursor: number, Buffer: buffer, Instances: {Instance}}
 

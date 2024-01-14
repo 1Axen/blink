@@ -1,5 +1,6 @@
 --!native
 --!optimize 2
+--!strict
 
 local fs = require("@lune/fs")
 
@@ -22,20 +23,34 @@ local YIELD_BODY = {
 	"return Return"
 }
 local EVENT_BODY =
-	"\tRecieveCursor = 0\n\tRecieveBuffer = Buffer\n\tlocal Size = buffer.len(RecieveBuffer)\n\twhile RecieveCursor < Size do\n\t\tlocal Index = buffer.readu8(RecieveBuffer, Read(1))"
+	"\tRecieveCursor = 0\n\tRecieveBuffer = Buffer\n\tRecieveInstances = Instances\n\tRecieveInstanceCursor = 0\n\tlocal Size = buffer.len(RecieveBuffer)\n\twhile RecieveCursor < Size do\n\t\tlocal Index = buffer.readu8(RecieveBuffer, Read(1))"
 
 local SAVE_BODY = {
 	Header = "local Buffer, Size, Instances = SendBuffer, SendCursor, SendInstances",
 	Body = {
 		"Load(PlayersMap[Player])",
-		"Allocate(Size)",
-		"buffer.copy(SendBuffer, SendCursor, Buffer, 0, Size)",
+		"buffer.copy(SendBuffer, Allocate(Size), Buffer, 0, Size)",
 		"table.move(Instances, 1, #Instances, #SendInstances + 1, SendInstances)",
 		"PlayersMap[Player] = Save()"
 	}
 }
 
-local GLOBALS = "local task = require(\"@lune/task\")\nlocal game = _G.%s.game\nlocal buffer = _G.%s.buffer\n\n"
+local AUTOMATIC_REPLICATION = {
+	Server = {
+		"RunService.Heartbeat:Connect(StepReplication)"
+	},
+	Client = {
+		"local Elapsed = 0",
+		"RunService.Heartbeat:Connect(function(DeltaTime: number)",
+		"\tElapsed += DeltaTime",
+		"\tif Elapsed < (1 / 61) then return end",
+		"\tElapsed -= (1 / 61)",
+		"\tStepReplication()",
+		"end)",
+	}
+}
+
+local DEBUUG_GLOBALS = "local og_typeof = typeof\nlocal typeof = function(a: any)\n\tif type(a) == \"table\" then return a.__typeof or \"table\" end\n\treturn og_typeof(a)\nend\nlocal task = require(\"@lune/task\")\nlocal game = _G.%s.game\nlocal buffer = _G.%s.buffer\n\n"
 
 local Types = Builder.new()
 local LuauTypes = Builder.new()
@@ -128,11 +143,15 @@ function Writers.TypeDeclaration(
 	end
 
 	local Type = Primitive.Type
+	if type(Type) == "function" then
+		Type = Type(TypeDeclaration)
+	end
+
 	if Value.Array then
 		Type = `\{{Type}\}`
 	end
 
-	local Read, Write = Primitive.Generate(Value.Array, Value.Range, Variable)
+	local Read, Write = Primitive.Generate(TypeDeclaration, Variable)
 	if Value.Optional then
 		Read, Write = Writers.Optional(Read, Write, Variable or "Value")
 	end
@@ -186,7 +205,6 @@ function Writers.TypeReference(TypeReference: Parser.TypeReference, Tabs: number
 	local Value = TypeReference.Value
 
 	local Array = Value.Array
-	local Range = Value.Range
 	local Reference = Value.Reference
 	local ReferenceScope = Value.Scope
 
@@ -194,7 +212,7 @@ function Writers.TypeReference(TypeReference: Parser.TypeReference, Tabs: number
 	local ReadReference = GetTypesPath(Reference, ReferenceScope, false)
 	local WriteReference = GetTypesPath(Reference, ReferenceScope, true)
 
-	if Array and Range then
+	if Array then
 		Prefabs.Structures.Array(
 			Variable, 
 			{
@@ -202,7 +220,7 @@ function Writers.TypeReference(TypeReference: Parser.TypeReference, Tabs: number
 				Read = ReadReference, 
 				Write = WriteReference
 			},
-			Range, Read, Write, 1
+			Array, Read, Write, 1
 		)
 	else
 		Read.Push(`{Variable} = {ReadReference}()`, 1, Tabs)
@@ -255,10 +273,10 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 				Read.PushLines(string.split(DeclarationRead, "\n"), 0, Tabs - 1)
 				Write.PushLines(string.split(DeclarationWrite, "\n"), 0, Tabs - 1)
 			elseif Field.Type == "StructDeclaration" then
-				BuildStructType(Field, Tabs, Indent + 1, Variable)
+				BuildStructType(Field :: Parser.StructDeclaration, Tabs, Indent + 1, Variable)
 				continue
 			elseif Field.Type == "TypeReference" then
-				local TypeReference: Parser.TypeReference = Field
+				local TypeReference: Parser.TypeReference = Field :: Parser.TypeReference
 				FieldType = Writers.TypeReference(TypeReference, Tabs, Variable, Read, Write)
 
 				if FieldValue.Array then
@@ -407,7 +425,7 @@ function Writers.EventDeclaration(
             Event.Push(WritePath, 1, 3)
             Event.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
             Event.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
-            Event.Push(`Unreliable:FireClient(Player, Buffer)`, 1, 3)
+            Event.Push(`Unreliable:FireClient(Player, Buffer, SendInstances)`, 1, 3)
         end
         Event.Push(`end,`, 1, 2)
 
@@ -423,7 +441,7 @@ function Writers.EventDeclaration(
         else
             Event.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
             Event.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
-            Event.Push(`Unreliable:FireAllClients(Buffer)`, 1, 3)
+            Event.Push(`Unreliable:FireAllClients(Buffer, SendInstances)`, 1, 3)
         end
         Event.Push(`end,`, 1, 2)
 
@@ -440,7 +458,7 @@ function Writers.EventDeclaration(
             Event.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
             Event.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
             Event.Push(`for _, Player in List do`, 1, 3)
-			Event.Push(`Unreliable:FireClient(Player, Buffer)`, 1, 4)
+			Event.Push(`Unreliable:FireClient(Player, Buffer, SendInstances)`, 1, 4)
 			Event.Push(`end`, 1, 3)
         end
         Event.Push(`end,`, 1, 2)
@@ -460,7 +478,7 @@ function Writers.EventDeclaration(
             Event.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
             Event.Push(`for _, Player in Players:GetPlayers() do`, 1, 3)
 			Event.Push(`if Player == Except then continue end`, 1, 4)
-			Event.Push(`Unreliable:FireClient(Player, Buffer)`, 1, 4)
+			Event.Push(`Unreliable:FireClient(Player, Buffer, SendInstances)`, 1, 4)
 			Event.Push(`end`, 1, 3)
         end
         Event.Push(`end`, 1, 2)
@@ -474,7 +492,7 @@ function Writers.EventDeclaration(
             Event.Push(WritePath, 1, 3)
             Event.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
             Event.Push(`buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)`, 1, 3)
-            Event.Push(`Unreliable:FireServer(Buffer)`, 1, 3)
+            Event.Push(`Unreliable:FireServer(Buffer, SendInstances)`, 1, 3)
             Event.Push(`Load(Previous)`, 1, 3)
         end
         Event.Push(`end`, 1, 2)
@@ -662,7 +680,7 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 
 	--> Generate remote connections
 	local Signal = (Context == "Client" and "OnClientEvent" or "OnServerEvent")
-	local Arguments = (Context == "Server" and "Player: Player, " or "") .. "Buffer: buffer"
+	local Arguments = (Context == "Server" and "Player: Player, " or "") .. "Buffer: buffer, Instances: {Instance}"
 
 	ReliableEvents.Push(`Reliable.{Signal}:Connect(function({Arguments})`)
 	UnreliableEvents.Push(`Unreliable.{Signal}:Connect(function({Arguments})`)
@@ -671,10 +689,14 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 	UnreliableEvents.Push(EVENT_BODY)
 
 	--> Generate replication loop
-	local Replication = "\nRunService.Heartbeat:Connect(StepReplication)\n"
+	local Replication: string;
 	if Options.ManualReplication then
 		Replication = ""
 		Return.Push("StepReplication = StepReplication,", 1, 1)
+	else
+		local ReplicationBuilder = Builder.new()
+		ReplicationBuilder.PushLines(AUTOMATIC_REPLICATION[Context], 0, 0)
+		Replication = ReplicationBuilder.Dump()
 	end
 
 	--> Generate types & events/functions
@@ -698,7 +720,7 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 	--> Generate context source
 	local Source = Sources[Context]
 	return DIRECTIVES
-		.. (if not _G.BUNDLED then string.format(GLOBALS, string.lower(Context), string.lower(Context)) else "")
+		.. (if not _G.BUNDLED then string.format(DEBUUG_GLOBALS, string.lower(Context), string.lower(Context)) else "")
         .. Source[1]
 		.. Imports.Dump()
 		.. Sources.Base

@@ -6,7 +6,7 @@ local Error = require("./Modules/Error")
 export type Types = 
     "Comma" | "OpenBrackets" | "CloseBrackets" | "OpenCurlyBrackets" | "CloseCurlyBrackets" --> Structs & enums
     | "String" | "Boolean" | "Number"   --> Literals
-    | "Array" | "Range" | "Optional"    --> Attributes
+    | "Array" | "Range" | "Optional" | "Class"    --> Attributes
     | "Assign" | "Keyword" | "Primitive" | "Identifier" --> Reserved
     | "Unknown" 
 
@@ -38,7 +38,7 @@ local Primitives = {
     i32 = true,
     f32 = true,
     f64 = true,
-    bool = true,
+    boolean = true,
     string = true,
     vector = true,
     buffer = true,

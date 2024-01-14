@@ -19,7 +19,6 @@ function Builder.new(String: string?, BaseIndentation: number?): Builder
         end
 
         for Index, Line in Lines do
-            --print(#Indent, Line)
             String ..= Indent .. Line .. "\n"
         end
 

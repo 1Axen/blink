@@ -29,7 +29,7 @@ export type TypeReference = Node<"TypeReference", {
     Identifier: string,
     Reference: string,
     
-    Array: boolean,
+    Array: NumberRange?,
     Range: NumberRange?,
     Optional: boolean,
 }>
@@ -39,7 +39,8 @@ export type TypeDeclaration = Node<"TypeDeclaration", {
     Identifier: string,
     Primitive: string,
 
-    Array: boolean,
+    Class: string?,
+    Array: NumberRange?,
     Range: NumberRange?,
     Optional: boolean,
 }>
@@ -117,13 +118,8 @@ export type Parser = {
     FunctionDeclaration: (self: Parser, Identifier: Lexer.Token) -> FunctionDeclaration,
     ScopeDeclaration: (self: Parser, Identifier: Lexer.Token) -> ScopeDeclaration,
 
-    GetTypeAttributes: (self: Parser, Primitive: Lexer.Token?) -> (boolean, NumberRange?),
+    GetTypeAttributes: (self: Parser, Primitive: Lexer.Token?) -> (NumberRange?, NumberRange?),
     GetDeclarationFromToken: (self: Parser, Token: Lexer.Token, Identifier: Lexer.Token) -> Declaration,
-}
-
-local Attributes = {
-    Range = true,
-    Array = true
 }
 
 local RangePrimitives = {
@@ -387,16 +383,30 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
                 Scope = self.Scope,
                 Identifier = Identifier.Value,
                 Primitive = Primitive.Value,
-                Array = false,
                 Optional = false
             }
         }
+
+        if Primitive.Value == "Instance" then
+            local Class = "Instance"
+            LookAhead = self:GetSafeLookAhead()
+            
+            if LookAhead.Type == "Class" then
+                local ClassToken = self:Consume("Class")
+                Class = ClassToken.Value
+                Class = string.sub(Class, 2, #Class - 1)
+            end
+    
+            Declaration.Value.Class = Class
+        end
     end
 
-    --> Attempt to read type attributes [Primitive][Range/Array][Optional] [u8(0..1)?]
+
+    --> Attempt to read type attributes [Primitive][Range][Array][Optional] [u8(0..1)[10]?]
+    local Value = Declaration.Value
     local Array, Range = self:GetTypeAttributes(Primitive)
-    Declaration.Value.Array = Array
-    Declaration.Value.Range = Range
+    Value.Array = Array
+    Value.Range = Range
 
     return Declaration
 end
@@ -460,11 +470,7 @@ function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): Struct
         end
 
         local Declaration: Declaration = self:GetDeclarationFromToken(self:GetSafeLookAhead(), Key)
-        if self:GetSafeLookAhead().Type == "Optional" then
-            self:Consume("Optional")
-            Declaration.Value.Optional = true
-        end
-        
+
         Keys[Key.Value] = true
         table.insert(Fields, Declaration)
 
@@ -625,7 +631,6 @@ function Parser.ScopeDeclaration(self: Parser, Identifier: Lexer.Token): ScopeDe
     self.Scope = Scope
     self.Types[Scope] = Declaration
     self:Consume("OpenCurlyBrackets")
-    print(`Entered scope: {Scope}`)
 
     while (self.LookAhead) do
         if self.LookAhead.Type == "CloseCurlyBrackets" then
@@ -637,72 +642,82 @@ function Parser.ScopeDeclaration(self: Parser, Identifier: Lexer.Token): ScopeDe
     end 
 
     self.Scope = nil
-    print(`Left scope`)
 
     return Declaration
 end
 
-function Parser.GetTypeAttributes(self: Parser, Primitive: Lexer.Token?): (boolean, NumberRange?)
-    local LookAhead = self.LookAhead
-    if not LookAhead then 
-        return false
-    end
-
+function Parser.GetTypeAttributes(self: Parser, Primitive: Lexer.Token?): (NumberRange?, NumberRange?)
     local Array, Range;
-    local Type: Lexer.Types = LookAhead.Type
-
-    if not Attributes[Type] then
-        return false
-    end
-    
-    if Type == "Range" then
-        if not Primitive then
-            Error.ThrowTokenError(self.Source, LookAhead, `"References do not support ranges`)
-        elseif not RangePrimitives[Primitive.Value] then
-            Error.ThrowTokenError(self.Source, LookAhead, `"{Primitive.Value}" does not support ranges`)
+    for _, Expected in {"Range", "Array"} do
+        local LookAhead = self.LookAhead
+        if not LookAhead then 
+            break
         end
-    end
 
-    self:Consume(Type)
-    Array = (Type == "Array")
-    Range = GetAttributeRange(LookAhead, Array, self.Source)
+        local Type: Lexer.Types = LookAhead.Type
+        if Type ~= Expected then
+            continue
+        end
+        
+        if Type == "Range" then
+            if not Primitive then
+                Error.ThrowTokenError(self.Source, LookAhead, `"References do not support ranges`)
+            elseif not RangePrimitives[Primitive.Value] then
+                Error.ThrowTokenError(self.Source, LookAhead, `"{Primitive.Value}" does not support ranges`)
+            end
+
+            Range = GetAttributeRange(LookAhead, false, self.Source)
+        elseif Type == "Array" then
+            Array = GetAttributeRange(LookAhead, true, self.Source)
+        end
+
+        self:Consume(Type)
+    end
 
     return Array, Range
 end
 
 function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identifier: Lexer.Token): Declaration
+    local Declaration: Declaration;
     if Token.Type == "OpenCurlyBrackets" then
-        return self:StructDeclaration(Identifier)
+        Declaration = self:StructDeclaration(Identifier)
     elseif Token.Type == "OpenBrackets" then
-        return self:EnumDeclaration(Identifier)
+        Declaration = self:EnumDeclaration(Identifier)
     elseif Token.Type == "Primitive" then
-        return self:TypeDeclaration(Identifier)
+        Declaration = self:TypeDeclaration(Identifier)
     elseif Token.Type == "Identifier" then
         local Type = self:Consume("Identifier")
-        local Declaration = self.Types[Type.Value]
-        if not Declaration then
+        local ScopedIdentifier = `{self.Scope and `{self.Scope}.` or ""}{Type.Value}`
+        local Reference = self.Types[ScopedIdentifier] or self.Types[Type.Value]
+        if not Reference then
             Error.ThrowTokenError(self.Source, Type, "Unknown type referenced")
         end
 
         local Array, Range = self:GetTypeAttributes()
-        local Reference: TypeReference = {
+        Declaration = {
             Type = "TypeReference",
             Value = {
-                Scope = Declaration.Value.Scope,
+                Scope = Reference.Value.Scope,
                 Identifier = Identifier.Value,
-                Reference = Declaration.Value.Identifier,
+                Reference = Reference.Value.Identifier,
 
                 Array = Array,
                 Range = Range,
                 Optional = false
             }
         }
-        
-        return Reference
     end
 
-    Error.ThrowTokenError(self.Source, Token, "Unknown type referenced")
-    error("Never")
+    if not Declaration then
+        Error.ThrowTokenError(self.Source, Token, `Unknown type referenced: "{Token.Type}"`)
+    end
+
+    if self:GetSafeLookAhead().Type == "Optional" then
+        self:Consume("Optional")
+        Declaration.Value.Optional = true
+    end
+
+    return Declaration
 end
 
 return Parser

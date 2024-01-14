@@ -1,11 +1,12 @@
 --!native
 --!optimize 2
 
+local Parser = require("../Parser")
 local Builder = require("../Modules/Builder")
 
 type Reader = (Variable: string, Range: NumberRange?) -> string
 type Writer = (Value: string, Range: NumberRange?) -> string
-type Generate = (Array: boolean, Range: NumberRange?, Value: string?) -> (string, string)
+type Generate = (Declaration: Parser.TypeDeclaration, Value: string?) -> (string, string)
 
 type TypePrefab = {
 	Read: Reader,
@@ -18,7 +19,7 @@ type AssertPrefab = {
 	Exact: string?
 }
 
-type AssertGenerator = (Variable: string, Min: number, Max: number) -> AssertPrefab
+type AssertGenerator = ((Variable: string, Min: number, Max: number) -> AssertPrefab) & ((Variable: string, Class: string) -> AssertPrefab)
 
 local SEND_BUFFER = "SendBuffer"
 local RECIEVE_BUFFER = "RecieveBuffer"
@@ -50,35 +51,43 @@ local Types = {}
 local Asserts = {
 	number = function(Variable: string, Min: number, Max: number): AssertPrefab
 		return {
-			Lower = `if {Variable} < {Min} then error(\`Expected \\"{Variable}\\" to be larger than {Min}, got \{{Variable}}.\`) end`,
-			Upper = `if {Variable} > {Max} then error(\`Expected \\"{Variable}\\" to be smaller than {Max}, got \{{Variable}}.\`) end`,
-			Exact = `if {Variable} ~= {Max} then error(\`Expected \\"{Variable}\\" to be equal to {Max}, got \{{Variable}\}.\`)`
+			Lower = `if {Variable} < {Min} then error(\`Expected "{Variable}" to be larger than {Min}, got \{{Variable}} instead.\`) end`,
+			Upper = `if {Variable} > {Max} then error(\`Expected "{Variable}" to be smaller than {Max}, got \{{Variable}} instead.\`) end`,
+			Exact = `if {Variable} ~= {Max} then error(\`Expected "{Variable}" to be equal to {Max}, got \{{Variable}\} instead.\`)`
 		}
 	end,
 
 	string = function(Variable: string, Min: number, Max: number): AssertPrefab
 		return {
-			Lower = `if #{Variable} < {Min} then error(\`Expected length of \\"{Variable}\\" to be larger than {Min}, got \{#{Variable}}.\`) end`,
-			Upper = `if #{Variable} > {Max} then error(\`Expected length of \\"{Variable}\\" to be smaller than {Max}, got \{#{Variable}}.\`) end`,
-			Exact = `if #{Variable} ~= {Max} then error(\`Expected length of \\"{Variable}\\" to equal to {Max}, got \{#{Variable}}.\`) end`
+			Lower = `if #{Variable} < {Min} then error(\`Expected length of "{Variable}" to be larger than {Min}, got \{#{Variable}} instead.\`) end`,
+			Upper = `if #{Variable} > {Max} then error(\`Expected length of "{Variable}" to be smaller than {Max}, got \{#{Variable}} instead.\`) end`,
+			Exact = `if #{Variable} ~= {Max} then error(\`Expected length of "{Variable}" to equal to {Max}, got \{#{Variable}} instead.\`) end`
 		}
 	end,
 
 	vector = function(Variable: string, Min: number, Max: number): AssertPrefab
 		return {
-			Lower = `if {Variable}.Magnitude < {Min} then error(\`Expected magnitude of \\"{Variable}\\" to be larger than {Min}, got \{{Variable}.Magnitude}.\`) end`,
-			Upper = `if {Variable}.Magnitude > {Max} then error(\`Expected magnitude of \\"{Variable}\\" to be smaller than {Max}, got \{{Variable}.Magnitude}.\`) end`,
-			Exact = `if {Variable}.Magnitude ~= {Max} then error(\`Expected magnitude of \\"{Variable}\\" to equal to {Max}, got \{{Variable}.Magnitude}.\`) end`
+			Lower = `if {Variable}.Magnitude < {Min} then error(\`Expected magnitude of "{Variable}" to be larger than {Min}, got \{{Variable}.Magnitude} instead.\`) end`,
+			Upper = `if {Variable}.Magnitude > {Max} then error(\`Expected magnitude of "{Variable}" to be smaller than {Max}, got \{{Variable}.Magnitude} instead.\`) end`,
+			Exact = `if {Variable}.Magnitude ~= {Max} then error(\`Expected magnitude of "{Variable}" to equal to {Max}, got \{{Variable}.Magnitude} instead.\`) end`
 		}
 	end,
 
 	buffer = function(Variable: string, Min: number, Max: number): AssertPrefab
 		return {
-			Lower = `if buffer.len({Variable}) < {Min} then error(\`Expected size of \\"{Variable}\\" to be larger than {Min}, got \{buffer.len({Variable})}.\`) end`,
-			Upper = `if buffer.len({Variable}) > {Max} then error(\`Expected size of \\"{Variable}\\" to be smaller than {Max}, got \{buffer.len({Variable})}.\`) end`,
-			Exact = `if buffer.len({Variable}) ~= {Max} then error(\`Expected size of \\"{Variable}\\" to equal to {Max}, got \{buffer.len({Variable})}.\`) end`
+			Lower = `if buffer.len({Variable}) < {Min} then error(\`Expected size of "{Variable}" to be larger than {Min}, got \{buffer.len({Variable})} instead.\`) end`,
+			Upper = `if buffer.len({Variable}) > {Max} then error(\`Expected size of "{Variable}" to be smaller than {Max}, got \{buffer.len({Variable})} instead.\`) end`,
+			Exact = `if buffer.len({Variable}) ~= {Max} then error(\`Expected size of "{Variable}" to equal to {Max}, got \{buffer.len({Variable})} instead.\`) end`
 		}
 	end,
+
+	Instance = function(Variable: string, Class: string): AssertPrefab
+		return {
+			Lower = `error("Something has gone wrong")`,
+			Upper = `error("Something has gone wrong")`,
+			Exact = `if typeof({Variable}) ~= "Instance" then error(\`Expected an Instance, got \{typeof({Variable})} instead.\`) end\nif not {Variable}:IsA("{Class}") then error(\`Expected an Instance of type "{Class}", got "\{{Variable}.ClassName}" instead.\`) end`,
+		}
+	end
 }
 local Structures = {
 	Array = nil :: any
@@ -86,35 +95,48 @@ local Structures = {
 local Primitives = {}
 
 local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: AssertGenerator?): Generate
-	return function(Array: boolean, Range: NumberRange?, Variable: string?): (string, string)
+	return function(Declaration: Parser.TypeDeclaration, Variable: string?): (string, string)
 		local Read = Builder.new()
 		local Write = Builder.new()
+
+		local Value = Declaration.Value
 		local Variable = Variable or "Value"
+
+		local Range = Value.Range
+		local Array = Value.Array
+		local Class = Value.Class
+		local Primitive = Value.Primitive
+
+		local Tabs = (Array and 0 or 1)
+		local ReadVariable = (Array and "Item" or Variable)
 		local IsVariableSize = (Range and Range.Max ~= Range.Min)
 
-		if Array and Range then
+		Read.PushMultiline(Prefab.Read(Array and `local {ReadVariable}` or Variable, Range), 0, Tabs, true)
+		Write.PushMultiline(Prefab.Write(Array and `{Variable}[Index]` or Variable, Range), 0, Tabs, true)
+
+		if Range and AssertGenerator then
+			local Assert = AssertGenerator(ReadVariable, Range.Min, Range.Max)
+			if not IsVariableSize and Assert.Exact then
+				Read.Push(Assert.Exact, 1, Tabs)
+			else
+				Read.Push(Assert.Lower, 1, Tabs)
+				Read.Push(Assert.Upper, 1, Tabs)
+			end
+		elseif Primitive == "Instance" and AssertGenerator then
+			local Assert = AssertGenerator(ReadVariable, Class)
+			Read.PushMultiline(Assert.Exact, 0, Tabs)
+		end
+
+		if Array then
 			Structures.Array(
 				Variable, 
 				{
 					Type = "Inline",
-					Read = Prefab.Read("local Item"),
-					Write = Prefab.Write(`{Variable}[Index]`),
+					Read = Read.Dump(),
+					Write = Write.Dump(),
 				}, 
-				Range, Read, Write, 1
+				Array, Read, Write, 1
 			)
-		else
-			Read.PushMultiline(Prefab.Read(Variable, Range), 0, 1, true)
-			Write.PushMultiline(Prefab.Write(Variable, Range), 0, 1, true)
-
-			if Range and AssertGenerator then
-				local Assert = AssertGenerator(Variable, Range.Min, Range.Max)
-				if not IsVariableSize and Assert.Exact then
-					Read.Push(Assert.Exact, 1, 1)
-				else
-					Read.Push(Assert.Lower, 1, 1)
-					Read.Push(Assert.Upper, 1, 1)
-				end
-			end
 		end
 
 		--> TODO: Move to a dedicate test
@@ -219,7 +241,7 @@ end
 
 --> Boolean
 do
-	Types.bool = {
+	Types.boolean = {
 		Read = function(Variable: string): string
 			return `{Variable} = (buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})) == 1)`
 		end,
@@ -228,9 +250,9 @@ do
 		end
 	}
 	
-	Primitives.bool = {
+	Primitives.boolean = {
 		Type = "boolean",
-		Generate = GeneratePrimitivePrefab(Types.bool)
+		Generate = GeneratePrimitivePrefab(Types.boolean)
 	}
 end
 
@@ -358,6 +380,25 @@ do
 	Primitives.Color3 = {
 		Type = "Color3",
 		Generate = GeneratePrimitivePrefab(Types.Color3)
+	}
+end
+
+--> Instance
+do
+	Types.Instance = {
+		Read = function(Variable: string)
+			return `RecieveInstanceCursor += 1\n{Variable} = RecieveInstances[RecieveInstanceCursor]`
+		end,
+		Write = function(Value: string)
+			return `table.insert(SendInstances, {Value})`
+		end,
+	}
+
+	Primitives.Instance = {
+		Type = function(Declaration)
+			return Declaration.Value.Class
+		end,
+		Generate = GeneratePrimitivePrefab(Types.Instance, Asserts.Instance)
 	}
 end
 

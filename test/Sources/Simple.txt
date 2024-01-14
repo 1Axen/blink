@@ -7,6 +7,9 @@ type B = CFrame[10]
 type C = CFrame?
 type D = Color3
 
+type InstanceArray = Instance(Sound)[10]
+type ConstrainedArray = u8(0..10)[10]
+
 enum States = ( A, B, C, D )
 
 type Number = u8
@@ -18,6 +21,20 @@ struct Example = {
         Array = u8[10],
         OptionalArray = u8[2]?
     }
+}
+
+event Chant = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = Instance (Sound)
+}
+
+event UnreliableChant = {
+    From = Server,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = Instance (Sound)
 }
 
 event StructEvent = {

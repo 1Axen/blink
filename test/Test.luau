@@ -7,29 +7,22 @@ local Compiler = "init"
 local Sources = fs.readDir("./Sources")
 
 local function OkPrint(Message: string)
-    stdio.write("[")
-    stdio.write(stdio.color("green") .. "OK")
-    stdio.write(stdio.color("reset"))
-    stdio.write(`] {Message}\n`)
+    stdio.write(`\r[{stdio.color("green")}OK{stdio.color("reset")}] {Message}\n`)
 end
 
 local function ErrorPrint(Message: string)
-    stdio.write("[")
-    stdio.write(stdio.color("red") .. "ERROR")
-    stdio.write(stdio.color("reset"))
-    stdio.write(`] {Message}\n`)
+    stdio.write(`\r[{stdio.color("red")}ERROR{stdio.color("reset")}] {Message}\n`)
     process.exit(20)
 end
 
-local function PrettyPrint(Color: stdio.Color, Message: string)
-    stdio.write(stdio.color(Color))
-    stdio.write(`{Message}\n`)
-    stdio.write(stdio.color("reset"))
+local function PrettyPrint(Color: stdio.Color, Message: string, DontReturn: boolean?)
+    stdio.write(`{stdio.color(Color)}{Message}{not DontReturn and "\n" or ""}{stdio.color("reset")}`)
 end
 
 PrettyPrint("blue", "Compiling source files...")
 for _, File in Sources do
     local AbsolutePath = `C:/Users/User/Documents/GitHub/Blink/test/Sources/{File}`
+    PrettyPrint("cyan", `Compiling: {File}...`, true)
     local Result = process.spawn("lune", {Compiler, AbsolutePath}, {cwd = "C:/Users/User/Documents/GitHub/Blink/src/"})
     if not Result.ok then
         ErrorPrint(`{File} failed to compile!\n{Result.stderr}`)
@@ -90,6 +83,8 @@ function CompareTables(a, b)
 end
 
 local function FireAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: any, Expect: any)
+    PrettyPrint("cyan", `Testing event: {Name}...`, true)
+
     local Result: unknown;
     IncomingEvent.On(function(First, Second)
         Result = if (Second ~= nil) then Second else First
@@ -117,6 +112,8 @@ local function FireAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: an
 end
 
 local function InvokeAndExpect(Name: string, ClientFunction: any, ServerFunction: any, Data: any, Return: boolean?)
+    PrettyPrint("cyan", `Testing function: {Name}...`, true)
+
     local ServerRecieve: unknown;
     ServerFunction.On(function(Player, Recieve: any)
         ServerRecieve = Recieve
@@ -160,6 +157,13 @@ FireAndExpect("ServerToClientUnreliable", Server.ServerToClientUnreliableEvent, 
 InvokeAndExpect("RemoteFunction", Client.RemoteFunction, Server.RemoteFunction, 5, true)
 InvokeAndExpect("RemoteFunction_Fail", Client.RemoteFunction, Server.RemoteFunction, 5, false)
 
+local Sound = {
+    __typeof = "Instance",
+    IsA = function(self)
+        return true
+    end
+}
+
 local Example: Client.Example = {
     Field = 0,
     Enum = "A",
@@ -170,6 +174,9 @@ local Example: Client.Example = {
 }
 
 FireAndExpect("StructEvent", Server.StructEvent, Client.StructEvent, Example)
+
+FireAndExpect("ChantReliable", Server.Chant, Client.Chant, Sound)
+FireAndExpect("ChantUnreliable", Server.UnreliableChant, Client.UnreliableChant, Sound)
 
 PrettyPrint("green", `All tests passed successfully!`)
 
