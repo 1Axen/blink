@@ -1,0 +1,62 @@
+option ClientOutput = "../Network/Client.luau"
+option ServerOutput = "../Network/Server.luau"
+option ManualReplication = false
+
+type A = CFrame
+type B = CFrame[10]
+type C = CFrame?
+type D = Color3
+
+enum States = ( A, B, C, D )
+
+type Number = u8
+struct Example = {
+    Field = u8,
+    Enum = States,
+    Nested = {
+        Guh = u8,
+        Array = u8[10],
+        OptionalArray = u8[2]?
+    }
+}
+
+event StructEvent = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = Example  
+}
+
+event SeverToClientEvent = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = u8    
+}
+
+event ClientToServerEvent = {
+    From = Client,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = u8    
+}
+
+event ServerToClientUnreliableEvent = {
+    From = Server,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = u8    
+}
+
+event ClientToServerUnreliableEvent = {
+    From = Client,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = u8    
+}
+
+function RemoteFunction = {
+    Yield = Coroutine,
+    Data = u8,
+    Return = u8
+}

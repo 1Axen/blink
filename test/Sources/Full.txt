@@ -1,5 +1,5 @@
-option ClientOutput = "../Network/Client.luau"
-option ServerOutput = "../Network/Server.luau"
+option ClientOutput = "../Network/Client_Full.luau"
+option ServerOutput = "../Network/Server_Full.luau"
 option FutureLibrary = "ReplicatedStorage.Packages.Future"
 option PromiseLibrary = "ReplicatedStorage.Packages.Promise"
 option ManualReplication = false

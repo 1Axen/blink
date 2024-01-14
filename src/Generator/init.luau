@@ -24,6 +24,8 @@ local YIELD_BODY = {
 local EVENT_BODY =
 	"\tRecieveCursor = 0\n\tRecieveBuffer = Buffer\n\tlocal Size = buffer.len(RecieveBuffer)\n\twhile RecieveCursor < Size do\n\t\tlocal Index = buffer.readu8(RecieveBuffer, Read(1))"
 
+local GLOBALS = "local task = require(\"@lune/task\")\nlocal game = _G.%s.game\nlocal buffer = _G.%s.buffer\n\n"
+
 local Types = Builder.new()
 local LuauTypes = Builder.new()
 local Imports = Builder.new()
@@ -335,7 +337,7 @@ function Writers.EventDeclaration(
 	local Value = EventDeclaration.Value
 	local IsServer = (Context == "Server")
 	local IsReliable = (Value.Type == "Reliable")
-	local Arguments = (IsServer and "Player :: any, " or "")
+	local Arguments = (IsServer and "Player, " or "")
 
     local Channel = Channels[Value.Type]
 	local EventIndex = Channel.Count
@@ -371,7 +373,7 @@ function Writers.EventDeclaration(
 
 		local EventBuilder = (IsReliable and ReliableEvents or UnreliableEvents)
 		EventBuilder.Push(`{Channel.Listening and "elseif" or "if"} Index == {EventIndex} then`, 1, 2)
-		EventBuilder.Push(`local Value = {GetTypesPath(Identifier, Scope, false)}`, 1, 3)
+		EventBuilder.Push(`local Value = {GetTypesPath(Identifier, Scope, false)}()`, 1, 3)
 		EventBuilder.Push(`if {Events} then`, 1, 3)
 		EventBuilder.Push(`{Events}({Arguments}Value)`, 1, 4)
 		EventBuilder.Push("else", 1, 3)
@@ -508,7 +510,7 @@ function Writers.FunctionDeclaration(
 
 	if Context == "Server" then
 		Function.Push(`On = function(Callback: (Player, {DataType}) -> ({ReturnType}))`, 1, 2)
-		Function.Push(`assert({Events} == nil, "A function callback can only bet set once")`, 1, 3)
+		--Function.Push(`assert({Events} == nil, "A function callback can only bet set once")`, 1, 3)
 		Function.Push(`{Events} = function(Player: Player, Value: {DataType}, InvocationIdentifier: number)`, 1, 3)
 
 		Function.Push(`local Success, Return = pcall(function() return Callback(Player, Value) end)`, 1, 4)
@@ -536,7 +538,7 @@ function Writers.FunctionDeclaration(
 
 		ReliableEvents.Push(`{Channel.Listening and "elseif" or "if"} Index == {FunctionIndex} then`, 1, 2)
 		ReliableEvents.Push(`local {TypePrefabs.u8.Read("InvocationIdentifier")}`, 1, 3)
-		ReliableEvents.Push(`local Value = {GetTypesPath(ReturnIdentifier, Scope, false)}()`, 1, 3)
+		ReliableEvents.Push(`local Value = {GetTypesPath(DataIdentifier, Scope, false)}()`, 1, 3)
 		ReliableEvents.Push(`if {Events} then`, 1, 3)
 		ReliableEvents.Push(`{Events}(Player, Value, InvocationIdentifier)`, 1, 4)
 		ReliableEvents.Push(`else`, 1, 3)
@@ -680,6 +682,7 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 	--> Generate context source
 	local Source = Sources[Context]
 	return DIRECTIVES
+		.. (if not _G.BUNDLED then string.format(GLOBALS, string.lower(Context), string.lower(Context)) else "")
         .. Source[1]
 		.. Imports.Dump()
 		.. Sources.Base

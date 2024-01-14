@@ -1,5 +1,5 @@
-option ClientOutput = "../Network/Client.luau"
-option ServerOutput = "../Network/Server.luau"
+option ClientOutput = "../Network/Client_Reference.luau"
+option ServerOutput = "../Network/Server_Reference.luau"
 
 type Example = string
 type ArrayExample = Example[1]
