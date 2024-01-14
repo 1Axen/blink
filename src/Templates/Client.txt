@@ -20,4 +20,5 @@ local function StepReplication()
 
     SendCursor = 0
     buffer.fill(SendBuffer, 0, 0)
+    table.clear(SendInstances)
 end

@@ -24,6 +24,17 @@ local YIELD_BODY = {
 local EVENT_BODY =
 	"\tRecieveCursor = 0\n\tRecieveBuffer = Buffer\n\tlocal Size = buffer.len(RecieveBuffer)\n\twhile RecieveCursor < Size do\n\t\tlocal Index = buffer.readu8(RecieveBuffer, Read(1))"
 
+local SAVE_BODY = {
+	Header = "local Buffer, Size, Instances = SendBuffer, SendCursor, SendInstances",
+	Body = {
+		"Load(PlayersMap[Player])",
+		"Allocate(Size)",
+		"buffer.copy(SendBuffer, SendCursor, Buffer, 0, Size)",
+		"table.move(Instances, 1, #Instances, #SendInstances + 1, SendInstances)",
+		"PlayersMap[Player] = Save()"
+	}
+}
+
 local GLOBALS = "local task = require(\"@lune/task\")\nlocal game = _G.%s.game\nlocal buffer = _G.%s.buffer\n\n"
 
 local Types = Builder.new()
@@ -337,7 +348,9 @@ function Writers.EventDeclaration(
 	local Value = EventDeclaration.Value
 	local IsServer = (Context == "Server")
 	local IsReliable = (Value.Type == "Reliable")
+
 	local Arguments = (IsServer and "Player, " or "")
+	local CallbackArguments = (IsServer and "Player :: any, " or "")
 
     local Channel = Channels[Value.Type]
 	local EventIndex = Channel.Count
@@ -375,10 +388,10 @@ function Writers.EventDeclaration(
 		EventBuilder.Push(`{Channel.Listening and "elseif" or "if"} Index == {EventIndex} then`, 1, 2)
 		EventBuilder.Push(`local Value = {GetTypesPath(Identifier, Scope, false)}()`, 1, 3)
 		EventBuilder.Push(`if {Events} then`, 1, 3)
-		EventBuilder.Push(`{Events}({Arguments}Value)`, 1, 4)
+		EventBuilder.Push(`{Events}({CallbackArguments}Value)`, 1, 4)
 		EventBuilder.Push("else", 1, 3)
 		EventBuilder.Push(`if #{Queue} > 256 then warn("[Blink]: Event queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement a listener?") end`, 1, 4)
-		EventBuilder.Push(`table.insert({Queue}, \{{Arguments}Value\})`, 1, 4)
+		EventBuilder.Push(`table.insert({Queue}, \{{CallbackArguments}Value\})`, 1, 4)
 		EventBuilder.Push("end", 1, 3)
 
 		Channel.Listening = true
@@ -403,8 +416,9 @@ function Writers.EventDeclaration(
 		Event.Push(`Load()`, 1, 3)
 		Event.Push(WritePath, 1, 3)
         if IsReliable then
+			Event.Push(SAVE_BODY.Header, 1, 3)
             Event.Push(`for _, Player in Players:GetPlayers() do`, 1, 3)
-			Event.Push(`PlayersMap[Player] = Save()`, 1, 4)
+			Event.PushLines(SAVE_BODY.Body, 0, 4)
 			Event.Push(`end`, 1, 3)
         else
             Event.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
@@ -418,8 +432,9 @@ function Writers.EventDeclaration(
 		Event.Push(`Load()`, 1, 3)
 		Event.Push(WritePath, 1, 3)
         if IsReliable then
+			Event.Push(SAVE_BODY.Header, 1, 3)
             Event.Push(`for _, Player in List do`, 1, 3)
-			Event.Push(`PlayersMap[Player] = Save()`, 1, 4)
+			Event.PushLines(SAVE_BODY.Body, 0, 4)
 			Event.Push(`end`, 1, 3)
         else
             Event.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)
@@ -435,9 +450,10 @@ function Writers.EventDeclaration(
 		Event.Push(`Load()`, 1, 3)
 		Event.Push(WritePath, 1, 3)
         if IsReliable then
+			Event.Push(SAVE_BODY.Header, 1, 3)
             Event.Push(`for _, Player in Players:GetPlayers() do`, 1, 3)
 			Event.Push(`if Player == Except then continue end`, 1, 4)
-            Event.Push(`PlayersMap[Player] = Save()`, 1, 4)
+            Event.PushLines(SAVE_BODY.Body, 0, 4)
             Event.Push(`end`, 1, 3)
         else
             Event.Push(`local Buffer = buffer.create(SendCursor)`, 1, 3)

@@ -44,6 +44,7 @@ local Primitives = {
     buffer = true,
     Color3 = true,
     CFrame = true,
+    Instance = true,
 }
 
 local Keywords = {
@@ -75,6 +76,7 @@ local Matches = {
 
     --> Attribute patterns
     {"^?", "Optional"},
+    {`^%(%a+%)`, "Class"},
     {`^%({Number}%)`, "Range"},
     {`^%({Number}..{Number}%)`, "Range"},
     {`^%[{Number}]`, "Array"},

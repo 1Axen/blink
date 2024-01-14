@@ -2,11 +2,15 @@ local Invocations = 0
 
 local SendCursor = 0
 local SendBuffer = buffer.create(64)
+local SendInstances = {}
 
 local RecieveCursor = 0
 local RecieveBuffer = buffer.create(64)
 
-type BufferSave = {Cursor: number, Buffer: buffer}
+local RecieveInstances = {}
+local ReciveveInstanceCursor = 0
+
+type BufferSave = {Cursor: number, Buffer: buffer, Instances: {Instance}}
 
 local function Read(Bytes: number)
     local Offset = RecieveCursor
@@ -18,6 +22,7 @@ local function Save(): BufferSave
     return {
         Cursor = SendCursor,
         Buffer = SendBuffer,
+        Instances = SendInstances
     }
 end
 
@@ -25,11 +30,13 @@ local function Load(Save: BufferSave?)
     if Save then
         SendCursor = Save.Cursor
         SendBuffer = Save.Buffer
+        SendInstances = Save.Instances
         return
     end
 
     SendCursor = 0
     SendBuffer = buffer.create(64)
+    SendInstances = {}
 end
 
 local function Invoke()

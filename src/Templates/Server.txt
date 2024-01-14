@@ -23,13 +23,10 @@ if not Unreliable then
 end
 
 -- SPLIT --
-local PlayersMap: {[Player]: {Cursor: number, Buffer: buffer}} = {}
+local PlayersMap: {[Player]: BufferSave} = {}
 
 Players.PlayerRemoving:Connect(function(Player)
-    PlayersMap[Player] = {
-        Cursor = 0,
-        Buffer = buffer.create(64)
-    }
+    PlayersMap[Player] = nil
 end)
 
 local function StepReplication()
@@ -44,5 +41,6 @@ local function StepReplication()
 
         Send.Cursor = 0
         buffer.fill(Send.Buffer, 0, 0)
+        table.clear(Send.Instances)
     end
 end
