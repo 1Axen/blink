@@ -61,7 +61,14 @@ struct Entity = {
 ## Maps
 Coming soon!
 ## Instances
-Coming whenever ROBLOX gives us access to instance ids.
+Instances are another type of Primitive and as such they can be defined using the `type` keyword  
+```
+type Example = Instance
+type Example = Instance (ClassName) -- You can also specify instance class
+```
+**WARNING**
+If a non optional instance results in nil on the recieving side it will result in an error, this may be caused by various things like streaming, players leaving etc.  
+In order to get around this you must mark instances as **optional**.
 ## Events
 You can define events using the `event` keyword  
 Events have 4 fields which must be defined in the **correct order**: 
