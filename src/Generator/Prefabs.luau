@@ -105,14 +105,16 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 		local Range = Value.Range
 		local Array = Value.Array
 		local Class = Value.Class
+		local Optional = Value.Optional
 		local Primitive = Value.Primitive
 
 		local Tabs = (Array and 0 or 1)
 		local ReadVariable = (Array and "Item" or Variable)
+		local WriteVariable = (Array and `{Variable}[Index]` or Variable)
 		local IsVariableSize = (Range and Range.Max ~= Range.Min)
 
 		Read.PushMultiline(Prefab.Read(Array and `local {ReadVariable}` or Variable, Range), 0, Tabs, true)
-		Write.PushMultiline(Prefab.Write(Array and `{Variable}[Index]` or Variable, Range), 0, Tabs, true)
+		Write.PushMultiline(Prefab.Write(WriteVariable, Range), 0, Tabs, true)
 
 		if Range and AssertGenerator then
 			local Assert = AssertGenerator(ReadVariable, Range.Min, Range.Max)

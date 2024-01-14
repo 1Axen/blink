@@ -116,18 +116,32 @@ function Writers.Type(Identifier: string, Type: string, Optional: boolean, Read:
 	return Result.Dump()
 end
 
-function Writers.Optional(ReadBody: string, WriteBody: string, Variable: string): (string, string)
+function Writers.Optional(ReadBody: string, WriteBody: string, Variable: string, Instance: boolean?): (string, string)
 	local Read = Builder.new()
 	local Write = Builder.new()
 
-	Read.Push(OPTIONAL, 1, 1)
-	Read.PushMultiline(ReadBody, 0, 1)
-	Read.Push("end", 1, 1)
+	if Instance then
+		local ReadLines = string.split(ReadBody, "\n")
+		table.remove(ReadLines, 1)
 
-	Write.Push(Prefabs.Types.u8.Write(`({Variable} ~= nil) and 1 or 0`), 1, 1)
-	Write.Push(`if {Variable} ~= nil then`, 1, 1)
-	Write.PushMultiline(WriteBody, 0, 1)
-	Write.Push("end", 1, 1)
+		Read.Push("RecieveInstanceCursor += 1", 1, 1)
+		Read.Push(`if RecieveInstances[RecieveInstanceCursor] then`, 1, 1)
+		Read.PushLines(ReadLines, 0, 1)
+		Read.Push("else", 1, 1)
+		Read.Push(`{Variable} = nil`, 1, 2)
+		Read.Push("end", 1, 1)
+
+		Write.Push(`table.insert(SendInstances, {Variable} or false :: any)`, 1, 1)
+	else
+		Read.Push(OPTIONAL, 1, 1)
+		Read.PushMultiline(ReadBody, 0, 1)
+		Read.Push("end", 1, 1)
+
+		Write.Push(Prefabs.Types.u8.Write(`({Variable} ~= nil) and 1 or 0`), 1, 1)
+		Write.Push(`if {Variable} ~= nil then`, 1, 1)
+		Write.PushMultiline(WriteBody, 0, 1)
+		Write.Push("end", 1, 1)
+	end
 
 	return Read.Dump(), Write.Dump()
 end
@@ -153,7 +167,7 @@ function Writers.TypeDeclaration(
 
 	local Read, Write = Primitive.Generate(TypeDeclaration, Variable)
 	if Value.Optional then
-		Read, Write = Writers.Optional(Read, Write, Variable or "Value")
+		Read, Write = Writers.Optional(Read, Write, Variable or "Value", Value.Primitive == "Instance")
 	end
 
 	return Type, Read, Write
@@ -296,7 +310,7 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 			Write.Push("end", 1, StructTabs)
 		end
 
-		Type.Push("}", Indent > 0 and 1 or 0, Indent)
+		Type.Push(`}{Indent > 0 and "," or ""}`, Indent > 0 and 1 or 0, Indent)
 	end
 
 	BuildStructType(StructDeclaration, 1, 0, "Value")
