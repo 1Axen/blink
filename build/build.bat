@@ -1,5 +1,4 @@
 @echo Off
-SET VERSION = "0.4.0"
 SET WINRAR="C:\Program Files\WinRAR\Rar.exe"
 
 echo Clearing release folder
@@ -23,6 +22,6 @@ echo f | xcopy "./init.luau" "../Blink/init.luau" /f /v /s
 echo Zipping files
 %WINRAR% a "../release/bytecode.rar" "../Blink/*"
 
-echo y | rmdir "../Blink" /s
+rmdir /s/q "../Blink" 
 
 pause
