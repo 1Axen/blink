@@ -72,6 +72,20 @@ event ClientToServerUnreliableEvent = {
     Data = u8    
 }
 
+event QueueReliable = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = u8    
+}
+
+event QueueUnreliable = {
+    From = Server,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = u8    
+}
+
 event StreamedInstance = {
     From = Server,
     Type = Unreliable,

@@ -82,8 +82,15 @@ function CompareTables(a, b)
     return true
 end
 
+local function CompareValues(a, b): boolean
+    if type(a) == "table" or type(b) == "table" then
+        return CompareTables(a, b)
+    end
+    return (a == b)
+end
+
 local function FireAndFail(Name: string, OutgoingEvent: any, IncomingEvent: any, Data: any)
-    PrettyPrint("cyan", `Testing event: {Name}...`, true)
+    PrettyPrint("cyan", `Testing: {Name}...`, true)
 
     local Result: unknown;
     IncomingEvent.On(function(First, Second)
@@ -110,11 +117,11 @@ local function FireAndFail(Name: string, OutgoingEvent: any, IncomingEvent: any,
         ErrorPrint(`Fired "{Name}" and expected it to fail, got "{Result}" instead.`)
     end
 
-    OkPrint(`Event "{Name}" passed!`)
+    OkPrint(`Test "{Name}" passed!`)
 end
 
 local function FireAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: any, Expect: any)
-    PrettyPrint("cyan", `Testing event: {Name}...`, true)
+    PrettyPrint("cyan", `Testing: {Name}...`, true)
 
     local Result: unknown;
     IncomingEvent.On(function(First, Second)
@@ -130,20 +137,15 @@ local function FireAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: an
     --> Wait for replication
     task.wait(1 / 30)
 
-    local AreEqual = (Result == Expect)
-    if type(Expect) == "table" then
-        AreEqual = CompareTables(Expect, Result)
-    end
-
-    if not AreEqual then
+    if not CompareValues(Result, Expect) then
         ErrorPrint(`Fired "{Name}" and expected to recieve: {Expect}, got "{Result}" instead.`)
     end
 
-    OkPrint(`Event "{Name}" passed!`)
+    OkPrint(`Test "{Name}" passed!`)
 end
 
 local function InvokeAndExpect(Name: string, ClientFunction: any, ServerFunction: any, Data: any, Return: boolean?)
-    PrettyPrint("cyan", `Testing function: {Name}...`, true)
+    PrettyPrint("cyan", `Testing: {Name}...`, true)
 
     local ServerRecieve: unknown;
     ServerFunction.On(function(Player, Recieve: any)
@@ -168,12 +170,39 @@ local function InvokeAndExpect(Name: string, ClientFunction: any, ServerFunction
             ErrorPrint(`Expected server {Name} to recieve {Data}, got {ServerRecieve} instead.`)
         end
     
-        if Result ~= Data then
+        if not CompareValues(Result, Data) then
             ErrorPrint(`Expected client {Name} to recieve {Data}, got {Result} instead.`)
         end
     end
 
-    OkPrint(`Function "{Name}" passed!`)
+    OkPrint(`Test "{Name}" passed!`)
+end
+
+local function QueueAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: any, Expect: any)
+    PrettyPrint("cyan", `Testing: {Name}...`, true)
+
+    local Result: unknown;
+    if OutgoingEvent.FireAll then
+        OutgoingEvent.FireAll(Expect)
+    else
+        OutgoingEvent.Fire(Expect)
+    end
+
+    --> Let it sit in queue
+    task.wait(0.5)
+
+    IncomingEvent.On(function(First, Second)
+        Result = if (Second ~= nil) then Second else First
+    end)
+
+    --> Wait for queue to empty
+    task.wait(1 / 30)
+
+    if not CompareValues(Result, Expect) then
+        ErrorPrint(`Fired "{Name}" with queue and expected to recieve: {Expect}, got "{Result}" instead.`)
+    end
+
+    OkPrint(`Test "{Name}" passed!`)
 end
 
 --> Tests
@@ -221,6 +250,9 @@ FireAndExpect("Not streamed", Server.StreamedInstance, Client.StreamedInstance, 
 
 FireAndFail("Invalid type", Server.SeverToClientEvent, Client.SeverToClientEvent, true)
 FireAndFail("Invalid instance class", Server.StreamedInstance, Client.StreamedInstance, InstanceNeverIsA)
+
+QueueAndExpect("Reliable Queue", Server.QueueReliable, Client.QueueReliable, 1)
+QueueAndExpect("Unreliable Queue", Server.QueueUnreliable, Client.QueueUnreliable, 1)
 
 PrettyPrint("green", `All tests passed successfully!`)
 
