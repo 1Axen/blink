@@ -22,13 +22,13 @@ end
 PrettyPrint("blue", "Compiling source files...")
 for _, File in Sources do
     local AbsolutePath = `C:/Users/User/Documents/GitHub/Blink/test/Sources/{File}`
-    --[[PrettyPrint("cyan", `Compiling: {File}...`, true)
+    PrettyPrint("cyan", `Compiling: {File}...`, true)
     local Result = process.spawn("lune", {"run", Compiler, AbsolutePath}, {cwd = "C:/Users/User/Documents/GitHub/Blink/src/"})
     if not Result.ok then
         ErrorPrint(`{File} failed to compile!\n{Result.stderr}`)
     else
         OkPrint(`{File} compiled successfully.`)
-    end]]
+    end
 end
 
 PrettyPrint("green", `Successfully compiled {#Sources}/{#Sources} source files!`)
@@ -207,18 +207,21 @@ local function QueueAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: a
     OkPrint(`Test "{Name}" passed!`)
 end
 
-local function FireAndExpectAll(Name: string, OutgoingEvent: any, IncomingEvent: any, ...: any)
+local function FireAndExpectAll(Name: string, OutgoingEvent: any, IncomingEvent: any, Values: {any})
     PrettyPrint("cyan", `Testing: {Name}...`, true)
 
-    local Values = {...}
+    local Index = 0
     local Results: {unknown} = {}
     local Disconnect = IncomingEvent.On(function(First, Second)
-        table.insert(Results, if Second ~= nil then Second else First)
+        local Value = (if Second ~= nil then Second else First)
+
+        Index += 1
+        Results[Index] = Value
     end)
 
     local Method = OutgoingEvent.FireAll or OutgoingEvent.Fire
-    for _, Value in Values do
-        Method(Value)
+    for Index = 1, table.maxn(Values) do
+        Method(Values[Index])
     end
     
     --> Wait for replication
@@ -249,6 +252,7 @@ local Instance = setmetatable({
 
 local InstanceNeverIsA = setmetatable({
     __typeof = "Instance",
+    ClassName = "Never",
     IsA = function(self)
         return false
     end
@@ -294,14 +298,14 @@ FireAndExpect("Referency Optional (nil)", Server.ReferenceOptional, Client.Refer
 InvokeAndExpect("Remote Function", Client.RemoteFunction, Server.RemoteFunction, 1, true)
 InvokeAndExpect("Remote Function (error)", Client.RemoteFunction, Server.RemoteFunction, 1, false)
 
-QueueAndExpect("Reliable Queue", Server.ReliableServer, Client.ReliableClient, 1)
-QueueAndExpect("Unreliable Queue", Server.UnreliableServer, Client.UnreliableClient, 1)
+QueueAndExpect("Reliable Queue", Server.ReliableServer, Client.ReliableServer, 1)
+QueueAndExpect("Unreliable Queue", Server.UnreliableServer, Client.UnreliableServer, 1)
 
 FireAndFail("Invalid Instance Any", Server.InstanceAny, Client.InstanceAny, true)
 FireAndFail("Invalid Instance Type", Server.InstanceOfType, Client.InstanceOfType, InstanceNeverIsA)
 
-FireAndExpectAll("Correct order", Server.ReliableServer, Client.ReliableServer, 1, 2, 3, 4)
-FireAndExpectAll("Multiple instances (nil and non nil)", Server.InstanceOptional, Client.InstanceOptional, false, Instance, false, Instance, Instance)
+FireAndExpectAll("Correct order", Server.ReliableServer, Client.ReliableServer, {1, 2, 3, 4})
+FireAndExpectAll("Multiple instances (nil and non nil)", Server.InstanceOptional, Client.InstanceOptional, {nil, Instance, nil, Instance, Instance})
 
 PrettyPrint("green", `All tests passed successfully!`)
 

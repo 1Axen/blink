@@ -67,42 +67,42 @@ event UnreliableClient = {
 
 event InstanceAny = {
     From = Server,
-    Type = Unreliable,
+    Type = Reliable,
     Call = SingleSync,
     Data = Instance
 }
 
 event InstanceOfType = {
     From = Server,
-    Type = Unreliable,
+    Type = Reliable,
     Call = SingleSync,
     Data = Instance(Sound)
 }
 
 event InstanceOptional = {
     From = Server,
-    Type = Unreliable,
+    Type = Reliable,
     Call = SingleSync,
     Data = Instance?
 }
 
 event Reference = {
     From = Server,
-    Type = Unreliable,
+    Type = Reliable,
     Call = SingleSync,
     Data = Example?
 }
 
 event ReferenceArray = {
     From = Server,
-    Type = Unreliable,
+    Type = Reliable,
     Call = SingleSync,
     Data = Example[8]
 }
 
 event ReferenceOptional = {
     From = Server,
-    Type = Unreliable,
+    Type = Reliable,
     Call = SingleSync,
     Data = Example?
 }

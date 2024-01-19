@@ -8,6 +8,4 @@
 /release
 /Network
 /Blink
-test/Client.luau
-test/Server.luau
 test/Sources/Game.txt

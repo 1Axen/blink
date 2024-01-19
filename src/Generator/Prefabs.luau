@@ -23,6 +23,7 @@ type AssertGenerator = ((Variable: string, Min: number, Max: number) -> AssertPr
 
 local SEND_BUFFER = "SendBuffer"
 local RECIEVE_BUFFER = "RecieveBuffer"
+local SEND_POSITION = "SendOffset"
 
 local BYTE = 1
 local SHORT = 2
@@ -178,7 +179,10 @@ for Index, Size in Numbers do
 			return `{Variable} = buffer.read{Index}({RECIEVE_BUFFER}, Read({Size}))`
 		end,
 		Write = function(Value: string): string
-			return `buffer.write{Index}({SEND_BUFFER}, Allocate({Size}), {Value})`
+			local Write = Builder.new()
+			Write.Push(`Allocate({Size})`)
+			Write.Push(`buffer.write{Index}({SEND_BUFFER}, {SEND_POSITION}, {Value})`, 0)
+			return Write.Dump()
 		end
 	}
 	Primitives[Index] = {
@@ -243,7 +247,10 @@ do
 			return `{Variable} = (buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})) == 1)`
 		end,
 		Write = function(Value: string): string
-			return `buffer.writeu8({SEND_BUFFER}, Allocate({BYTE}), {Value} and 1 or 0)`
+			local Write = Builder.new()
+			Write.Push(`Allocate({BYTE})`)
+			Write.Push(`buffer.writeu8({SEND_BUFFER}, {SEND_POSITION}, {Value} and 1 or 0)`, 0)
+			return Write.Dump()
 		end
 	}
 	
@@ -265,11 +272,19 @@ do
 			return `{Types.u16.Read("local Length")}\n{Variable} = buffer.readstring({RECIEVE_BUFFER}, Read(Length), Length)`
 		end,
 		Write = function(Value: string, Range: NumberRange?): string
+			local Write = Builder.new()
+
 			if Range and Range.Min == Range.Max then
-				return `buffer.writestring({SEND_BUFFER}, Allocate({Range.Min}), {Value}, {Range.Min})`
+				Write.Push(`Allocate({Range.Min})`)
+				Write.Push(`buffer.writestring({SEND_BUFFER}, {SEND_POSITION}, {Value}, {Range.Min})`, 0)
+			else
+				Write.Push(`local Length = #{Value}`)
+				Write.Push(Types.u16.Write("Length"))
+				Write.Push(`Allocate(Length)`)
+				Write.Push(`buffer.writestring({SEND_BUFFER}, {SEND_POSITION}, {Value}, Length)`, 0)
 			end
 			
-			return `local Length = #{Value}\n{Types.u16.Write("Length")}\nbuffer.writestring({SEND_BUFFER}, Allocate(Length), {Value}, Length)`
+			return Write.Dump()
 		end
 	}
 	
@@ -286,7 +301,13 @@ do
 			return `{Variable} = Vector3.new(buffer.readf32({RECIEVE_BUFFER}, Read({FLOAT})), buffer.readf32({RECIEVE_BUFFER}, Read({FLOAT})), buffer.readf32({RECIEVE_BUFFER}, Read({FLOAT})))`
 		end,
 		Write = function(Value: string)
-			return `local Vector = {Value}\nbuffer.writef32({SEND_BUFFER}, Allocate({FLOAT}), Vector.X)\nbuffer.writef32({SEND_BUFFER}, Allocate({FLOAT}), Vector.Y)\nbuffer.writef32({SEND_BUFFER}, Allocate({FLOAT}), Vector.Z)`
+			local Write = Builder.new()
+			Write.Push(`Allocate({FLOAT * 3})`)
+			Write.Push(`local Vector = {Value}`)
+			Write.Push(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION}, Vector.X)`)
+			Write.Push(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION} + {FLOAT}, Vector.Y)`)
+			Write.Push(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION} + {FLOAT * 2}, Vector.Z)`, 0)
+			return Write.Dump()
 		end
 	}
 	
@@ -322,7 +343,8 @@ do
 				Write.Push(`{Types.u16.Write("Length")}`, 1, 1)
 			end
 			
-			Write.Push(`buffer.copy({SEND_BUFFER}, Allocate(Length), {Value}, 0, Length)`, 0, 1)
+			Write.Push(`Allocate(Length)`, 0, 1)
+			Write.Push(`buffer.copy({SEND_BUFFER}, {SEND_POSITION}, {Value}, 0, Length)`, 0, 1)
 			
 			return Write.Dump()
 		end
@@ -370,7 +392,13 @@ do
 			return `{Variable} = Color3.new(buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})), buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})), buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})))`
 		end,
 		Write = function(Value: string)
-			return `local Color = {Value}\nbuffer.writeu8({SEND_BUFFER}, Allocate({BYTE}), Color.R * 8)\nbuffer.writeu8({SEND_BUFFER}, Allocate({BYTE}), Color.G * 8)\nbuffer.writeu8({SEND_BUFFER}, Allocate({BYTE}), Color.B * 8)`
+			local Write = Builder.new()
+			Write.Push(`Allocate({FLOAT * 3})`)
+			Write.Push(`local Color = {Value}`)
+			Write.Push(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION}, Color.R * 8)`)
+			Write.Push(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION} + {FLOAT}, Color.G * 8)`)
+			Write.Push(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION} + {FLOAT * 2}, Color.B * 8)`, 0)
+			return Write.Dump()
 		end
 	}
 	

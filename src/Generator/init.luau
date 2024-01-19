@@ -31,7 +31,8 @@ local SAVE_BODY = {
 	Header = "local Buffer, Size, Instances = SendBuffer, SendCursor, SendInstances",
 	Body = {
 		"Load(PlayersMap[Player])",
-		"buffer.copy(SendBuffer, Allocate(Size), Buffer, 0, Size)",
+		"local Position = Allocate(Size)",
+		"buffer.copy(SendBuffer, Position, Buffer, 0, Size)",
 		"table.move(Instances, 1, #Instances, #SendInstances + 1, SendInstances)",
 		"PlayersMap[Player] = Save()"
 	}
@@ -139,7 +140,7 @@ function Writers.Optional(ReadBody: string, WriteBody: string, Variable: string,
 		Read.PushMultiline(ReadBody, 0, 1)
 		Read.Push("end", 1, 1)
 
-		Write.Push(Prefabs.Types.u8.Write(`({Variable} ~= nil) and 1 or 0`), 1, 1)
+		Write.PushMultiline(Prefabs.Types.u8.Write(`({Variable} ~= nil) and 1 or 0`), 0, 1)
 		Write.Push(`if {Variable} ~= nil then`, 1, 1)
 		Write.PushMultiline(WriteBody, 0, 1)
 		Write.Push("end", 1, 1)
@@ -339,13 +340,13 @@ local function WriteBody(Identifier: string, Data: Parser.Declaration, Index: nu
 
 	local Type, Reference
 	local DataValue = Data.Value
-	Write.Push(TypePrefabs.u8.Write(Index), 1, 1)
+	Write.PushMultiline(TypePrefabs.u8.Write(Index), 0, 1)
 	
 	if Invoking ~= nil then
-		Write.Push(TypePrefabs.u8.Write("InvocationIdentifier"), 1, 1)
+		Write.PushMultiline(TypePrefabs.u8.Write("InvocationIdentifier"), 0, 1)
 		
 		if not Invoking then
-			Write.Push(TypePrefabs.u8.Write("1"), 1, 1)
+			Write.PushMultiline(TypePrefabs.u8.Write("1"), 0, 1)
 
 			Read.Push(`local {TypePrefabs.u8.Read("Success")} == 1`, 1, 1)
 			Read.Push(`if not Success then`, 1, 1)
@@ -586,9 +587,9 @@ function Writers.FunctionDeclaration(
 
 		Function.Push(`Load(PlayersMap[Player])`, 1, 4)
 		Function.Push(`if not Success then`, 1, 4)
-		Function.Push(`buffer.writeu8(SendBuffer, Allocate(1), {FunctionIndex})`, 1, 5)
-		Function.Push(`buffer.writeu8(SendBuffer, Allocate(1), InvocationIdentifier)`, 1, 5)
-		Function.Push(`buffer.writeu8(SendBuffer, Allocate(1), 0)`, 1, 5)
+		Function.PushMultiline(TypePrefabs.u8.Write(FunctionIndex), 0, 5)
+		Function.PushMultiline(TypePrefabs.u8.Write("InvocationIdentifier"), 0, 5)
+		Function.PushMultiline(TypePrefabs.u8.Write(0), 0, 5)
 		Function.Push(`warn(\`"{Value.Identifier}" encountered an error, \{Return\}\`)`, 1, 5)
 		Function.Push(`else`, 1, 4)
 		Function.Push(`{GetTypesPath(ReturnIdentifier, Scope, true)}(Return, InvocationIdentifier)`, 1, 5)
@@ -607,7 +608,7 @@ function Writers.FunctionDeclaration(
 		Function.Push(`end`, 1, 2)
 
 		ReliableEvents.Push(`{Channel.Listening and "elseif" or "if"} Index == {FunctionIndex} then`, 1, 2)
-		ReliableEvents.Push(`local {TypePrefabs.u8.Read("InvocationIdentifier")}`, 1, 3)
+		ReliableEvents.PushMultiline(`local {TypePrefabs.u8.Read("InvocationIdentifier")}`, 0, 3)
 		ReliableEvents.Push(`local Value = {GetTypesPath(DataIdentifier, Scope, false)}()`, 1, 3)
 		ReliableEvents.Push(`if {Events} then`, 1, 3)
 		ReliableEvents.Push(`{Events}(Player, Value, InvocationIdentifier)`, 1, 4)
@@ -641,7 +642,7 @@ function Writers.FunctionDeclaration(
 		Function.Push(`end`, 1, 2)
 
 		ReliableEvents.Push(`{Channel.Listening and "elseif" or "if"} Index == {FunctionIndex} then`, 1, 2)
-		ReliableEvents.Push(`local {TypePrefabs.u8.Read("InvocationIdentifier")}`, 1, 3)
+		ReliableEvents.PushMultiline(`local {TypePrefabs.u8.Read("InvocationIdentifier")}`, 0, 3)
 		ReliableEvents.Push(`if Calls[InvocationIdentifier] then`, 1, 3)
 		ReliableEvents.Push(`local Success, Value = pcall(function() return {GetTypesPath(ReturnIdentifier, Scope, false)}() end)`, 1, 4)
 		ReliableEvents.Push(`task.spawn(Calls[InvocationIdentifier], Success, Value)`, 1, 4)

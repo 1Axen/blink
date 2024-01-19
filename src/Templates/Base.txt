@@ -1,5 +1,6 @@
 local Invocations = 0
 
+local SendOffset = 0
 local SendCursor = 0
 local SendBuffer = buffer.create(64)
 local SendInstances = {}
@@ -29,12 +30,14 @@ end
 local function Load(Save: BufferSave?)
     if Save then
         SendCursor = Save.Cursor
+        SendOffset = Save.Cursor
         SendBuffer = Save.Buffer
         SendInstances = Save.Instances
         return
     end
 
     SendCursor = 0
+    SendOffset = 0
     SendBuffer = buffer.create(64)
     SendInstances = {}
 end
@@ -66,10 +69,10 @@ local function Allocate(Bytes: number)
         SendBuffer = Buffer
     end
 
-    local Offset = SendCursor
+    SendOffset = SendCursor
     SendCursor += Bytes
     
-    return Offset
+    return SendOffset
 end
 
 local Types = {}
