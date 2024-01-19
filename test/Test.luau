@@ -93,7 +93,7 @@ local function FireAndFail(Name: string, OutgoingEvent: any, IncomingEvent: any,
     PrettyPrint("cyan", `Testing: {Name}...`, true)
 
     local Result: unknown;
-    IncomingEvent.On(function(First, Second)
+    local Disconnect = IncomingEvent.On(function(First, Second)
         Result = if (Second ~= nil) then Second else First
     end)
 
@@ -117,6 +117,7 @@ local function FireAndFail(Name: string, OutgoingEvent: any, IncomingEvent: any,
         ErrorPrint(`Fired "{Name}" and expected it to fail, got "{Result}" instead.`)
     end
 
+    Disconnect()
     OkPrint(`Test "{Name}" passed!`)
 end
 
@@ -124,7 +125,7 @@ local function FireAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: an
     PrettyPrint("cyan", `Testing: {Name}...`, true)
 
     local Result: unknown;
-    IncomingEvent.On(function(First, Second)
+    local Disconnect = IncomingEvent.On(function(First, Second)
         Result = if (Second ~= nil) then Second else First
     end)
 
@@ -141,6 +142,7 @@ local function FireAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: an
         ErrorPrint(`Fired "{Name}" and expected to recieve: {Expect}, got "{Result}" instead.`)
     end
 
+    Disconnect()
     OkPrint(`Test "{Name}" passed!`)
 end
 
@@ -191,7 +193,7 @@ local function QueueAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: a
     --> Let it sit in queue
     task.wait(0.5)
 
-    IncomingEvent.On(function(First, Second)
+    local Disconnect = IncomingEvent.On(function(First, Second)
         Result = if (Second ~= nil) then Second else First
     end)
 
@@ -202,6 +204,7 @@ local function QueueAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: a
         ErrorPrint(`Fired "{Name}" with queue and expected to recieve: {Expect}, got "{Result}" instead.`)
     end
 
+    Disconnect()
     OkPrint(`Test "{Name}" passed!`)
 end
 
@@ -255,6 +258,7 @@ QueueAndExpect("Reliable Queue", Server.QueueReliable, Client.QueueReliable, 1)
 QueueAndExpect("Unreliable Queue", Server.QueueUnreliable, Client.QueueUnreliable, 1)
 
 FireAndExpect("Optional reference to be nil", Server.OptionalReference, Client.OptionalReference, nil)
+FireAndExpect("Optional reference to be value", Server.OptionalReference, Client.OptionalReference, Example)
 
 PrettyPrint("green", `All tests passed successfully!`)
 
