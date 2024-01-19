@@ -63,6 +63,7 @@ local function Allocate(Bytes: number)
 
         local Buffer = buffer.create(Size)
         buffer.copy(Buffer, 0, SendBuffer, 0, Len)
+        SendBuffer = Buffer
     end
 
     local Offset = SendCursor

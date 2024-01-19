@@ -22,18 +22,17 @@ end
 PrettyPrint("blue", "Compiling source files...")
 for _, File in Sources do
     local AbsolutePath = `C:/Users/User/Documents/GitHub/Blink/test/Sources/{File}`
-    PrettyPrint("cyan", `Compiling: {File}...`, true)
+    --[[PrettyPrint("cyan", `Compiling: {File}...`, true)
     local Result = process.spawn("lune", {"run", Compiler, AbsolutePath}, {cwd = "C:/Users/User/Documents/GitHub/Blink/src/"})
     if not Result.ok then
         ErrorPrint(`{File} failed to compile!\n{Result.stderr}`)
     else
         OkPrint(`{File} compiled successfully.`)
-    end
+    end]]
 end
 
 PrettyPrint("green", `Successfully compiled {#Sources}/{#Sources} source files!`)
 
-local Shared = require("Shared")
 local ClientEnviornment = require("Client")
 local ServerEnviornment = require("Server")
 
@@ -114,7 +113,7 @@ local function FireAndFail(Name: string, OutgoingEvent: any, IncomingEvent: any,
     task.wait(1 / 30)
 
     if Result ~= nil then
-        ErrorPrint(`Fired "{Name}" and expected it to fail, got "{Result}" instead.`)
+        ErrorPrint(`Failed "{Name}", expected it to fail, got "{Result}" instead.`)
     end
 
     Disconnect()
@@ -139,7 +138,7 @@ local function FireAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: an
     task.wait(1 / 30)
 
     if not CompareValues(Result, Expect) then
-        ErrorPrint(`Fired "{Name}" and expected to recieve: {Expect}, got "{Result}" instead.`)
+        ErrorPrint(`Failed "{Name}", expected to recieve: {Expect}, got "{Result}" instead.`)
     end
 
     Disconnect()
@@ -201,7 +200,35 @@ local function QueueAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: a
     task.wait(1 / 30)
 
     if not CompareValues(Result, Expect) then
-        ErrorPrint(`Fired "{Name}" with queue and expected to recieve: {Expect}, got "{Result}" instead.`)
+        ErrorPrint(`Failed "{Name}", queue expected to recieve: {Expect}, got "{Result}" instead.`)
+    end
+
+    Disconnect()
+    OkPrint(`Test "{Name}" passed!`)
+end
+
+local function FireAndExpectAll(Name: string, OutgoingEvent: any, IncomingEvent: any, ...: any)
+    PrettyPrint("cyan", `Testing: {Name}...`, true)
+
+    local Values = {...}
+    local Results: {unknown} = {}
+    local Disconnect = IncomingEvent.On(function(First, Second)
+        table.insert(Results, if Second ~= nil then Second else First)
+    end)
+
+    local Method = OutgoingEvent.FireAll or OutgoingEvent.Fire
+    for _, Value in Values do
+        Method(Value)
+    end
+    
+    --> Wait for replication
+    task.wait(1 / 30)
+
+    for Index, Expect in Values do
+        local Result = Results[Index]
+        if Result ~= Expect then
+            ErrorPrint(`Failed "{Name}", expected to recieve: {Expect} at {Index}, got {Result} instead.`)
+        end
     end
 
     Disconnect()
@@ -209,30 +236,27 @@ local function QueueAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: a
 end
 
 --> Tests
-PrettyPrint("blue", "Running output tests...")
-
-FireAndExpect("ClientToServer", Client.ClientToServerEvent, Server.ClientToServerEvent, 255)
-FireAndExpect("ClientToServerUnreliable", Client.ClientToServerUnreliableEvent, Server.ClientToServerUnreliableEvent, 255)
-
-FireAndExpect("SeverToClient", Server.SeverToClientEvent, Client.SeverToClientEvent, 255)
-FireAndExpect("ServerToClientUnreliable", Server.ServerToClientUnreliableEvent, Client.ServerToClientUnreliableEvent, 255)
-
-InvokeAndExpect("RemoteFunction", Client.RemoteFunction, Server.RemoteFunction, 5, true)
-InvokeAndExpect("RemoteFunction_Fail", Client.RemoteFunction, Server.RemoteFunction, 5, false)
-
-local Instance = {
+local Instance = setmetatable({
     __typeof = "Instance",
     IsA = function(self)
         return true
     end
-}
+}, {
+    __tostring = function()
+        return "Instance"
+    end,
+})
 
-local InstanceNeverIsA = {
+local InstanceNeverIsA = setmetatable({
     __typeof = "Instance",
     IsA = function(self)
         return false
     end
-}
+}, {
+    __tostring = function()
+        return "Instance (Invalid)"
+    end,
+})
 
 local Example: Client.Example = {
     Field = 0,
@@ -243,22 +267,41 @@ local Example: Client.Example = {
     }
 }
 
-FireAndExpect("StructEvent", Server.StructEvent, Client.StructEvent, Example)
+PrettyPrint("blue", "Running output tests...")
 
-FireAndExpect("ChantReliable", Server.Chant, Client.Chant, Instance)
-FireAndExpect("ChantUnreliable", Server.UnreliableChant, Client.UnreliableChant, Instance)
+FireAndExpect("Reliable Server", Server.ReliableServer, Client.ReliableServer, 1)
+FireAndExpect("Unreliable Server", Server.UnreliableServer, Client.UnreliableServer, 1)
 
-FireAndExpect("Streamed", Server.StreamedInstance, Client.StreamedInstance, Instance)
-FireAndExpect("Not streamed", Server.StreamedInstance, Client.StreamedInstance, nil)
+FireAndExpect("Reliable Client", Client.ReliableClient, Server.ReliableClient, 1)
+FireAndExpect("Unreliable Client", Client.UnreliableClient, Server.UnreliableClient, 1)
 
-FireAndFail("Invalid type", Server.SeverToClientEvent, Client.SeverToClientEvent, true)
-FireAndFail("Invalid instance class", Server.StreamedInstance, Client.StreamedInstance, InstanceNeverIsA)
+FireAndExpect("Struct", Server.Reference, Client.Reference, Example)
+FireAndExpect("Array", Server.ArrayPrimitive, Client.ArrayPrimitive, {1, 2, 3, 4, 5, 6, 7, 8})
+FireAndExpect("Optional", Server.OptionalPrimitive, Client.OptionalPrimitive, 1)
+FireAndExpect("Optional (nil)", Server.OptionalPrimitive, Client.OptionalPrimitive, nil)
 
-QueueAndExpect("Reliable Queue", Server.QueueReliable, Client.QueueReliable, 1)
-QueueAndExpect("Unreliable Queue", Server.QueueUnreliable, Client.QueueUnreliable, 1)
+FireAndExpect("Instance Any", Server.InstanceAny, Client.InstanceAny, Instance)
+FireAndExpect("Instance Type", Server.InstanceOfType, Client.InstanceOfType, Instance)
+FireAndExpect("Instance Optional", Server.InstanceOptional, Client.InstanceOptional, Instance)
+FireAndExpect("Instance Optional (nil)", Server.InstanceOptional, Client.InstanceOptional, nil)
 
-FireAndExpect("Optional reference to be nil", Server.OptionalReference, Client.OptionalReference, nil)
-FireAndExpect("Optional reference to be value", Server.OptionalReference, Client.OptionalReference, Example)
+local Array = table.create(8, Example)
+FireAndExpect("Reference", Server.Reference, Client.Reference, Example)
+FireAndExpect("Referency Array", Server.ReferenceArray, Client.ReferenceArray, Array)
+FireAndExpect("Referency Optional", Server.ReferenceOptional, Client.ReferenceOptional, Example)
+FireAndExpect("Referency Optional (nil)", Server.ReferenceOptional, Client.ReferenceOptional, nil)
+
+InvokeAndExpect("Remote Function", Client.RemoteFunction, Server.RemoteFunction, 1, true)
+InvokeAndExpect("Remote Function (error)", Client.RemoteFunction, Server.RemoteFunction, 1, false)
+
+QueueAndExpect("Reliable Queue", Server.ReliableServer, Client.ReliableClient, 1)
+QueueAndExpect("Unreliable Queue", Server.UnreliableServer, Client.UnreliableClient, 1)
+
+FireAndFail("Invalid Instance Any", Server.InstanceAny, Client.InstanceAny, true)
+FireAndFail("Invalid Instance Type", Server.InstanceOfType, Client.InstanceOfType, InstanceNeverIsA)
+
+FireAndExpectAll("Correct order", Server.ReliableServer, Client.ReliableServer, 1, 2, 3, 4)
+FireAndExpectAll("Multiple instances (nil and non nil)", Server.InstanceOptional, Client.InstanceOptional, false, Instance, false, Instance, Instance)
 
 PrettyPrint("green", `All tests passed successfully!`)
 

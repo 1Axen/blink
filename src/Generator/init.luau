@@ -589,6 +589,7 @@ function Writers.FunctionDeclaration(
 		Function.Push(`buffer.writeu8(SendBuffer, Allocate(1), {FunctionIndex})`, 1, 5)
 		Function.Push(`buffer.writeu8(SendBuffer, Allocate(1), InvocationIdentifier)`, 1, 5)
 		Function.Push(`buffer.writeu8(SendBuffer, Allocate(1), 0)`, 1, 5)
+		Function.Push(`warn(\`"{Value.Identifier}" encountered an error, \{Return\}\`)`, 1, 5)
 		Function.Push(`else`, 1, 4)
 		Function.Push(`{GetTypesPath(ReturnIdentifier, Scope, true)}(Return, InvocationIdentifier)`, 1, 5)
 		Function.Push(`end`, 1, 4)

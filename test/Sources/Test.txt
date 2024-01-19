@@ -23,81 +23,88 @@ struct Example = {
     }
 }
 
-event OptionalReference = {
-    From = Server,
-    Type = Reliable,
-    Call = SingleSync,
-    Data = Example?
-}
-
-event Chant = {
-    From = Server,
-    Type = Reliable,
-    Call = SingleSync,
-    Data = Instance (Sound)
-}
-
-event UnreliableChant = {
+event ArrayPrimitive = {
     From = Server,
     Type = Unreliable,
     Call = SingleSync,
-    Data = Instance (Sound)
+    Data = u8[8]
 }
 
-event StructEvent = {
+event OptionalPrimitive = {
+    From = Server,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = u8?
+}
+
+event ReliableServer = {
     From = Server,
     Type = Reliable,
     Call = SingleSync,
-    Data = Example  
+    Data = u8
 }
 
-event SeverToClientEvent = {
-    From = Server,
-    Type = Reliable,
-    Call = SingleSync,
-    Data = u8    
-}
-
-event ClientToServerEvent = {
+event ReliableClient = {
     From = Client,
     Type = Reliable,
     Call = SingleSync,
-    Data = u8    
+    Data = u8
 }
 
-event ServerToClientUnreliableEvent = {
+event UnreliableServer = {
     From = Server,
     Type = Unreliable,
     Call = SingleSync,
-    Data = u8    
+    Data = u8
 }
 
-event ClientToServerUnreliableEvent = {
+event UnreliableClient = {
     From = Client,
     Type = Unreliable,
     Call = SingleSync,
-    Data = u8    
+    Data = u8
 }
 
-event QueueReliable = {
-    From = Server,
-    Type = Reliable,
-    Call = SingleSync,
-    Data = u8    
-}
-
-event QueueUnreliable = {
+event InstanceAny = {
     From = Server,
     Type = Unreliable,
     Call = SingleSync,
-    Data = u8    
+    Data = Instance
 }
 
-event StreamedInstance = {
+event InstanceOfType = {
+    From = Server,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = Instance(Sound)
+}
+
+event InstanceOptional = {
     From = Server,
     Type = Unreliable,
     Call = SingleSync,
     Data = Instance?
+}
+
+event Reference = {
+    From = Server,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = Example?
+}
+
+event ReferenceArray = {
+    From = Server,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = Example[8]
+}
+
+event ReferenceOptional = {
+    From = Server,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = Example?
 }
 
 function RemoteFunction = {

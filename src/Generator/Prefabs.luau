@@ -199,13 +199,8 @@ Structures.Array = function(Variable: string, Body: {Type: "Inline" | "Reference
 		Read.Push(Types.u16.Read("local Length"), 1, Tabs)
 		local Assert = Asserts.number("Length", Lower, Upper)
 
-		if IsVariableSize then
-			Read.Push(Assert.Lower, 1, Tabs)
-			Read.Push(Assert.Upper, 1, Tabs)
-		else
-			Read.Push(Assert.Exact, 1, Tabs)
-		end
-
+		Read.Push(Assert.Lower, 1, Tabs)
+		Read.Push(Assert.Upper, 1, Tabs)
 		Write.Push(Types.u16.Write(`#{Variable}`, Upper), 1, Tabs)
 	else
 		Read.Push(`local Length = {Upper}`, 1, Tabs)
