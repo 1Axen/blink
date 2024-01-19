@@ -23,6 +23,13 @@ struct Example = {
     }
 }
 
+event OptionalReference = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = Example?
+}
+
 event Chant = {
     From = Server,
     Type = Reliable,

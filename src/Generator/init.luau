@@ -217,7 +217,7 @@ function Writers.EnumDeclaration(
 	return Type, Read, Write
 end
 
-function Writers.TypeReference(TypeReference: Parser.TypeReference, Tabs: number, Variable: string, Read: Builder.Builder, Write: Builder.Builder): string
+function Writers.TypeReference(TypeReference: Parser.TypeReference, Tabs: number, Variable: string, BodyRead: Builder.Builder, BodyWrite: Builder.Builder): string
 	local Value = TypeReference.Value
 
 	local Array = Value.Array
@@ -227,6 +227,9 @@ function Writers.TypeReference(TypeReference: Parser.TypeReference, Tabs: number
 	local Prefix = ReferenceScope and `{ReferenceScope}_` or ""
 	local ReadReference = GetTypesPath(Reference, ReferenceScope, false)
 	local WriteReference = GetTypesPath(Reference, ReferenceScope, true)
+
+	local Read = Builder.new()
+	local Write = Builder.new()
 
 	if Array then
 		Prefabs.Structures.Array(
@@ -242,6 +245,16 @@ function Writers.TypeReference(TypeReference: Parser.TypeReference, Tabs: number
 		Read.Push(`{Variable} = {ReadReference}()`, 1, Tabs)
 		Write.Push(`{WriteReference}({Variable})`, 1, Tabs)
 	end
+
+	local ReadBody = Read.Dump()
+	local WriteBody = Write.Dump()
+
+	if Value.Optional then
+		ReadBody, WriteBody = Writers.Optional(ReadBody, WriteBody, Variable or "Value")
+	end
+
+	BodyRead.PushMultiline(ReadBody, 0, 0)
+	BodyWrite.PushMultiline(WriteBody, 0, 0)
 
 	return `{Prefix}{Reference}`
 end
@@ -408,7 +421,7 @@ function Writers.EventDeclaration(
 		--> Allocate queue table at require time instead of creating one at runtime
 		Types.PushFront(`{Queue} = table.create(256)`)
 
-		Event.Push(`On = function(Listener: ({Arguments}{Type}) -> ())`, 1, 2)
+		Event.Push(`On = function(Listener: ({Arguments}{Type}) -> ()): () -> ()`, 1, 2)
 		Event.Push(`{Events} = Listener`, 1, 3)
 		Event.Push(`task.spawn(function()`, 1, 3)
 		Event.Push(`local EventQueue = {Queue} or \{\}`, 1, 4)
@@ -418,6 +431,10 @@ function Writers.EventDeclaration(
 		Event.Push(`Listener(table.unpack(Arguments))`, 1, 5)
 		Event.Push(`end`, 1, 4)
 		Event.Push(`end)`, 1, 3)
+		Event.Push(`return function()`, 1, 3)
+		Event.Push(`{Queue} = \{\}`, 1, 4)
+		Event.Push(`{Events} = nil`, 1, 4)
+		Event.Push(`end`, 1, 3)
 		Event.Push(`end`, 1, 2)
 
 		local EventBuilder = (IsReliable and ReliableEvents or UnreliableEvents)

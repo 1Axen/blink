@@ -254,6 +254,8 @@ FireAndFail("Invalid instance class", Server.StreamedInstance, Client.StreamedIn
 QueueAndExpect("Reliable Queue", Server.QueueReliable, Client.QueueReliable, 1)
 QueueAndExpect("Unreliable Queue", Server.QueueUnreliable, Client.QueueUnreliable, 1)
 
+FireAndExpect("Optional reference to be nil", Server.OptionalReference, Client.OptionalReference, nil)
+
 PrettyPrint("green", `All tests passed successfully!`)
 
 process.exit(0)
