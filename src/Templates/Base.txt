@@ -61,7 +61,7 @@ local function Allocate(Bytes: number)
     if InUse > Size then
         --> Avoid resizing the buffer for every write
         while InUse > Size do
-            Size *= 2
+            Size *= 1.5
         end
 
         local Buffer = buffer.create(Size)
