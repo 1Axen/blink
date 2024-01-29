@@ -235,12 +235,57 @@ local function FireAndExpectAll(Name: string, OutgoingEvent: any, IncomingEvent:
 
     for Index, Expect in Values do
         local Result = Results[Index]
-        if Result ~= Expect then
+        if not CompareValues(Expect, Result) then
             ErrorPrint(`Failed "{Name}", expected to recieve: {Expect} at {Index}, got {Result} instead.`)
         end
     end
 
     Disconnect()
+    OkPrint(`Test "{Name}" passed!`)
+end
+
+local function FireAllAndExpectAll(Name: string, Times: number, Events: {[string]: {Outgoing: any, Incoming: any, Data: {any}}})
+    PrettyPrint("cyan", `Testing: {Name}...`, true)
+
+    local Results: {{unknown}} = {}
+    local Disconnects: {() -> ()} = {}
+
+    --> Connect to events
+    for Index, Event in Events do
+        local EventResults = {}
+        Results[Index] = EventResults
+        table.insert(Disconnects, Event.Incoming.On(function(...)
+            table.insert(EventResults, {...})
+        end))
+    end
+
+    --> Fire events
+    for Index, Event in Events do
+        local Outgoing = Event.Outgoing
+        local Method = Outgoing.FireAll or Outgoing.Fire
+        for Index = 1, Times do
+            Method(table.unpack(Event.Data))
+        end
+    end
+
+    --> Wait for replication
+    task.wait(1 / 30)
+
+    for Index, Event in Events do
+        local Data = Event.Data
+        local EventResults = Results[Index]
+        for ResultIndex = 1, Times do
+            local Result = EventResults[ResultIndex]
+            if not CompareValues(Data, Result) then
+                ErrorPrint(`Failed "{Name}" at {Index}, mismatched value at {ResultIndex}.`)
+            end
+        end
+    end
+
+    for _, Disconnect in Disconnects do
+        Disconnect()
+    end
+
     OkPrint(`Test "{Name}" passed!`)
 end
 
@@ -369,9 +414,40 @@ FireAndFail("Invalid Instance Type", Server.InstanceOfType, Client.InstanceOfTyp
 FireAndExpectAll("Correct order", Server.ReliableServer, Client.ReliableServer, {1, 2, 3, 4})
 FireAndExpectAll("Multiple instances (nil and non nil)", Server.InstanceOptional, Client.InstanceOptional, {nil, Instance, nil, Instance, Instance})
 
+FireAndExpectAll("Many primitive", Server.ReliableServer, Client.ReliableServer, table.create(255, 1))
+FireAndExpectAll("Many structs", Server.Reference, Client.Reference, table.create(255, Example))
+
 FireAndExpectTuple("Reliable Tuple", Server.Tuple, Client.Tuple, 255, "A", 65535, Instance, Instance, table.create(8, 0))
 FireAndExpectTuple("Unreliable Tuple", Server.TupleUnreliable, Client.TupleUnreliable, 255, "A", 65535, Instance, Instance)
 InvokeAndExpectTuple("Function Tuple", Client.TupleFunction, Server.TupleFunction, {255, "A", 65535, Instance, Instance}, {Instance, Instance, 65535, "A", 255})
+
+FireAllAndExpectAll("Many events", 32, {
+    Reliable = {
+        Data = {0},
+        Outgoing = Server.ReliableServer,
+        Incoming = Client.ReliableServer
+    },
+    Unreliable = {
+        Data = {0},
+        Outgoing = Server.UnreliableServer,
+        Incoming = Client.UnreliableServer
+    },
+    Reference = {
+        Data = {Example},
+        Outgoing = Server.Reference,
+        Incoming = Client.Reference
+    },
+    ReliableTuple = {
+        Data = {255, "A", 65535, Instance, Instance, table.create(8, 0)},
+        Outgoing = Server.Tuple,
+        Incoming = Client.Tuple
+    },
+    UnreliableTuple = {
+        Data = {255, "A", 65535, Instance, Instance},
+        Outgoing = Server.TupleUnreliable,
+        Incoming = Client.TupleUnreliable
+    }
+})
 
 PrettyPrint("green", `All tests passed successfully!`)
 
