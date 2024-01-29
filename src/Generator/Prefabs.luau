@@ -86,7 +86,7 @@ local Asserts = {
 		return {
 			Lower = `error("Something has gone wrong")`,
 			Upper = `error("Something has gone wrong")`,
-			Exact = `if typeof({Variable}) ~= "Instance" then error(\`Expected an Instance, got \{typeof({Variable})} instead.\`) end\nif not {Variable}:IsA("{Class}") then error(\`Expected an Instance of type "{Class}", got "\{{Variable}.ClassName}" instead.\`) end`,
+			Exact = `if (not {Variable}) or typeof({Variable}) ~= "Instance" then error(\`Expected an Instance, got \{typeof({Variable})} instead.\`) end\nif not {Variable}:IsA("{Class}") then error(\`Expected an Instance of type "{Class}", got "\{{Variable}.ClassName}" instead.\`) end`,
 		}
 	end
 }

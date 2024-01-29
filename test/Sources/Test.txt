@@ -112,3 +112,38 @@ function RemoteFunction = {
     Data = u8,
     Return = u8
 }
+
+event Tuple = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = [u8, States, u16?, Instance, Instance?, u8[8]]
+}
+
+event TupleUnreliable = {
+    From = Server,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = [u8, States, u16?, Instance, Instance?]
+}
+
+function TupleFunction = {
+    Yield = Coroutine,
+    Data = [u8, States, u16?, Instance, Instance?],
+    Return = [Instance?, Instance, u16?, States, u8]
+}
+
+scope Combat = {
+    event FireWeapon = {
+        From = Client,
+        Type = Reliable,
+        Call = SingleSync,
+        Data = {
+            Origin = vector,
+            Destination = vector,
+            Impact = {
+                Hit = Instance (BasePart)
+            }
+        }
+    }
+}

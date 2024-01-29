@@ -9,7 +9,8 @@ local Table = require("./Modules/Table")
 local DEFAULT_SCOPE = ""
 
 type NumberRange = {Min: number, Max: number}
-type Declarations = "TypeReference" | "TypeDeclaration" | "EnumDeclaration" | "StructDeclaration" | "EventDeclaration" | "FunctionDeclaration" | "ScopeDeclaration"
+type Declarations = "TypeReference" | "TypeDeclaration" | "EnumDeclaration" | "StructDeclaration" 
+    | "TupleDeclaration" | "EventDeclaration" | "FunctionDeclaration" | "ScopeDeclaration"
 
 type Node<Type, Value> = {
     Type: Type,
@@ -29,6 +30,18 @@ export type TypeReference = Node<"TypeReference", {
     Identifier: string,
     Reference: string,
     
+    Array: NumberRange?,
+    Range: NumberRange?,
+    Optional: boolean,
+}>
+
+export type MapDeclaration = Node<"MapDeclaration", {
+    Scope: string?,
+    Identifier: string,
+
+    Key: TypeDeclaration,
+    Value: TypeDeclaration,
+
     Array: NumberRange?,
     Range: NumberRange?,
     Optional: boolean,
@@ -57,6 +70,12 @@ export type StructDeclaration = Node<"StructDeclaration", {
     Identifier: string,
     Fields: {Declaration},
     Optional: boolean,
+}>
+
+export type TupleDeclaration = Node<"TupleDeclaration", {
+    Identifier: string,
+    Values: {Declaration},
+    Optional: boolean
 }>
 
 export type EventDeclaration = Node<"EventDeclaration", {
@@ -113,6 +132,7 @@ export type Parser = {
 
     TypeDeclaration: (self: Parser, Identifier: Lexer.Token) -> TypeDeclaration,
     EnumDeclaration: (self: Parser, Identifier: Lexer.Token) -> EnumDeclaration,
+    TupleDeclaration: (self: Parser, Identifier: Lexer.Token) -> TupleDeclaration,
     StructDeclaration: (self: Parser, Identifier: Lexer.Token) -> StructDeclaration,
     EventDeclaration: (self: Parser, Identifier: Lexer.Token) -> EventDeclaration,
     FunctionDeclaration: (self: Parser, Identifier: Lexer.Token) -> FunctionDeclaration,
@@ -493,6 +513,39 @@ function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): Struct
     }
 end
 
+function Parser.TupleDeclaration(self: Parser, Identifier: Lexer.Token): TupleDeclaration
+    self:Consume("OpenSquareBrackets")
+
+    local Values: {Declaration} = {}
+    while (self.LookAhead) do
+        --> Allows trailing commas in struct definitions
+        if self:GetSafeLookAhead().Type == "CloseSquareBrackets" then
+            self:Consume("CloseSquareBrackets")
+            break
+        end
+        
+        local Key = self:GetSafeLookAhead()
+        local Declaration: Declaration = self:GetDeclarationFromToken(self:GetSafeLookAhead(), Key)
+        table.insert(Values, Declaration)
+
+        if self:GetSafeLookAhead().Type == "CloseSquareBrackets" then
+            self:Consume("CloseSquareBrackets")
+            break
+        end
+
+        self:Consume("Comma")
+    end
+
+    return {
+        Type = "TupleDeclaration",
+        Value = {
+            Identifier = Identifier.Value,
+            Values = Values,
+            Optional = false
+        }
+    }
+end
+
 function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDeclaration
     self:Consume("OpenCurlyBrackets")
 
@@ -536,7 +589,11 @@ function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDe
                 break
             end
 
-            Value = self:GetDeclarationFromToken(Token, Identifier)
+            if Token.Type == "OpenSquareBrackets" then
+                Value = self:TupleDeclaration(Identifier)
+            else
+                Value = self:GetDeclarationFromToken(Token, Identifier)
+            end
         end
 
         Event.Value[Entry.Key] = Value 
@@ -593,7 +650,11 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): Func
                 break
             end
 
-            Value = self:GetDeclarationFromToken(Token, Identifier)
+            if Token.Type == "OpenSquareBrackets" then
+                Value = self:TupleDeclaration(Identifier)
+            else
+                Value = self:GetDeclarationFromToken(Token, Identifier)
+            end
         end
 
         Function.Value[Entry.Key] = Value 

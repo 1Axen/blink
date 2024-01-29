@@ -5,6 +5,7 @@ local process = require("@lune/process")
 
 local Compiler = "init"
 local Sources = fs.readDir("./Sources")
+local Arguments = process.args
 
 local function OkPrint(Message: string)
     stdio.write(`\r[{stdio.color("green")}OK{stdio.color("reset")}] {Message}\n`)
@@ -21,9 +22,14 @@ end
 
 PrettyPrint("blue", "Compiling source files...")
 for _, File in Sources do
-    local AbsolutePath = `C:/Users/User/Documents/GitHub/Blink/test/Sources/{File}`
+    if table.find(Arguments, "nocompile") then
+        PrettyPrint("yellow", "nocompile flag was passed, skipping compilation.")
+        break
+    end
+
+    local AbsolutePath = `../test/Sources/{File}`
     PrettyPrint("cyan", `Compiling: {File}...`, true)
-    local Result = process.spawn("lune", {"run", Compiler, AbsolutePath}, {cwd = "C:/Users/User/Documents/GitHub/Blink/src/"})
+    local Result = process.spawn("lune", {"run", Compiler, AbsolutePath}, {cwd = "../src"})
     if not Result.ok then
         ErrorPrint(`{File} failed to compile!\n{Result.stderr}`)
     else
@@ -238,6 +244,62 @@ local function FireAndExpectAll(Name: string, OutgoingEvent: any, IncomingEvent:
     OkPrint(`Test "{Name}" passed!`)
 end
 
+local function FireAndExpectTuple(Name: string, OutgoingEvent: any, IncomingEvent: any, ...: any)
+    PrettyPrint("cyan", `Testing: {Name}...`, true)
+
+    local Results: {unknown} = {}
+    local Disconnect = IncomingEvent.On(function(...)
+        Results = {...}
+    end)
+
+    local Method = OutgoingEvent.FireAll or OutgoingEvent.Fire
+    Method(...)
+    
+    --> Wait for replication
+    task.wait(1 / 30)
+
+    for Index, Expect in {...} do
+        local Result = Results[Index]
+        if not CompareValues(Expect, Result) then
+            print(Expect)
+            print(Result)
+            ErrorPrint(`Failed "{Name}", mismatched value at {Index}.`)
+        end
+    end
+
+    Disconnect()
+    OkPrint(`Test "{Name}" passed!`)
+end
+
+local function InvokeAndExpectTuple(Name: string, ClientFunction: any, ServerFunction: any, Data: {any}, Return: {any})
+    PrettyPrint("cyan", `Testing: {Name}...`, true)
+
+    local ServerRecieve: {unknown};
+    ServerFunction.On(function(Player, ...)
+        ServerRecieve = {...}
+        return table.unpack(Return)
+    end)
+ 
+    local ClientRecieve: {unknown};
+    local Success, Error = pcall(function()
+        ClientRecieve = {ClientFunction.Invoke(table.unpack(Data))}
+    end)
+
+    if not Success then
+        ErrorPrint(`Expected {Name} to succeed but it encountered an error, {Error}.`)
+    elseif Success and Return then
+        if not CompareValues(ServerRecieve, Data) then
+            ErrorPrint(`Expected server {Name} to recieve {Data}, got {ServerRecieve} instead.`)
+        end
+    
+        if not CompareValues(ClientRecieve, Return) then
+            ErrorPrint(`Expected client {Name} to recieve {Data}, got {ClientRecieve} instead.`)
+        end
+    end
+
+    OkPrint(`Test "{Name}" passed!`)
+end
+
 --> Tests
 local Instance = setmetatable({
     __typeof = "Instance",
@@ -306,6 +368,10 @@ FireAndFail("Invalid Instance Type", Server.InstanceOfType, Client.InstanceOfTyp
 
 FireAndExpectAll("Correct order", Server.ReliableServer, Client.ReliableServer, {1, 2, 3, 4})
 FireAndExpectAll("Multiple instances (nil and non nil)", Server.InstanceOptional, Client.InstanceOptional, {nil, Instance, nil, Instance, Instance})
+
+FireAndExpectTuple("Reliable Tuple", Server.Tuple, Client.Tuple, 255, "A", 65535, Instance, Instance, table.create(8, 0))
+FireAndExpectTuple("Unreliable Tuple", Server.TupleUnreliable, Client.TupleUnreliable, 255, "A", 65535, Instance, Instance)
+InvokeAndExpectTuple("Function Tuple", Client.TupleFunction, Server.TupleFunction, {255, "A", 65535, Instance, Instance}, {Instance, Instance, 65535, "A", 255})
 
 PrettyPrint("green", `All tests passed successfully!`)
 

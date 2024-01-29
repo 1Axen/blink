@@ -4,7 +4,7 @@
 local Error = require("./Modules/Error")
 
 export type Types = 
-    "Comma" | "OpenBrackets" | "CloseBrackets" | "OpenCurlyBrackets" | "CloseCurlyBrackets" --> Structs & enums
+    "Comma" | "OpenBrackets" | "CloseBrackets" | "OpenCurlyBrackets" | "CloseCurlyBrackets" | "OpenSquareBrackets" | "CloseSquareBrackets" --> Structs & enums
     | "String" | "Boolean" | "Number"   --> Literals
     | "Array" | "Range" | "Optional" | "Class"    --> Attributes
     | "Assign" | "Keyword" | "Primitive" | "Identifier" --> Reserved
@@ -84,6 +84,8 @@ local Matches = {
 
     {"^%(", "OpenBrackets"},
     {"^%)", "CloseBrackets"},
+    {"^%[", "OpenSquareBrackets"},
+    {"^%]", "CloseSquareBrackets"},
 
     {[[^(['"]).-[^\](\*)%2%1]], function(Token: string)
         return "String", string.sub(Token, 2, #Token - 1)
