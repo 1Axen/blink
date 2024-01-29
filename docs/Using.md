@@ -59,7 +59,11 @@ struct Entity = {
 }
 ```
 ## Maps
-Coming soon!
+You can define maps using the `map` keyword   
+**Maps cannot currently have maps as keys or values.**   
+```
+map Example = {[string] = u8}
+```
 ## Instances
 Instances are another type of Primitive and as such they can be defined using the `type` keyword  
 ```
@@ -69,6 +73,17 @@ type Example = Instance (ClassName) -- You can also specify instance class
 **WARNING**
 If a non optional instance results in nil on the recieving side it will result in an error, this may be caused by various things like streaming, players leaving etc.  
 In order to get around this you must mark instances as **optional**.
+## Tuples
+Tuples can be defined using the square brackets `[]`.  
+**Tuples can only be defined within the data field of an event/function.**  
+``` 
+event Example = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = [u8, u16?, Instance, Instance?, u8[8]]
+}
+```
 ## Events
 You can define events using the `event` keyword  
 Events have 4 fields which must be defined in the **correct order**: 
