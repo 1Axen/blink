@@ -1,0 +1,15 @@
+option ClientOutput = "../Network/ClientPrototype.luau"
+option ServerOutput = "../Network/ServerPrototype.luau"
+
+type Reference = u8
+
+map Map = {[string] = u8}
+map MapComplex = {[string(0..20)[8]] = u8(0..100)[8]}
+map MapReference = {[Reference] = Reference}?
+
+event ReliableServer = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = Map[5]
+}

@@ -12,6 +12,10 @@ type ConstrainedArray = u8(0..10)[10]
 
 enum States = ( A, B, C, D )
 
+map Map = {[string] = u8}
+map MapComplex = {[string(0..20)] = u8(0..100)[8]}
+map MapReference = {[States] = States}?
+
 type Number = u8
 struct Example = {
     Field = u8,
@@ -21,6 +25,27 @@ struct Example = {
         Array = u8[10],
         OptionalArray = u8[2]?
     }
+}
+
+event MapEvent = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = Map
+}
+
+event MapComplexEvent = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = MapComplex
+}
+
+event MapReferenceEvent = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = MapReference
 }
 
 event ArrayPrimitive = {

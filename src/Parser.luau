@@ -9,7 +9,7 @@ local Table = require("./Modules/Table")
 local DEFAULT_SCOPE = ""
 
 type NumberRange = {Min: number, Max: number}
-type Declarations = "TypeReference" | "TypeDeclaration" | "EnumDeclaration" | "StructDeclaration" 
+type Declarations = "TypeReference" | "MapDeclaration" | "TypeDeclaration" | "EnumDeclaration" | "StructDeclaration" 
     | "TupleDeclaration" | "EventDeclaration" | "FunctionDeclaration" | "ScopeDeclaration"
 
 type Node<Type, Value> = {
@@ -39,11 +39,10 @@ export type MapDeclaration = Node<"MapDeclaration", {
     Scope: string?,
     Identifier: string,
 
-    Key: TypeDeclaration,
-    Value: TypeDeclaration,
+    Key: Declaration,
+    Value: Declaration,
 
     Array: NumberRange?,
-    Range: NumberRange?,
     Optional: boolean,
 }>
 
@@ -121,6 +120,7 @@ export type Parser = {
 
     Parse: (self: Parser, Source: string) -> (Body, Options),
     Consume: (self: Parser, Type: Lexer.Types) -> Lexer.Token,
+    ConsumeAny: (self: Parser, Types: {Lexer.Types}) -> Lexer.Token,
     GetSafeLookAhead: (self: Parser) -> Lexer.Token,
 
     --> Parsable types
@@ -130,6 +130,7 @@ export type Parser = {
     Declaration: (self: Parser) -> Declaration,
     Declarations: (self: Parser) -> {Declaration},
 
+    MapDeclaration: (self: Parser, Identifier: Lexer.Token) -> MapDeclaration,
     TypeDeclaration: (self: Parser, Identifier: Lexer.Token) -> TypeDeclaration,
     EnumDeclaration: (self: Parser, Identifier: Lexer.Token) -> EnumDeclaration,
     TupleDeclaration: (self: Parser, Identifier: Lexer.Token) -> TupleDeclaration,
@@ -139,7 +140,7 @@ export type Parser = {
     ScopeDeclaration: (self: Parser, Identifier: Lexer.Token) -> ScopeDeclaration,
 
     GetTypeAttributes: (self: Parser, Primitive: Lexer.Token?) -> (NumberRange?, NumberRange?),
-    GetDeclarationFromToken: (self: Parser, Token: Lexer.Token, Identifier: Lexer.Token) -> Declaration,
+    GetDeclarationFromToken: (self: Parser, Token: Lexer.Token, Identifier: Lexer.Token) -> (Declaration, Lexer.Token?),
 }
 
 local RangePrimitives = {
@@ -280,6 +281,22 @@ function Parser.Consume(self: Parser, Type: string): Lexer.Token
     return Token
 end
 
+function Parser.ConsumeAny(self: Parser, Types: {Lexer.Types}): Lexer.Token
+    local Token = self.LookAhead
+    if not Token then
+        error(`Unexpected end of file, expected one of: "{table.concat(Types, "\", ")}".`) 
+    end
+
+    if not table.find(Types, Token.Type) then
+        Error.ThrowTokenError(self.Source, Token, `Unexpected token: "{Token.Type}", expected one of: "{table.concat(Types, "\", ")}"`)
+    end
+
+    --> Advance tokenizer
+    self.LookAhead = self.Lexer:GetNextToken()
+
+    return Token
+end
+
 function Parser.GetSafeLookAhead(self: Parser): Lexer.Token
     if self.LookAhead then
         return self.LookAhead
@@ -348,7 +365,9 @@ function Parser.Declaration(self: Parser): Declaration
     end
 
     local Declaration: Declaration?;
-    if Keyword.Value == "type" then
+    if Keyword.Value == "map" then
+        Declaration = self:MapDeclaration(Identifier)
+    elseif Keyword.Value == "type" then
         Declaration = self:TypeDeclaration(Identifier)
     elseif Keyword.Value == "enum" then
         Declaration = self:EnumDeclaration(Identifier)
@@ -421,7 +440,6 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
         end
     end
 
-
     --> Attempt to read type attributes [Primitive][Range][Array][Optional] [u8(0..1)[10]?]
     local Value = Declaration.Value
     local Array, Range = self:GetTypeAttributes(Primitive)
@@ -465,6 +483,53 @@ function Parser.EnumDeclaration(self: Parser, Identifier: Lexer.Token): EnumDecl
             Identifier = Identifier.Value,
             Enums = Enums,
             Optional = false
+        }
+    }
+end
+
+function Parser.MapDeclaration(self: Parser, Identifier: Lexer.Token): MapDeclaration
+    self:Consume("OpenCurlyBrackets")
+    self:Consume("OpenSquareBrackets")
+
+    local Key = self:GetSafeLookAhead()
+    local KeyDeclaration, KeyOptional = self:GetDeclarationFromToken(Key, Key)
+
+    if KeyOptional then
+        Error.ThrowTokenError(self.Source, KeyOptional, "Maps cannot have optional keys or values")
+    end
+
+    if KeyDeclaration.Type == "MapDeclaration" then
+        Error.ThrowTokenError(self.Source, Key, "Maps cannot have map keys or values")
+    end
+
+    self:Consume("CloseSquareBrackets")
+    self:Consume("Assign")
+
+    local Value = self:GetSafeLookAhead()
+    local ValueDeclaration, ValueOptional = self:GetDeclarationFromToken(Value, Value)
+
+    if ValueOptional then
+        Error.ThrowTokenError(self.Source, ValueOptional, "Maps cannot have optional keys or values")
+    end
+
+    if ValueDeclaration.Type == "MapDeclaration" then
+        Error.ThrowTokenError(self.Source, Value, "Maps cannot have map keys or values")
+    end
+
+    self:Consume("CloseCurlyBrackets")
+
+    local Array = self:GetTypeAttributes()
+    return {
+        Type = "MapDeclaration",
+        Value = {
+            Scope = self.Scope,
+            Identifier = Identifier.Value,
+
+            Key = KeyDeclaration,
+            Value = ValueDeclaration,
+
+            Array = Array,
+            Optional = false,
         }
     }
 end
@@ -738,10 +803,15 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Lexer.Token?): (Numbe
     return Array, Range
 end
 
-function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identifier: Lexer.Token): Declaration
+function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identifier: Lexer.Token): (Declaration, Lexer.Token?)
     local Declaration: Declaration;
     if Token.Type == "OpenCurlyBrackets" then
-        Declaration = self:StructDeclaration(Identifier)
+        local NextToken = self.Lexer:GetNextToken(true)
+        if NextToken and NextToken.Type == "OpenSquareBrackets" then
+            Declaration = self:MapDeclaration(Identifier)
+        else
+            Declaration = self:StructDeclaration(Identifier)
+        end
     elseif Token.Type == "OpenBrackets" then
         Declaration = self:EnumDeclaration(Identifier)
     elseif Token.Type == "Primitive" then
@@ -773,12 +843,13 @@ function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identi
         Error.ThrowTokenError(self.Source, Token, `Unknown type referenced: "{Token.Type}"`)
     end
 
+    local Optional;
     if self:GetSafeLookAhead().Type == "Optional" then
-        self:Consume("Optional")
+        Optional = self:Consume("Optional")
         Declaration.Value.Optional = true
     end
 
-    return Declaration
+    return Declaration, Optional
 end
 
 return Parser

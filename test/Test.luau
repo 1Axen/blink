@@ -144,6 +144,8 @@ local function FireAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: an
     task.wait(1 / 30)
 
     if not CompareValues(Result, Expect) then
+        print(Expect)
+        print(Result)
         ErrorPrint(`Failed "{Name}", expected to recieve: {Expect}, got "{Result}" instead.`)
     end
 
@@ -385,6 +387,10 @@ FireAndExpect("Unreliable Server", Server.UnreliableServer, Client.UnreliableSer
 
 FireAndExpect("Reliable Client", Client.ReliableClient, Server.ReliableClient, 1)
 FireAndExpect("Unreliable Client", Client.UnreliableClient, Server.UnreliableClient, 1)
+
+FireAndExpect("Map", Server.MapEvent, Client.MapEvent, {["string"] = 1})
+FireAndExpect("Map Complex", Server.MapComplexEvent, Client.MapComplexEvent, {string = table.create(8, 1)})
+FireAndExpect("Map Reference", Server.MapReferenceEvent, Client.MapReferenceEvent, {A = "A"})
 
 FireAndExpect("Struct", Server.Reference, Client.Reference, Example)
 FireAndExpect("Array", Server.ArrayPrimitive, Client.ArrayPrimitive, {1, 2, 3, 4, 5, 6, 7, 8})

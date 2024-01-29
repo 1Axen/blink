@@ -26,7 +26,7 @@ export type Lexer = {
     Cursor: number,
 
     Initialize: (self: Lexer, Source: string) -> (),
-    GetNextToken: (self: Lexer) -> Token?,
+    GetNextToken: (self: Lexer, DontAdvanceCursor: boolean?) -> Token?,
 }
 
 local Primitives = {
@@ -48,6 +48,7 @@ local Primitives = {
 }
 
 local Keywords = {
+    map = true,
     type = true,
     enum = true,
     struct = true,
@@ -125,7 +126,7 @@ function Lexer.Initialize(self: Lexer, Source: string)
     self.Cursor = 1
 end
 
-function Lexer.GetNextToken(self: Lexer): Token?
+function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?): Token?
     if self.Cursor > self.Size then
         return
     end
@@ -141,9 +142,7 @@ function Lexer.GetNextToken(self: Lexer): Token?
         local Matched = string.sub(Slice, Start, End)
 
         Start = self.Cursor
-        self.Cursor += #Matched
-
-        return Matched, Start, math.min(self.Cursor, self.Size)
+        return Matched, Start, math.min(Start + #Matched, self.Size)
     end
 
     for Index, Token in Matches do
@@ -157,9 +156,13 @@ function Lexer.GetNextToken(self: Lexer): Token?
             continue
         end
 
+        if (DontAdvanceCursor ~= true or Type == nil) then
+            self.Cursor += #Matched
+        end
+
         --> Whitespace matched, skip token.
         if not Type then
-            return self:GetNextToken()
+            return self:GetNextToken(DontAdvanceCursor)
         end
 
         if type(Type) == "function" then

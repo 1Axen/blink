@@ -253,10 +253,93 @@ function Writers.TypeReference(TypeReference: Parser.TypeReference, Variable: st
 	return `{Prefix}{Reference}`
 end
 
-function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration): string
+function Writers.MapDeclaration(MapDeclaration: Parser.MapDeclaration, Variable: string): string
+	local Read = Builder.new()
+	local Write = Builder.new()
+	local Variable = Variable or "Value"
+
+	local function BuildMap(MapDeclaration: Parser.MapDeclaration, Tabs: number): string
+		local DeclarationValue = MapDeclaration.Value
+		local Key = DeclarationValue.Key
+		local Value = DeclarationValue.Value
+		local Optional = DeclarationValue.Optional
+
+		if Optional then
+			Read.Push(OPTIONAL, 1, Tabs)
+			Write.PushMultiline(Prefabs.Types.u8.Write(`({Variable} ~= nil) and 1 or 0`), 0, Tabs)
+			Write.Push(`if {Variable} ~= nil then`, 1, Tabs)
+			Tabs += 1
+		end
+
+		local Type = "{"
+		local MapVariable = Variable --Tabs == 1 and Variable or "Element"
+
+		Write.Push(`local Elements = 0`, 1, Tabs)
+		Write.Push(`local Position = Allocate(2)`, 1, Tabs)
+		Write.Push(`for Key, Element in {MapVariable} do`, 1, Tabs)
+		Write.Push(`Elements += 1`, 1, Tabs + 1)
+
+		Read.Push(`{MapVariable} = \{\}`, 1, Tabs)
+		Read.Push(TypePrefabs.u16.Read("local Elements"), 1, Tabs)
+		Read.Push(`for _ = 1, Elements do`, 1, Tabs)
+		Read.Push(`local Key, Element`, 1, Tabs + 1)
+
+		local Map: {[string]: Parser.Declaration} = {
+			Key = Key,
+			Element = Value
+		}
+
+		for Local, Declaration in Map do
+			local FieldType = ""
+			if Declaration.Type == "MapDeclaration" then
+				--FieldType = BuildMap(Declaration :: Parser.MapDeclaration, Tabs + 1)
+			elseif Declaration.Type == "TypeReference" then
+				local TypeReference: Parser.TypeReference = Declaration :: Parser.TypeReference
+				FieldType = Writers.TypeReference(TypeReference, Local, Tabs + 1, Read, Write)
+
+				if TypeReference.Value.Array then
+					FieldType = `\{{FieldType}\}`
+				end
+			else
+				local Writer = Writers[Declaration.Type]
+				local DeclarationType, DeclarationRead, DeclarationWrite = Writer(Declaration, Local)
+	
+				FieldType = DeclarationType
+				Read.PushLines(string.split(DeclarationRead, "\n"), 0, Tabs)
+				Write.PushLines(string.split(DeclarationWrite, "\n"), 0, Tabs)
+			end
+
+			if Local == "Key" then
+				Type ..= `[{FieldType}]: `
+			else
+				Type ..= `{FieldType}, `
+			end
+		end
+
+		Read.Push(`{MapVariable}[Key] = Element`, 1, Tabs + 1)
+		Read.Push(`end`, 1, Tabs)
+
+		Write.Push(`end`, 1, Tabs)
+		Write.Push(`buffer.writeu16(SendBuffer, Position, Elements)`, 1, Tabs)		
+
+		if Optional then
+			Read.Push(`end`, 1, Tabs - 1)
+			Write.Push(`end`, 1, Tabs - 1)
+		end
+
+		Type = `{Type}\}`
+		return Type
+	end
+
+	local Type = BuildMap(MapDeclaration, 1)
+	return Type, Read.Dump(), Write.Dump()
+end
+
+function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration, Variable: string): string
 	local Type = Builder.new()
 	local Read = Builder.new()
 	local Write = Builder.new()
+	local Variable = Variable or "Value"
 
 	local function BuildStructType(
 		StructDeclaration: Parser.StructDeclaration,
@@ -282,29 +365,29 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 			local FieldType: string
 			local FieldValue = Field.Value
 			local FieldIdentifier = FieldValue.Identifier
-			local Variable = `{Path}.{FieldIdentifier}`
+			local FieldVariable = `{Path}.{FieldIdentifier}`
 
-			if Field.Type == "TypeDeclaration" or Field.Type == "EnumDeclaration" then
+			if Field.Type == "StructDeclaration" then
+				BuildStructType(Field :: Parser.StructDeclaration, Tabs, Indent + 1, FieldVariable)
+				continue
+			elseif Field.Type == "TypeReference" then
+				local TypeReference: Parser.TypeReference = Field :: Parser.TypeReference
+				FieldType = Writers.TypeReference(TypeReference, FieldVariable, Tabs, Read, Write)
+
+				if FieldValue.Array then
+					FieldType = `\{{FieldType}\}`
+				end
+			else
 				local Writer = Writers[Field.Type]
-				local DeclarationType, DeclarationRead, DeclarationWrite = Writer(Field, Variable)
+				local DeclarationType, DeclarationRead, DeclarationWrite = Writer(Field, FieldVariable)
 
 				if Field.Type == "EnumDeclaration" then
-					DeclarationRead = string.gsub(DeclarationRead, `{Variable} ==`, `{FieldIdentifier} ==`)
+					DeclarationRead = string.gsub(DeclarationRead, `{FieldVariable} ==`, `{FieldIdentifier} ==`)
 				end
 
 				FieldType = DeclarationType
 				Read.PushLines(string.split(DeclarationRead, "\n"), 0, Tabs - 1)
 				Write.PushLines(string.split(DeclarationWrite, "\n"), 0, Tabs - 1)
-			elseif Field.Type == "StructDeclaration" then
-				BuildStructType(Field :: Parser.StructDeclaration, Tabs, Indent + 1, Variable)
-				continue
-			elseif Field.Type == "TypeReference" then
-				local TypeReference: Parser.TypeReference = Field :: Parser.TypeReference
-				FieldType = Writers.TypeReference(TypeReference, Variable, Tabs, Read, Write)
-
-				if FieldValue.Array then
-					FieldType = `\{{FieldType}\}`
-				end
 			end
 
 			if FieldValue.Optional then
@@ -322,7 +405,7 @@ function Writers.StructDeclaration(StructDeclaration: Parser.StructDeclaration):
 		Type.Push(`}{StructDeclaration.Value.Optional and "?" or ""}{Indent > 0 and "," or ""}`, Indent > 0 and 1 or 0, Indent)
 	end
 
-	BuildStructType(StructDeclaration, 1, 0, "Value")
+	BuildStructType(StructDeclaration, 1, 0, Variable)
 
 	return Type.Dump(), Read.Dump(), Write.Dump()
 end

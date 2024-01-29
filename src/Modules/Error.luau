@@ -12,7 +12,8 @@ export type Token = {
 local Error = {}
 
 --> Generates nice rust-like errors
-function Error.ThrowTokenError(Source: string, Token: Token, Error: string)
+function Error.ThrowTokenError(Source: string, Token: Token, Error: string, ...: string)
+    local Hints = {...}
     local Lines = string.split(Source, "\n")
 
     local Seek = 1
@@ -20,18 +21,35 @@ function Error.ThrowTokenError(Source: string, Token: Token, Error: string)
 
     for Index, String in Lines do
         --> Ignore lines which are before the current one
+        local LineStart = Seek
         Seek += (#String + 1)
+
         if Token.End >= Seek then
             continue
         end
 
         --> Plain search for the tokens value in the line
-        local Start, End = string.find(String, Token.Value, 1, true)
+        local Init = 1
+        local Start, End;
+        while true do
+            Start, End = string.find(String, Token.Value, Init, true)
 
-        if not Start or not End then
-            Start = Seek - 1
-            End = Seek
-            warn("[Blink:Error]: Unable to find token value bounds.")
+            --> Prevent picking same characters from earlier in the line
+            if Start and End then
+                local Offset = (Token.Start - LineStart)
+                if Start < Offset then
+                    Init = Start + 1
+                    continue
+                end
+            end
+
+            if not Start or not End then
+                Start = Seek - 1
+                End = Seek
+                warn("[Blink:Error]: Unable to find token value bounds.")
+            end
+
+            break
         end
 
         Line = Index
@@ -43,7 +61,7 @@ function Error.ThrowTokenError(Source: string, Token: Token, Error: string)
     end
 
     error(string.format(
-        "\n    |\n%03i | %s\n    |%s",
+        `\n    |\n%03i | %s\n    |%s{#Hints > 0 and `\n- {table.concat(Hints, "\n- ")}` or ""}`,
         Line,
         Slice,
         `{string.rep(" ", Spaces)}{string.rep("^", Arrows)} {Error}.`

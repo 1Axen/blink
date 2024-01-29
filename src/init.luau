@@ -23,8 +23,8 @@ end
 local SourceParser = Parser.new()
 
 local Arguments = process.args
-if #Arguments ~= 1 then
-    error(`Expected 1 argument, got {#Arguments} instead.`)
+if #Arguments < 1 then
+    error(`Expected at least 1 argument.`)
 end
 
 local SourcePath = Arguments[1]
@@ -39,6 +39,10 @@ print("Parsing source into AST...")
 local ParseStart = os.clock()
 local AbstractSyntaxTree, Options = SourceParser:Parse(Source)
 local ParseTime = (os.clock() - ParseStart)
+
+if table.find(Arguments, "ast") then
+	print(AbstractSyntaxTree.Value[2])
+end
 
 assert(Options.ClientOutput, "A client output path must be defined.")
 assert(Options.ServerOutput, "A server output path must be defined.")
