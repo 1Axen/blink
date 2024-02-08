@@ -4,6 +4,7 @@
 
 local fs = require("@lune/fs")
 
+local Blocks = require("./Blocks")
 local Parser = require("../Parser")
 local Builder = require("../Modules/Builder")
 local Prefabs = require("./Prefabs")
@@ -850,6 +851,16 @@ return function(Context: "Client" | "Server", AbstractSyntaxTree: Parser.Body, U
 	Channels.Unreliable.Count = 0
 	Channels.Reliable.Listening = false
 	Channels.Unreliable.Listening = false
+
+	local Example = Blocks.Function("Test", "Value", "()")
+		:Line("print('Hello')")
+		:Line("local Variable = 1")
+		:Compare("1", "1", "Equals")
+			:Line("print('Math still works')")
+		:End()
+	:End()
+
+	print(Example)
 
 	--> Import async libraries
 	if UserOptions.FutureLibrary then
