@@ -6,8 +6,6 @@ local Lexer = require("./Lexer")
 local Error = require("./Modules/Error")
 local Table = require("./Modules/Table")
 
-local DEFAULT_SCOPE = ""
-
 type NumberRange = {Min: number, Max: number}
 type Declarations = "TypeReference" | "MapDeclaration" | "TypeDeclaration" | "EnumDeclaration" | "StructDeclaration" 
     | "TupleDeclaration" | "EventDeclaration" | "FunctionDeclaration" | "ScopeDeclaration"
@@ -495,11 +493,16 @@ function Parser.MapDeclaration(self: Parser, Identifier: Lexer.Token): MapDeclar
     local KeyDeclaration, KeyOptional = self:GetDeclarationFromToken(Key, Key)
 
     if KeyOptional then
-        Error.ThrowTokenError(self.Source, KeyOptional, "Maps cannot have optional keys or values")
+        Error.ThrowTokenError(self.Source, KeyOptional or Key, "Maps cannot have optional keys or values")
     end
 
     if KeyDeclaration.Type == "MapDeclaration" then
         Error.ThrowTokenError(self.Source, Key, "Maps cannot have map keys or values")
+    elseif KeyDeclaration.Type == "TypeReference" then
+        local Reference: Declaration = self.Types[KeyDeclaration.Value.Reference]
+        if Reference.Value.Optional then
+            Error.ThrowTokenError(self.Source, Key, "Key is a reference to an optional type", "Maps cannot have optional keys or values")
+        end
     end
 
     self:Consume("CloseSquareBrackets")
@@ -508,12 +511,17 @@ function Parser.MapDeclaration(self: Parser, Identifier: Lexer.Token): MapDeclar
     local Value = self:GetSafeLookAhead()
     local ValueDeclaration, ValueOptional = self:GetDeclarationFromToken(Value, Value)
 
-    if ValueOptional then
-        Error.ThrowTokenError(self.Source, ValueOptional, "Maps cannot have optional keys or values")
+    if ValueOptional or ValueDeclaration.Value.Optional then
+        Error.ThrowTokenError(self.Source, ValueOptional or Value, "Maps cannot have optional keys or values")
     end
 
     if ValueDeclaration.Type == "MapDeclaration" then
         Error.ThrowTokenError(self.Source, Value, "Maps cannot have map keys or values")
+    elseif ValueDeclaration.Type == "TypeReference" then
+        local Reference: Declaration = self.Types[ValueDeclaration.Value.Reference]
+        if Reference.Value.Optional then
+            Error.ThrowTokenError(self.Source, Value, "Value is a reference to an optional type", "Maps cannot have optional keys or values")
+        end
     end
 
     self:Consume("CloseCurlyBrackets")

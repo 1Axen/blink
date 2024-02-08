@@ -2,6 +2,7 @@ option ClientOutput = "../Network/ClientPrototype.luau"
 option ServerOutput = "../Network/ServerPrototype.luau"
 
 type Reference = u8
+type TrueReference = Reference[12]
 
 map Map = {[string] = u8}
 map MapComplex = {[string(0..20)[8]] = u8(0..100)[8]}
