@@ -1,32 +1,32 @@
 {
-    "generator": "readable",
-    "bundle": {
-        "modules_identifier": "__DARKLUA_BUNDLE_MODULES",
-        "excludes": [
-            "@lune/**"
-        ],
-        "require_mode": {
-            "name": "path",
-            "sources": {
-                "Base": "../src/Templates/Base.txt",
-                "Client": "../src/Templates/Client.txt",
-                "Server": "../src/Templates/Server.txt"
-            }
-        }
+  "bundle": {
+    "excludes": [
+      "@lune/**"
+    ],
+    "modules_identifier": "__DARKLUA_BUNDLE_MODULES",
+    "require_mode": {
+      "name": "path",
+      "sources": {
+        "Base": "../src/Templates/Base.txt",
+        "Client": "../src/Templates/Client.txt",
+        "Server": "../src/Templates/Server.txt"
+      }
+    }
+  },
+  "generator": "readable",
+  "rules": [
+    "remove_types",
+    "compute_expression",
+    "remove_unused_if_branch",
+    {
+      "identifier": "BUNDLED",
+      "rule": "inject_global_value",
+      "value": true
     },
-    "rules": [
-        "remove_types",
-        "compute_expression",
-        "remove_unused_if_branch",
-        {
-            "rule": "inject_global_value",
-            "identifier": "BUNDLED",
-            "value": true
-        },
-        {
-            "rule": "inject_global_value",
-            "identifier": "VERSION",
-            "value": "0.5.0"
-        }
-    ]
+    {
+      "identifier": "VERSION",
+      "rule": "inject_global_value",
+      "value": "0.5.0"
+    }
+  ]
 }
