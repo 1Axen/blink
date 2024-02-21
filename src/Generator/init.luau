@@ -148,7 +148,7 @@ function Declarations.Map(Declaration: Parser.MapDeclaration, Read: Blocks.Block
 	Types.u16.Read(`local Elements`, Read)
 
 	local ReadLoop = Read:Loop("_ = 1", "Elements")
-	local WriteLoop = Write:Iterator("Key", "Element", "Value")
+	local WriteLoop = Write:Iterator("Key", "Element", Variable)
 
 	ReadLoop:Line(`local Key: {KeyType}, Element: {ValueType};`)
 	WriteLoop:Line("Elements += 1")

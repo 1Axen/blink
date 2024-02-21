@@ -389,6 +389,7 @@ FireAndExpect("Reliable Client", Client.ReliableClient, Server.ReliableClient, 1
 FireAndExpect("Unreliable Client", Client.UnreliableClient, Server.UnreliableClient, 1)
 
 FireAndExpect("Map", Server.MapEvent, Client.MapEvent, {["string"] = 1})
+FireAndExpect("Map Struct", Server.MapStructEvent, Client.MapStructEvent, {Map = {string = 1}})
 FireAndExpect("Map Complex", Server.MapComplexEvent, Client.MapComplexEvent, {string = table.create(8, 1)})
 FireAndExpect("Map Reference", Server.MapReferenceEvent, Client.MapReferenceEvent, {A = "A"})
 
