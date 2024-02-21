@@ -28,7 +28,27 @@ When set to `true` automatic replication will be disabled and instead a `StepRep
 You can mark any type (`struct`, `enum`, `type`) as optional by appending `?` after it
 ## Primitives
 You can define a primitive using the `type` keyword  
-Supported primitives are `u8 u16 u32 i8 i16 i32 f32 f64 boolean string vector buffer CFrame`  
+Blink supports the following primitives:  
+
+|Name    |Size (Bytes)|Supports ranges  |Minimum        |Maximum      | 
+|--------|------------|-----------------|---------------|-------------|
+|u8      |1 Byte      |Yes              |0              |255          |
+|u16     |2 Bytes     |Yes              |0              |65,535       |
+|u32     |4 Bytes     |Yes              |0              |4,294,967,295|
+|i8      |1 Byte      |Yes              |-128           |127          |
+|i16     |2 Bytes     |Yes              |-32,768        |32,767       |
+|i32     |4 Bytes     |Yes              |-2,147,483,648 |2,147,483,647|
+|f16     |2 Bytes     |Yes              |-65504         |65504        |
+|f32     |4 Bytes     |Yes              |−16777216      |16777216     |
+|f64     |8 Bytes     |Yes              |-2^53          |2^53         |
+|vector  |12 Bytes    |Yes (Magnitude)  |N/A            |N/A          |
+|buffer  |N/A         |Yes (buffer.len) |N/A            |65,535 Bytes |
+|string  |N/A         |Yes (string.len) |N/A            |65,535 Bytes |
+|boolean |1 Byte      |No               |N/A            |N/A          |
+|CFrame  |24 Bytes    |No               |N/A            |N/A          |
+|Color3  |12 Bytes    |No               |N/A            |N/A          |
+|Instance|4 Bytes     |No               |N/A            |N/A          |
+
 Arrays can be defined by appending `[SIZE]` or `[[MIN]..[MAX]]` after the primitive type  
 Primitives can be constrained to ranges by writing `([MIN]..[MAX])` after the primitive type. Ranges are inclusive.  
 ```
@@ -60,7 +80,9 @@ struct Entity = {
 ```
 ## Maps
 You can define maps using the `map` keyword   
-**Maps cannot currently have maps as keys or values.**   
+> [!NOTE]
+> Maps cannot currently have maps as keys or values.  
+> You also cannot have optional keys or values as there is no way to represent those in Luau.
 ```
 map Example = {[string] = u8}
 ```
@@ -70,9 +92,9 @@ Instances are another type of Primitive and as such they can be defined using th
 type Example = Instance
 type Example = Instance (ClassName) -- You can also specify instance class
 ```
-**WARNING**
-If a non optional instance results in nil on the recieving side it will result in an error, this may be caused by various things like streaming, players leaving etc.  
-In order to get around this you must mark instances as **optional**.
+> [!WARNING]
+> If a non optional instance results in nil on the recieving side it will result in an error, this may be caused by various things like streaming, players leaving etc.  
+> In order to get around this you must mark instances as **optional**.
 ## Tuples
 Tuples can be defined using the square brackets `[]`.  
 **Tuples can only be defined within the data field of an event/function.**  
