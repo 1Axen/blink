@@ -1,16 +1,129 @@
 option ClientOutput = "../Network/ClientPrototype.luau"
 option ServerOutput = "../Network/ServerPrototype.luau"
 
-type Reference = u8
-type TrueReference = Reference[12]
+type Byte = u8
+type SignedByte = i8
 
-map Map = {[string] = u8}
-map MapComplex = {[string(0..20)[8]] = u8(0..100)[8]}
-map MapReference = {[Reference] = Reference}?
+type Short = u16
+type SignedShort = i16
 
-event ReliableServer = {
+type Integer = u32
+type SignedInteger = i32
+
+type Half = f16
+type Float = f32
+type Double = f64
+
+type Boolean = boolean
+type String = string
+type Vector = vector
+type Buffer = buffer
+type Color = Color3
+type Orientation = CFrame
+type InstanceAny = Instance
+type InstanceOfClass = Instance (Sound)
+type InstanceOptional = Instance?
+
+type NumberArray = u8(0..100)[8]
+type NumberConstrained = u8(0..100)
+
+type OptionalNumber = u8?
+
+enum State = (None, Dead, Idle, Running, Jumping, Falling)
+map Keys = {[string] = u8}
+
+struct Interface = {
+    Field = u8,
+    Nested = {
+        SecondField = u8
+    },
+    OptionalNested = {
+        OptionalField = u8?
+    }?
+}
+
+type Main = u8
+
+scope Other = {
+    type Number = u8
+}
+
+scope Test = {
+    type Primitive = u8
+    type Reference = Primitive[0..20]
+
+    struct Internal = {
+        Interal = Primitive[0..20],
+        Reference = Main,
+        ReferenceOther = Other.Number,
+        ArrayReference = Primitive[0..20]
+    }
+
+    event ReliableInScope = {
+        From = Server,
+        Type = Reliable,
+        Call = SingleSync,
+        Data = u8
+    }
+
+    event UnreliableInScope = {
+        From = Server,
+        Type = Unreliable,
+        Call = SingleSync,
+        Data = u8
+    }
+}
+
+event Reliable = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleAsync,
+    Data = u8
+}
+
+event Unreliable = {
+    From = Server,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = u8
+}
+
+event ClientReliable = {
+    From = Client,
+    Type = Reliable,
+    Call = SingleAsync,
+    Data = u8
+}
+
+event ClientUnreliable = {
+    From = Client,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = u8
+}
+
+function RemoteFunction = {
+    Yield = Coroutine,
+    Data = u8,
+    Return = u8
+}
+
+event Tuple = {
     From = Server,
     Type = Reliable,
     Call = SingleSync,
-    Data = Map[5]
+    Data = [u8, u16?, Instance, Instance?, u8[8]]
+}
+
+event TupleUnreliable = {
+    From = Server,
+    Type = Unreliable,
+    Call = SingleSync,
+    Data = [u8, u16?, Instance, Instance?]
+}
+
+function TupleFunction = {
+    Yield = Coroutine,
+    Data = [u8, u16?, Instance, Instance?],
+    Return = [Instance?, Instance, u16?, u8]
 }

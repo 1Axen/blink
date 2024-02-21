@@ -148,6 +148,7 @@ local RangePrimitives = {
     i8 = true,
     i16 = true,
     i32 = true,
+    f16 = true,
     f32 = true,
     f64 = true,
     string = true,
@@ -402,7 +403,8 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
     local Declaration: TypeDeclaration; 
 
     if LookAhead.Type == "Identifier" then
-        local Reference = self.Types[LookAhead.Value]
+        local ScopedIdentifier = `{self.Scope and `{self.Scope}.` or ""}{LookAhead.Value}`
+        local Reference = self.Types[ScopedIdentifier] or self.Types[LookAhead.Value]
         if not Reference then
             Error.ThrowTokenError(self.Source, LookAhead, "Unknown type referenced")
         elseif Reference.Type ~= "TypeDeclaration" then

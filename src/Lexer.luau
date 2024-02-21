@@ -36,6 +36,7 @@ local Primitives = {
     i8 = true,
     i16 = true,
     i32 = true,
+    f16 = true,
     f32 = true,
     f64 = true,
     boolean = true,

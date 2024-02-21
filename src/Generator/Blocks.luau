@@ -1,29 +1,16 @@
+local stdio = require("@lune/stdio")
+
+local Colors: {stdio.Color} = {
+    "cyan", "green", "purple", "red", "white", "yellow"
+}
+local ColorIndex = 0
+
+type BranchType = "Conditional" | "Default"
 type EqualityOperator = "Not" | "Equals" | "Greater" | "Less" | "GreaterOrEquals" | "LessOrEquals"
 
-export type Block<Parent> = {
-    Parent: Parent,
-    Indent: number,
-    Content: string,
-
-    Line: (Block<Parent>, Content: string) -> Block<Parent>,
-    Multiline: (Block<Parent>, Content: string) -> Block<Parent>,
-    Loop: (Block<Parent>, Counter: string, Length: string) -> Block<Parent>,
-    Compare: (Block<Parent>, Left: string, Right: string, Operator: EqualityOperator) -> Block<Parent>,
-
-    End: (Block<Parent>) -> Parent,
-}
-
-export type Function = {
-    Parent: nil,
-    Indent: nil,
-
-    End: (Function, Return: string?) -> string
-} & Block<Function>
-
-export type Connection = {
-    Parent: nil,
-    Indent: nil,
-    End: (Connection) -> string
+local Branches = {
+    Conditional = "elseif",
+    Default = "else"
 }
 
 local Operators = {
@@ -35,88 +22,179 @@ local Operators = {
     LessOrEquals = "<=",
 }
 
+local function GetConsoleColor(): stdio.Color
+    ColorIndex += 1
+    if ColorIndex > #Colors then
+        ColorIndex = 1
+    end
+
+    return Colors[ColorIndex]
+end
+
+local function SetConsoleColor(Color: stdio.Color)
+    stdio.write(stdio.color(Color))
+end
+
 local Block = {}
 Block.__index = Block
 
-function Block.new<Parent>(Parent: Block<unknown>?): Block<Parent>
-    print(`Opened a block, parent: {Parent}`)
+export type Block = typeof(setmetatable({} :: {
+    Color: stdio.Color?,
+    Parent: Block?,
+    Indent: number,
+    Content: string
+}, Block))
+
+function Block.new<Parent>(Parent: Block?, Debug: boolean?): Block
+    local Color: stdio.Color?;
+    local Indent = (Parent and Parent.Indent + 1 or 1)
+
+    if Debug or (Parent and Parent.Color) then
+        Color = GetConsoleColor()
+        SetConsoleColor(Color :: stdio.Color)
+        print(`BLOCK {Indent}`)
+    end
+
     return setmetatable({
+        Color = Color,
         Parent = Parent,
-        Indent = Parent and Parent.Indent + 1 or 1,
+        Indent = Indent,
         Content = ""
     } :: any, Block)
 end
 
-function Block.Line(self: Block<unknown>, Content: string): Block<unknown>
-    local NewLine = Content ~= "" and "\n" or ""
-    self.Content ..= `{NewLine}{string.rep("\t", self.Indent)}{Content}`
+function Block.Line(self: Block, Content: string, Indent: number?, Ignore: boolean?): Block
+    local Indent = Indent or self.Indent
+    local NewLine = self.Content ~= "" and "\n" or ""
+
+    if self.Color and not Ignore then
+        print(`{string.rep("\t", Indent)}{Content} {Indent}`)
+    end
+
+    self.Content ..= `{NewLine}{string.rep("\t", Indent)}{Content}`
     return self
 end
 
-function Block.Multiline(self: Block<unknown>, Content: string): Block<unknown>
+function Block.Comment(self: Block, Content: string): Block
+    self:Line(`-- {Content}`)
+    return self
+end
+
+function Block.Multiline(self: Block, Content: string, Indent: number?): Block
     local Lines = string.split(Content, "\n")
     for _, Line in Lines do
-        self:Line(Line)
+        --> Don't include lines that are only control characters
+        local NoControlCharacters = string.gsub(Line, "%c+", "")
+        if NoControlCharacters == "" then
+            continue
+        end
+
+        self:Line(Line, Indent or 0, true)
     end
 
     return self
 end
 
-function Block.Loop(self: Block<unknown>, Counter: string, Length: string): Block<unknown>
+function Block.Loop(self: Block, Counter: string, Length: string): Block
     self:Line(`for {Counter}, {Length} do`)
     return Block.new(self)
 end
 
-function Block.Compare(self: Block<unknown>, Left: string, Right: string, Operator: EqualityOperator): Block<unknown>
+function Block.While(self: Block, Condition: string): Block
+    self:Line(`while ({Condition}) do`)
+    return Block.new(self)
+end
+
+function Block.Iterator(self: Block, Key: string, Value: string, Iterator: string): Block
+    self:Line(`for {Key}, {Value} in {Iterator} do`)
+    return Block.new(self)
+end
+
+function Block.Compare(self: Block, Left: string, Right: string, Operator: EqualityOperator): Block
+    if self.Color then
+        print("COMPARE")
+    end
     self:Line(`if {Left} {Operators[Operator]} {Right} then`)
     return Block.new(self)
 end
 
-function Block.End(self: Block<unknown>)
+function Block.Branch(self: Block, Branch: BranchType, Left: string?, Right: string?, Operator: EqualityOperator?): Block
     local Parent = self.Parent
+    assert(Parent, "Cannot branch the top level block.")
+
+    --> Push previous branch content
+    Parent:Multiline(self.Content)
+    
+    --> Create new branch
+    if Branch == "Conditional" then
+        Parent:Line(`elseif {Left} {Operators[Operator]} {Right} then`)
+    else
+        Parent:Line(`else`)
+    end
+
+    return Block.new(Parent)
+end
+
+function Block.Return(self: Block, Return: string): Block
+    self:Line(`return {Return}`)
+    return self
+end
+
+function Block.End(self: Block): Block
+    local Parent = self.Parent
+
+    if self.Color then
+        print(`END {self.Indent}`)
+        if Parent and Parent.Color then
+            SetConsoleColor(Parent.Color)
+        end
+    end
+
     if Parent then
         Parent:Multiline(self.Content)
         Parent:Line("end")
         return Parent
     end
 
+    self:Line("end", 0)
     return self
+end
+
+function Block.Unwrap(self: Block)
+    return self.Content
 end
 
 local Function = {}
 Function.__index = Function
 setmetatable(Function, Block)
 
-function Function.new(Name: string, Arguments: string, Return: string): Function
-    local Block = Block.new()
+function Function.new(Name: string, Arguments: string, Return: string, IsInlined: boolean?, Debug: boolean?): Block
+    local Block = Block.new(nil, Debug)
     setmetatable(Block, Function)
-    Block.Content = `function {Name}({Arguments}): {Return}`
-    return Block
-end
-
-function Function.End(self: Function, Return: string?): string
-    if Return then
-        self:Line(`return {Return}`)
+    
+    if IsInlined then 
+        Block:Line(`{Name} = function({Arguments}): {Return}`, 0)
+    else
+        Block:Line(`function {Name}({Arguments}): {Return}`, 0)
     end
 
-    self.Content ..= "\nend"
-    return self.Content 
+    return Block
 end
 
 local Connection = {}
 Connection.__index = Connection
 setmetatable(Connection, Block)
 
-function Connection.new(Signal: string, Arguments: string): Connection
+function Connection.new(Signal: string, Arguments: string): Block
     local Block = Block.new()
     setmetatable(Block, Connection)
     Block.Content = `{Signal}:Connect(function({Arguments})`
     return Block
 end
 
-function Connection.End(self: Function, Return: string?): string
-    self.Content ..= "\nend)"
-    return self.Content 
+function Connection.End(self: Block, Return: string?): Block
+    self:Line("end)", 0)
+    return self 
 end
 
 return {

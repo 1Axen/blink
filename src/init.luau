@@ -58,7 +58,7 @@ fs.writeFile(`{Options.ClientOutput}`, ClientSource)
 
 stdio.write(stdio.color("green"))
 print("Network files generated!")
-stdio.write(stdio.color("white"))
+stdio.write(stdio.color("reset"))
 
 if not _G.BUNDLED then
 	print(`[DEBUG]: Parsed source in {FormatTime(ParseTime)}.`)
