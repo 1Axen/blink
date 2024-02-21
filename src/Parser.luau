@@ -137,6 +137,7 @@ export type Parser = {
     FunctionDeclaration: (self: Parser, Identifier: Lexer.Token) -> FunctionDeclaration,
     ScopeDeclaration: (self: Parser, Identifier: Lexer.Token) -> ScopeDeclaration,
 
+    GetReference: (self: Parser, Reference: Lexer.Token) -> Declaration,
     GetTypeAttributes: (self: Parser, Primitive: Lexer.Token?) -> (NumberRange?, NumberRange?),
     GetDeclarationFromToken: (self: Parser, Token: Lexer.Token, Identifier: Lexer.Token) -> (Declaration, Lexer.Token?),
 }
@@ -403,11 +404,8 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
     local Declaration: TypeDeclaration; 
 
     if LookAhead.Type == "Identifier" then
-        local ScopedIdentifier = `{self.Scope and `{self.Scope}.` or ""}{LookAhead.Value}`
-        local Reference = self.Types[ScopedIdentifier] or self.Types[LookAhead.Value]
-        if not Reference then
-            Error.ThrowTokenError(self.Source, LookAhead, "Unknown type referenced")
-        elseif Reference.Type ~= "TypeDeclaration" then
+        local Reference = self:GetReference(LookAhead)
+        if Reference.Type ~= "TypeDeclaration" then
             Error.ThrowTokenError(self.Source, LookAhead, "Primitives can only reference other primitives")
         end
 
@@ -501,7 +499,7 @@ function Parser.MapDeclaration(self: Parser, Identifier: Lexer.Token): MapDeclar
     if KeyDeclaration.Type == "MapDeclaration" then
         Error.ThrowTokenError(self.Source, Key, "Maps cannot have map keys or values")
     elseif KeyDeclaration.Type == "TypeReference" then
-        local Reference: Declaration = self.Types[KeyDeclaration.Value.Reference]
+        local Reference = self:GetReference(Key)
         if Reference.Value.Optional then
             Error.ThrowTokenError(self.Source, Key, "Key is a reference to an optional type", "Maps cannot have optional keys or values")
         end
@@ -520,7 +518,7 @@ function Parser.MapDeclaration(self: Parser, Identifier: Lexer.Token): MapDeclar
     if ValueDeclaration.Type == "MapDeclaration" then
         Error.ThrowTokenError(self.Source, Value, "Maps cannot have map keys or values")
     elseif ValueDeclaration.Type == "TypeReference" then
-        local Reference: Declaration = self.Types[ValueDeclaration.Value.Reference]
+        local Reference = self:GetReference(Value)
         if Reference.Value.Optional then
             Error.ThrowTokenError(self.Source, Value, "Value is a reference to an optional type", "Maps cannot have optional keys or values")
         end
@@ -780,6 +778,16 @@ function Parser.ScopeDeclaration(self: Parser, Identifier: Lexer.Token): ScopeDe
     self.Scope = nil
 
     return Declaration
+end
+
+function Parser.GetReference(self: Parser, Token: Lexer.Token): Declaration
+    local Identifier = `{self.Scope and `{self.Scope}.` or ""}{Token.Value}`
+    local Reference = self.Types[Identifier] or self.Types[Token.Value]
+    if not Reference then
+        Error.ThrowTokenError(self.Source, Token, "Unknown type referenced")
+    end
+
+    return Reference
 end
 
 function Parser.GetTypeAttributes(self: Parser, Primitive: Lexer.Token?): (NumberRange?, NumberRange?)
