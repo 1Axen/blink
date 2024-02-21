@@ -20,6 +20,6 @@ Blink does two things to combat bad actors:
 Head over to the [installation](https://github.com/1Axen/Blink/blob/main/docs/Installation.md) page to get started with Blink.
 
 # Credits
-Credits to [Zap](https://zap.redblox.dev/) for the range and array syntax
+Credits to [Zap](https://zap.redblox.dev/) for the range and array syntax  
 Credits to [ArvidSilverlock](https://github.com/ArvidSilverlock) for the float16 implementation
 <a href="https://www.flaticon.com/free-icons/speed" title="speed icons">Speed icons created by alkhalifi design - Flaticon</a>
