@@ -109,7 +109,13 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 				end
 			elseif Primitive == "Instance" and AssertGenerator then
 				local Assert = AssertGenerator(Variable, Class)
-				Block:Multiline(Assert.Exact, Block.Indent)
+				if Value.Optional and Block == Write then
+					Block:Compare(Variable, "nil", "Not")
+						:Multiline(Assert.Exact, Block.Indent + 1)
+					:End()
+				else
+					Block:Multiline(Assert.Exact, Block.Indent)
+				end
 			end
 		end
 
@@ -408,7 +414,7 @@ end
 do
 	Types.Instance = {
 		Read = function(Variable: string, Block: Block)
-			Block:Line("RecieveInstanceCursor += 1")
+			--Block:Line("RecieveInstanceCursor += 1")
 			Block:Line(`{Variable} = RecieveInstances[RecieveInstanceCursor]`)
 		end,
 		Write = function(Value: string, Block: Block)

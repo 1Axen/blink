@@ -168,14 +168,15 @@ local Function = {}
 Function.__index = Function
 setmetatable(Function, Block)
 
-function Function.new(Name: string, Arguments: string, Return: string, IsInlined: boolean?, Debug: boolean?): Block
+function Function.new(Name: string, Arguments: string, Return: string?, IsInlined: boolean?, Debug: boolean?): Block
     local Block = Block.new(nil, Debug)
     setmetatable(Block, Function)
-    
+
+    local Suffix = Return and `: {Return}` or ""
     if IsInlined then 
-        Block:Line(`{Name} = function({Arguments}): {Return}`, 0)
+        Block:Line(`{Name} = function({Arguments}){Suffix}`, 0)
     else
-        Block:Line(`function {Name}({Arguments}): {Return}`, 0)
+        Block:Line(`function {Name}({Arguments}){Suffix}`, 0)
     end
 
     return Block

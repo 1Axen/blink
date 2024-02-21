@@ -115,7 +115,7 @@ function Declarations.Enum(Declaration: Parser.EnumDeclaration, Read: Blocks.Blo
 			Read:Line(`{Variable} = "{EnumItem}"`)
 		end
 	Read:Branch("Default")
-		:Line(`error(\`Unexpected enum: \{{Variable}\}\`)`)
+		:Line(`error(\`Unexpected enum: \{Index\}\`)`)
 	:End()
 
 	--> Write body
@@ -225,7 +225,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 
 	--> Data body
 	local _, Values, _, Arguments = Generators.LuauType(Value.Data, true)
-	local _, Read, Write = Generators.Type(Value.Data :: Type, Identifier, nil, true)
+	local Read, Write = Generators.Event(Value.Data :: Type, Index, Identifier, false)
 	UserTypes.PushMultiline(Read, 1, 0, false)
 	UserTypes.PushMultiline(Write, 1, 0, false)
 
@@ -236,12 +236,9 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 	Body.Push(`{Value.Identifier} = \{`, 1, Indent)
 
 	if Value.From ~= Context then
-		Channel.Count += 1
-		Channel.Listening = true
-	
 		--> Create queue and event branch
 		Events.Push(`{Queue} = table.create(256)`)
-		Block = (Index == 0)
+		Block = (Channel.Listening == false)
 			and Block:Compare("Index", Index, "Equals")
 			or Block:Branch("Conditional", "Index", Index, "Equals")
 	
@@ -251,6 +248,9 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 		else
 			Reliables = Block
 		end
+		
+		--> Update channel status
+		Channel.Listening = true
 
 		--> Event recieve body
 		Block:Line(`local {Values} = {GetTypesPath(Identifier, Scope, false)}()`)
@@ -377,6 +377,8 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 		Body.PushMultiline(FireExcept:Unwrap() .. ",", 0, Indent + 1)
 	end
 
+	Channel.Count += 1
+
 	Body.Push(`\},`, 1, Indent)
 	Return.PushMultiline(Body.Dump(), 0)
 end
@@ -386,6 +388,19 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 	local DataIdentifier = `FUNCTION_DATA_{Value.Identifier}`
 	local ReturnIdentifier = `FUNCTION_RETURN_{Value.Identifier}`
 
+	local Yield = Value.Yield
+	local IsFuture = (Yield == "Future")
+	local IsPromise = (Yield == "Promise")
+	local IsCoroutine = (Yield == "Coroutine")
+
+	if IsFuture and not Options.FutureLibrary then
+		error(`Cannot use yield type: "Future", without providing a path to the future library.`)
+	end
+
+	if IsPromise and not Options.PromiseLibrary then
+		error(`Cannot use yield type: "Promise", without providing a path to the promise library.`)
+	end
+
 	local Block = Reliables
 	local Channel = Channels.Reliable
 
@@ -394,17 +409,17 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 	local Connection = `Events.Reliable[{Index}]`
 
 	--> Data and return body
-	local _, DataValues, _, DataArguments = Generators.LuauType(Value.Data, true)
-	local _, ReturnValues, _, ReturnArguments = Generators.LuauType(Value.Return, true)
+	local DataTypes, DataValues, _, DataArguments = Generators.LuauType(Value.Data, true)
+	local ReturnTypes, ReturnValues, _, ReturnArguments = Generators.LuauType(Value.Return, true)
 
 	do
-		local _, Read, Write = Generators.Type(Value.Data :: Type, DataIdentifier, nil, true)
+		local Read, Write = Generators.Event(Value.Data :: Type, Index, DataIdentifier, "Data")
 		UserTypes.PushMultiline(Read, 1, 0, false)
 		UserTypes.PushMultiline(Write, 1, 0, false)
 	end
 
 	do
-		local _, Read, Write = Generators.Type(Value.Data :: Type, DataIdentifier, nil, true)
+		local Read, Write = Generators.Event(Value.Return :: Type, Index, ReturnIdentifier, "Return")
 		UserTypes.PushMultiline(Read, 1, 0, false)
 		UserTypes.PushMultiline(Write, 1, 0, false)
 	end
@@ -415,10 +430,8 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 	Body.Push(`{Value.Identifier} = \{`, 1, Indent)
 
 	--> Create queue and event branch
-	Channel.Count += 1
-	Channel.Listening = true
 	Events.Push(`{Queue} = table.create(256)`)
-	Block = (Index == 0)
+	Block = (Channel.Listening == false)
 		and Block:Compare("Index", Index, "Equals")
 		or Block:Branch("Conditional", "Index", Index, "Equals")
 	
@@ -427,51 +440,126 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 
 	if Context == "Server" then
 		--> Data recieve body
+		Types.u8.Read("local InvocationIdentifier", Block)
 		Block:Line(`local {DataValues} = {GetTypesPath(DataIdentifier, Scope, false)}()`)
-		Block:Compare(Connection, "nil", "Not")
-			:Line(Value.Call == "SingleSync" and `{Connection}({Arguments})` or `task.spawn({Connection}, {Arguments})`)
+		:Compare(Connection, "nil", "Not")
+			:Line(`{Connection}(Player, {DataArguments}, InvocationIdentifier)`)
 		:Branch("Default")
 			:Compare(`#{Queue}`, "256", "Greater")
 				:Line(`warn("[Blink]: Event queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement a listener?")`)
 			:End()
-			:Line(`table.insert({Queue}, \{{Arguments}\} :: \{any\})`)
+			:Line(`table.insert({Queue}, \{Player, {DataArguments}, InvocationIdentifier\} :: \{any\})`)
 		:End()
 
-		--[[local ContextArguments = `Listener: ({Context == "Server" and "Player: Player, " or ""}{Values}) -> ()`
-		local Disconnect = Blocks.Function("", "", "()")
-			:Line(`{Queue} = \{\}`)
-			:Line(`{Connection} = nil`)
-		:End()
-
+		--> Data listener body
 		local FlushQueue = Blocks.Function("", "", "()")
 			:Line(`local EventQueue = {Queue} or \{\}`)
 			:Line(`{Queue} = nil`)
 			:Iterator("Index", "Arguments", "EventQueue")
-				:Line(Value.Call == "SingleSync" and `Listener(table.unpack(Arguments))` or `task.spawn(Listener, table.unpack(Arguments))`)
+				:Line(`{Connection}(table.unpack(Arguments))`)
 			:End()
 		:End()
 
-		local Listener = Blocks.Function("On", ContextArguments, `() -> ()`, true)
-			:Line(`{Connection} = Listener`)
-			:Multiline(`task.spawn({FlushQueue:Unwrap()})`, 1)
-			:Multiline(`return {Disconnect:Unwrap()}`, 1)
+		local Serialize = Blocks.Function("", "")
+			:Line(`local {ReturnValues} = Listener(Player, {DataArguments})`)
+			:Line(`SerializationError = true`)
+			:Line(`{GetTypesPath(ReturnIdentifier, Scope, true)}({ReturnArguments}, InvocationIdentifier)`)
 		:End()
 
-		Body.PushMultiline(Listener:Unwrap(), 0, Indent + 1)]]
-	else
+		local TrueListener = Blocks.Function(Connection, `Player: Player, {DataValues}, InvocationIdentifier: number`, "()", true)
+			:Line("Load(PlayersMap[Player])")
+			:Line("local SerializationError = false")
+			:Multiline(`local Success, Error = pcall({Serialize:Unwrap()})`, 1)
+			:Compare("Success", "true", "Not")
+				:Compare("SerializationError", "true", "Equals")
+					:Line(`error(\`Blink failed to serialize function: "{Value.Identifier}", \{Error\}\`)`)
+				:End()
+				:Line("local Position = Allocate(3)")
+				:Line(`buffer.writeu8(SendBuffer, Position, {Index})`)
+				:Line(`buffer.writeu8(SendBuffer, Position + 1, InvocationIdentifier)`)
+				:Line(`buffer.writeu8(SendBuffer, Position + 2, 0)`)
+				:Line(`warn(\`"{Value.Identifier}" encountered an error, \{Error\}\`)`)
+			:End()
+			:Line("PlayersMap[Player] = Save()")
+		:End()
 
+		local Listener = Blocks.Function("On", `Listener: (Player, {DataTypes}) -> ({ReturnTypes})`, "()", true)
+			:Multiline(TrueListener:Unwrap(), 1)
+			:Multiline(`task.spawn({FlushQueue:Unwrap()})`, 1)
+		:End()
+
+		Body.PushMultiline(Listener:Unwrap(), 0, 2)
+	else
+		--> Return recieve body
+		local Deserialize = Blocks.Function("", "")
+			:Return(`{GetTypesPath(ReturnIdentifier, Scope, false)}()`)
+		:End()
+
+		Types.u8.Read("local InvocationIdentifier", Block)
+		Block:Compare("Calls[InvocationIdentifier]", "nil", "Not")
+			:Multiline(`local Success, {ReturnArguments} = pcall({Deserialize:Unwrap()})`, Block.Indent + 1)
+			:Line(`task.spawn(Calls[InvocationIdentifier], Success, {ReturnArguments})`)
+		:End()
+
+		--> Function listener body
+		local Error = `"Server encountered an exception while processing \\"{Value.Identifier}\\"."`
+		local Contents = Blocks.Block()
+			:Line("local InvocationIdentifier = Invoke()")
+			:Line(`{GetTypesPath(DataIdentifier, Scope, true)}({DataArguments}, InvocationIdentifier)`)
+			:Line("Calls[InvocationIdentifier] = coroutine.running()")
+			:Line(`local Success, {ReturnValues} = coroutine.yield()`)
+			:Compare("Success", "true", "Not")
+				:Line(`error({Error})`)
+			:End()
+			:Return(ReturnArguments)
+		:Unwrap()
+
+		local Invoke;
+		if IsFuture then
+			local Wrapper = Blocks.Function("", "")
+				:Multiline(Contents)
+			:End()
+
+			Invoke = Blocks.Function("Invoke", DataValues, `Future.Future<{ReturnTypes}>`, true)
+			Invoke:Multiline(`return Future.Try({Wrapper:Unwrap()})`, 1)
+		elseif IsPromise then
+			local OnCancel = Blocks.Function("", "")
+				:Line("Calls[InvocationIdentifier] = nil")
+			:End()
+
+			local Promise = Blocks.Function("", "Resolve, Reject, OnCancel")
+				:Line("local InvocationIdentifier = Invoke()")
+				:Line(`{GetTypesPath(DataIdentifier, Scope, true)}({DataArguments}, InvocationIdentifier)`)
+				:Line("Calls[InvocationIdentifier] = coroutine.running()")
+				:Multiline(`OnCancel({OnCancel:Unwrap()})`, 1)
+				:Line(`local Success, {ReturnValues} = coroutine.yield()`)
+				:Compare("Success", "true", "Not")
+					:Line(`Reject({Error})`)
+					:Return("")
+				:End()
+				:Line(`Resolve({ReturnArguments})`)
+			:End()
+
+			Invoke = Blocks.Function("Invoke", DataValues, `unknown`, true)
+			Invoke:Multiline(`return Promise.new({Promise:Unwrap()})`, 1)
+		else
+			Invoke = Blocks.Function("Invoke", DataValues, `({ReturnTypes})`, true)
+			Invoke:Multiline(Contents, 1)
+		end
+
+		Body.PushMultiline(Invoke:End():Unwrap(), 0, 2)
 	end
+
+	Channel.Count += 1
+	Channel.Listening = true
 
 	Body.Push(`\},`, 1, Indent)
 	Return.PushMultiline(Body.Dump(), 0)
 end
 
 --> Generator functions
-function Generators.Optional(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string): (Blocks.Block, Blocks.Block, boolean)
-	local IsInstance = false
+function Generators.Optional(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string): (Blocks.Block, Blocks.Block)
 	if Declaration.Type == "TypeDeclaration" and Declaration.Value.Primitive == "Instance" then
-		IsInstance = true
-		Read:Line("RecieveInstanceCursor += 1")
 		Read = Read:Compare("RecieveInstances[RecieveInstanceCursor]", "false", "Not")
 	else
 		Types.u8.Write(`{Variable} ~= nil and 1 or 0`, Write)
@@ -479,22 +567,26 @@ function Generators.Optional(Declaration: Type, Read: Blocks.Block, Write: Block
 		Write = Write:Compare(Variable, "nil", "Not")
 	end
 
-	return Read, Write, IsInstance
+	return Read, Write
 end
 
 function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string?)
 	local Value = Declaration.Value
 	local Optional = Value.Optional
 	local Variable = Variable or "Value"
-	local IsInstance = false
+	local IsInstance = (Declaration.Type == "TypeDeclaration" and ((Value :: any).Primitive :: string) == "Instance")
 
 	if not _G.BUNDLED then
 		Read:Comment(`{Variable}: {Value.Identifier}`)
 		Write:Comment(`{Variable}: {Value.Identifier}`)
 	end
 
+	if IsInstance then
+		Read:Line("RecieveInstanceCursor += 1")
+	end
+
 	if Optional then
-		Read, Write, IsInstance = Generators.Optional(Declaration, Read, Write, Variable)
+		Read, Write = Generators.Optional(Declaration, Read, Write, Variable)
 	end
 
 	if Declaration.Type == "TypeDeclaration" then
@@ -595,18 +687,47 @@ function Generators.LuauType(Declaration: Parser.Declaration, UseTypeAsValue: bo
 	return Type, Values, Export, Returns
 end
 
-function Generators.Type(Declaration: Type, Identifier: string?, OverwriteScope: string?, UseTypeAsReturn: boolean?): (string, string, string)
+function Generators.Type(Declaration: Type): (string, string, string)
 	local Value = Declaration.Value
-	local Identifier = Identifier or Value.Identifier
+	local Identifier = Value.Identifier
 
-	local Type, Values, Export, Returns = Generators.LuauType(Declaration, UseTypeAsReturn)
-	local Read = Blocks.Function(GetTypesPath(Identifier, OverwriteScope or Scope, false), "", `({UseTypeAsReturn and Type or Export})`)
-	local Write = Blocks.Function(GetTypesPath(Identifier, OverwriteScope or Scope, true), Values, "()")
+	local Type, Values, Export, Returns = Generators.LuauType(Declaration)
+	local Read = Blocks.Function(GetTypesPath(Identifier, Scope, false), "", `({Export})`)
+	local Write = Blocks.Function(GetTypesPath(Identifier, Scope, true), Values, "()")
 
 	Read:Line(`local {Values};`)
 	Generators.UserType(Declaration, Read, Write)
 
 	return `export type {Export} = {Type}`, Read:Return(Returns):End():Unwrap(), Write:End():Unwrap()
+end
+
+function Generators.Event(Data: Type, Index: number, Identifier: string, Function: ("Data" | "Return")?): (string, string)
+	local Type, Values, _, Returns = Generators.LuauType(Data, true)
+
+	local Arguments = `{Values}{Function and ", InvocationIdentifier: number" or ""}`
+	local Read = Blocks.Function(GetTypesPath(Identifier, Scope, false), "", `({Type})`)
+	local Write = Blocks.Function(GetTypesPath(Identifier, Scope, true), Arguments, "()")
+
+	if not _G.BUNDLED then
+		Write:Comment(`{Identifier} ({Index})`)
+	end
+
+	Types.u8.Write(Index, Write)
+	if Function then
+		Types.u8.Write("InvocationIdentifier", Write)
+		if Function == "Return" then
+			Types.u8.Write("1", Write)
+			Types.u8.Read("local Success", Read)
+			Read:Compare("Success", "1", "Not")
+				:Line("error(\"Server encountered an error.\")")
+			:End()
+		end
+	end
+
+	Read:Line(`local {Values};`)
+	Generators.UserType(Data, Read, Write)
+
+	return Read:Return(Returns):End():Unwrap(), Write:End():Unwrap()
 end
 
 function Generators.Scope(Declaration: Parser.ScopeDeclaration)
@@ -637,6 +758,8 @@ function Generators.AbstractSyntaxTree(Value: { Parser.Declaration })
 			Generators.Scope(Declaration :: Parser.ScopeDeclaration)
 		elseif Declaration.Type == "EventDeclaration" then
 			Declarations.Event(Declaration :: Parser.EventDeclaration)
+		elseif Declaration.Type == "FunctionDeclaration" then
+			Declarations.Function(Declaration :: Parser.FunctionDeclaration)
 		end
 	end
 end
@@ -731,8 +854,4 @@ return function(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Bod
 		.. Reliables:Unwrap() .. "\n\n"
 		.. Unreliables:Unwrap() .. "\n"
 		.. `\nreturn \{\n{Return.Dump()}\}`
-		--.. Replication
-		--.. ReliableEvents.Dump()
-		--.. UnreliableEvents.Dump()
-		--.. `\nreturn \{\n{Return.Dump()}\}`
 end

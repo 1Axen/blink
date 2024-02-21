@@ -1,6 +1,9 @@
 option ClientOutput = "../Network/ClientPrototype.luau"
 option ServerOutput = "../Network/ServerPrototype.luau"
 
+option FutureLibrary = "ReplicatedStorage.Packages.Future"
+option PromiseLibrary = "ReplicatedStorage.Packages.Promise"
+
 type Byte = u8
 type SignedByte = i8
 
@@ -104,6 +107,18 @@ event ClientUnreliable = {
 
 function RemoteFunction = {
     Yield = Coroutine,
+    Data = u8,
+    Return = u8
+}
+
+function RemoteFunctionFuture = {
+    Yield = Future,
+    Data = u8,
+    Return = u8
+}
+
+function RemoteFunctionPromise = {
+    Yield = Promise,
     Data = u8,
     Return = u8
 }
