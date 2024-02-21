@@ -560,7 +560,7 @@ end
 --> Generator functions
 function Generators.Optional(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string): (Blocks.Block, Blocks.Block)
 	if Declaration.Type == "TypeDeclaration" and Declaration.Value.Primitive == "Instance" then
-		Read = Read:Compare("RecieveInstances[RecieveInstanceCursor]", "false", "Not")
+		Read = Read:Compare("typeof(RecieveInstances[RecieveInstanceCursor])", "\"Instance\"", "Equals")
 	else
 		Types.u8.Write(`{Variable} ~= nil and 1 or 0`, Write)
 		Read = Read:Compare(`buffer.readu8(RecieveBuffer, Read(1))`, "1", "Equals")
