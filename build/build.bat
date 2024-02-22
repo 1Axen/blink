@@ -1,6 +1,6 @@
 @echo Off
 SET ZIP="C:\Program Files\7-Zip\7z.exe"
-SET VERSION="0.6.1"
+SET VERSION="0.6.2"
 
 echo Clearing release folder
 rmdir /s/q "../Blink"
