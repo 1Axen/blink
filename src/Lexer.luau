@@ -179,13 +179,9 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?): Token?
         }
     end
 
-    Error.ThrowTokenError(self.Source, {
-        Type = "Unknown",
-        Value = string.sub(Slice, 1, 1),
-
-        Start = self.Cursor,
-        End = self.Cursor
-    }, `Unexpected token: "{string.sub(Slice, 1, 1)}"`)
+    Error.new(Error.LexerUnexpectedToken, self.Source, "Unexpected token")
+        :Primary({Start = self.Cursor, End = self.Cursor}, `Unexpected token`)
+    :Emit()
 
     return
 end

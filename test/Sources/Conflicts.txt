@@ -1,0 +1,22 @@
+option ClientOutput = "../Network/ClientConflict.luau"
+option ServerOutput = "../Network/ServerConflict.luau"
+
+type Name = u8?
+type Unknown = i8[1]
+
+event Name = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = u8
+}
+
+scope s = {
+    type Name = u8
+    event Name = {
+        From = Server,
+        Type = Reliable,
+        Call = SingleSync,
+        Data = u8
+    }
+}

@@ -108,12 +108,19 @@ export type Options = {
     ManualReplication: boolean?,
 }
 
+export type Duplicate = {
+    Type: string,
+    Identifier: Lexer.Token,
+    Declaration: Declaration
+}
+
 export type Parser = {
     Source: string,
     Lexer: Lexer.Lexer,
 
     Scope: string?,
-    Types: {[string]: Declaration},
+    Types: {[string]: Duplicate},
+    Events: {[string]: Duplicate},
     LookAhead: Lexer.Token?,
 
     Parse: (self: Parser, Source: string) -> (Body, Options),
@@ -142,6 +149,10 @@ export type Parser = {
     GetDeclarationFromToken: (self: Parser, Token: Lexer.Token, Identifier: Lexer.Token) -> (Declaration, Lexer.Token?),
 }
 
+local Errors = {
+    DuplicateDeclaration = 3001
+}
+
 local RangePrimitives = {
     u8 = true,
     u16 = true,
@@ -167,6 +178,16 @@ local OptionsTypes: {[string]: Lexer.Types} = {
 
 local ReservedMembers = {
 	StepReplication = true
+}
+
+local KeywordTypes = {
+    map = "Types",
+    type = "Types",
+    enum = "Types",
+    struct = "Types",
+    scope = "Events",
+    event = "Events",
+    ["function"] = "Events"
 }
 
 local EventStructure: {{Key: string, Type: Lexer.Types, Values: {string}}} = {
@@ -199,12 +220,14 @@ local function GetAttributeRange(Token: Lexer.Token, Array: boolean, Source: str
         Lower, Upper = string.match(Token.Value, `^%[({Number})..({Number})]`)
         Lower = Lower or string.match(Token.Value, `^%[({Number})]`)
 
-        if not Upper then
-            local Size = tonumber(Lower) or -1
-            if Size < 0 then
-                Error.ThrowTokenError(Source, Token, "Invalid array size, array cannot be smaller than 1 element")
-            end
+        local Size = tonumber(Lower) or -1
+        if Size < 0 then
+            Error.new(Error.AnalyzeInvalidRange, Source, "Invalid array size")
+                :Primary(Token, "Array cannot be smaller than 0 elements")
+            :Emit()
+        end
 
+        if not Upper then
             return NumberRange.new(Size) :: NumberRange
         end
     else
@@ -221,14 +244,18 @@ local function GetAttributeRange(Token: Lexer.Token, Array: boolean, Source: str
     local Min = tonumber(Lower) or 0
     local Max;
 
-    if Min < 0 then
-        Error.ThrowTokenError(Source, Token, "Invalid range bounds, range cannot be negative")
-    end
+    --[[if Min < 0 then
+        Error.new(Error.AnalyzeInvalidRange, Source, "Invalid range")
+            :Primary(Token, "Minimum cannot be negative")
+        :Emit()
+    end]]
 
     if Upper then
         Max = tonumber(Upper) or 0
         if Min >= Max then
-            Error.ThrowTokenError(Source, Token, "Invalid range bounds, max must be greater than min")
+            Error.new(Error.AnalyzeInvalidRange, Source, "Invalid range")
+                :Primary(Token, "Maximum must be greater than minimum")
+            :Emit()
         end
     end
 
@@ -243,6 +270,7 @@ function Parser.new(): Parser
         Source = "",
         Types = {},
         Scopes = {},
+        Events = {},
         Lexer = Lexer.new()
     } :: any, Parser)
 end
@@ -268,11 +296,18 @@ end
 function Parser.Consume(self: Parser, Type: string): Lexer.Token
     local Token = self.LookAhead
     if not Token then
-        error(`Unexpected end of file, expected: "{Type}".`) 
+        Error.new(Error.ParserUnexpectedEndOfFile, self.Source, "Unexpected end of file")
+            :Primary({Start = #self.Source, End = #self.Source}, "File ends here")
+        :Emit()
+        
+        --> Above already errors
+        error("Unexpected end of file")
     end
 
     if Token.Type ~= Type then
-        Error.ThrowTokenError(self.Source, Token, `Unexpected token: "{Token.Type}", expected: "{Type}"`)
+        Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`)
+            :Primary(Token, `Expected "{Type}", found "{Token.Type}"`)
+        :Emit()
     end
 
     --> Advance tokenizer
@@ -284,11 +319,18 @@ end
 function Parser.ConsumeAny(self: Parser, Types: {Lexer.Types}): Lexer.Token
     local Token = self.LookAhead
     if not Token then
-        error(`Unexpected end of file, expected one of: "{table.concat(Types, "\", ")}".`) 
+        Error.new(Error.ParserUnexpectedEndOfFile, self.Source, "Unexpected end of file")
+            :Primary({Start = #self.Source, End = #self.Source}, "File ends here")
+        :Emit()
+        
+        --> Above already errors
+        error("Unexpected end of file")
     end
 
     if not table.find(Types, Token.Type) then
-        Error.ThrowTokenError(self.Source, Token, `Unexpected token: "{Token.Type}", expected one of: "{table.concat(Types, "\", ")}"`)
+        Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`)
+            :Primary(Token, `Expected one of "{table.concat(Types, "\", ")}", found "{Token.Type}"`)
+        :Emit()
     end
 
     --> Advance tokenizer
@@ -331,7 +373,9 @@ function Parser.Options(self: Parser): Options
 
         local Type: Lexer.Types = OptionsTypes[Key.Value]
         if not Type then
-            Error.ThrowTokenError(self.Source, Key, `Unexpected option: "{Key.Value}", expected one of: "ClientOutput" or "ServerOutput" or "ManualReplicationLoop".`)
+            Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Key.Value}"`)
+                :Primary(Key, `Expected one of "ClientOutput" or "ServerOutput" or "ManualReplicationLoop", found "{Key.Value}"`)
+            :Emit()
             return 
         end
 
@@ -359,11 +403,20 @@ function Parser.Declaration(self: Parser): Declaration
     local Identifier = self:Consume("Identifier")
     self:Consume("Assign")
 
+    --> Handle duplicate declarations
+    local Type = KeywordTypes[Keyword.Value]
+    local Duplicates: {[string]: Duplicate} = self[Type]
     local ScopedIdentifier = `{self.Scope and `{self.Scope}.` or ""}{Identifier.Value}`
-    if self.Types[ScopedIdentifier] then
-        Error.ThrowTokenError(self.Source, Identifier, `Duplicate type declared`)
+    local Duplicate = Duplicates[ScopedIdentifier]
+
+    if Duplicate then
+        Error.new(Errors.DuplicateDeclaration, self.Source, `Duplicate {Keyword.Value} "{Identifier.Value}"`)
+            :Secondary(Duplicate.Identifier, "Previously delcared here")
+            :Primary(Identifier, "Duplicate declaration here")
+        :Emit()
     end
 
+    --> Parse declaration
     local Declaration: Declaration?;
     if Keyword.Value == "map" then
         Declaration = self:MapDeclaration(Identifier)
@@ -385,14 +438,20 @@ function Parser.Declaration(self: Parser): Declaration
         error(`{Keyword.Value} has no declaration handler.`)
     end
 
-    if Keyword.Value ~= "event" and Keyword.Value ~= "function" and Keyword.Value ~= "scope" then
-        if self:GetSafeLookAhead().Type == "Optional" then
-            self:Consume("Optional")
-            Declaration.Value.Optional = true
-        end
-        
-        self.Types[ScopedIdentifier] = Declaration
+    if 
+        Duplicates == self.Types 
+        and (self:GetSafeLookAhead().Type == "Optional")
+    then
+        self:Consume("Optional")
+        Declaration.Value.Optional = true
     end
+
+    --> Save declaration to duplicates
+    Duplicates[ScopedIdentifier] = {
+        Type = Type,
+        Identifier = Identifier,
+        Declaration = Declaration
+    }
 
     return Declaration
 end
@@ -406,7 +465,9 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
     if LookAhead.Type == "Identifier" then
         local Reference = self:GetReference(LookAhead)
         if Reference.Type ~= "TypeDeclaration" then
-            Error.ThrowTokenError(self.Source, LookAhead, "Primitives can only reference other primitives")
+            Error.new(Error.AnalyzePrimitiveReferencesNonPrimitive, self.Source, `Primitive referencing non primitive type`)
+                :Primary(LookAhead, `Primitives can only reference other primitives`)
+            :Emit()
         end
 
         self:Consume("Identifier")
@@ -459,8 +520,12 @@ function Parser.EnumDeclaration(self: Parser, Identifier: Lexer.Token): EnumDecl
         end
 
         local Token = self:Consume("Identifier")
-        if string.match(Token.Value, Number) then
-            Error.ThrowTokenError(self.Source, Token, `Enums can only contain letters`)
+        local Match = string.match(Token.Value, Number)
+        
+        if Match then
+            Error.new(Error.ParserUnexpectedSymbol, self.Source, `Unexpected symbol "{Match}"`)
+                :Primary(Token, `Enums can only contain letters, found "{Match}"`)
+            :Emit()
         end
 
         table.insert(Enums, Token.Value)
@@ -493,15 +558,25 @@ function Parser.MapDeclaration(self: Parser, Identifier: Lexer.Token): MapDeclar
     local KeyDeclaration, KeyOptional = self:GetDeclarationFromToken(Key, Key)
 
     if KeyOptional then
-        Error.ThrowTokenError(self.Source, KeyOptional or Key, "Maps cannot have optional keys or values")
+        Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type")
+            :Primary(KeyOptional, `Maps cannot have optionals as keys or values`)
+        :Emit()
     end
 
     if KeyDeclaration.Type == "MapDeclaration" then
-        Error.ThrowTokenError(self.Source, Key, "Maps cannot have map keys or values")
+        Error.new(Error.AnalyzeNestedMap, self.Source, "Nested map")
+            :Primary(Key, `Maps cannot have maps as keys or values`)
+        :Emit()
     elseif KeyDeclaration.Type == "TypeReference" then
         local Reference = self:GetReference(Key)
         if Reference.Value.Optional then
-            Error.ThrowTokenError(self.Source, Key, "Key is a reference to an optional type", "Maps cannot have optional keys or values")
+            Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type")
+                :Primary(Key, `Key is a reference to an optional type, maps cannot have optional keys or values`)
+            :Emit()
+        elseif Reference.Type == "MapDeclaration" then
+            Error.new(Error.AnalyzeNestedMap, self.Source, "Nested map")
+                :Primary(Key, `Maps cannot have maps as keys or values`)
+            :Emit()
         end
     end
 
@@ -512,15 +587,25 @@ function Parser.MapDeclaration(self: Parser, Identifier: Lexer.Token): MapDeclar
     local ValueDeclaration, ValueOptional = self:GetDeclarationFromToken(Value, Value)
 
     if ValueOptional or ValueDeclaration.Value.Optional then
-        Error.ThrowTokenError(self.Source, ValueOptional or Value, "Maps cannot have optional keys or values")
+        Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type")
+            :Primary(ValueOptional, `Maps cannot have optionals as keys or values`)
+        :Emit()
     end
 
     if ValueDeclaration.Type == "MapDeclaration" then
-        Error.ThrowTokenError(self.Source, Value, "Maps cannot have map keys or values")
+        Error.new(Error.AnalyzeNestedMap, self.Source, "Nested map")
+            :Primary(Value, `Maps cannot have maps as keys or values`)
+        :Emit()
     elseif ValueDeclaration.Type == "TypeReference" then
         local Reference = self:GetReference(Value)
         if Reference.Value.Optional then
-            Error.ThrowTokenError(self.Source, Value, "Value is a reference to an optional type", "Maps cannot have optional keys or values")
+            Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type")
+                :Primary(Value, `Value is a reference to an optional type, maps cannot have optional keys or values`)
+            :Emit()
+        elseif Reference.Type == "MapDeclaration" then
+            Error.new(Error.AnalyzeNestedMap, self.Source, "Nested map")
+                :Primary(Value, `Maps cannot have maps as keys or values`)
+            :Emit()
         end
     end
 
@@ -545,7 +630,7 @@ end
 function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): StructDeclaration
     self:Consume("OpenCurlyBrackets")
 
-    local Keys: {[string]: boolean} = {}
+    local Keys: {[string]: Lexer.Token} = {}
     local Fields = {}
 
     while (self.LookAhead) do
@@ -558,13 +643,17 @@ function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): Struct
         local Key = self:Consume("Identifier")
         self:Consume("Assign")
 
-        if Keys[Key.Value] then
-            Error.ThrowTokenError(self.Source, Key, `Duplicate key`)
+        local Duplicate = Keys[Key.Value]
+        if Duplicate then
+            Error.new(Error.AnalyzeDuplicateField, self.Source, "Duplicate struct field")
+                :Secondary(Duplicate, "Previously declared here")
+                :Primary(Key, "Duplicate declared here")
+            :Emit()
         end
 
         local Declaration: Declaration = self:GetDeclarationFromToken(self:GetSafeLookAhead(), Key)
 
-        Keys[Key.Value] = true
+        Keys[Key.Value] = Key
         table.insert(Fields, Declaration)
 
         if self:GetSafeLookAhead().Type == "CloseCurlyBrackets" then
@@ -623,7 +712,9 @@ function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDe
     self:Consume("OpenCurlyBrackets")
 
     if ReservedMembers[Identifier.Value] then
-        Error.ThrowTokenError(self.Source, Identifier, `"{Identifier.Value}" is reserved and cannot be used as an event identifier`)
+        Error.new(Error.AnalyzeReservedIdentifier, self.Source, "Reserved identifier")
+            :Primary(Identifier, `"{Identifier.Value}" is reserved and cannot be used as a event identifier`)
+        :Emit()
     end
 
     local Event: EventDeclaration = {
@@ -642,7 +733,9 @@ function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDe
     for Index, Entry in EventStructure do
         local Key = self:Consume("Identifier")
         if Key.Value ~= Entry.Key then
-            Error.ThrowTokenError(self.Source, Key, `Unexpected key: {Key.Value}, expected: "{Entry.Key}"`)
+            Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`)
+                :Primary(Key, `Expected "{Entry.Key}", found "{Key.Value}"`)
+            :Emit()
         end
 
         local Value: unknown;
@@ -651,14 +744,18 @@ function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDe
         if Entry.Key ~= "Data" then
             local Token = self:Consume(Entry.Type)
             if not table.find(Entry.Values, Token.Value) then
-                Error.ThrowTokenError(self.Source, Token, `Unexpected value: {Token.Value}, expected one of "{table.concat(Entry.Values, "\" or \"")}"`)
+                Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`)
+                    :Primary(Token, `Expected one of "{table.concat(Entry.Values, "\" or \"")}", found "{Token.Value}"`)
+                :Emit()
             end
 
             Value = Token.Value
         else
             local Token = self.LookAhead
             if not Token then
-                Error.ThrowTokenError(self.Source, Assign, "Expected value after assignment")
+                Error.new(Error.ParserExpectedExtraToken, self.Source, `Expected a token`)
+                    :Primary(Assign, `Expected a value to follow after assignment`)
+                :Emit()
                 break
             end
 
@@ -685,7 +782,9 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): Func
     self:Consume("OpenCurlyBrackets")
 
     if ReservedMembers[Identifier.Value] then
-        Error.ThrowTokenError(self.Source, Identifier, `"{Identifier.Value}" is reserved and cannot be used as a function identifier`)
+        Error.new(Error.AnalyzeReservedIdentifier, self.Source, "Reserved identifier")
+            :Primary(Identifier, `"{Identifier.Value}" is reserved and cannot be used as a function identifier`)
+        :Emit()
     end
 
     local Function: FunctionDeclaration = {
@@ -703,7 +802,9 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): Func
     for Index, Entry in FunctionStructure do
         local Key = self:Consume("Identifier")
         if Key.Value ~= Entry.Key then
-            Error.ThrowTokenError(self.Source, Key, `Unexpected key: {Key.Value}, expected: "{Entry.Key}"`)
+            Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`)
+                :Primary(Key, `Expected "{Entry.Key}", found "{Key.Value}"`)
+            :Emit()
         end
 
         local Value: unknown;
@@ -712,14 +813,18 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): Func
         if Entry.Key ~= "Data" and Entry.Key ~= "Return" then
             local Token = self:Consume(Entry.Type)
             if not table.find(Entry.Values, Token.Value) then
-                Error.ThrowTokenError(self.Source, Token, `Unexpected value: {Token.Value}, expected one of "{table.concat(Entry.Values, "\" or \"")}"`)
+                Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`)
+                    :Primary(Token, `Expected one of "{table.concat(Entry.Values, "\" or \"")}", found "{Token.Value}"`)
+                :Emit()
             end
 
             Value = Token.Value
         else
             local Token = self.LookAhead
             if not Token then
-                Error.ThrowTokenError(self.Source, Assign, "Expected value after assignment")
+                Error.new(Error.ParserExpectedExtraToken, self.Source, `Expected a token`)
+                    :Primary(Assign, `Expected a value to follow after assignment`)
+                :Emit()
                 break
             end
 
@@ -744,7 +849,15 @@ end
 
 function Parser.ScopeDeclaration(self: Parser, Identifier: Lexer.Token): ScopeDeclaration
     if self.Scope then
-        Error.ThrowTokenError(self.Source, Identifier, `Blink doesn't support declaring scopes within scopes`)
+        Error.new(Error.AnalyzeNestedScope, self.Source, "Nested scope")
+            :Primary(Identifier, `Blink doesn't currently support declaring scopes within scopes`)
+        :Emit()
+    end
+
+    if ReservedMembers[Identifier.Value] then
+        Error.new(Error.AnalyzeReservedIdentifier, self.Source, "Reserved identifier")
+            :Primary(Identifier, `"{Identifier.Value}" is reserved and cannot be used as a scope identifier`)
+        :Emit()
     end
 
     local Scope = Identifier.Value
@@ -758,12 +871,7 @@ function Parser.ScopeDeclaration(self: Parser, Identifier: Lexer.Token): ScopeDe
         }
     }
 
-    if self.Types[Scope] then
-        Error.ThrowTokenError(self.Source, Identifier, `Duplicate declaration`)
-    end
-
     self.Scope = Scope
-    self.Types[Scope] = Declaration
     self:Consume("OpenCurlyBrackets")
 
     while (self.LookAhead) do
@@ -784,10 +892,12 @@ function Parser.GetReference(self: Parser, Token: Lexer.Token): Declaration
     local Identifier = `{self.Scope and `{self.Scope}.` or ""}{Token.Value}`
     local Reference = self.Types[Identifier] or self.Types[Token.Value]
     if not Reference then
-        Error.ThrowTokenError(self.Source, Token, "Unknown type referenced")
+        Error.new(Error.AnalyzeUnknownReference, self.Source, "Unknown reference")
+            :Primary(Token, `Unknown type referenced`)
+        :Emit()
     end
 
-    return Reference
+    return Reference.Declaration
 end
 
 function Parser.GetTypeAttributes(self: Parser, Primitive: Lexer.Token?): (NumberRange?, NumberRange?)
@@ -805,9 +915,13 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Lexer.Token?): (Numbe
         
         if Type == "Range" then
             if not Primitive then
-                Error.ThrowTokenError(self.Source, LookAhead, `"References do not support ranges`)
+                Error.new(Error.AnalyzeInvalidRangeType, self.Source, "Type does not support ranges")
+                    :Primary(LookAhead, `References do not support ranges`)
+                :Emit()
             elseif not RangePrimitives[Primitive.Value] then
-                Error.ThrowTokenError(self.Source, LookAhead, `"{Primitive.Value}" does not support ranges`)
+                Error.new(Error.AnalyzeInvalidRangeType, self.Source, "Type does not support ranges")
+                    :Primary(LookAhead, `"{Primitive.Value}" does not support ranges`)
+                :Emit()
             end
 
             Range = GetAttributeRange(LookAhead, false, self.Source)
@@ -836,13 +950,9 @@ function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identi
         Declaration = self:TypeDeclaration(Identifier)
     elseif Token.Type == "Identifier" then
         local Type = self:Consume("Identifier")
-        local ScopedIdentifier = `{self.Scope and `{self.Scope}.` or ""}{Type.Value}`
-        local Reference = self.Types[ScopedIdentifier] or self.Types[Type.Value]
-        if not Reference then
-            Error.ThrowTokenError(self.Source, Type, "Unknown type referenced")
-        end
-
+        local Reference = self:GetReference(Type)
         local Array, Range = self:GetTypeAttributes()
+
         Declaration = {
             Type = "TypeReference",
             Value = {
@@ -858,7 +968,9 @@ function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identi
     end
 
     if not Declaration then
-        Error.ThrowTokenError(self.Source, Token, `Unknown type referenced: "{Token.Type}"`)
+        Error.new(Error.AnalyzeUnknownReference, self.Source, "Unknown reference")
+            :Primary(Token, `Unknown type referenced`)
+        :Emit()
     end
 
     local Optional;
