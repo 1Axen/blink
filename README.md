@@ -22,4 +22,5 @@ Head over to the [installation](https://github.com/1Axen/Blink/blob/main/docs/In
 # Credits
 Credits to [Zap](https://zap.redblox.dev/) for the range and array syntax  
 Credits to [ArvidSilverlock](https://github.com/ArvidSilverlock) for the float16 implementation  
+Studio plugin auto completion icons are sourced from [Microsoft](https://github.com/microsoft/vscode-icons) and are under the [CC BY 4.0](https://github.com/microsoft/vscode-icons/blob/main/LICENSE) license.  
 <a href="https://www.flaticon.com/free-icons/speed" title="speed icons">Speed icons created by alkhalifi design - Flaticon</a>
