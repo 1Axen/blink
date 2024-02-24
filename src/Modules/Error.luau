@@ -1,9 +1,21 @@
 --!native
 --!optimize 2
 
-local stdio = require("@lune/stdio")
+local stdio;
+if not _G.BUNDLED then
+    stdio = require("@lune/stdio")
+end
 
-local SPACE = "    "
+local SPACE = " "
+local INDENT = "    "
+local IS_ROBLOX = (game ~= nil)
+local INVISIBLE_SPACE = `<font transparency="1">0</font>`
+
+--> ROBLOX is ROBLOX and renders spaces at half width
+if IS_ROBLOX then
+    SPACE = INVISIBLE_SPACE
+    INDENT = string.rep(INVISIBLE_SPACE, #INDENT)
+end
 
 type Slice = {
     Line: number,
@@ -12,9 +24,22 @@ type Slice = {
     Underlines: number,
 }
 
+type Color = "red" | "green" | "blue" | "black" | "white" | "cyan" | "purple" | "yellow" | "reset"
+
 export type Span = {
     Start: number,
     End: number,
+}
+
+local Colors = {
+    black = "rgb(0, 0, 0)",
+    blue = "rgb(0, 0, 255)",
+    cyan = "rgb(0, 255, 255)",
+    green = "rgb(0, 255, 0)",
+    purple = "rgb(163, 44, 196)",
+    red = "rgb(255, 0, 0)",
+    white = "rgb(255, 255, 255)",
+    yellow = "rgb(255, 255, 0)",
 }
 
 local Error = {
@@ -44,13 +69,24 @@ export type Class = typeof(setmetatable({} :: {
     Message: string,
 }, Error))
 
-local function Color(Text: string, Color: stdio.Color): string
+local function Fix(Text: string): string
+    if IS_ROBLOX then
+        Text = string.gsub(Text, "%s", INVISIBLE_SPACE)
+    end
+
+    return Text
+end
+
+local function Color(Text: string, Color: Color): string
+    if _G.BUNDLED then
+        return `<font color="{Colors[Color]}">{Text}</font>`
+    end
     return `{stdio.color(Color)}{Text}{stdio.color("reset")}`
 end
 
 function Error.new(Code: number, Source: string, Message: string): Class
-    local Content = `{Color(`error[{Code}]`, "red")}: {Message}`
-    Content ..= `\n{SPACE}┌─ input.blink`
+    local Content = `{Color(`error[{Code}]`, "red")}:{SPACE}{Fix(Message)}`
+    Content ..= `\n{INDENT}┌─{SPACE}input.blink`
 
     return setmetatable({
         Source = string.split(Source, "\n"),
@@ -78,7 +114,7 @@ function Error.Slice(self: Class, Span: Span): Slice
 
         return {
             Line = Line,
-            Text = Text,
+            Text = Fix(Text),
             Spaces = Spaces,
             Underlines = Underlines
         }
@@ -89,15 +125,15 @@ end
 
 function Error.Primary(self: Class, Span: Span, Text: string): Class
     local Slice = self:Slice(Span)
-    self.Message ..= `\n{Color(string.format("%03i", Slice.Line), "blue")} │ {Slice.Text}`
-    self.Message ..= `\n{SPACE}│ {string.rep(" ", Slice.Spaces)}{Color(`{string.rep("^", Slice.Underlines)} {Text}`, "red")}`
+    self.Message ..= `\n{Color(string.format("%03i", Slice.Line), "blue")}{SPACE}│{SPACE}{Slice.Text}`
+    self.Message ..= `\n{INDENT}│{SPACE}{string.rep(SPACE, Slice.Spaces)}{Color(`{string.rep("^", Slice.Underlines)}{SPACE}{Fix(Text)}`, "red")}`
     return self
 end
 
 function Error.Secondary(self: Class, Span: Span, Text: string): Class
     local Slice = self:Slice(Span)
-    self.Message ..= `\n{Color(string.format("%03i", Slice.Line), "blue")} │ {Slice.Text}`
-    self.Message ..= `\n{SPACE}│ {string.rep(" ", Slice.Spaces)}{Color(`{string.rep("-", Slice.Underlines)} {Text}`, "blue")}`
+    self.Message ..= `\n{Color(string.format("%03i", Slice.Line), "blue")}{SPACE}│{SPACE}{Slice.Text}`
+    self.Message ..= `\n{INDENT}│{SPACE}{string.rep(SPACE, Slice.Spaces)}{Color(`{string.rep("^", Slice.Underlines)}{SPACE}{Fix(Text)}`, "blue")}`
     return self
 end
 

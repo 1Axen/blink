@@ -1,10 +1,3 @@
-local stdio = require("@lune/stdio")
-
-local Colors: {stdio.Color} = {
-    "cyan", "green", "purple", "red", "white", "yellow"
-}
-local ColorIndex = 0
-
 type BranchType = "Conditional" | "Default"
 type EqualityOperator = "Not" | "Equals" | "Greater" | "Less" | "GreaterOrEquals" | "LessOrEquals"
 
@@ -22,41 +15,18 @@ local Operators = {
     LessOrEquals = "<=",
 }
 
-local function GetConsoleColor(): stdio.Color
-    ColorIndex += 1
-    if ColorIndex > #Colors then
-        ColorIndex = 1
-    end
-
-    return Colors[ColorIndex]
-end
-
-local function SetConsoleColor(Color: stdio.Color)
-    stdio.write(stdio.color(Color))
-end
-
 local Block = {}
 Block.__index = Block
 
 export type Block = typeof(setmetatable({} :: {
-    Color: stdio.Color?,
     Parent: Block?,
     Indent: number,
     Content: string
 }, Block))
 
-function Block.new<Parent>(Parent: Block?, Debug: boolean?): Block
-    local Color: stdio.Color?;
+function Block.new<Parent>(Parent: Block?): Block
     local Indent = (Parent and Parent.Indent + 1 or 1)
-
-    if Debug or (Parent and Parent.Color) then
-        Color = GetConsoleColor()
-        SetConsoleColor(Color :: stdio.Color)
-        print(`BLOCK {Indent}`)
-    end
-
     return setmetatable({
-        Color = Color,
         Parent = Parent,
         Indent = Indent,
         Content = ""
@@ -66,11 +36,6 @@ end
 function Block.Line(self: Block, Content: string, Indent: number?, Ignore: boolean?): Block
     local Indent = Indent or self.Indent
     local NewLine = self.Content ~= "" and "\n" or ""
-
-    if self.Color and not Ignore then
-        print(`{string.rep("\t", Indent)}{Content} {Indent}`)
-    end
-
     self.Content ..= `{NewLine}{string.rep("\t", Indent)}{Content}`
     return self
 end
@@ -142,14 +107,6 @@ end
 
 function Block.End(self: Block): Block
     local Parent = self.Parent
-
-    if self.Color then
-        print(`END {self.Indent}`)
-        if Parent and Parent.Color then
-            SetConsoleColor(Parent.Color)
-        end
-    end
-
     if Parent then
         Parent:Multiline(self.Content)
         Parent:Line("end")
@@ -168,8 +125,8 @@ local Function = {}
 Function.__index = Function
 setmetatable(Function, Block)
 
-function Function.new(Name: string, Arguments: string, Return: string?, IsInlined: boolean?, Debug: boolean?): Block
-    local Block = Block.new(nil, Debug)
+function Function.new(Name: string, Arguments: string, Return: string?, IsInlined: boolean?): Block
+    local Block = Block.new(nil)
     setmetatable(Block, Function)
 
     local Suffix = Return and `: {Return}` or ""

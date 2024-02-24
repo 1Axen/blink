@@ -3,6 +3,7 @@
 [Installation](https://github.com/1Axen/Blink/blob/main/docs/Installation.md)  
 [Getting Started](https://github.com/1Axen/Blink/blob/main/docs/Getting-Started.md)  
 [Writing network descriptions](https://github.com/1Axen/Blink/blob/main/docs/Using.md)
+[Studio Plugin](https://github.com/1Axen/Blink/blob/main/docs/Plugin.md)
 # Getting Started
 ## Write your first network description
 If you're looking for an example you can check out the [source file](https://github.com/1Axen/Blink/blob/main/test/Source.txt) used for testing.  

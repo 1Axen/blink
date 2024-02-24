@@ -8,7 +8,7 @@ export type Types =
     | "String" | "Boolean" | "Number"   --> Literals
     | "Array" | "Range" | "Optional" | "Class"    --> Attributes
     | "Assign" | "Keyword" | "Primitive" | "Identifier" --> Reserved
-    | "Unknown" 
+    | "Whitespace" | "Unknown" 
 
 export type Keywords = "type" | "enum" | "struct" | "event" | "function"
 
@@ -21,6 +21,7 @@ export type Token = {
 }
 
 export type Lexer = {
+    Mode: Mode,
     Size: number,
     Source: string,
     Cursor: number,
@@ -28,6 +29,8 @@ export type Lexer = {
     Initialize: (self: Lexer, Source: string) -> (),
     GetNextToken: (self: Lexer, DontAdvanceCursor: boolean?) -> Token?,
 }
+
+export type Mode = "Parsing" | "Highlighting"
 
 local Primitives = {
     u8 = true,
@@ -70,7 +73,7 @@ local Number = "[%+%-]?%d+"
 
 local Matches = {
     --> Simple patterns
-    {"^%s+", nil},     
+    {"^%s+", "Whitespace"},     
     {"^=", "Assign"},
     {"^{", "OpenCurlyBrackets"},
     {"^}", "CloseCurlyBrackets"},
@@ -111,12 +114,12 @@ local Matches = {
 local Lexer = {}
 Lexer.__index = Lexer
 
-function Lexer.new(): Lexer
+function Lexer.new(Mode: Mode?): Lexer
+    local Mode: Mode = Mode or "Parsing"
     return setmetatable({
         Size = 0,
+        Mode = Mode,
         Source = "",
-
-        Line = 1,
         Cursor = 1
     } :: any, Lexer)
 end
@@ -133,6 +136,7 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?): Token?
     end
 
     local Slice = string.sub(self.Source, self.Cursor)
+    local IsHighlighting = (self.Mode == "Highlighting")
 
     local function Match(Pattern: string): (string?, number, number)
         local Start, End = string.find(Slice, Pattern)
@@ -157,19 +161,25 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?): Token?
             continue
         end
 
-        if (DontAdvanceCursor ~= true or Type == nil) then
+        if (DontAdvanceCursor ~= true or Type == "Whitespace") then
             self.Cursor += #Matched
         end
-
+        
         --> Whitespace matched, skip token.
-        if not Type then
+        --> We don't want to skip whitespaces in highlighting mode.
+        if (Type == "Whitespace") and not IsHighlighting then
             return self:GetNextToken(DontAdvanceCursor)
         end
 
         if type(Type) == "function" then
-            Type, Matched = Type(Matched)
+            --> Only overwrite the type when highlighting
+            if IsHighlighting then
+                Type = Type(Matched)
+            else
+                Type, Matched = Type(Matched)
+            end
         end
-        
+    
         return {
             Type = Type,
             Value = Matched,
@@ -179,9 +189,23 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?): Token?
         }
     end
 
-    Error.new(Error.LexerUnexpectedToken, self.Source, "Unexpected token")
-        :Primary({Start = self.Cursor, End = self.Cursor}, `Unexpected token`)
-    :Emit()
+    if not IsHighlighting then
+        Error.new(Error.LexerUnexpectedToken, self.Source, "Unexpected token")
+            :Primary({Start = self.Cursor, End = self.Cursor}, `Unexpected token`)
+        :Emit()
+    else
+        --> Attempt to recover the lexer
+        local Cursor = self.Cursor
+        local Symbol = string.sub(self.Source, Cursor, Cursor)
+        self.Cursor += 1
+
+        return {
+            Type = "Unknown",
+            Value = Symbol,
+            Start = Cursor,
+            End = Cursor,
+        }
+    end
 
     return
 end

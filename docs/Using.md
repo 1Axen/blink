@@ -3,6 +3,7 @@
 [Installation](https://github.com/1Axen/Blink/blob/main/docs/Installation.md)  
 [Getting Started](https://github.com/1Axen/Blink/blob/main/docs/Getting-Started.md)  
 [Using Blink](https://github.com/1Axen/Blink/blob/main/docs/Using.md)
+[Studio Plugin](https://github.com/1Axen/Blink/blob/main/docs/Plugin.md)
 # Options
 Options go at the top of a source file and are used to configure the output of Blink.
 ```

@@ -2,17 +2,15 @@
 --!optimize 2
 --!strict
 
-local fs = require("@lune/fs")
-
 local Blocks = require("./Blocks")
 local Parser = require("../Parser")
 local Builder = require("../Modules/Builder")
 local Prefabs = require("./Prefabs")
 
 local Sources = {
-	Base = if _G.BUNDLED then (require("Base") :: any) else fs.readFile("./Templates/Base.txt"),
-	Client = string.split(if _G.BUNDLED then (require("Client") :: any) else fs.readFile("./Templates/Client.txt"), "-- SPLIT --"),
-	Server = string.split(if _G.BUNDLED then (require("Server") :: any) else fs.readFile("./Templates/Server.txt"), "-- SPLIT --"),
+	Base = require("../Templates/Base"),
+	Client = string.split(require("../Templates/Client"), "-- SPLIT --"),
+	Server = string.split(require("../Templates/Server"), "-- SPLIT --"),
 }
 
 local DIRECTIVES = "--!strict\n--!native\n--!optimize 2\n--!nolint LocalShadow\n--#selene: allow(shadowing)\n"

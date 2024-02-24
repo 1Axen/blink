@@ -1,4 +1,4 @@
-local Invocations = 0
+return [[local Invocations = 0
 
 local SendOffset = 0
 local SendCursor = 0
@@ -88,3 +88,4 @@ local Queue: any = {
     Unreliable = table.create(256)
 }
 
+]]

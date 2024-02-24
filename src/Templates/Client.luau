@@ -1,4 +1,4 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+return [[local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 if not RunService:IsClient() then
@@ -23,3 +23,4 @@ local function StepReplication()
     buffer.fill(SendBuffer, 0, 0)
     table.clear(SendInstances)
 end
+]]

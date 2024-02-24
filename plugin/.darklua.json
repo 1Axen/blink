@@ -1,0 +1,32 @@
+{
+  "bundle": {
+    "excludes": [
+      "@lune/**"
+    ],
+    "modules_identifier": "__DARKLUA_BUNDLE_MODULES",
+    "require_mode": {
+      "name": "path",
+      "sources": {
+        "Base": "../src/Templates/Base.txt",
+        "Client": "../src/Templates/Client.txt",
+        "Server": "../src/Templates/Server.txt"
+      }
+    }
+  },
+  "generator": "readable",
+  "rules": [
+    "remove_types",
+    "compute_expression",
+    "remove_unused_if_branch",
+    {
+      "identifier": "BUNDLED",
+      "rule": "inject_global_value",
+      "value": true
+    },
+    {
+      "identifier": "VERSION",
+      "rule": "inject_global_value",
+      "value": "0.6.2"
+    }
+  ]
+}
