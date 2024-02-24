@@ -2,7 +2,7 @@
 [Home](https://github.com/1Axen/Blink/blob/main/README.md)  
 [Installation](https://github.com/1Axen/Blink/blob/main/docs/Installation.md)  
 [Getting Started](https://github.com/1Axen/Blink/blob/main/docs/Getting-Started.md)  
-[Using Blink](https://github.com/1Axen/Blink/blob/main/docs/Using.md)
+[Using Blink](https://github.com/1Axen/Blink/blob/main/docs/Using.md)  
 [Studio Plugin](https://github.com/1Axen/Blink/blob/main/docs/Plugin.md)
 # Navigating
 After installing the plugin locate it within your plugin tab in Studio.

@@ -2,7 +2,7 @@
 [Home](https://github.com/1Axen/Blink/blob/main/README.md)  
 [Installation](https://github.com/1Axen/Blink/blob/main/docs/Installation.md)  
 [Getting Started](https://github.com/1Axen/Blink/blob/main/docs/Getting-Started.md)  
-[Writing network descriptions](https://github.com/1Axen/Blink/blob/main/docs/Using.md)
+[Writing network descriptions](https://github.com/1Axen/Blink/blob/main/docs/Using.md)  
 [Studio Plugin](https://github.com/1Axen/Blink/blob/main/docs/Plugin.md)
 # Getting Started
 ## Write your first network description
