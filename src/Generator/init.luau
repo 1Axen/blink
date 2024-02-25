@@ -223,7 +223,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 
 	--> Data body
 	local _, Values, _, Arguments = Generators.LuauType(Value.Data, true)
-	local Read, Write = Generators.Event(Value.Data :: Type, Index, Identifier, false)
+	local Read, Write = Generators.Event(Value.Data :: Type, Index, Identifier)
 	UserTypes.PushMultiline(Read, 1, 0, false)
 	UserTypes.PushMultiline(Write, 1, 0, false)
 
@@ -251,14 +251,15 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 		Channel.Listening = true
 
 		--> Event recieve body
+		local ListenerArguments = `{Context == "Server" and "Player, " or ""}{Arguments}`
 		Block:Line(`local {Values} = {GetTypesPath(Identifier, Scope, false)}()`)
 		Block:Compare(Connection, "nil", "Not")
-			:Line(Value.Call == "SingleSync" and `{Connection}({Arguments})` or `task.spawn({Connection}, {Arguments})`)
+			:Line(Value.Call == "SingleSync" and `{Connection}({ListenerArguments})` or `task.spawn({Connection}, {ListenerArguments})`)
 		:Branch("Default")
 			:Compare(`#{Queue}`, "256", "Greater")
 				:Line(`warn("[Blink]: Event queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement a listener?")`)
 			:End()
-			:Line(`table.insert({Queue}, \{{Arguments}\} :: \{any\})`)
+			:Line(`table.insert({Queue}, \{{ListenerArguments}\} :: \{any\})`)
 		:End()
 
 		local ContextArguments = `Listener: ({Context == "Server" and "Player: Player, " or ""}{Values}) -> ()`

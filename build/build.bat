@@ -1,6 +1,6 @@
 @echo Off
 SET ZIP="C:\Program Files\7-Zip\7z.exe"
-SET VERSION="0.6.2"
+SET /p VERSION=What version is being built?:
 
 echo Clearing release folder
 del /s /q "../release"
