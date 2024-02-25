@@ -117,7 +117,7 @@ function Declarations.Enum(Declaration: Parser.EnumDeclaration, Read: Blocks.Blo
 	:End()
 
 	--> Write body
-	Write:Line(`Allocate(1)`)
+	local Allocation = Write:Allocate(1)
 		for Index, EnumItem in Enums do
 			if Index == 1 then
 				Write = Write:Compare(Variable, `"{EnumItem}"`, "Equals")
@@ -125,7 +125,7 @@ function Declarations.Enum(Declaration: Parser.EnumDeclaration, Read: Blocks.Blo
 				Write = Write:Branch("Conditional", Variable, `"{EnumItem}"`, "Equals")
 			end
 
-			Write:Line(`buffer.writeu8(SendBuffer, SendOffset, {Index - 1})`)
+			Write:Line(`buffer.writeu8(SendBuffer, {Allocation}, {Index - 1})`)
 		end
 	Write:Branch("Default")
 		:Line(`error(\`Unexpected enum: \{{Variable}\}, expectd one of {Literal}.\`)`)
@@ -562,7 +562,7 @@ function Generators.Optional(Declaration: Type, Read: Blocks.Block, Write: Block
 		Read = Read:Compare("typeof(RecieveInstances[RecieveInstanceCursor])", "\"Instance\"", "Equals")
 	else
 		Types.u8.Write(`{Variable} ~= nil and 1 or 0`, Write)
-		Read = Read:Compare(`buffer.readu8(RecieveBuffer, Read(1))`, "1", "Equals")
+		Read = Read:Compare(`buffer.readu8(RecieveBuffer, {Read:Read(1)})`, "1", "Equals")
 		Write = Write:Compare(Variable, "nil", "Not")
 	end
 

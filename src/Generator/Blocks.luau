@@ -1,11 +1,6 @@
 type BranchType = "Conditional" | "Default"
 type EqualityOperator = "Not" | "Equals" | "Greater" | "Less" | "GreaterOrEquals" | "LessOrEquals"
 
-local Branches = {
-    Conditional = "elseif",
-    Default = "else"
-}
-
 local Operators = {
     Not = "~=",
     Equals = "==",
@@ -19,24 +14,67 @@ local Block = {}
 Block.__index = Block
 
 export type Block = typeof(setmetatable({} :: {
+    Unique: string,
     Parent: Block?,
     Indent: number,
-    Content: string
+    Content: string,
+    Reads: number,
+    Allocations: number,
 }, Block))
 
 function Block.new<Parent>(Parent: Block?): Block
     local Indent = (Parent and Parent.Indent + 1 or 1)
+    local Unique = `BLOCK_START`
     return setmetatable({
+        Unique = Unique,
         Parent = Parent,
         Indent = Indent,
-        Content = ""
+        Content = "",
+        Reads = 0,
+        Allocations = 0
     } :: any, Block)
 end
 
-function Block.Line(self: Block, Content: string, Indent: number?, Ignore: boolean?): Block
+function Block.Read(self: Block, Bytes: number): string
+    local Offset = self.Reads
+    self.Reads += Bytes
+    return `{self.Unique} + {Offset}`
+end
+
+function Block.Allocate(self: Block, Bytes: number): string
+    local Offset = self.Allocations
+    self.Allocations += Bytes
+    return `{self.Unique} + {Offset}`
+end
+
+function Block._lineFront(self: Block, Text: string): Block
+    if self.Parent == nil then
+        local Lines = string.split(self.Content, "\n")
+        local First = table.remove(Lines, 1)
+        self.Content = First .. `\n{string.rep("\t", self.Indent)}{Text}\n` .. table.concat(Lines, "\n")
+    else
+        self.Content = `{string.rep("\t", self.Indent)}{Text}\n` .. self.Content
+    end
+
+    return self
+end
+
+function Block._appendOperations(self: Block): Block
+    if self.Reads > 0 then
+        self:_lineFront(`local {self.Unique} = Read({self.Reads})`)
+    end
+
+    if self.Allocations > 0 then
+        self:_lineFront(`local {self.Unique} = Allocate({self.Allocations})`)
+    end
+
+    return self
+end
+
+function Block.Line(self: Block, Text: string, Indent: number?, Ignore: boolean?): Block
     local Indent = Indent or self.Indent
     local NewLine = self.Content ~= "" and "\n" or ""
-    self.Content ..= `{NewLine}{string.rep("\t", Indent)}{Content}`
+    self.Content ..= `{NewLine}{string.rep("\t", Indent)}{Text}`
     return self
 end
 
@@ -88,6 +126,7 @@ function Block.Branch(self: Block, Branch: BranchType, Left: string?, Right: str
     assert(Parent, "Cannot branch the top level block.")
 
     --> Push previous branch content
+    self:_appendOperations()
     Parent:Multiline(self.Content)
     
     --> Create new branch
@@ -106,6 +145,8 @@ function Block.Return(self: Block, Return: string): Block
 end
 
 function Block.End(self: Block): Block
+    self:_appendOperations()
+
     local Parent = self.Parent
     if Parent then
         Parent:Multiline(self.Content)

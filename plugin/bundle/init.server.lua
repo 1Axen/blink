@@ -1221,10 +1221,6 @@ do
         return Parser
     end
     function __DARKLUA_BUNDLE_MODULES.f()
-        local Branches = {
-            Conditional = 'elseif',
-            Default = 'else',
-        }
         local Operators = {
             Not = '~=',
             Equals = '==',
@@ -1239,18 +1235,58 @@ do
 
         function Block.new(Parent)
             local Indent = (Parent and Parent.Indent + 1 or 1)
+            local Unique = `BLOCK_START`
 
             return setmetatable({
+                Unique = Unique,
                 Parent = Parent,
                 Indent = Indent,
                 Content = '',
+                Reads = 0,
+                Allocations = 0,
             }, Block)
         end
-        function Block.Line(self, Content, Indent, Ignore)
+        function Block.Read(self, Bytes)
+            local Offset = self.Reads
+
+            self.Reads += Bytes
+
+            return `{self.Unique} + {Offset}`
+        end
+        function Block.Allocate(self, Bytes)
+            local Offset = self.Allocations
+
+            self.Allocations += Bytes
+
+            return `{self.Unique} + {Offset}`
+        end
+        function Block._lineFront(self, Text)
+            if self.Parent == nil then
+                local Lines = string.split(self.Content, '\n')
+                local First = table.remove(Lines, 1)
+
+                self.Content = First .. `\n{string.rep('\t', self.Indent)}{Text}\n` .. table.concat(Lines, '\n')
+            else
+                self.Content = `{string.rep('\t', self.Indent)}{Text}\n` .. self.Content
+            end
+
+            return self
+        end
+        function Block._appendOperations(self)
+            if self.Reads > 0 then
+                self:_lineFront(`local {self.Unique} = Read({self.Reads})`)
+            end
+            if self.Allocations > 0 then
+                self:_lineFront(`local {self.Unique} = Allocate({self.Allocations})`)
+            end
+
+            return self
+        end
+        function Block.Line(self, Text, Indent, Ignore)
             local Indent = Indent or self.Indent
             local NewLine = self.Content ~= '' and '\n' or ''
 
-            self.Content ..= `{NewLine}{string.rep('\t', Indent)}{Content}`
+            self.Content ..= `{NewLine}{string.rep('\t', Indent)}{Text}`
 
             return self
         end
@@ -1302,6 +1338,7 @@ do
             local Parent = self.Parent
 
             assert(Parent, 'Cannot branch the top level block.')
+            self:_appendOperations()
             Parent:Multiline(self.Content)
 
             if Branch == 'Conditional' then
@@ -1318,6 +1355,8 @@ do
             return self
         end
         function Block.End(self)
+            self:_appendOperations()
+
             local Parent = self.Parent
 
             if Parent then
@@ -1556,11 +1595,10 @@ do
         local function GenerateNumberGenerator(Type, Size)
             local Prefab = {
                 Read = function(Variable, Block)
-                    Block:Line(`{Variable} = buffer.read{Type}({RECIEVE_BUFFER}, Read({Size}))`)
+                    Block:Line(`{Variable} = buffer.read{Type}({RECIEVE_BUFFER}, {Block:Read(Size)})`)
                 end,
                 Write = function(Value, Block)
-                    Block:Line(`Allocate({Size})`)
-                    Block:Line(`buffer.write{Type}({SEND_BUFFER}, {SEND_POSITION}, {Value})`)
+                    Block:Line(`buffer.write{Type}({SEND_BUFFER}, {Block:Allocate(Size)}, {Value})`)
                 end,
             }
             local Primitive = {
@@ -1581,13 +1619,14 @@ do
         Types.f64, Primitives.f64 = GenerateNumberGenerator('f64', DOUBLE)
         Types.f16 = {
             Read = function(Variable, Block)
-                Block:Line(`local Encoded = buffer.readu16({RECIEVE_BUFFER}, Read({HALF_FLOAT}))`)
-                Block:Line(`local MantissaExponent = Value % 0x8000`)
-                Block:Compare('MantissaExponent', '0b0_11111_0000000000 ', 'Equals'):Compare('Encoded // 0x8000', '1', 'Equals'):Line(`{Variable} = -math.huge`):Branch('Default'):Line(`{Variable} = math.huge`):End():Branch('Conditional', 'MantissaExponent', '0b1_11111_0000000000  ', 'Equals'):Line(`{Variable} = 0 / 0`):Branch('Conditional', 'MantissaExponent', '0b0_00000_0000000000  ', 'Equals'):Line(`{Variable} = 0`):Branch('Default'):Multiline('local Mantissa = MantissaExponent % 0x400\r\nlocal Exponent = MantissaExponent // 0x400\r\n\t\r\nlocal Fraction;\r\nif Exponent == 0 then\r\n\tFraction = Mantissa / 0x400\r\nelse\r\n\tFraction = Mantissa / 0x800 + 0.5\r\nend\r\n\t\r\nlocal Result = math.ldexp(Fraction, Exponent - 14)', 1):Line(`{Variable} = if Value // 0x8000 == 1 then -Result else Result`):End()
+                Types.u16 .Read('local Encoded', Block)
+                Block:Line(`local MantissaExponent = Encoded % 0x8000`)
+                Block:Compare('MantissaExponent', '0b0_11111_0000000000 ', 'Equals'):Compare('Encoded // 0x8000', '1', 'Equals'):Line(`{Variable} = -math.huge`):Branch('Default'):Line(`{Variable} = math.huge`):End():Branch('Conditional', 'MantissaExponent', '0b1_11111_0000000000  ', 'Equals'):Line(`{Variable} = 0 / 0`):Branch('Conditional', 'MantissaExponent', '0b0_00000_0000000000  ', 'Equals'):Line(`{Variable} = 0`):Branch('Default'):Multiline('local Mantissa = MantissaExponent % 0x400\r\nlocal Exponent = MantissaExponent // 0x400\r\n\t\r\nlocal Fraction;\r\nif Exponent == 0 then\r\n\tFraction = Mantissa / 0x400\r\nelse\r\n\tFraction = Mantissa / 0x800 + 0.5\r\nend\r\n\t\r\nlocal Result = math.ldexp(Fraction, Exponent - 14)', Block.Indent + 1):Line(`{Variable} = if Encoded // 0x8000 == 1 then -Result else Result`):End()
             end,
             Write = function(Value, Block)
-                Block:Line(`Allocate({HALF_FLOAT})`)
-                Block:Compare(Value, '65504', 'Greater'):Line(`buffer.writeu16({SEND_BUFFER}, {SEND_POSITION}, 0b0_11111_0000000000)`):Branch('Conditional', Value, '-65504', 'Less'):Line(`buffer.writeu16({SEND_BUFFER}, {SEND_POSITION}, 0b1_11111_0000000000)`):Branch('Conditional', Value, Value, 'Not'):Line(`buffer.writeu16({SEND_BUFFER}, {SEND_POSITION}, 0b1_11111_0000000001)`):Branch('Conditional', Value, '0', 'Equals'):Line(`buffer.writeu16({SEND_BUFFER}, {SEND_POSITION}, 0)`):Branch('Default'):Multiline('local Abosulte = math.abs(Value)\r\nlocal Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10) \r\nlocal RoundedValue = (Abosulte // Interval) * Interval\r\n\r\nlocal Fraction, Exponent = math.frexp(RoundedValue)\r\nExponent += 14\r\n\r\nlocal Mantissa = math.round(if Exponent <= 0\r\n\tthen Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))\r\n\telse Fraction * 0x800) % 0x400\r\n\r\nlocal Result = Mantissa\r\n\t+ math.max(Exponent, 0) * 0x400\r\n\t+ if Value < 0 then 0x8000 else 0', 1):Line(`buffer.writeu16({SEND_BUFFER}, {SEND_POSITION}, Result)`):End()
+                local Allocation = Block:Allocate(HALF_FLOAT)
+
+                Block:Compare(Value, '65504', 'Greater'):Line(`buffer.writeu16({SEND_BUFFER}, {Allocation}, 0b0_11111_0000000000)`):Branch('Conditional', Value, '-65504', 'Less'):Line(`buffer.writeu16({SEND_BUFFER}, {Allocation}, 0b1_11111_0000000000)`):Branch('Conditional', Value, Value, 'Not'):Line(`buffer.writeu16({SEND_BUFFER}, {Allocation}, 0b1_11111_0000000001)`):Branch('Conditional', Value, '0', 'Equals'):Line(`buffer.writeu16({SEND_BUFFER}, {Allocation}, 0)`):Branch('Default'):Line(`local float = {Value}`):Multiline('local Abosulte = math.abs(float)\r\nlocal Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10) \r\nlocal RoundedValue = (Abosulte // Interval) * Interval\r\n\r\nlocal Fraction, Exponent = math.frexp(RoundedValue)\r\nExponent += 14\r\n\r\nlocal Mantissa = math.round(if Exponent <= 0\r\n\tthen Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))\r\n\telse Fraction * 0x800) % 0x400\r\n\r\nlocal Result = Mantissa\r\n\t+ math.max(Exponent, 0) * 0x400\r\n\t+ if float < 0 then 0x8000 else 0', Block.Indent + 1):Line(`buffer.writeu16({SEND_BUFFER}, {Allocation}, Result)`):End()
             end,
         }
         Primitives.f16 = {
@@ -1623,11 +1662,10 @@ do
         do
             Types.boolean = {
                 Read = function(Variable, Block)
-                    Block:Line(`{Variable} = (buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})) == 1)`)
+                    Block:Line(`{Variable} = (buffer.readu8({RECIEVE_BUFFER}, {Block:Read(BYTE)}) == 1)`)
                 end,
                 Write = function(Value, Block)
-                    Block:Line(`Allocate({BYTE})`)
-                    Block:Line(`buffer.writeu8({SEND_BUFFER}, {SEND_POSITION}, {Value} and 1 or 0)`)
+                    Block:Line(`buffer.writeu8({SEND_BUFFER}, {Block:Allocate(BYTE)}, {Value} and 1 or 0)`)
                 end,
             }
             Primitives.boolean = {
@@ -1639,7 +1677,7 @@ do
             Types.string = {
                 Read = function(Variable, Block, Range)
                     if Range and Range.Min == Range.Max then
-                        Block:Line(`{Variable} = buffer.readstring({RECIEVE_BUFFER}, Read({Range.Min}), {Range.Min})`)
+                        Block:Line(`{Variable} = buffer.readstring({RECIEVE_BUFFER}, {Block:Read(Range.Min)}, {Range.Min})`)
 
                         return
                     end
@@ -1649,8 +1687,7 @@ do
                 end,
                 Write = function(Value, Block, Range)
                     if Range and Range.Min == Range.Max then
-                        Block:Line(`Allocate({Range.Min})`)
-                        Block:Line(`buffer.writestring({SEND_BUFFER}, {SEND_POSITION}, {Value}, {Range.Min})`)
+                        Block:Line(`buffer.writestring({SEND_BUFFER}, {Block:Allocate(Range.Min)}, {Value}, {Range.Min})`)
                     else
                         Block:Line(`local Length = #{Value}`)
                         Types.u16 .Write('Length', Block)
@@ -1667,14 +1704,17 @@ do
         do
             Types.vector = {
                 Read = function(Variable, Block)
-                    Block:Line(`{Variable} = Vector3.new(buffer.readf32({RECIEVE_BUFFER}, Read({FLOAT})), buffer.readf32({RECIEVE_BUFFER}, Read({FLOAT})), buffer.readf32({RECIEVE_BUFFER}, Read({FLOAT})))`)
+                    local X = Block:Read(FLOAT)
+                    local Y = Block:Read(FLOAT)
+                    local Z = Block:Read(FLOAT)
+
+                    Block:Line(`{Variable} = Vector3.new(buffer.readf32({RECIEVE_BUFFER}, {X}), buffer.readf32({RECIEVE_BUFFER}, {Y}), buffer.readf32({RECIEVE_BUFFER}, {Z}))`)
                 end,
                 Write = function(Value, Block)
-                    Block:Line(`Allocate({FLOAT * 3})`)
                     Block:Line(`local Vector = {Value}`)
-                    Block:Line(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION}, Vector.X)`)
-                    Block:Line(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION} + {FLOAT}, Vector.Y)`)
-                    Block:Line(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION} + {FLOAT * 2}, Vector.Z)`)
+                    Types.f32 .Write('Vector.X', Block)
+                    Types.f32 .Write('Vector.Y', Block)
+                    Types.f32 .Write('Vector.Z', Block)
                 end,
             }
             Primitives.vector = {
@@ -1736,14 +1776,17 @@ do
         do
             Types.Color3 = {
                 Read = function(Variable, Block)
-                    Block:Line(`{Variable} = Color3.new(buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})), buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})), buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})))`)
+                    local R = Block:Read(BYTE)
+                    local G = Block:Read(BYTE)
+                    local B = Block:Read(BYTE)
+
+                    Block:Line(`{Variable} = Color3.new(buffer.readu8({RECIEVE_BUFFER}, {R}), buffer.readu8({RECIEVE_BUFFER}, {G}), buffer.readu8({RECIEVE_BUFFER}, {B}))`)
                 end,
                 Write = function(Value, Block)
-                    Block:Line(`Allocate({FLOAT * 3})`)
                     Block:Line(`local Color = {Value}`)
-                    Block:Line(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION}, Color.R * 8)`)
-                    Block:Line(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION} + {FLOAT}, Color.G * 8)`)
-                    Block:Line(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION} + {FLOAT * 2}, Color.B * 8)`)
+                    Types.u8 .Write('Color.R * 255', Block)
+                    Types.u8 .Write('Color.G * 255', Block)
+                    Types.u8 .Write('Color.B * 255', Block)
                 end,
             }
             Primitives.Color3 = {
@@ -1801,7 +1844,7 @@ do
 --!nolint LocalShadow
 --#selene: allow(shadowing)
 ]]
-        local VERSION_HEADER = `-- File generated by Blink v{'v0.6.3' or '0.0.0'} (https://github.com/1Axen/Blink)\n-- This file is not meant to be edited\n\n`
+        local VERSION_HEADER = `-- File generated by Blink v{'0.6.4' or '0.0.0'} (https://github.com/1Axen/Blink)\n-- This file is not meant to be edited\n\n`
         local EVENT_BODY = 'RecieveCursor = 0\r\nRecieveBuffer = Buffer\r\nRecieveInstances = Instances\r\nRecieveInstanceCursor = 0\r\nlocal Size = buffer.len(RecieveBuffer)'
         local RELIABLE_BODY = {
             Header = 
@@ -1878,7 +1921,8 @@ do
             end
 
             Read:Branch('Default'):Line(`error(\`Unexpected enum: \{Index}\`)`):End()
-            Write:Line(`Allocate(1)`)
+
+            local Allocation = Write:Allocate(1)
 
             for Index, EnumItem in Enums do
                 if Index == 1 then
@@ -1887,7 +1931,7 @@ do
                     Write = Write:Branch('Conditional', Variable, `"{EnumItem}"`, 'Equals')
                 end
 
-                Write:Line(`buffer.writeu8(SendBuffer, SendOffset, {Index - 1})`)
+                Write:Line(`buffer.writeu8(SendBuffer, {Allocation}, {Index - 1})`)
             end
 
             Write:Branch('Default'):Line(`error(\`Unexpected enum: \{{Variable}}, expectd one of {Literal}.\`)`):End()
@@ -2198,7 +2242,7 @@ do
             else
                 Types.u8 .Write(`{Variable} ~= nil and 1 or 0`, Write)
 
-                Read = Read:Compare(`buffer.readu8(RecieveBuffer, Read(1))`, '1', 'Equals')
+                Read = Read:Compare(`buffer.readu8(RecieveBuffer, {Read:Read(1)})`, '1', 'Equals')
                 Write = Write:Compare(Variable, 'nil', 'Not')
             end
 
