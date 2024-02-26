@@ -55,6 +55,48 @@ do
         return State
     end
     function __DARKLUA_BUNDLE_MODULES.b()
+        local Table = {}
+
+        function Table.MergeArrays(a, b)
+            local Array = table.create(#a + #b)
+
+            for _, Element in a do
+                table.insert(Array, Element)
+            end
+            for _, Element in b do
+                table.insert(Array, Element)
+            end
+
+            return Array
+        end
+        function Table.MergeDictionaries(a, b)
+            local Dictionary = table.clone(a)
+
+            for Key, Value in b do
+                if Dictionary[Key] then
+                    warn(`Key "{Key}" already exists in the first dictionary.`)
+
+                    continue
+                end
+
+                Dictionary[Key] = Value
+            end
+
+            return Dictionary
+        end
+        function Table.GetDictionaryKeys(Dictionary)
+            local Keys = {}
+
+            for Key in Dictionary do
+                table.insert(Keys, Key)
+            end
+
+            return Keys
+        end
+
+        return Table
+    end
+    function __DARKLUA_BUNDLE_MODULES.c()
         local stdio
 
         if not true then
@@ -82,6 +124,7 @@ do
             yellow = 'rgb(255, 255, 0)',
         }
         local Error = {
+            OnEmit = nil,
             LexerUnexpectedToken = 1001,
             ParserUnexpectedEndOfFile = 2001,
             ParserUnexpectedToken = 2002,
@@ -97,6 +140,7 @@ do
             AnalyzeUnknownReference = 3007,
             AnalyzeInvalidRangeType = 3008,
             AnalyzeInvalidRange = 3009,
+            AnalyzeDuplicateDeclaration = 3010,
         }
 
         Error.__index = Error
@@ -122,6 +166,7 @@ do
             Content ..= `\n{INDENT}\u{250c}\u{2500}{SPACE}input.blink`
 
             return setmetatable({
+                Labels = {},
                 Source = string.split(Source, '\n'),
                 Message = Content,
             }, Error)
@@ -155,6 +200,12 @@ do
         function Error.Primary(self, Span, Text)
             local Slice = self:Slice(Span)
 
+            table.insert(self.Labels, {
+                Span = Span,
+                Text = Text,
+                Type = 'Primary',
+            })
+
             self.Message ..= `\n{Color(string.format('%03i', Slice.Line), 'blue')}{SPACE}\u{2502}{SPACE}{Slice.Text}`
             self.Message ..= `\n{INDENT}\u{2502}{SPACE}{string.rep(SPACE, Slice.Spaces)}{Color(`{string.rep('^', Slice.Underlines)}{SPACE}{Fix(Text)}`, 'red')}`
 
@@ -163,47 +214,66 @@ do
         function Error.Secondary(self, Span, Text)
             local Slice = self:Slice(Span)
 
+            table.insert(self.Labels, {
+                Span = Span,
+                Text = Text,
+                Type = 'Secondary',
+            })
+
             self.Message ..= `\n{Color(string.format('%03i', Slice.Line), 'blue')}{SPACE}\u{2502}{SPACE}{Slice.Text}`
             self.Message ..= `\n{INDENT}\u{2502}{SPACE}{string.rep(SPACE, Slice.Spaces)}{Color(`{string.rep('^', Slice.Underlines)}{SPACE}{Fix(Text)}`, 'blue')}`
 
             return self
         end
         function Error.Emit(self)
+            local OnEmit = Error.OnEmit
+
+            if OnEmit then
+                OnEmit(self.Labels)
+            end
+
             error(self.Message, 2)
         end
 
         return Error
     end
-    function __DARKLUA_BUNDLE_MODULES.c()
-        local Error = __DARKLUA_BUNDLE_MODULES.load('b')
-        local Primitives = {
-            u8 = true,
-            u16 = true,
-            u32 = true,
-            i8 = true,
-            i16 = true,
-            i32 = true,
-            f16 = true,
-            f32 = true,
-            f64 = true,
-            boolean = true,
-            string = true,
-            vector = true,
-            buffer = true,
-            Color3 = true,
-            CFrame = true,
-            Instance = true,
+    function __DARKLUA_BUNDLE_MODULES.d()
+        return {
+            Keywords = {
+                map = true,
+                type = true,
+                enum = true,
+                struct = true,
+                event = true,
+                ['function'] = true,
+                scope = true,
+                option = true,
+            },
+            Primtives = {
+                u8 = true,
+                u16 = true,
+                u32 = true,
+                i8 = true,
+                i16 = true,
+                i32 = true,
+                f16 = true,
+                f32 = true,
+                f64 = true,
+                boolean = true,
+                string = true,
+                vector = true,
+                buffer = true,
+                Color3 = true,
+                CFrame = true,
+                Instance = true,
+            },
         }
-        local Keywords = {
-            map = true,
-            type = true,
-            enum = true,
-            struct = true,
-            event = true,
-            ['function'] = true,
-            scope = true,
-            option = true,
-        }
+    end
+    function __DARKLUA_BUNDLE_MODULES.e()
+        local Error = __DARKLUA_BUNDLE_MODULES.load('c')
+        local Settings = __DARKLUA_BUNDLE_MODULES.load('d')
+        local Primitives = Settings.Primtives
+        local Keywords = Settings.Keywords
         local Booleans = {
             ['true'] = true,
             ['false'] = true,
@@ -390,7 +460,7 @@ do
 
         return Lexer
     end
-    function __DARKLUA_BUNDLE_MODULES.d()
+    function __DARKLUA_BUNDLE_MODULES.f()
         return {
             DeepClone = function(Table)
                 local function Clone(Source)
@@ -411,11 +481,10 @@ do
             end,
         }
     end
-    function __DARKLUA_BUNDLE_MODULES.e()
-        local Lexer = __DARKLUA_BUNDLE_MODULES.load('c')
-        local Error = __DARKLUA_BUNDLE_MODULES.load('b')
-        local Table = __DARKLUA_BUNDLE_MODULES.load('d')
-        local Errors = {DuplicateDeclaration = 3001}
+    function __DARKLUA_BUNDLE_MODULES.g()
+        local Lexer = __DARKLUA_BUNDLE_MODULES.load('e')
+        local Error = __DARKLUA_BUNDLE_MODULES.load('c')
+        local Table = __DARKLUA_BUNDLE_MODULES.load('f')
         local RangePrimitives = {
             u8 = true,
             u16 = true,
@@ -511,44 +580,49 @@ do
             end,
         }
 
-        local function GetAttributeRange(Token, Array, Source)
-            local Lower, Upper
+        local function GetTypeRange(Token, Array, Source)
+            local Value = Token.Value
 
-            if Array then
-                Lower, Upper = string.match(Token.Value, `^%[({Number})..({Number})]`)
-                Lower = Lower or string.match(Token.Value, `^%[({Number})]`)
+            local function ThrowMalformedRange()
+                Error.new(Error.AnalyzeInvalidRange, Source, 'Malformed range'):Primary(Token, 'Unable to parse range'):Emit()
+                error('Unable to parse range')
+            end
 
-                local Size = tonumber(Lower) or -1
+            local Single = Array and string.match(Value, '%[(%d+)%]') or string.match(Value, '%((%d+)%)')
 
-                if Size < 0 then
+            if Single then
+                local Number = (tonumber(Single))
+
+                if not Number then
+                    ThrowMalformedRange()
+                end
+                if Array and Number < 0 then
                     Error.new(Error.AnalyzeInvalidRange, Source, 'Invalid array size'):Primary(Token, 'Array cannot be smaller than 0 elements'):Emit()
                 end
-                if not Upper then
-                    return (NumberRange.new(Size))
-                end
-            else
-                Lower, Upper = string.match(Token.Value, `^%(({Number})..({Number})%)`)
 
-                if not Upper then
-                    Lower = string.match(Token.Value, `^%(({Number})%)`)
-                end
-            end
-            if not Lower then
-                error(`Unexpected error while trying to parse range.`)
+                return NumberRange.new(Number, Number)
             end
 
-            local Min = tonumber(Lower) or 0
-            local Max
+            local Lower = Array and string.match(Value, '%[(%d+)') or string.match(Value, '%((%d+)')
+            local Upper = Array and string.match(Value, '(%d+)%]') or string.match(Value, '(%d+)%)')
 
-            if Upper then
-                Max = tonumber(Upper) or 0
+            if Lower and Upper then
+                local Minimum = (tonumber(Lower))
+                local Maximum = (tonumber(Upper))
 
-                if Min >= Max then
+                if not Minimum or not Maximum then
+                    ThrowMalformedRange()
+                end
+                if Minimum >= Maximum then
                     Error.new(Error.AnalyzeInvalidRange, Source, 'Invalid range'):Primary(Token, 'Maximum must be greater than minimum'):Emit()
                 end
+
+                return NumberRange.new(Minimum, Maximum)
             end
 
-            return NumberRange.new(Min, Max)
+            ThrowMalformedRange()
+
+            return NumberRange.new(0, 0)
         end
 
         local Parser = {}
@@ -630,6 +704,7 @@ do
             return {
                 Type = 'Body',
                 Value = self:Declarations(),
+                Tokens = {},
             }
         end
         function Parser.Options(self)
@@ -690,7 +765,7 @@ do
             local Duplicate = Duplicates[ScopedIdentifier]
 
             if Duplicate then
-                Error.new(Errors.DuplicateDeclaration, self.Source, `Duplicate {Keyword.Value} "{Identifier.Value}"`):Secondary(Duplicate.Identifier, 'Previously delcared here'):Primary(Identifier, 'Duplicate declaration here'):Emit()
+                Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate {Keyword.Value} "{Identifier.Value}"`):Secondary(Duplicate.Identifier, 'Previously delcared here'):Primary(Identifier, 'Duplicate declaration here'):Emit()
             end
 
             local Declaration
@@ -714,9 +789,8 @@ do
                 error(`{Keyword.Value} has no declaration handler.`)
             end
             if Duplicates == self.Types and (self:GetSafeLookAhead().Type == 'Optional') then
-                self:Consume('Optional')
-
                 Declaration.Value.Optional = true
+                Declaration.Tokens.Optional = self:Consume('Optional')
             end
 
             Duplicates[ScopedIdentifier] = {
@@ -743,6 +817,8 @@ do
 
                 Declaration = Table.DeepClone(Reference)
                 Declaration.Value.Identifier = Identifier.Value
+                Declaration.Tokens.Identifier = Identifier
+                Declaration.Tokens.Value = LookAhead
             else
                 Primitive = self:Consume('Primitive')
                 Declaration = {
@@ -752,6 +828,10 @@ do
                         Identifier = Identifier.Value,
                         Primitive = Primitive.Value,
                         Optional = false,
+                    },
+                    Tokens = {
+                        Identifier = Identifier,
+                        Value = Primitive,
                     },
                 }
 
@@ -819,6 +899,7 @@ do
                     Enums = Enums,
                     Optional = false,
                 },
+                Tokens = {Identifier = Identifier},
             }
         end
         function Parser.MapDeclaration(self, Identifier)
@@ -878,6 +959,11 @@ do
                     Array = Array,
                     Optional = false,
                 },
+                Tokens = {
+                    Identifier = Identifier,
+                    Key = Key,
+                    Value = Value,
+                },
             }
         end
         function Parser.StructDeclaration(self, Identifier)
@@ -926,6 +1012,7 @@ do
                     Fields = Fields,
                     Optional = false,
                 },
+                Tokens = {Identifier = Identifier},
             }
         end
         function Parser.TupleDeclaration(self, Identifier)
@@ -981,6 +1068,10 @@ do
                     Data = nil,
                     Optional = false,
                 },
+                Tokens = {
+                    Identifier = Identifier,
+                    Fields = {},
+                },
             }
 
             for Index, Entry in EventStructure do
@@ -991,10 +1082,11 @@ do
                 end
 
                 local Value
+                local Token = self:GetSafeLookAhead()
                 local Assign = self:Consume('Assign')
 
                 if Entry.Key ~= 'Data' then
-                    local Token = self:Consume(Entry.Type)
+                    Token = self:Consume(Entry.Type)
 
                     if not table.find(Entry.Values, Token.Value) then
                         Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`):Primary(Token, `Expected one of "{table.concat(Entry.Values, '" or "')}", found "{Token.Value}"`):Emit()
@@ -1002,9 +1094,7 @@ do
 
                     Value = Token.Value
                 else
-                    local Token = self.LookAhead
-
-                    if not Token then
+                    if not self.LookAhead then
                         Error.new(Error.ParserExpectedExtraToken, self.Source, `Expected a token`):Primary(Assign, `Expected a value to follow after assignment`):Emit()
 
                         break
@@ -1017,6 +1107,11 @@ do
                 end
 
                 Event.Value[Entry.Key] = Value
+
+                table.insert(Event.Tokens, {
+                    Field = Key,
+                    Value = Token,
+                })
 
                 if Index ~= #EventStructure then
                     self:Consume('Comma')
@@ -1044,6 +1139,10 @@ do
                     Data = nil,
                     Return = nil,
                 },
+                Tokens = {
+                    Identifier = Identifier,
+                    Fields = {},
+                },
             }
 
             for Index, Entry in FunctionStructure do
@@ -1054,10 +1153,11 @@ do
                 end
 
                 local Value
+                local Token = self:GetSafeLookAhead()
                 local Assign = self:Consume('Assign')
 
                 if Entry.Key ~= 'Data' and Entry.Key ~= 'Return' then
-                    local Token = self:Consume(Entry.Type)
+                    Token = self:Consume(Entry.Type)
 
                     if not table.find(Entry.Values, Token.Value) then
                         Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`):Primary(Token, `Expected one of "{table.concat(Entry.Values, '" or "')}", found "{Token.Value}"`):Emit()
@@ -1065,9 +1165,7 @@ do
 
                     Value = Token.Value
                 else
-                    local Token = self.LookAhead
-
-                    if not Token then
+                    if not self.LookAhead then
                         Error.new(Error.ParserExpectedExtraToken, self.Source, `Expected a token`):Primary(Assign, `Expected a value to follow after assignment`):Emit()
 
                         break
@@ -1080,6 +1178,11 @@ do
                 end
 
                 Function.Value[Entry.Key] = Value
+
+                table.insert(Function.Tokens, {
+                    Field = Key,
+                    Value = Token,
+                })
 
                 if Index ~= #FunctionStructure then
                     self:Consume('Comma')
@@ -1107,6 +1210,7 @@ do
                     Optional = false,
                     Declarations = Declarations,
                 },
+                Tokens = {Identifier = Identifier},
             }
 
             self.Scope = Scope
@@ -1162,9 +1266,9 @@ do
                         Error.new(Error.AnalyzeInvalidRangeType, self.Source, 'Type does not support ranges'):Primary(LookAhead, `"{Primitive.Value}" does not support ranges`):Emit()
                     end
 
-                    Range = GetAttributeRange(LookAhead, false, self.Source)
+                    Range = GetTypeRange(LookAhead, false, self.Source)
                 elseif Type == 'Array' then
-                    Array = GetAttributeRange(LookAhead, true, self.Source)
+                    Array = GetTypeRange(LookAhead, true, self.Source)
                 end
 
                 self:Consume(Type)
@@ -1202,6 +1306,7 @@ do
                         Range = Range,
                         Optional = false,
                     },
+                    Tokens = {Identifier = Identifier},
                 }
             end
             if not Declaration then
@@ -1220,7 +1325,357 @@ do
 
         return Parser
     end
-    function __DARKLUA_BUNDLE_MODULES.f()
+    function __DARKLUA_BUNDLE_MODULES.h()
+        local TextService = game:GetService('TextService')
+        local RunService = game:GetService('RunService')
+        local Table = __DARKLUA_BUNDLE_MODULES.load('b')
+        local State = __DARKLUA_BUNDLE_MODULES.load('a')
+        local Lexer = __DARKLUA_BUNDLE_MODULES.load('e')
+        local Parser = __DARKLUA_BUNDLE_MODULES.load('g')
+        local Settings = __DARKLUA_BUNDLE_MODULES.load('d')
+        local Error = __DARKLUA_BUNDLE_MODULES.load('c')
+        local ICONS = {
+            Event = 'rbxassetid://16506730516',
+            Field = 'rbxassetid://16506725096',
+            Snippet = 'rbxassetid://16506712161',
+            Keyword = 'rbxassetid://16506695241',
+            Variable = 'rbxassetid://16506719167',
+            Primitive = 'rbxassetid://16506695241',
+        }
+        local COLORS = {
+            Text = Color3 .fromHex('#FFFFFF'),
+            Keyword = Color3 .fromHex('#6796E6'),
+            Primitive = Color3 .fromHex('#4EC9B0'),
+            Identifier = Color3 .fromHex('#9CDCFE'),
+            Class = Color3 .fromHex('#B5CEA8'),
+            Number = Color3 .fromHex('#B5CEA8'),
+            String = Color3 .fromHex('#ADF195'),
+            Bracket = Color3 .fromHex('#FFFFFF'),
+            Boolean = Color3 .fromHex('#B5CEA8'),
+            Error = Color3 .fromHex('#FF5050'),
+            Complete = Color3 .fromHex('#04385f'),
+        }
+        local SYMBOLS = {
+            Event = {},
+            Field = {},
+            Snippet = {},
+            Keyword = Table.GetDictionaryKeys(Settings.Keywords),
+            Variable = {},
+            Primitive = Table.GetDictionaryKeys(Settings.Primtives),
+        }
+        local FIELDS = {
+            struct = true,
+            event = true,
+            ['function'] = true,
+        }
+        local BRACKETS = {
+            OpenBrackets = true,
+            CloseBrackets = true,
+            OpenCurlyBrackets = true,
+            CloseCurlyBrackets = true,
+            OpenSquareBrackets = true,
+            CloseSquareBrackets = true,
+        }
+        local SCROLL_LINES = 2
+        local CURSOR_BLINK_RATE = 0.5
+        local Editor = {}
+        local Container = script.Widget
+        local EditorContainer = Container.Editor
+        local CompletionContainer = Container.Completion
+        local TextContainer = EditorContainer.Text
+        local LinesContainer = EditorContainer.Lines
+        local Input = TextContainer.Input
+        local Cursor = TextContainer.Cursor
+        local Display = TextContainer.Display
+        local Selection = TextContainer.Selection
+        local LineTemplate = LinesContainer.Line:Clone()
+        local SelectionTemplate = Selection.Line:Clone()
+        local CompletionTemplate = CompletionContainer.Option:Clone()
+        local TextSize = Input.TextSize
+        local TextHeight = (Input.TextSize + 3)
+        local SourceLexer = Lexer.new('Highlighting')
+        local SourceParser = Parser.new()
+        local Lines = State.new(0)
+        local Scroll = State.new(0)
+        local Errors = State.new({})
+        local CursorTimer = 0
+
+        local function ScrollTowards(Direction)
+            local Value = Scroll:Get()
+            local Maximum = math.max(1, (Input.TextBounds.Y - EditorContainer.AbsoluteSize.Y) // TextHeight + SCROLL_LINES)
+
+            Scroll:Set(math.clamp(Value + (Direction * SCROLL_LINES), 0, Maximum))
+        end
+        local function WrapColor(Text, Color)
+            return `<font color="#{Color:ToHex()}">{Text}</font>`
+        end
+        local function ClearChildrenWhichAre(Parent, Class)
+            for Index, Child in Parent:GetChildren()do
+                if Child:IsA(Class) then
+                    Child:Destroy()
+                end
+            end
+        end
+        local function DoLexerPass()
+            local Source = Input.Text
+            local RichText = ''
+
+            SourceLexer:Initialize(Source)
+
+            local Keyword = 'none'
+            local IsField = false
+
+            while true do
+                local Success, Error, Token = pcall(function()
+                    return nil, SourceLexer:GetNextToken()
+                end)
+
+                if not Success then
+                    warn(`Lexer error: {Error}`)
+
+                    break
+                end
+                if not Token then
+                    break
+                end
+
+                local Type = Token.Type
+                local Value = Token.Value
+
+                if Type == 'Keyword' then
+                    Keyword = Value
+
+                    RichText ..= WrapColor(Value, COLORS.Keyword)
+                elseif Type == 'Primitive' then
+                    RichText ..= WrapColor(Value, COLORS.Primitive)
+                elseif Type == 'Identifier' then
+                    RichText ..= WrapColor(Value, IsField and COLORS.Text or COLORS.Identifier)
+                elseif Type == 'Array' or Type == 'Range' then
+                    local Single = string.match(Value, '%[(%d+)%]') or string.match(Value, '%((%d+)%)')
+
+                    if Single then
+                        RichText ..= string.gsub(Value, Single, WrapColor(Single, COLORS.Number))
+
+                        continue
+                    end
+
+                    local Lower = string.match(Value, '%[(%d+)') or string.match(Value, '%((%d+)')
+                    local Upper = string.match(Value, '(%d+)%]') or string.match(Value, '(%d+)%)')
+
+                    if Lower and Upper then
+                        RichText ..= `{string.sub(Value, 1, 1)}{WrapColor(Lower, COLORS.Number)}..{WrapColor(Upper, COLORS.Number)}{string.sub(Value, #Value, #Value)}`
+
+                        continue
+                    end
+
+                    RichText ..= Value
+                elseif BRACKETS[Type] then
+                    if Type == 'CloseCurlyBrackets' then
+                        IsField = false
+                    end
+
+                    RichText ..= WrapColor(Value, COLORS.Bracket)
+                elseif Type == 'Class' then
+                    RichText ..= `({WrapColor(string.sub(Value, 2, #Value - 1), COLORS.Class)})`
+                elseif Type == 'String' then
+                    RichText ..= WrapColor(Value, COLORS.String)
+                elseif Type == 'Boolean' then
+                    RichText ..= WrapColor(Value, COLORS.Boolean)
+                elseif Type == 'Unknown' then
+                    IsField = false
+
+                    RichText ..= WrapColor(Value, COLORS.Error)
+                else
+                    RichText ..= Value
+                end
+                if Type == 'Whitespace' then
+                    continue
+                end
+
+                IsField = (Type == 'Comma' or Type == 'OpenCurlyBrackets') and FIELDS[Keyword]
+            end
+
+            Display.Text = RichText
+        end
+        local function OnErrorEmitted(Labels)
+            Errors:Set(Labels)
+        end
+        local function OnPreRender(DeltaTime)
+            if Input.CursorPosition == -1 then
+                return
+            end
+
+            CursorTimer += DeltaTime
+
+            if CursorTimer < CURSOR_BLINK_RATE then
+                return
+            end
+
+            CursorTimer -= CURSOR_BLINK_RATE
+
+            Cursor.Visible = not Cursor.Visible
+        end
+        local function OnLinesChanged(Value)
+            ClearChildrenWhichAre(LinesContainer, 'TextLabel')
+
+            for Index = 1, Value do
+                local Line = LineTemplate:Clone()
+
+                Line.Text = tostring(Index)
+                Line.Parent = LinesContainer
+            end
+        end
+        local function OnScrollChanged(Value)
+            EditorContainer.Position = UDim2 .fromOffset(EditorContainer.Position.X.Offset, TextHeight * 
+-Value)
+        end
+        local function OnCursorPositionChanged()
+            local CursorPosition = Input.CursorPosition
+
+            if CursorPosition == -1 then
+                Cursor.Visible = false
+
+                return
+            end
+
+            local Text = string.sub(Input.Text, 1, CursorPosition - 1)
+            local Slices = string.split(Text, '\n')
+            local Line = Slices[#Slices] or ''
+            local GetTextBoundsParams = Instance.new('GetTextBoundsParams')
+
+            GetTextBoundsParams.Text = Line
+            GetTextBoundsParams.Size = TextSize
+            GetTextBoundsParams.Font = Input.FontFace
+
+            local TextBounds = TextService:GetTextBoundsAsync(GetTextBoundsParams)
+
+            Cursor.Size = UDim2 .fromOffset(2, TextSize)
+            Cursor.Position = UDim2 .fromOffset(TextBounds.X - 1, TextHeight * (#Slices - 1))
+        end
+        local function OnSelectionChanged()
+            ClearChildrenWhichAre(Selection, 'Frame')
+
+            local CursorPosition = Input.CursorPosition
+            local SelectionStart = Input.SelectionStart
+
+            if CursorPosition == -1 or SelectionStart == -1 then
+                return
+            end
+
+            local Start = math.min(CursorPosition, SelectionStart)
+            local Finish = math.max(CursorPosition, SelectionStart)
+            local Text = string.sub(Input.ContentText, 1, Finish - 1)
+            local Slices = string.split(Text, '\n')
+            local Offset = 0
+
+            for Index, Slice in Slices do
+                local First = Offset
+
+                Offset += (#Slice + 1)
+
+                local Line = SelectionTemplate:Clone()
+                local Fill = Line.Fill
+
+                if Offset < Start then
+                    Fill.BackgroundTransparency = 1
+                    Line.Parent = Selection
+
+                    continue
+                end
+
+                local Substring = Slice
+
+                if First < Start then
+                    Substring = string.sub(Slice, (Start - First), #Slice)
+                elseif Index == #Slices then
+                    Substring = string.sub(Slice, 1, math.max(1, Finish - First))
+                end
+                if Substring == '' then
+                    Substring = ' '
+                end
+
+                local SelectionBoundsParams = Instance.new('GetTextBoundsParams')
+
+                SelectionBoundsParams.Text = Substring
+                SelectionBoundsParams.Size = TextSize
+                SelectionBoundsParams.Font = Input.FontFace
+
+                local SelectionBounds = TextService:GetTextBoundsAsync(SelectionBoundsParams)
+
+                Fill.Size = UDim2 .new(0, SelectionBounds.X, 1, 0)
+
+                if Start > First then
+                    local Prefix = string.sub(Slice, 1, (Start - First) - 1)
+
+                    if Prefix ~= '' then
+                        local OffsetBoundsParams = Instance.new('GetTextBoundsParams')
+
+                        OffsetBoundsParams.Text = Prefix
+                        OffsetBoundsParams.Size = TextSize
+                        OffsetBoundsParams.Font = Input.FontFace
+
+                        local OffsetBounds = TextService:GetTextBoundsAsync(OffsetBoundsParams)
+
+                        Fill.Position = UDim2 .new(0, OffsetBounds.X, 0, 0)
+                    end
+                end
+
+                Line.Parent = Selection
+            end
+        end
+        local function OnSourceChanged()
+            local Text = Input.Text
+
+            Text = string.gsub(Text, '\r', '')
+            Input.Text = Text
+
+            local SourceLines = #string.split(Text, '\n')
+
+            if SourceLines ~= Lines:Get() then
+                Lines:Set(SourceLines)
+            end
+
+            DoLexerPass()
+        end
+
+        function Editor.GetSource()
+            return Input.Text
+        end
+        function Editor.SetSource(Source)
+            Scroll:Set(0)
+
+            Input.Text = Source
+        end
+        function Editor.Initialize()
+            Selection.Line:Destroy()
+            LinesContainer.Line:Destroy()
+            CompletionContainer.Option:Destroy()
+
+            for _, Symbols in SYMBOLS do
+                table.sort(Symbols, function(a, b)
+                    return #a < #b
+                end)
+            end
+
+            Error.OnEmit = OnErrorEmitted
+
+            Lines:OnChange(OnLinesChanged)
+            Scroll:OnChange(OnScrollChanged)
+            Input:GetPropertyChangedSignal('Text'):Connect(OnSourceChanged)
+            Input:GetPropertyChangedSignal('SelectionStart'):Connect(OnSelectionChanged)
+            Input:GetPropertyChangedSignal('CursorPosition'):Connect(OnSelectionChanged)
+            Input:GetPropertyChangedSignal('CursorPosition'):Connect(OnCursorPositionChanged)
+            Input.InputChanged:Connect(function(InputObject)
+                if InputObject.UserInputType == Enum.UserInputType.MouseWheel then
+                    ScrollTowards(-InputObject.Position.Z)
+                end
+            end)
+            RunService.PreRender:Connect(OnPreRender)
+        end
+
+        return Editor
+    end
+    function __DARKLUA_BUNDLE_MODULES.i()
         local Branches = {
             Conditional = 'elseif',
             Default = 'else',
@@ -1384,7 +1839,7 @@ do
             Connection = Connection.new,
         }
     end
-    function __DARKLUA_BUNDLE_MODULES.g()
+    function __DARKLUA_BUNDLE_MODULES.j()
         local Builder = {}
 
         function Builder.new(String, BaseIndentation)
@@ -1450,10 +1905,10 @@ do
 
         return Builder
     end
-    function __DARKLUA_BUNDLE_MODULES.h()
-        local Blocks = __DARKLUA_BUNDLE_MODULES.load('f')
-        local Parser = __DARKLUA_BUNDLE_MODULES.load('e')
-        local Builder = __DARKLUA_BUNDLE_MODULES.load('g')
+    function __DARKLUA_BUNDLE_MODULES.k()
+        local Blocks = __DARKLUA_BUNDLE_MODULES.load('i')
+        local Parser = __DARKLUA_BUNDLE_MODULES.load('g')
+        local Builder = __DARKLUA_BUNDLE_MODULES.load('j')
         local SEND_BUFFER = 'SendBuffer'
         local RECIEVE_BUFFER = 'RecieveBuffer'
         local SEND_POSITION = 'SendOffset'
@@ -1775,24 +2230,24 @@ do
             Structures = Structures,
         }
     end
-    function __DARKLUA_BUNDLE_MODULES.i()
+    function __DARKLUA_BUNDLE_MODULES.l()
         return 'local Invocations = 0\r\n\r\nlocal SendOffset = 0\r\nlocal SendCursor = 0\r\nlocal SendBuffer = buffer.create(64)\r\nlocal SendInstances = {}\r\n\r\nlocal RecieveCursor = 0\r\nlocal RecieveBuffer = buffer.create(64)\r\n\r\nlocal RecieveInstances = {}\r\nlocal RecieveInstanceCursor = 0\r\n\r\ntype BufferSave = {Cursor: number, Buffer: buffer, Instances: {Instance}}\r\n\r\nlocal function Read(Bytes: number)\r\n    local Offset = RecieveCursor\r\n    RecieveCursor += Bytes\r\n    return Offset\r\nend\r\n\r\nlocal function Save(): BufferSave\r\n    return {\r\n        Cursor = SendCursor,\r\n        Buffer = SendBuffer,\r\n        Instances = SendInstances\r\n    }\r\nend\r\n\r\nlocal function Load(Save: BufferSave?)\r\n    if Save then\r\n        SendCursor = Save.Cursor\r\n        SendOffset = Save.Cursor\r\n        SendBuffer = Save.Buffer\r\n        SendInstances = Save.Instances\r\n        return\r\n    end\r\n\r\n    SendCursor = 0\r\n    SendOffset = 0\r\n    SendBuffer = buffer.create(64)\r\n    SendInstances = {}\r\nend\r\n\r\nlocal function Invoke()\r\n    if Invocations == 255 then\r\n        Invocations = 0\r\n    end\r\n\r\n    local Invocation = Invocations\r\n    Invocations += 1\r\n    return Invocation\r\nend\r\n\r\nlocal function Allocate(Bytes: number)\r\n    local Len = buffer.len(SendBuffer)\r\n\r\n    local Size = Len\r\n    local InUse = (SendCursor + Bytes)\r\n    \r\n    if InUse > Size then\r\n        --> Avoid resizing the buffer for every write\r\n        while InUse > Size do\r\n            Size *= 1.5\r\n        end\r\n\r\n        local Buffer = buffer.create(Size)\r\n        buffer.copy(Buffer, 0, SendBuffer, 0, Len)\r\n        SendBuffer = Buffer\r\n    end\r\n\r\n    SendOffset = SendCursor\r\n    SendCursor += Bytes\r\n    \r\n    return SendOffset\r\nend\r\n\r\nlocal Types = {}\r\nlocal Calls = table.create(256)\r\n\r\nlocal Events: any = {\r\n    Reliable = table.create(256),\r\n    Unreliable = table.create(256)\r\n}\r\n\r\nlocal Queue: any = {\r\n    Reliable = table.create(256),\r\n    Unreliable = table.create(256)\r\n}\r\n\r\n'
     end
-    function __DARKLUA_BUNDLE_MODULES.j()
+    function __DARKLUA_BUNDLE_MODULES.m()
         return 'local ReplicatedStorage = game:GetService("ReplicatedStorage")\r\nlocal RunService = game:GetService("RunService")\r\n\r\nif not RunService:IsClient() then\r\n    error("Client network module can only be required from the client.")\r\nend\r\n\r\nlocal Reliable: RemoteEvent = ReplicatedStorage:WaitForChild("BLINK_RELIABLE_REMOTE") :: RemoteEvent\r\nlocal Unreliable: UnreliableRemoteEvent = ReplicatedStorage:WaitForChild("BLINK_UNRELIABLE_REMOTE") :: UnreliableRemoteEvent\r\n\r\n-- SPLIT --\r\nlocal function StepReplication()\r\n    if SendCursor <= 0 then\r\n        return\r\n    end\r\n\r\n    local Buffer = buffer.create(SendCursor)\r\n    buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)\r\n    Reliable:FireServer(Buffer, SendInstances)\r\n\r\n    SendCursor = 0\r\n    SendOffset = 0\r\n    buffer.fill(SendBuffer, 0, 0)\r\n    table.clear(SendInstances)\r\nend\r\n'
     end
-    function __DARKLUA_BUNDLE_MODULES.k()
+    function __DARKLUA_BUNDLE_MODULES.n()
         return 'local Players = game:GetService("Players")\r\nlocal ReplicatedStorage = game:GetService("ReplicatedStorage")\r\nlocal RunService = game:GetService("RunService")\r\n\r\nif not RunService:IsServer() then\r\n    error("Server network module can only be required from the server.")\r\nend\r\n\r\nlocal Reliable: RemoteEvent = ReplicatedStorage:FindFirstChild("BLINK_RELIABLE_REMOTE") :: RemoteEvent\r\nif not Reliable then\r\n    local RemoteEvent = Instance.new("RemoteEvent")\r\n    RemoteEvent.Name = "BLINK_RELIABLE_REMOTE"\r\n    RemoteEvent.Parent = ReplicatedStorage\r\n    Reliable = RemoteEvent\r\nend\r\n\r\nlocal Unreliable: UnreliableRemoteEvent = ReplicatedStorage:FindFirstChild("BLINK_UNRELIABLE_REMOTE") :: UnreliableRemoteEvent\r\nif not Unreliable then\r\n    local UnreliableRemoteEvent = Instance.new("UnreliableRemoteEvent")\r\n    UnreliableRemoteEvent.Name = "BLINK_UNRELIABLE_REMOTE"\r\n    UnreliableRemoteEvent.Parent = ReplicatedStorage\r\n    Unreliable = UnreliableRemoteEvent\r\nend\r\n\r\n-- SPLIT --\r\nlocal PlayersMap: {[Player]: BufferSave} = {}\r\n\r\nPlayers.PlayerRemoving:Connect(function(Player)\r\n    PlayersMap[Player] = nil\r\nend)\r\n\r\nlocal function StepReplication()\r\n    for Player, Send in PlayersMap do\r\n        if Send.Cursor <= 0 then\r\n            continue\r\n        end\r\n\r\n        local Buffer = buffer.create(Send.Cursor)\r\n        buffer.copy(Buffer, 0, Send.Buffer, 0, Send.Cursor)\r\n        Reliable:FireClient(Player, Buffer, Send.Instances)\r\n\r\n        Send.Cursor = 0\r\n        buffer.fill(Send.Buffer, 0, 0)\r\n        table.clear(Send.Instances)\r\n    end\r\nend\r\n'
     end
-    function __DARKLUA_BUNDLE_MODULES.l()
-        local Blocks = __DARKLUA_BUNDLE_MODULES.load('f')
-        local Parser = __DARKLUA_BUNDLE_MODULES.load('e')
-        local Builder = __DARKLUA_BUNDLE_MODULES.load('g')
-        local Prefabs = __DARKLUA_BUNDLE_MODULES.load('h')
+    function __DARKLUA_BUNDLE_MODULES.o()
+        local Blocks = __DARKLUA_BUNDLE_MODULES.load('i')
+        local Parser = __DARKLUA_BUNDLE_MODULES.load('g')
+        local Builder = __DARKLUA_BUNDLE_MODULES.load('j')
+        local Prefabs = __DARKLUA_BUNDLE_MODULES.load('k')
         local Sources = {
-            Base = __DARKLUA_BUNDLE_MODULES.load('i'),
-            Client = string.split(__DARKLUA_BUNDLE_MODULES.load('j'), '-- SPLIT --'),
-            Server = string.split(__DARKLUA_BUNDLE_MODULES.load('k'), '-- SPLIT --'),
+            Base = __DARKLUA_BUNDLE_MODULES.load('l'),
+            Client = string.split(__DARKLUA_BUNDLE_MODULES.load('m'), '-- SPLIT --'),
+            Server = string.split(__DARKLUA_BUNDLE_MODULES.load('n'), '-- SPLIT --'),
         }
         local DIRECTIVES = 
 [[--!strict
@@ -2461,26 +2916,15 @@ end
 
 local ServerStorage = game:GetService('ServerStorage')
 local UserInputService = game:GetService('UserInputService')
+local ContextActionService = game:GetService('ContextActionService')
 local TweenService = game:GetService('TweenService')
 local TextService = game:GetService('TextService')
 local RunService = game:GetService('RunService')
 local Selection = game:GetService('Selection')
 local State = __DARKLUA_BUNDLE_MODULES.load('a')
-local Lexer = __DARKLUA_BUNDLE_MODULES.load('c')
-local Parser = __DARKLUA_BUNDLE_MODULES.load('e')
-local Generator = __DARKLUA_BUNDLE_MODULES.load('l')
-local EDITOR_COLORS = {
-    Text = Color3 .fromHex('#FFFFFF'),
-    Keyword = Color3 .fromHex('#6796E6'),
-    Primitive = Color3 .fromHex('#4EC9B0'),
-    Identifier = Color3 .fromHex('#9CDCFE'),
-    Class = Color3 .fromHex('#B5CEA8'),
-    Number = Color3 .fromHex('#B5CEA8'),
-    String = Color3 .fromHex('#ADF195'),
-    Bracket = Color3 .fromHex('#FFFFFF'),
-    Boolean = Color3 .fromHex('#B5CEA8'),
-    Error = Color3 .fromHex('#FF5050'),
-}
+local Editor = __DARKLUA_BUNDLE_MODULES.load('h')
+local Parser = __DARKLUA_BUNDLE_MODULES.load('g')
+local Generator = __DARKLUA_BUNDLE_MODULES.load('o')
 local FILES_FOLDER = 'BLINK_CONFIGURATION_FILES'
 local TEMPLATE_FILE = {
     Name = 'Template',
@@ -2491,31 +2935,14 @@ local EDITOR_WIDGET = DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Left, fa
 local SAVE_COLOR = Color3 .fromRGB(0, 100, 0)
 local BUTTON_COLOR = Color3 .fromRGB(30, 30, 30)
 local EXPAND_TWEEN = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
-local SCROLL_LINES = 2
-local CURSOR_BLINK_RATE = 0.5
-local FIELDS_TYPES = {
-    struct = true,
-    event = true,
-    ['function'] = true,
-}
-local BRACKETS_TYPES = {
-    OpenBrackets = true,
-    CloseBrackets = true,
-    OpenCurlyBrackets = true,
-    CloseCurlyBrackets = true,
-    OpenSquareBrackets = true,
-    CloseSquareBrackets = true,
-}
 local Toolbar = plugin:CreateToolbar('Blink Suite')
 local EditorButton = Toolbar:CreateButton('Editor', 'Opens the configuration editor', 'rbxassetid://16468561002')
 
 EditorButton.ClickableWhenViewportHidden = true
 
 local Template = script.Widget
-local LineTemplate = Template.Editor.Lines.Line:Clone()
 local FileTemplate = Template.Side.Content.Top.Files.File:Clone()
 
-Template.Editor.Lines.Line:Destroy()
 Template.Side.Content.Top.Files.File:Destroy()
 
 local ErrorWidget = plugin:CreateDockWidgetPluginGui('Generation Error', ERROR_WIDGET)
@@ -2535,13 +2962,12 @@ EditorWidget.Name = 'Blink Editor'
 EditorWidget.Title = 'Configuration Editor'
 EditorWidget.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-local EditorInterface = Template:Clone()
+local EditorInterface = script.Widget
 
 EditorInterface.Size = UDim2 .fromScale(1, 1)
 EditorInterface.Parent = EditorWidget
 
 local Side = EditorInterface.Side
-local Editor = EditorInterface.Editor
 local Overlay = EditorInterface.Overlay
 local Content = Side.Content
 local Expand = Side.Expand
@@ -2552,18 +2978,13 @@ local Search = Top.Title.Search.Input
 local Prompt = Bottom.Save
 local Buttons = Bottom.Buttons
 local GeneratePrompt = Bottom.Generate
-local GenerateButtons = (GeneratePrompt:FindFirstChild('Buttons'))
-local Hint = (GeneratePrompt:FindFirstChild('Hint'))
-local Generate = (GenerateButtons:FindFirstChild('Generate'))
-local CancelGenerate = (GenerateButtons:FindFirstChild('Cancel'))
-local Input = (Prompt:FindFirstChild('Input'))
+local GenerateButtons = GeneratePrompt.Buttons
+local Hint = GeneratePrompt.Hint
+local Generate = GenerateButtons.Generate
+local CancelGenerate = GenerateButtons.Cancel
+local Input = Prompt.Input
 local Save = Buttons.Save
 local Cancel = Buttons.Cancel
-local TextInput = Editor.Text.Input
-local TextCursor = Editor.Text.Cursor
-local TextDisplay = Editor.Text.Display
-local NumberLines = Editor.Lines
-local TextLineHeight = (TextInput.TextSize + 3)
 local Tweens = {
     Editor = {
         Expand = {
@@ -2582,16 +3003,12 @@ local Tweens = {
         },
     },
 }
-local SourceLexer = Lexer.new('Highlighting')
 local Saving = false
-local Scroll = State.new(0)
 local Expanded = State.new(false)
 local Selected = State.new(nil)
 local Generating = State.new(nil)
 local WasOpened = false
-local Lines = 0
 local Editing
-local CursorTimer = 0
 
 local function ShowError(Error)
     local Start = string.find(Error, '<font', 1, true)
@@ -2677,11 +3094,11 @@ local function GenerateFile(File, Directory)
     CreateScript('Client', ClientOutput, Enum.RunContext.Client, BlinkFolder)
 end
 local function LoadFile(File)
-    Scroll:Set(0)
     Expanded:Set(false)
 
     Editing = File.Name
-    TextInput.Text = File.Value
+
+    Editor.SetSource(File.Value)
 end
 local function LoadFiles()
     Generating:Set()
@@ -2743,103 +3160,6 @@ local function CreateTemplateFile()
     SaveFile(TEMPLATE_FILE.Name, TEMPLATE_FILE.Source)
     LoadFile((GetSaveFolder():FindFirstChild(TEMPLATE_FILE.Name)))
 end
-local function WrapColor(Text, Color)
-    return `<font color="#{Color:ToHex()}">{Text}</font>`
-end
-local function GetEditorSource()
-    return TextInput.ContentText
-end
-local function DoLexerPass()
-    local Source = GetEditorSource()
-    local Display = ''
-
-    SourceLexer:Initialize(Source)
-
-    local Keyword = 'none'
-    local IsField = false
-
-    while true do
-        local Success, Error, Token = pcall(function()
-            return nil, SourceLexer:GetNextToken()
-        end)
-
-        if not Success then
-            warn(`Lexer error: {Error}`)
-
-            break
-        end
-        if not Token then
-            break
-        end
-
-        local Type = Token.Type
-        local Value = Token.Value
-
-        if Type == 'Keyword' then
-            Keyword = Value
-
-            Display ..= WrapColor(Value, EDITOR_COLORS.Keyword)
-        elseif Type == 'Primitive' then
-            Display ..= WrapColor(Value, EDITOR_COLORS.Primitive)
-        elseif Type == 'Identifier' then
-            Display ..= WrapColor(Value, IsField and EDITOR_COLORS.Text or EDITOR_COLORS.Identifier)
-        elseif Type == 'Array' or Type == 'Range' then
-            local Single = string.match(Value, '%[(%d+)%]') or string.match(Value, '%((%d+)%)')
-
-            if Single then
-                Display ..= string.gsub(Value, Single, WrapColor(Single, EDITOR_COLORS.Number))
-
-                continue
-            end
-
-            local Lower = string.match(Value, '%[(%d+)') or string.match(Value, '%((%d+)')
-            local Upper = string.match(Value, '(%d+)%]') or string.match(Value, '(%d+)%)')
-
-            if Lower and Upper then
-                Display ..= `{string.sub(Value, 1, 1)}{WrapColor(Lower, EDITOR_COLORS.Number)}..{WrapColor(Upper, EDITOR_COLORS.Number)}{string.sub(Value, #Value, #Value)}`
-
-                continue
-            end
-
-            Display ..= Value
-        elseif BRACKETS_TYPES[Type] then
-            if Type == 'CloseCurlyBrackets' then
-                IsField = false
-            end
-
-            Display ..= WrapColor(Value, EDITOR_COLORS.Bracket)
-        elseif Type == 'Class' then
-            Display ..= `({WrapColor(string.sub(Value, 2, #Value - 1), EDITOR_COLORS.Class)})`
-        elseif Type == 'String' then
-            Display ..= WrapColor(Value, EDITOR_COLORS.String)
-        elseif Type == 'Boolean' then
-            Display ..= WrapColor(Value, EDITOR_COLORS.Boolean)
-        elseif Type == 'Unknown' then
-            IsField = false
-
-            Display ..= WrapColor(Value, EDITOR_COLORS.Error)
-        else
-            Display ..= Value
-        end
-        if Type == 'Whitespace' then
-            continue
-        end
-
-        IsField = (Type == 'Comma' or Type == 'OpenCurlyBrackets') and FIELDS_TYPES[Keyword]
-    end
-
-    TextDisplay.Text = Display
-end
-local function ScrollEditor(Direction)
-    local Value = Scroll:Get()
-    local Maximum = math.max(1, (TextInput.TextBounds.Y - Editor.AbsoluteSize.Y) // TextLineHeight + SCROLL_LINES)
-
-    Scroll:Set(math.clamp(Value + (Direction * SCROLL_LINES), 0, Maximum))
-end
-local function OnScroll(Value)
-    Editor.Position = UDim2 .fromOffset(Editor.Position.X.Offset, TextLineHeight * 
--Value)
-end
 local function OnSearch(PressedEnter)
     if not PressedEnter then
         return
@@ -2860,54 +3180,6 @@ local function OnSearch(PressedEnter)
         Frame.Visible = (string.find(Frame.Name, Query) ~= nil)
     end
 end
-local function OnCursorMoved()
-    local CursorPosition = TextInput.CursorPosition
-
-    if CursorPosition == -1 then
-        TextCursor.Visible = false
-
-        return
-    end
-
-    local Size = TextInput.TextSize
-    local Text = string.sub(TextInput.ContentText, 1, CursorPosition - 1)
-    local Slices = string.split(Text, '\n')
-    local NewLines = math.max(#Slices, 1)
-    local Line = Slices[#Slices] or ''
-    local GetTextBoundsParams = Instance.new('GetTextBoundsParams')
-
-    GetTextBoundsParams.Text = Line
-    GetTextBoundsParams.Size = Size
-    GetTextBoundsParams.Font = TextInput.FontFace
-
-    local TextBounds = TextService:GetTextBoundsAsync(GetTextBoundsParams)
-
-    TextCursor.Size = UDim2 .fromOffset(2, Size)
-    TextCursor.Position = UDim2 .fromOffset(TextBounds.X - 1, TextLineHeight * (NewLines - 1))
-end
-local function OnSourceChanged()
-    local ContentText = TextInput.ContentText
-
-    ContentText = string.gsub(ContentText, '\r', '')
-    TextInput.Text = ContentText
-
-    local ContentLines = #string.split(ContentText, '\n')
-
-    if ContentLines ~= Lines then
-        Lines = ContentLines
-
-        ClearChildrenWhichAre(NumberLines, 'TextLabel')
-
-        for Index = 1, Lines do
-            local Line = LineTemplate:Clone()
-
-            Line.Text = tostring(Index)
-            Line.Parent = NumberLines
-        end
-    end
-
-    DoLexerPass()
-end
 local function OnSaveCompleted()
     Saving = false
     Prompt.Visible = false
@@ -2922,7 +3194,7 @@ local function OnSaveActivated()
             return
         end
 
-        SaveFile(Name, GetEditorSource())
+        SaveFile(Name, Editor.GetSource())
         LoadFiles()
         OnSaveCompleted()
 
@@ -2948,23 +3220,8 @@ end
 local function OnEditorButtonClicked()
     EditorWidget.Enabled = not EditorWidget.Enabled
 end
-local function OnPreRender(DeltaTime)
-    if TextInput.CursorPosition == -1 then
-        return
-    end
 
-    CursorTimer += DeltaTime
-
-    if CursorTimer < CURSOR_BLINK_RATE then
-        return
-    end
-
-    CursorTimer -= CURSOR_BLINK_RATE
-
-    TextCursor.Visible = not TextCursor.Visible
-end
-
-Scroll:OnChange(OnScroll)
+Editor.Initialize()
 Expanded:OnChange(function(Value)
     PlayTweens(Value and Tweens.Editor.Expand or Tweens.Editor.Retract)
 end)
@@ -3005,14 +3262,3 @@ Save.Activated:Connect(OnSaveActivated)
 Cancel.Activated:Connect(OnSaveCompleted)
 Expand.Activated:Connect(OnExpandActivated)
 EditorButton.Click:Connect(OnEditorButtonClicked)
-TextInput:GetPropertyChangedSignal('Text'):Connect(OnSourceChanged)
-TextInput:GetPropertyChangedSignal('CursorPosition'):Connect(OnCursorMoved)
-TextInput.InputChanged:Connect(function(InputObject)
-    if not Editing then
-        return
-    end
-    if InputObject.UserInputType == Enum.UserInputType.MouseWheel then
-        ScrollEditor(-InputObject.Position.Z)
-    end
-end)
-RunService.PreRender:Connect(OnPreRender)

@@ -8,6 +8,7 @@
 
 local ServerStorage = game:GetService("ServerStorage")
 local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
 local TweenService = game:GetService("TweenService")
 local TextService = game:GetService("TextService")
 local RunService = game:GetService("RunService")
@@ -16,30 +17,12 @@ local Selection = game:GetService("Selection")
 ---- Imports ----
 
 local State = require("./State")
-local Lexer = require("../../src/Lexer")
+local Editor = require("./Editor")
+
 local Parser = require("../../src/Parser")
 local Generator = require("../../src/Generator")
 
 ---- Settings ----
-
-type A = {
-    Identifier: number,
-}
-
-local EDITOR_COLORS = {
-    Text = Color3.fromHex("#FFFFFF"),
-    Keyword = Color3.fromHex("#6796E6"),
-    Primitive = Color3.fromHex("#4EC9B0"),
-    Identifier = Color3.fromHex("#9CDCFE"),
-
-    Class = Color3.fromHex("#B5CEA8"),
-    Number = Color3.fromHex("#B5CEA8"),
-    String = Color3.fromHex("#ADF195"),
-    Bracket = Color3.fromHex("#FFFFFF"),
-    Boolean = Color3.fromHex("#B5CEA8"),
-
-    Error = Color3.fromHex("#FF5050"),
-}
 
 local FILES_FOLDER = "BLINK_CONFIGURATION_FILES"
 local TEMPLATE_FILE = {
@@ -77,24 +60,6 @@ local SAVE_COLOR = Color3.fromRGB(0, 100, 0)
 local BUTTON_COLOR = Color3.fromRGB(30, 30, 30)
 local EXPAND_TWEEN = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
 
-local SCROLL_LINES = 2
-local CURSOR_BLINK_RATE = 0.5
-
-local FIELDS_TYPES = {
-    struct = true,
-    event = true,
-    ["function"] = true,
-}
-
-local BRACKETS_TYPES = {
-    OpenBrackets = true,
-    CloseBrackets = true,
-    OpenCurlyBrackets = true,
-    CloseCurlyBrackets = true,
-    OpenSquareBrackets = true,
-    CloseSquareBrackets = true
-}
-
 ---- Constants ----
 
 local Toolbar = plugin:CreateToolbar("Blink Suite")
@@ -102,12 +67,10 @@ local EditorButton = Toolbar:CreateButton("Editor", "Opens the configuration edi
 EditorButton.ClickableWhenViewportHidden = true
 
 local Template = script.Widget
-local LineTemplate: TextLabel = Template.Editor.Lines.Line:Clone()
 local FileTemplate = Template.Side.Content.Top.Files.File:Clone()
 
 --> Remove templates
 --Template.Editor.Text.Line:Destroy()
-Template.Editor.Lines.Line:Destroy()
 Template.Side.Content.Top.Files.File:Destroy()
 
 local ErrorWidget = plugin:CreateDockWidgetPluginGui("Generation Error", ERROR_WIDGET)
@@ -125,42 +88,34 @@ EditorWidget.Name = "Blink Editor"
 EditorWidget.Title = "Configuration Editor"
 EditorWidget.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-local EditorInterface = Template:Clone()
+local EditorInterface = script.Widget
 EditorInterface.Size = UDim2.fromScale(1, 1)
 EditorInterface.Parent = EditorWidget
 
 local Side = EditorInterface.Side
-local Editor = EditorInterface.Editor
-local Overlay: Frame = EditorInterface.Overlay
+local Overlay = EditorInterface.Overlay
 
 local Content = Side.Content
-local Expand: ImageButton = Side.Expand
+local Expand = Side.Expand
 
 local Top = Content.Top
 local Bottom = Content.Bottom
 
-local Files: Frame = Top.Files
-local Search: TextBox = Top.Title.Search.Input
+local Files = Top.Files
+local Search = Top.Title.Search.Input
 
-local Prompt: Frame = Bottom.Save
+local Prompt = Bottom.Save
 local Buttons = Bottom.Buttons
 
-local GeneratePrompt: Frame = Bottom.Generate
-local GenerateButtons: Frame = GeneratePrompt:FindFirstChild("Buttons") :: Frame
-local Hint: TextLabel = GeneratePrompt:FindFirstChild("Hint") :: TextLabel
-local Generate: TextButton = GenerateButtons:FindFirstChild("Generate") :: TextButton
-local CancelGenerate: TextButton = GenerateButtons:FindFirstChild("Cancel") :: TextButton
+local GeneratePrompt = Bottom.Generate
+local GenerateButtons = GeneratePrompt.Buttons
+local Hint = GeneratePrompt.Hint
+local Generate = GenerateButtons.Generate
+local CancelGenerate = GenerateButtons.Cancel
 
-local Input: TextBox = Prompt:FindFirstChild("Input") :: TextBox
-local Save: TextButton = Buttons.Save
-local Cancel: TextButton = Buttons.Cancel
-
-local TextInput: TextBox = Editor.Text.Input
-local TextCursor: Frame = Editor.Text.Cursor
-local TextDisplay: TextLabel = Editor.Text.Display
-local NumberLines: Frame = Editor.Lines
-
-local TextLineHeight = (TextInput.TextSize + 3)
+local Input = Prompt.Input
+local Save = Buttons.Save
+local Cancel = Buttons.Cancel
 
 --> Tweens
 local Tweens = {
@@ -179,22 +134,16 @@ local Tweens = {
     }
 }
 
-local SourceLexer = Lexer.new("Highlighting")
-
 ---- Variables ----
 
 local Saving = false
-local Scroll = State.new(0)
+
 local Expanded = State.new(false)
 local Selected: State.Class<Instance?> = State.new(nil :: any)
 local Generating: State.Class<StringValue?> = State.new(nil :: any)
 
 local WasOpened = false
-
-local Lines = 0
 local Editing: string?;
-
-local CursorTimer = 0
 
 ---- Private Functions ----
 
@@ -285,10 +234,9 @@ local function GenerateFile(File: StringValue, Directory: Instance)
 end
 
 local function LoadFile(File: StringValue)
-    Scroll:Set(0)
     Expanded:Set(false)
     Editing = File.Name
-    TextInput.Text = File.Value
+    Editor.SetSource(File.Value)
 end
 
 local function LoadFiles()
@@ -354,110 +302,7 @@ local function CreateTemplateFile()
     LoadFile(GetSaveFolder():FindFirstChild(TEMPLATE_FILE.Name) :: StringValue)
 end
 
---> Editor utility functions
-local function WrapColor(Text: string, Color: Color3): string
-    return `<font color="#{Color:ToHex()}">{Text}</font>`
-end
-
-local function GetEditorSource(): string
-    return TextInput.ContentText
-end
-
-local function DoLexerPass()
-    local Source = GetEditorSource()
-    local Display = ""
-
-    --> Initiialize lexer
-    SourceLexer:Initialize(Source)
-
-    --> Highlight state
-    local Keyword = "none"
-    local IsField = false
-    --local IsAssigning = false
-    
-    while true do
-        local Success, Error, Token = pcall(function()
-            return nil, SourceLexer:GetNextToken()
-        end)
-
-        if not Success then
-            warn(`Lexer error: {Error}`)
-            break
-        end
-
-        if not Token then
-            break
-        end
-
-        local Type: Lexer.Types = Token.Type
-        local Value = Token.Value
-
-        if Type == "Keyword" then
-            Keyword = Value
-            Display ..= WrapColor(Value, EDITOR_COLORS.Keyword)
-        elseif Type == "Primitive" then
-            Display ..= WrapColor(Value, EDITOR_COLORS.Primitive)
-        elseif Type == "Identifier" then
-            Display ..= WrapColor(Value, IsField and EDITOR_COLORS.Text or EDITOR_COLORS.Identifier)
-        elseif Type == "Array" or Type == "Range" then
-            --> Exact size array/range
-            local Single = string.match(Value, "%[(%d+)%]") or string.match(Value, "%((%d+)%)")
-            if Single then
-                Display ..= string.gsub(Value, Single, WrapColor(Single, EDITOR_COLORS.Number))
-                continue
-            end
-
-            --> Variable size array/range
-            local Lower = string.match(Value, "%[(%d+)") or string.match(Value, "%((%d+)") 
-            local Upper = string.match(Value, "(%d+)%]") or string.match(Value, "(%d+)%)")
-            if Lower and Upper then
-                Display ..= `{string.sub(Value, 1, 1)}{WrapColor(Lower, EDITOR_COLORS.Number)}..{WrapColor(Upper, EDITOR_COLORS.Number)}{string.sub(Value, #Value, #Value)}`
-                continue
-            end
-
-            Display ..= Value
-        elseif BRACKETS_TYPES[Type] then
-            if Type == "CloseCurlyBrackets" then
-                IsField = false
-            end
-
-            Display ..= WrapColor(Value, EDITOR_COLORS.Bracket)
-        elseif Type == "Class" then
-            Display ..= `({WrapColor(string.sub(Value, 2, #Value - 1), EDITOR_COLORS.Class)})`
-        elseif Type == "String" then
-            Display ..= WrapColor(Value, EDITOR_COLORS.String)
-        elseif Type == "Boolean" then
-            Display ..= WrapColor(Value, EDITOR_COLORS.Boolean)
-        elseif Type == "Unknown" then
-            --> Reset all state
-            IsField = false
-            Display ..= WrapColor(Value, EDITOR_COLORS.Error)
-        else
-            Display ..= Value
-        end
-
-        if Type == "Whitespace" then
-            continue
-        end
-
-        IsField = (Type == "Comma" or Type == "OpenCurlyBrackets") and FIELDS_TYPES[Keyword]
-        --IsAssigning = (Type == "Assign") 
-    end
-
-    TextDisplay.Text = Display
-end
-
-local function ScrollEditor(Direction: number)
-    local Value = Scroll:Get()
-    local Maximum = math.max(1, (TextInput.TextBounds.Y - Editor.AbsoluteSize.Y) // TextLineHeight + SCROLL_LINES)
-    Scroll:Set(math.clamp(Value + (Direction * SCROLL_LINES), 0, Maximum))
-end
-
 ---- Public Functions ----
-
-local function OnScroll(Value: number)
-    Editor.Position = UDim2.fromOffset(Editor.Position.X.Offset, TextLineHeight * -Value)
-end
 
 local function OnSearch(PressedEnter: boolean)
     if not PressedEnter then
@@ -479,55 +324,6 @@ local function OnSearch(PressedEnter: boolean)
     end
 end
 
-local function OnCursorMoved()
-    local CursorPosition = TextInput.CursorPosition
-    if CursorPosition == -1 then
-        TextCursor.Visible = false
-        return
-    end
-
-    local Size = TextInput.TextSize
-    local Text = string.sub(TextInput.ContentText, 1, CursorPosition - 1)
-    local Slices = string.split(Text, "\n")
-    local NewLines = math.max(#Slices, 1)
-
-    --> Calculate current end line position
-    local Line = Slices[#Slices] or ""
-    local GetTextBoundsParams = Instance.new("GetTextBoundsParams")
-    GetTextBoundsParams.Text = Line
-    GetTextBoundsParams.Size = Size
-    GetTextBoundsParams.Font = TextInput.FontFace
-    local TextBounds = TextService:GetTextBoundsAsync(GetTextBoundsParams)
-
-    --> Update cursor size and position
-    --TextCursor.Visible = true
-    TextCursor.Size = UDim2.fromOffset(2, Size)
-    TextCursor.Position = UDim2.fromOffset(TextBounds.X - 1, TextLineHeight * (NewLines - 1))
-end
-
-local function OnSourceChanged()
-    --> Pressing enter inserts a carriage return (ROBLOX please fix)
-    local ContentText = TextInput.ContentText
-    ContentText = string.gsub(ContentText, "\r", "")
-    TextInput.Text = ContentText
-
-    --> Update line counter
-    local ContentLines = #string.split(ContentText, "\n")
-    if ContentLines ~= Lines then
-        Lines = ContentLines
-        ClearChildrenWhichAre(NumberLines, "TextLabel")
-
-        for Index = 1, Lines do
-            local Line = LineTemplate:Clone()
-            Line.Text = tostring(Index)
-            Line.Parent = NumberLines
-        end
-    end
-
-    --> Perform lexer pass
-    DoLexerPass()
-end
-
 local function OnSaveCompleted()
     Saving = false
     Prompt.Visible = false
@@ -542,7 +338,7 @@ local function OnSaveActivated()
             return
         end
 
-        SaveFile(Name, GetEditorSource())
+        SaveFile(Name, Editor.GetSource())
         LoadFiles()
         OnSaveCompleted()
 
@@ -570,25 +366,11 @@ local function OnEditorButtonClicked()
     EditorWidget.Enabled = not EditorWidget.Enabled
 end
 
-local function OnPreRender(DeltaTime: number)
-    if TextInput.CursorPosition == -1 then
-        return
-    end
-
-    CursorTimer += DeltaTime
-    if CursorTimer < CURSOR_BLINK_RATE then
-        return
-    end
-
-    CursorTimer -= CURSOR_BLINK_RATE
-    TextCursor.Visible = not TextCursor.Visible
-end
-
 ---- Initialization ----
 
----- Connections ----
+Editor.Initialize()
 
-Scroll:OnChange(OnScroll)
+---- Connections ----
 
 Expanded:OnChange(function(Value)
     PlayTweens(Value and Tweens.Editor.Expand or Tweens.Editor.Retract)
@@ -634,17 +416,3 @@ Save.Activated:Connect(OnSaveActivated)
 Cancel.Activated:Connect(OnSaveCompleted)
 Expand.Activated:Connect(OnExpandActivated)
 EditorButton.Click:Connect(OnEditorButtonClicked)
-
-TextInput:GetPropertyChangedSignal("Text"):Connect(OnSourceChanged)
-TextInput:GetPropertyChangedSignal("CursorPosition"):Connect(OnCursorMoved)
-TextInput.InputChanged:Connect(function(InputObject)
-    if not Editing then
-        return
-    end
-
-    if InputObject.UserInputType == Enum.UserInputType.MouseWheel then
-        ScrollEditor(-InputObject.Position.Z)
-    end
-end)
-
-RunService.PreRender:Connect(OnPreRender)
