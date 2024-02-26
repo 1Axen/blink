@@ -130,11 +130,22 @@ local function FireAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: an
     PrettyPrint("cyan", `Testing: {Name}...`, true)
 
     local Result: unknown;
+    local IsServerSending = (OutgoingEvent.FireAll ~= nil)
+    local IsServerRecieving = (OutgoingEvent.FireAll == nil)
+
     local Disconnect = IncomingEvent.On(function(First, Second)
-        Result = if (Second ~= nil) then Second else First
+        if IsServerRecieving then
+            if tostring(First) ~= "Player" then
+                ErrorPrint(`Expected argument #1 to {Name} to be Player, got {First} instead.`)
+            end
+
+            Result = Second
+        else
+            Result = First
+        end
     end)
 
-    if OutgoingEvent.FireAll then
+    if IsServerSending then
         OutgoingEvent.FireAll(Expect)
     else
         OutgoingEvent.Fire(Expect)
@@ -144,8 +155,6 @@ local function FireAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: an
     task.wait(1 / 30)
 
     if not CompareValues(Result, Expect) then
-        print(Expect)
-        print(Result)
         ErrorPrint(`Failed "{Name}", expected to recieve: {Expect}, got "{Result}" instead.`)
     end
 
@@ -158,6 +167,10 @@ local function InvokeAndExpect(Name: string, ClientFunction: any, ServerFunction
 
     local ServerRecieve: unknown;
     ServerFunction.On(function(Player, Recieve: any)
+        if tostring(Player) ~= "Player" then
+            ErrorPrint(`Expected argument #1 to {Name} to be Player, got {Player} instead.`)
+        end
+
         ServerRecieve = Recieve
         if not Return then
             error("Expects fail")
@@ -308,9 +321,7 @@ local function FireAndExpectTuple(Name: string, OutgoingEvent: any, IncomingEven
     for Index, Expect in {...} do
         local Result = Results[Index]
         if not CompareValues(Expect, Result) then
-            print(Expect)
-            print(Result)
-            ErrorPrint(`Failed "{Name}", mismatched value at {Index}.`)
+            ErrorPrint(`Failed "{Name}", mismatched value at {Index}. Expected {Expect}, got {Result} instead.`)
         end
     end
 
@@ -323,6 +334,10 @@ local function InvokeAndExpectTuple(Name: string, ClientFunction: any, ServerFun
 
     local ServerRecieve: {unknown};
     ServerFunction.On(function(Player, ...)
+        if tostring(Player) ~= "Player" then
+            ErrorPrint(`Expected argument #1 to {Name} to be Player, got {Player} instead.`)
+        end
+        
         ServerRecieve = {...}
         return table.unpack(Return)
     end)
