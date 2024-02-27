@@ -90,10 +90,13 @@ export type StructDeclaration = Node<"StructDeclaration", {
 }>
 
 export type TupleDeclaration = Node<"TupleDeclaration", {
+    Scope: string?,
     Identifier: string,
     Optional: boolean,
     Values: {Declaration},
-}, {}>
+}, {
+    Identifier: Token
+}>
 
 export type EventDeclaration = Node<"EventDeclaration", {
     Scope: string?,
@@ -202,6 +205,25 @@ local RangePrimitives = {
     string = true,
     vector = true,
     buffer = true,
+}
+
+local OptionalPrimitives = {
+    u8 = true,
+    u16 = true,
+    u32 = true,
+    i8 = true,
+    i16 = true,
+    i32 = true,
+    f16 = true,
+    f32 = true,
+    f64 = true,
+    boolean = true,
+    string = true,
+    vector = true,
+    buffer = true,
+    Color3 = true,
+    CFrame = true,
+    Instance = true,
 }
 
 local OptionsTypes: {[string]: Lexer.Types} = {
@@ -448,18 +470,18 @@ function Parser.Declarations(self: Parser): {Declaration}
 end
 
 function Parser.Declaration(self: Parser): Declaration
-    local Keyword = self:Consume("Keyword")
+    local Keyword = self:Consume("Keyword").Value
     local Identifier = self:Consume("Identifier")
     self:Consume("Assign")
 
     --> Handle duplicate declarations
-    local Type = KeywordTypes[Keyword.Value]
+    local Type = KeywordTypes[Keyword]
     local Duplicates: {[string]: Duplicate} = self[Type]
     local ScopedIdentifier = `{self.Scope and `{self.Scope}.` or ""}{Identifier.Value}`
     local Duplicate = Duplicates[ScopedIdentifier]
 
     if Duplicate then
-        Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate {Keyword.Value} "{Identifier.Value}"`)
+        Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate {Keyword} "{Identifier.Value}"`)
             :Secondary(Duplicate.Identifier, "Previously delcared here")
             :Primary(Identifier, "Duplicate declaration here")
         :Emit()
@@ -467,32 +489,42 @@ function Parser.Declaration(self: Parser): Declaration
 
     --> Parse declaration
     local Declaration: Declaration?;
-    if Keyword.Value == "map" then
+    if Keyword == "map" then
         Declaration = self:MapDeclaration(Identifier)
-    elseif Keyword.Value == "type" then
+    elseif Keyword == "type" then
         Declaration = self:TypeDeclaration(Identifier)
-    elseif Keyword.Value == "enum" then
+    elseif Keyword == "enum" then
         Declaration = self:EnumDeclaration(Identifier)
-    elseif Keyword.Value == "struct" then
+    elseif Keyword == "struct" then
         Declaration = self:StructDeclaration(Identifier)
-    elseif Keyword.Value == "event" then
+    elseif Keyword == "event" then
         Declaration = self:EventDeclaration(Identifier)
-    elseif Keyword.Value == "function" then
+    elseif Keyword == "function" then
         Declaration = self:FunctionDeclaration(Identifier)
-    elseif Keyword.Value == "scope" then
+    elseif Keyword == "scope" then
         Declaration = self:ScopeDeclaration(Identifier)
     end
     
     if not Declaration then
-        error(`{Keyword.Value} has no declaration handler.`)
+        error(`{Keyword} has no declaration handler.`)
     end
 
     if 
         Duplicates == self.Types 
         and (self:GetSafeLookAhead().Type == "Optional")
     then
+        local Optional = self:Consume("Optional")
+        if Declaration.Type == "TypeDeclaration" then
+            local Primitive = (Declaration :: TypeDeclaration).Value.Primitive
+            if Primitive == "unknown" then
+                Error.new(Error.AnalyzeInvalidOptionalType, self.Source, `Invalid optional type`)
+                    :Primary(Optional, `"unknown" cannot be optional`)
+                :Emit()
+            end
+        end
+
         Declaration.Value.Optional = true
-        Declaration.Tokens.Optional = self:Consume("Optional")
+        Declaration.Tokens.Optional = Optional
     end
 
     --> Save declaration to duplicates
@@ -770,6 +802,9 @@ function Parser.TupleDeclaration(self: Parser, Identifier: Token): TupleDeclarat
             Identifier = Identifier.Value,
             Values = Values,
             Optional = false
+        },
+        Tokens = {
+            Identifier = Identifier
         }
     }
 end
@@ -1034,8 +1069,8 @@ function Parser.GetDeclarationFromToken(self: Parser, Token: Token, Identifier: 
     elseif Token.Type == "Primitive" then
         Declaration = self:TypeDeclaration(Identifier)
     elseif Token.Type == "Identifier" then
-        local Type = self:Consume("Identifier")
-        local Reference = self:GetReference(Type)
+        self:Consume("Identifier")
+        local Reference = self:GetReference(Token)
         local Array, Range = self:GetTypeAttributes()
 
         Declaration = {
@@ -1065,6 +1100,16 @@ function Parser.GetDeclarationFromToken(self: Parser, Token: Token, Identifier: 
     if self:GetSafeLookAhead().Type == "Optional" then
         Optional = self:Consume("Optional")
         Declaration.Value.Optional = true
+
+        if Token.Type == "Identifier" then
+            local Type: TypeDeclaration = self:GetReference(Token) :: TypeDeclaration
+            if Type.Value.Primitive == "unknown" then
+                Error.new(Error.AnalyzeInvalidOptionalType, self.Source, `Invalid optional type`)
+                    :Secondary(Type.Tokens.Value, "Declared here")
+                    :Primary(Optional, `{Type.Value.Identifier} is of type "unknown", "unknown" cannot be optional`)
+                :Emit()
+            end
+        end
     end
 
     return Declaration, Optional

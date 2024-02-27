@@ -6,3 +6,7 @@ copy "..\build\.darklua.json" ".\.darklua.json"
 
 darklua process "./src/init.server.luau" "./bundle/init.server.lua"
 rojo build bundle.project.json --output "%LocalAppData%\Roblox\Plugins\Blink.rbxmx"
+
+cd ..
+rojo sourcemap --output sourcemap.json --include-non-scripts
+cd plugin

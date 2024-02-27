@@ -27,13 +27,15 @@ local Generator = require("../../src/Generator")
 local FILES_FOLDER = "BLINK_CONFIGURATION_FILES"
 local TEMPLATE_FILE = {
     Name = "Template",
-    Source = [[type Example = u8
-event MyEvent = {
-    From = Server,
-    Type = Reliable,
-    Call = SingleSync,
-    Data = Example
-}]]
+    Source = table.concat({
+        "type Example = u8",
+        "event MyEvent = {",
+        "\tFrom = Server,",
+        "\tType = Reliable,",
+        "\tCall = SingleSync,",
+        "\tData = Example",
+        "}"
+    }, "\n")
 }
 
 local ERROR_WIDGET = DockWidgetPluginGuiInfo.new(

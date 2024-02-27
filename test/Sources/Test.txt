@@ -31,6 +31,13 @@ struct MapStruct = {
     Map = {[string] = u8}
 }
 
+event Unknown = {
+    From = Server,
+    Type = Reliable,
+    Call = SingleSync,
+    Data = unknown
+}
+
 event MapEvent = {
     From = Server,
     Type = Reliable,

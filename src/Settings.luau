@@ -29,5 +29,6 @@ return {
         Color3 = true,
         CFrame = true,
         Instance = true,
+        unknown = true
     }
 }

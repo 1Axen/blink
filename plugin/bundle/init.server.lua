@@ -266,6 +266,7 @@ do
                 Color3 = true,
                 CFrame = true,
                 Instance = true,
+                unknown = true,
             },
         }
     end
@@ -498,6 +499,24 @@ do
             string = true,
             vector = true,
             buffer = true,
+        }
+        local OptionalPrimitives = {
+            u8 = true,
+            u16 = true,
+            u32 = true,
+            i8 = true,
+            i16 = true,
+            i32 = true,
+            f16 = true,
+            f32 = true,
+            f64 = true,
+            boolean = true,
+            string = true,
+            vector = true,
+            buffer = true,
+            Color3 = true,
+            CFrame = true,
+            Instance = true,
         }
         local OptionsTypes = {
             TypesOutput = 'String',
@@ -755,43 +774,53 @@ do
             return Declarations
         end
         function Parser.Declaration(self)
-            local Keyword = self:Consume('Keyword')
+            local Keyword = self:Consume('Keyword').Value
             local Identifier = self:Consume('Identifier')
 
             self:Consume('Assign')
 
-            local Type = KeywordTypes[Keyword.Value]
+            local Type = KeywordTypes[Keyword]
             local Duplicates = self[Type]
             local ScopedIdentifier = `{self.Scope and `{self.Scope}.` or ''}{Identifier.Value}`
             local Duplicate = Duplicates[ScopedIdentifier]
 
             if Duplicate then
-                Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate {Keyword.Value} "{Identifier.Value}"`):Secondary(Duplicate.Identifier, 'Previously delcared here'):Primary(Identifier, 'Duplicate declaration here'):Emit()
+                Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate {Keyword} "{Identifier.Value}"`):Secondary(Duplicate.Identifier, 'Previously delcared here'):Primary(Identifier, 'Duplicate declaration here'):Emit()
             end
 
             local Declaration
 
-            if Keyword.Value == 'map' then
+            if Keyword == 'map' then
                 Declaration = self:MapDeclaration(Identifier)
-            elseif Keyword.Value == 'type' then
+            elseif Keyword == 'type' then
                 Declaration = self:TypeDeclaration(Identifier)
-            elseif Keyword.Value == 'enum' then
+            elseif Keyword == 'enum' then
                 Declaration = self:EnumDeclaration(Identifier)
-            elseif Keyword.Value == 'struct' then
+            elseif Keyword == 'struct' then
                 Declaration = self:StructDeclaration(Identifier)
-            elseif Keyword.Value == 'event' then
+            elseif Keyword == 'event' then
                 Declaration = self:EventDeclaration(Identifier)
-            elseif Keyword.Value == 'function' then
+            elseif Keyword == 'function' then
                 Declaration = self:FunctionDeclaration(Identifier)
-            elseif Keyword.Value == 'scope' then
+            elseif Keyword == 'scope' then
                 Declaration = self:ScopeDeclaration(Identifier)
             end
             if not Declaration then
-                error(`{Keyword.Value} has no declaration handler.`)
+                error(`{Keyword} has no declaration handler.`)
             end
             if Duplicates == self.Types and (self:GetSafeLookAhead().Type == 'Optional') then
+                local Optional = self:Consume('Optional')
+
+                if Declaration.Type == 'TypeDeclaration' then
+                    local Primitive = (Declaration).Value.Primitive
+
+                    if Primitive == 'unknown' then
+                        Error.new(Error.AnalyzeInvalidOptionalType, self.Source, `Invalid optional type`):Primary(Optional, `"unknown" cannot be optional`):Emit()
+                    end
+                end
+
                 Declaration.Value.Optional = true
-                Declaration.Tokens.Optional = self:Consume('Optional')
+                Declaration.Tokens.Optional = Optional
             end
 
             Duplicates[ScopedIdentifier] = {
@@ -1049,6 +1078,7 @@ do
                     Values = Values,
                     Optional = false,
                 },
+                Tokens = {Identifier = Identifier},
             }
         end
         function Parser.EventDeclaration(self, Identifier)
@@ -1293,8 +1323,9 @@ do
             elseif Token.Type == 'Primitive' then
                 Declaration = self:TypeDeclaration(Identifier)
             elseif Token.Type == 'Identifier' then
-                local Type = self:Consume('Identifier')
-                local Reference = self:GetReference(Type)
+                self:Consume('Identifier')
+
+                local Reference = self:GetReference(Token)
                 local Array, Range = self:GetTypeAttributes()
 
                 Declaration = {
@@ -1319,6 +1350,14 @@ do
             if self:GetSafeLookAhead().Type == 'Optional' then
                 Optional = self:Consume('Optional')
                 Declaration.Value.Optional = true
+
+                if Token.Type == 'Identifier' then
+                    local Type = (self:GetReference(Token))
+
+                    if Type.Value.Primitive == 'unknown' then
+                        Error.new(Error.AnalyzeInvalidOptionalType, self.Source, `Invalid optional type`):Secondary(Type.Tokens.Value, 'Declared here'):Primary(Optional, `{Type.Value.Identifier} is of type "unknown", "unknown" cannot be optional`):Emit()
+                    end
+                end
             end
 
             return Declaration, Optional
@@ -1327,6 +1366,89 @@ do
         return Parser
     end
     function __DARKLUA_BUNDLE_MODULES.h()
+        local Hook = {}
+        local IndentKeywords = {
+            '{\n',
+        }
+
+        local function ShouldAutoIndent(Text, Cursor)
+            for Index, Keyword in IndentKeywords do
+                local Position = (Cursor - #Keyword)
+
+                if Position <= 0 then
+                    continue
+                end
+
+                local Previous = string.sub(Text, Position, Cursor - 1)
+
+                if Previous == Keyword then
+                    return true
+                end
+            end
+
+            return false
+        end
+        local function GetLineIndentation(Line)
+            return #((string.match(Line, '^\t*')))
+        end
+        local function GetCurrentLine(Text, Cursor)
+            local Line = 0
+            local Position = 0
+            local Slices = string.split(Text, '\n')
+
+            for Index, Slice in Slices do
+                Position += (#Slice + 1)
+
+                if Cursor <= Position then
+                    Line = Index
+
+                    break
+                end
+            end
+
+            return Line, Slices
+        end
+
+        function Hook.OnSourceChanged(Text, Cursor, Gain)
+            if Gain ~= 1 then
+                return Text, Cursor
+            end
+
+            local CanIndent = false
+            local AdditionalIndent = 0
+            local Line, Lines = GetCurrentLine(Text, Cursor)
+            local Current = Lines[Line]
+            local Previous = Lines[Line - 1]
+            local JustReached = (Previous and Current == '')
+
+            print(`JustReached: {JustReached}`)
+
+            if ShouldAutoIndent(Text, Cursor) then
+                CanIndent = true
+                AdditionalIndent = 1
+
+                print('Indent keyword matched')
+            elseif JustReached then
+                if GetLineIndentation(Previous) > 0 then
+                    CanIndent = true
+
+                    print('Previous line is indented')
+                end
+            end
+            if not CanIndent then
+                return Text, Cursor
+            end
+
+            local Indentation = GetLineIndentation(Previous) + AdditionalIndent
+
+            Text = string.sub(Text, 1, Cursor - 1) .. string.rep('\t', Indentation) .. string.sub(Text, Cursor)
+
+            return Text, Cursor + Indentation
+        end
+
+        return Hook
+    end
+    function __DARKLUA_BUNDLE_MODULES.i()
         local TextService = game:GetService('TextService')
         local RunService = game:GetService('RunService')
         local Table = __DARKLUA_BUNDLE_MODULES.load('b')
@@ -1335,6 +1457,9 @@ do
         local Parser = __DARKLUA_BUNDLE_MODULES.load('g')
         local Settings = __DARKLUA_BUNDLE_MODULES.load('d')
         local Error = __DARKLUA_BUNDLE_MODULES.load('c')
+        local StylingHooks = {
+            __DARKLUA_BUNDLE_MODULES.load('h'),
+        }
         local ICONS = {
             Event = 'rbxassetid://16506730516',
             Field = 'rbxassetid://16506725096',
@@ -1400,6 +1525,7 @@ do
         local Scroll = State.new(0)
         local Errors = State.new({})
         local CursorTimer = 0
+        local PreviousText = Input.Text
 
         local function ScrollTowards(Direction)
             local Value = Scroll:Get()
@@ -1626,14 +1752,35 @@ do
         end
         local function OnSourceChanged()
             local Text = Input.Text
+            local Gain = math.sign(#Text - #PreviousText)
+            local NoReturnCarriage = string.gsub(Text, '\r', '')
 
-            Text = string.gsub(Text, '\r', '')
-            Input.Text = Text
+            if NoReturnCarriage ~= Text then
+                Input.Text = NoReturnCarriage
+
+                return
+            end
+
+            PreviousText = Text
 
             local SourceLines = #string.split(Text, '\n')
 
             if SourceLines ~= Lines:Get() then
                 Lines:Set(SourceLines)
+            end
+
+            local FinalText, FinalCursor = Text, Input.CursorPosition
+
+            for Index, Hook in StylingHooks do
+                FinalText, FinalCursor = Hook.OnSourceChanged(FinalText, FinalCursor, Gain)
+            end
+
+            if FinalText ~= Text then
+                Input.CursorPosition = -1
+                Input.Text = FinalText
+                Input.CursorPosition = FinalCursor
+
+                return
             end
 
             DoLexerPass()
@@ -1676,7 +1823,7 @@ do
 
         return Editor
     end
-    function __DARKLUA_BUNDLE_MODULES.i()
+    function __DARKLUA_BUNDLE_MODULES.j()
         local Operators = {
             Not = '~=',
             Equals = '==',
@@ -1879,7 +2026,7 @@ do
             Connection = Connection.new,
         }
     end
-    function __DARKLUA_BUNDLE_MODULES.j()
+    function __DARKLUA_BUNDLE_MODULES.k()
         local Builder = {}
 
         function Builder.new(String, BaseIndentation)
@@ -1945,10 +2092,10 @@ do
 
         return Builder
     end
-    function __DARKLUA_BUNDLE_MODULES.k()
-        local Blocks = __DARKLUA_BUNDLE_MODULES.load('i')
+    function __DARKLUA_BUNDLE_MODULES.l()
+        local Blocks = __DARKLUA_BUNDLE_MODULES.load('j')
         local Parser = __DARKLUA_BUNDLE_MODULES.load('g')
-        local Builder = __DARKLUA_BUNDLE_MODULES.load('j')
+        local Builder = __DARKLUA_BUNDLE_MODULES.load('k')
         local SEND_BUFFER = 'SendBuffer'
         local RECIEVE_BUFFER = 'RecieveBuffer'
         local SEND_POSITION = 'SendOffset'
@@ -2012,7 +2159,10 @@ do
                 local IsVariableSize = (Range and Range.Max ~= Range.Min)
 
                 local function GenerateValidation(Block, Variable)
-                    if Range and AssertGenerator then
+                    if not AssertGenerator then
+                        return
+                    end
+                    if Range then
                         local Assert = AssertGenerator(Variable, Range.Min, Range.Max)
 
                         if not IsVariableSize and Assert.Exact then
@@ -2021,7 +2171,7 @@ do
                             Block:Line(Assert.Lower)
                             Block:Line(Assert.Upper)
                         end
-                    elseif Primitive == 'Instance' and AssertGenerator then
+                    elseif Primitive == 'Instance' then
                         local Assert = AssertGenerator(Variable, Class)
 
                         if Value.Optional and Block == Write then
@@ -2266,6 +2416,21 @@ do
                 Generate = GeneratePrimitivePrefab(Types.Instance, Asserts.Instance),
             }
         end
+        do
+            Types.unknown = {
+                Read = function(Variable, Block)
+                    Block:Line('RecieveInstanceCursor += 1')
+                    Block:Line(`{Variable} = RecieveInstances[RecieveInstanceCursor]`)
+                end,
+                Write = function(Value, Block)
+                    Block:Line(`table.insert(SendInstances, {Value})`)
+                end,
+            }
+            Primitives.unknown = {
+                Type = 'any',
+                Generate = GeneratePrimitivePrefab(Types.unknown),
+            }
+        end
 
         return {
             Types = Types,
@@ -2274,24 +2439,24 @@ do
             Structures = Structures,
         }
     end
-    function __DARKLUA_BUNDLE_MODULES.l()
+    function __DARKLUA_BUNDLE_MODULES.m()
         return 'local Invocations = 0\r\n\r\nlocal SendOffset = 0\r\nlocal SendCursor = 0\r\nlocal SendBuffer = buffer.create(64)\r\nlocal SendInstances = {}\r\n\r\nlocal RecieveCursor = 0\r\nlocal RecieveBuffer = buffer.create(64)\r\n\r\nlocal RecieveInstances = {}\r\nlocal RecieveInstanceCursor = 0\r\n\r\ntype BufferSave = {Cursor: number, Buffer: buffer, Instances: {Instance}}\r\n\r\nlocal function Read(Bytes: number)\r\n    local Offset = RecieveCursor\r\n    RecieveCursor += Bytes\r\n    return Offset\r\nend\r\n\r\nlocal function Save(): BufferSave\r\n    return {\r\n        Cursor = SendCursor,\r\n        Buffer = SendBuffer,\r\n        Instances = SendInstances\r\n    }\r\nend\r\n\r\nlocal function Load(Save: BufferSave?)\r\n    if Save then\r\n        SendCursor = Save.Cursor\r\n        SendOffset = Save.Cursor\r\n        SendBuffer = Save.Buffer\r\n        SendInstances = Save.Instances\r\n        return\r\n    end\r\n\r\n    SendCursor = 0\r\n    SendOffset = 0\r\n    SendBuffer = buffer.create(64)\r\n    SendInstances = {}\r\nend\r\n\r\nlocal function Invoke()\r\n    if Invocations == 255 then\r\n        Invocations = 0\r\n    end\r\n\r\n    local Invocation = Invocations\r\n    Invocations += 1\r\n    return Invocation\r\nend\r\n\r\nlocal function Allocate(Bytes: number)\r\n    local Len = buffer.len(SendBuffer)\r\n\r\n    local Size = Len\r\n    local InUse = (SendCursor + Bytes)\r\n    \r\n    if InUse > Size then\r\n        --> Avoid resizing the buffer for every write\r\n        while InUse > Size do\r\n            Size *= 1.5\r\n        end\r\n\r\n        local Buffer = buffer.create(Size)\r\n        buffer.copy(Buffer, 0, SendBuffer, 0, Len)\r\n        SendBuffer = Buffer\r\n    end\r\n\r\n    SendOffset = SendCursor\r\n    SendCursor += Bytes\r\n    \r\n    return SendOffset\r\nend\r\n\r\nlocal Types = {}\r\nlocal Calls = table.create(256)\r\n\r\nlocal Events: any = {\r\n    Reliable = table.create(256),\r\n    Unreliable = table.create(256)\r\n}\r\n\r\nlocal Queue: any = {\r\n    Reliable = table.create(256),\r\n    Unreliable = table.create(256)\r\n}\r\n\r\n'
     end
-    function __DARKLUA_BUNDLE_MODULES.m()
+    function __DARKLUA_BUNDLE_MODULES.n()
         return 'local ReplicatedStorage = game:GetService("ReplicatedStorage")\r\nlocal RunService = game:GetService("RunService")\r\n\r\nif not RunService:IsClient() then\r\n    error("Client network module can only be required from the client.")\r\nend\r\n\r\nlocal Reliable: RemoteEvent = ReplicatedStorage:WaitForChild("BLINK_RELIABLE_REMOTE") :: RemoteEvent\r\nlocal Unreliable: UnreliableRemoteEvent = ReplicatedStorage:WaitForChild("BLINK_UNRELIABLE_REMOTE") :: UnreliableRemoteEvent\r\n\r\n-- SPLIT --\r\nlocal function StepReplication()\r\n    if SendCursor <= 0 then\r\n        return\r\n    end\r\n\r\n    local Buffer = buffer.create(SendCursor)\r\n    buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)\r\n    Reliable:FireServer(Buffer, SendInstances)\r\n\r\n    SendCursor = 0\r\n    SendOffset = 0\r\n    buffer.fill(SendBuffer, 0, 0)\r\n    table.clear(SendInstances)\r\nend\r\n'
     end
-    function __DARKLUA_BUNDLE_MODULES.n()
+    function __DARKLUA_BUNDLE_MODULES.o()
         return 'local Players = game:GetService("Players")\r\nlocal ReplicatedStorage = game:GetService("ReplicatedStorage")\r\nlocal RunService = game:GetService("RunService")\r\n\r\nif not RunService:IsServer() then\r\n    error("Server network module can only be required from the server.")\r\nend\r\n\r\nlocal Reliable: RemoteEvent = ReplicatedStorage:FindFirstChild("BLINK_RELIABLE_REMOTE") :: RemoteEvent\r\nif not Reliable then\r\n    local RemoteEvent = Instance.new("RemoteEvent")\r\n    RemoteEvent.Name = "BLINK_RELIABLE_REMOTE"\r\n    RemoteEvent.Parent = ReplicatedStorage\r\n    Reliable = RemoteEvent\r\nend\r\n\r\nlocal Unreliable: UnreliableRemoteEvent = ReplicatedStorage:FindFirstChild("BLINK_UNRELIABLE_REMOTE") :: UnreliableRemoteEvent\r\nif not Unreliable then\r\n    local UnreliableRemoteEvent = Instance.new("UnreliableRemoteEvent")\r\n    UnreliableRemoteEvent.Name = "BLINK_UNRELIABLE_REMOTE"\r\n    UnreliableRemoteEvent.Parent = ReplicatedStorage\r\n    Unreliable = UnreliableRemoteEvent\r\nend\r\n\r\n-- SPLIT --\r\nlocal PlayersMap: {[Player]: BufferSave} = {}\r\n\r\nPlayers.PlayerRemoving:Connect(function(Player)\r\n    PlayersMap[Player] = nil\r\nend)\r\n\r\nlocal function StepReplication()\r\n    for Player, Send in PlayersMap do\r\n        if Send.Cursor <= 0 then\r\n            continue\r\n        end\r\n\r\n        local Buffer = buffer.create(Send.Cursor)\r\n        buffer.copy(Buffer, 0, Send.Buffer, 0, Send.Cursor)\r\n        Reliable:FireClient(Player, Buffer, Send.Instances)\r\n\r\n        Send.Cursor = 0\r\n        buffer.fill(Send.Buffer, 0, 0)\r\n        table.clear(Send.Instances)\r\n    end\r\nend\r\n'
     end
-    function __DARKLUA_BUNDLE_MODULES.o()
-        local Blocks = __DARKLUA_BUNDLE_MODULES.load('i')
+    function __DARKLUA_BUNDLE_MODULES.p()
+        local Blocks = __DARKLUA_BUNDLE_MODULES.load('j')
         local Parser = __DARKLUA_BUNDLE_MODULES.load('g')
-        local Builder = __DARKLUA_BUNDLE_MODULES.load('j')
-        local Prefabs = __DARKLUA_BUNDLE_MODULES.load('k')
+        local Builder = __DARKLUA_BUNDLE_MODULES.load('k')
+        local Prefabs = __DARKLUA_BUNDLE_MODULES.load('l')
         local Sources = {
-            Base = __DARKLUA_BUNDLE_MODULES.load('l'),
-            Client = string.split(__DARKLUA_BUNDLE_MODULES.load('m'), '-- SPLIT --'),
-            Server = string.split(__DARKLUA_BUNDLE_MODULES.load('n'), '-- SPLIT --'),
+            Base = __DARKLUA_BUNDLE_MODULES.load('m'),
+            Client = string.split(__DARKLUA_BUNDLE_MODULES.load('n'), '-- SPLIT --'),
+            Server = string.split(__DARKLUA_BUNDLE_MODULES.load('o'), '-- SPLIT --'),
         }
         local DIRECTIVES = 
 [[--!strict
@@ -2708,8 +2873,15 @@ do
             local Value = Declaration.Value
             local Optional = Value.Optional
             local Variable = Variable or 'Value'
-            local IsInstance = (Declaration.Type == 'TypeDeclaration' and (((Value).Primitive)) == 'Instance')
+            local IsInstance, IsUnknown
 
+            if Declaration.Type == 'TypeDeclaration' then
+                local Primitive = (Value).Primitive
+
+                IsUnknown = (Primitive == 'unknown')
+                IsInstance = (Primitive == 'Instance')
+                Optional = if IsUnknown then true else Optional
+            end
             if not true then
                 Read:Comment(`{Variable}: {Value.Identifier}`)
                 Write:Comment(`{Variable}: {Value.Identifier}`)
@@ -2995,13 +3167,21 @@ local TextService = game:GetService('TextService')
 local RunService = game:GetService('RunService')
 local Selection = game:GetService('Selection')
 local State = __DARKLUA_BUNDLE_MODULES.load('a')
-local Editor = __DARKLUA_BUNDLE_MODULES.load('h')
+local Editor = __DARKLUA_BUNDLE_MODULES.load('i')
 local Parser = __DARKLUA_BUNDLE_MODULES.load('g')
-local Generator = __DARKLUA_BUNDLE_MODULES.load('o')
+local Generator = __DARKLUA_BUNDLE_MODULES.load('p')
 local FILES_FOLDER = 'BLINK_CONFIGURATION_FILES'
 local TEMPLATE_FILE = {
     Name = 'Template',
-    Source = 'type Example = u8\r\nevent MyEvent = {\r\n    From = Server,\r\n    Type = Reliable,\r\n    Call = SingleSync,\r\n    Data = Example\r\n}',
+    Source = table.concat({
+        'type Example = u8',
+        'event MyEvent = {',
+        '\tFrom = Server,',
+        '\tType = Reliable,',
+        '\tCall = SingleSync,',
+        '\tData = Example',
+        '}',
+    }, '\n'),
 }
 local ERROR_WIDGET = DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Float, false, true, 500, 240, 300, 240)
 local EDITOR_WIDGET = DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Left, false, false, 360, 400, 300, 400)
@@ -3152,7 +3332,7 @@ local function GenerateFile(File, Directory)
     local ServerSource = Generator.Generate('Server', AbstractSyntaxTree, UserOptions)
     local ClientSource = Generator.Generate('Client', AbstractSyntaxTree, UserOptions)
     local TypesSource = Generator.GenerateTypeDefinitions('Server', AbstractSyntaxTree, UserOptions)
-    local BlinkFolder = (Directory:FindFirstChild('Folder'))
+    local BlinkFolder = (Directory:FindFirstChild('Blink'))
 
     if not BlinkFolder then
         local Folder = Instance.new('Folder')

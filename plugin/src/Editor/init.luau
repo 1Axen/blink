@@ -11,14 +11,18 @@ local RunService = game:GetService("RunService")
 
 ---- Imports ----
 
-local Table = require("./Table")
-local State = require("./State")
+local Table = require("../Table")
+local State = require("../State")
 
-local Lexer = require("../../src/Lexer")
-local Parser = require("../../src/Parser")
-local Settings = require("../../src/Settings")
+local Lexer = require("../../../src/Lexer")
+local Parser = require("../../../src/Parser")
+local Settings = require("../../../src/Settings")
 
-local Error = require("../../src/Modules/Error")
+local Error = require("../../../src/Modules/Error")
+
+local StylingHooks: {{OnSourceChanged: (Text: string, Cursor: number, Gain: number) -> (string, number)}} = {
+   require("./Styling/AutoIndent"),
+}
 
 ---- Settings ----
 
@@ -110,6 +114,7 @@ local Scroll = State.new(0)
 local Errors: State.Class<{Error.Label}> = State.new({})
 
 local CursorTimer = 0
+local PreviousText = Input.Text
 
 ---- Private Functions ----
 
@@ -458,13 +463,35 @@ end
 local function OnSourceChanged()
     --> Pressing enter inserts a carriage return (ROBLOX please fix)
     local Text = Input.Text
-    Text = string.gsub(Text, "\r", "")
-    Input.Text = Text
+    local Gain = math.sign(#Text - #PreviousText)
+
+    local NoReturnCarriage = string.gsub(Text, "\r", "")
+    if NoReturnCarriage ~= Text then
+        Input.Text = NoReturnCarriage
+        return
+    end
+
+    PreviousText = Text
 
     --> Update line counter
     local SourceLines = #string.split(Text, "\n")
     if SourceLines ~= Lines:Get() then
         Lines:Set(SourceLines)
+    end
+
+    --> Run styling hooks
+    local FinalText, FinalCursor = Text, Input.CursorPosition
+    for Index, Hook in StylingHooks do
+        FinalText, FinalCursor = Hook.OnSourceChanged(FinalText, FinalCursor, Gain)
+    end
+
+    --> If a styling hook altered the final text then don't do a lexer pass as OnSourcChanged will be called again
+    if FinalText ~= Text then
+        Input.CursorPosition = -1
+        Input.Text = FinalText
+        Input.CursorPosition = FinalCursor
+
+        return
     end
 
     --> Perform lexer pass
