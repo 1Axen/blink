@@ -809,8 +809,8 @@ function Parser.EventDeclaration(self: Parser, Identifier: Token): EventDeclarat
         end
 
         local Value: any;
-        local Token = self:GetSafeLookAhead()
         local Assign = self:Consume("Assign")
+        local Token = self:GetSafeLookAhead()
         
         if Entry.Key ~= "Data" then
             Token = self:Consume(Entry.Type)
@@ -886,8 +886,8 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Token): FunctionDe
         end
 
         local Value: unknown;
-        local Token = self:GetSafeLookAhead()
         local Assign = self:Consume("Assign")
+        local Token = self:GetSafeLookAhead()
         
         if Entry.Key ~= "Data" and Entry.Key ~= "Return" then
             Token = self:Consume(Entry.Type)

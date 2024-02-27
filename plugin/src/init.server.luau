@@ -161,12 +161,11 @@ local function PlayTweens(Tweens: {[string]: Tween})
     end
 end
 
-local function CreateScript(Name: string, Source: string, RunContent: Enum.RunContext, Parent: Instance)
-    local Script = Instance.new("Script")
-    Script.Name = Name
-    Script.Source = Source
-    Script.RunContext = RunContent
-    Script.Parent = Parent
+local function CreateModuleScript(Name: string, Source: string, Parent: Instance)
+    local ModuleScript = Instance.new("ModuleScript")
+    ModuleScript.Name = Name
+    ModuleScript.Source = Source
+    ModuleScript.Parent = Parent
 end
 
 local function RequestScriptPermissions(): boolean
@@ -217,10 +216,11 @@ local function GenerateFile(File: StringValue, Directory: Instance)
         return
     end
 
-    local ServerOutput = Generator("Server", AbstractSyntaxTree, UserOptions)
-    local ClientOutput = Generator("Client", AbstractSyntaxTree, UserOptions)   
+    local ServerSource = Generator.Generate("Server", AbstractSyntaxTree, UserOptions)
+    local ClientSource = Generator.Generate("Client", AbstractSyntaxTree, UserOptions)   
+    local TypesSource = Generator.GenerateTypeDefinitions("Server", AbstractSyntaxTree, UserOptions)
 
-    local BlinkFolder: Folder = Directory:FindFirstChild("Folder") :: Folder
+    local BlinkFolder: Folder = Directory:FindFirstChild("Blink") :: Folder
     if not BlinkFolder then
         local Folder = Instance.new("Folder")
         Folder.Name = "Blink"
@@ -228,9 +228,13 @@ local function GenerateFile(File: StringValue, Directory: Instance)
         BlinkFolder = Folder
     end
 
+    --> Clear previous files
     BlinkFolder:ClearAllChildren()
-    CreateScript("Server", ServerOutput, Enum.RunContext.Server, BlinkFolder)
-    CreateScript("Client", ClientOutput, Enum.RunContext.Client, BlinkFolder)
+
+    --> Generate output files
+    CreateModuleScript("Types", TypesSource, BlinkFolder)
+    CreateModuleScript("Server", ServerSource, BlinkFolder)
+    CreateModuleScript("Client", ClientSource, BlinkFolder)
 end
 
 local function LoadFile(File: StringValue)
