@@ -1421,18 +1421,12 @@ do
             local Previous = Lines[Line - 1]
             local JustReached = (Previous and Current == '')
 
-            print(`JustReached: {JustReached}`)
-
             if ShouldAutoIndent(Text, Cursor) then
                 CanIndent = true
                 AdditionalIndent = 1
-
-                print('Indent keyword matched')
             elseif JustReached then
                 if GetLineIndentation(Previous) > 0 then
                     CanIndent = true
-
-                    print('Previous line is indented')
                 end
             end
             if not CanIndent then
