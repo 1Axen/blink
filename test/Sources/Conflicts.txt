@@ -1,3 +1,4 @@
+option TypesOutput = "../Network/TypesConflict.luau"
 option ClientOutput = "../Network/ClientConflict.luau"
 option ServerOutput = "../Network/ServerConflict.luau"
 

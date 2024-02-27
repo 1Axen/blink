@@ -49,12 +49,22 @@ assert(Options.ServerOutput, "A server output path must be defined.")
 
 print("Generating output files...")
 local GenerateStart = os.clock()
-local ServerSource = Generator("Server", AbstractSyntaxTree, Options)
-local ClientSource = Generator("Client", AbstractSyntaxTree, Options)
+local ServerSource = Generator.Generate("Server", AbstractSyntaxTree, Options)
+local ClientSource = Generator.Generate("Client", AbstractSyntaxTree, Options)
+
+local TypesSource: string?;
+if Options.TypesOutput then
+	TypesSource = Generator.GenerateTypeDefinitions("Server", AbstractSyntaxTree, Options)
+end
+
 local GenerateTime = (os.clock() - GenerateStart)
 
 fs.writeFile(`{Options.ServerOutput}`, ServerSource)
 fs.writeFile(`{Options.ClientOutput}`, ClientSource)
+
+if TypesSource then
+	fs.writeFile(`{Options.TypesOutput}`, TypesSource)
+end
 
 stdio.write(stdio.color("green"))
 print("Network files generated!")

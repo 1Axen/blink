@@ -763,20 +763,28 @@ function Generators.AbstractSyntaxTree(Value: { Parser.Declaration })
 	end
 end
 
-return function(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Body, UserOptions: Parser.Options): string
-    local Imports = Builder.new()
+local Generator = {}
+
+function Generator.Reset()
+	--> Setup new builders
 	Events = Builder.new()
     UserTypes = Builder.new()
     LuauTypes = Builder.new()
 	Return = Builder.new()
 
-	--> Reset previous generation
-	Context = FileContext
-	Options = UserOptions
+	--> Reset channels
 	Channels.Reliable.Count = 0
 	Channels.Unreliable.Count = 0
 	Channels.Reliable.Listening = false
 	Channels.Unreliable.Listening = false
+end
+
+function Generator.Generate(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Body, UserOptions: Parser.Options): string
+    local Imports = Builder.new()
+	
+	Generator.Reset()
+	Context = FileContext
+	Options = UserOptions
 
 	--> Setup remote events
 	local Signal = Context == "Client" and "OnClientEvent" or "OnServerEvent"
@@ -854,3 +862,17 @@ return function(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Bod
 		.. Unreliables:Unwrap() .. "\n"
 		.. `\nreturn \{\n{Return.Dump()}\}`
 end
+
+function Generator.GenerateTypeDefinitions(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Body, UserOptions: Parser.Options): string
+	Generator.Reset()
+	Context = FileContext
+	Options = UserOptions
+
+	--> Parse declarations
+	Generators.AbstractSyntaxTree(AbstractSyntaxTree.Value)
+
+	return LuauTypes.Dump() 
+		.. `\nreturn true`
+end
+
+return Generator
