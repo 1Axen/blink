@@ -140,6 +140,7 @@ export type ScopeDeclaration = Node<"ScopeDeclaration", {
 }>
 
 export type Options = {
+    TypesOutput: string?,
     ClientOutput: string?,
     ServerOutput: string?,
     FutureLibrary: string?,
@@ -204,6 +205,7 @@ local RangePrimitives = {
 }
 
 local OptionsTypes: {[string]: Lexer.Types} = {
+    TypesOutput = "String",
     ClientOutput = "String",
     ServerOutput = "String",
     FutureLibrary = "String",

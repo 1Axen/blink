@@ -139,11 +139,10 @@ end
 local function GenerateNumberGenerator(Type: string, Size: number): (TypePrefab, {Type: string, Generate: Generate})
 	local Prefab = {
 		Read = function(Variable: string, Block: Block)
-			Block:Line(`{Variable} = buffer.read{Type}({RECIEVE_BUFFER}, Read({Size}))`)
+			Block:Line(`{Variable} = buffer.read{Type}({RECIEVE_BUFFER}, {Block:Read(Size)})`)
 		end,
 		Write = function(Value: string, Block: Block)
-			Block:Line(`Allocate({Size})`)
-			Block:Line(`buffer.write{Type}({SEND_BUFFER}, {SEND_POSITION}, {Value})`)
+			Block:Line(`buffer.write{Type}({SEND_BUFFER}, {Block:Allocate(Size)}, {Value})`)
 		end
 	}
 
@@ -169,8 +168,8 @@ Types.f64, Primitives.f64 = GenerateNumberGenerator("f64", DOUBLE)
 
 Types.f16 = {
 	Read = function(Variable: string, Block: Block)
-		Block:Line(`local Encoded = buffer.readu16({RECIEVE_BUFFER}, Read({HALF_FLOAT}))`)
-		Block:Line(`local MantissaExponent = Value % 0x8000`)
+		Types.u16.Read("local Encoded", Block)
+		Block:Line(`local MantissaExponent = Encoded % 0x8000`)
 		Block:Compare("MantissaExponent", "0b0_11111_0000000000 ", "Equals")
 			:Compare("Encoded // 0x8000", "1", "Equals")
 				:Line(`{Variable} = -math.huge`)
@@ -192,22 +191,23 @@ else
 	Fraction = Mantissa / 0x800 + 0.5
 end
 	
-local Result = math.ldexp(Fraction, Exponent - 14)]], 1)
-			:Line(`{Variable} = if Value // 0x8000 == 1 then -Result else Result`)
+local Result = math.ldexp(Fraction, Exponent - 14)]], Block.Indent + 1)
+			:Line(`{Variable} = if Encoded // 0x8000 == 1 then -Result else Result`)
 		:End()
 	end,
 	Write = function(Value: string, Block: Block)
-		Block:Line(`Allocate({HALF_FLOAT})`)
+		local Allocation = Block:Allocate(HALF_FLOAT)
 		Block:Compare(Value, "65504", "Greater")
-			:Line(`buffer.writeu16({SEND_BUFFER}, {SEND_POSITION}, 0b0_11111_0000000000)`)
+			:Line(`buffer.writeu16({SEND_BUFFER}, {Allocation}, 0b0_11111_0000000000)`)
 		:Branch("Conditional", Value, "-65504", "Less")
-			:Line(`buffer.writeu16({SEND_BUFFER}, {SEND_POSITION}, 0b1_11111_0000000000)`)
+			:Line(`buffer.writeu16({SEND_BUFFER}, {Allocation}, 0b1_11111_0000000000)`)
 		:Branch("Conditional", Value, Value, "Not")
-			:Line(`buffer.writeu16({SEND_BUFFER}, {SEND_POSITION}, 0b1_11111_0000000001)`)
+			:Line(`buffer.writeu16({SEND_BUFFER}, {Allocation}, 0b1_11111_0000000001)`)
 		:Branch("Conditional", Value, "0", "Equals")
-			:Line(`buffer.writeu16({SEND_BUFFER}, {SEND_POSITION}, 0)`)
+			:Line(`buffer.writeu16({SEND_BUFFER}, {Allocation}, 0)`)
 		:Branch("Default")
-			:Multiline([[local Abosulte = math.abs(Value)
+			:Line(`local float = {Value}`)
+			:Multiline([[local Abosulte = math.abs(float)
 local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10) 
 local RoundedValue = (Abosulte // Interval) * Interval
 
@@ -220,8 +220,8 @@ local Mantissa = math.round(if Exponent <= 0
 
 local Result = Mantissa
 	+ math.max(Exponent, 0) * 0x400
-	+ if Value < 0 then 0x8000 else 0]], 1)
-			:Line(`buffer.writeu16({SEND_BUFFER}, {SEND_POSITION}, Result)`)
+	+ if float < 0 then 0x8000 else 0]], Block.Indent + 1)
+			:Line(`buffer.writeu16({SEND_BUFFER}, {Allocation}, Result)`)
 		:End()
 	end
 }
@@ -265,11 +265,10 @@ end
 do
 	Types.boolean = {
 		Read = function(Variable: string, Block: Block)
-			Block:Line(`{Variable} = (buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})) == 1)`)
+			Block:Line(`{Variable} = (buffer.readu8({RECIEVE_BUFFER}, {Block:Read(BYTE)}) == 1)`)
 		end,
 		Write = function(Value: string, Block: Block)
-			Block:Line(`Allocate({BYTE})`)
-			Block:Line(`buffer.writeu8({SEND_BUFFER}, {SEND_POSITION}, {Value} and 1 or 0)`)
+			Block:Line(`buffer.writeu8({SEND_BUFFER}, {Block:Allocate(BYTE)}, {Value} and 1 or 0)`)
 		end
 	}
 	
@@ -285,7 +284,7 @@ do
 		Read = function(Variable: string, Block: Block, Range: NumberRange?)
 			--> Fixed size string
 			if Range and Range.Min == Range.Max then
-				Block:Line(`{Variable} = buffer.readstring({RECIEVE_BUFFER}, Read({Range.Min}), {Range.Min})`)
+				Block:Line(`{Variable} = buffer.readstring({RECIEVE_BUFFER}, {Block:Read(Range.Min)}, {Range.Min})`)
 				return
 			end
 	
@@ -294,8 +293,7 @@ do
 		end,
 		Write = function(Value: string, Block: Block, Range: NumberRange?)
 			if Range and Range.Min == Range.Max then
-				Block:Line(`Allocate({Range.Min})`)
-				Block:Line(`buffer.writestring({SEND_BUFFER}, {SEND_POSITION}, {Value}, {Range.Min})`)
+				Block:Line(`buffer.writestring({SEND_BUFFER}, {Block:Allocate(Range.Min)}, {Value}, {Range.Min})`)
 			else
 				Block:Line(`local Length = #{Value}`)
 				Types.u16.Write("Length", Block)
@@ -315,14 +313,16 @@ end
 do
 	Types.vector = {
 		Read = function(Variable: string, Block: Block)
-			Block:Line(`{Variable} = Vector3.new(buffer.readf32({RECIEVE_BUFFER}, Read({FLOAT})), buffer.readf32({RECIEVE_BUFFER}, Read({FLOAT})), buffer.readf32({RECIEVE_BUFFER}, Read({FLOAT})))`)
+			local X = Block:Read(FLOAT)
+			local Y = Block:Read(FLOAT)
+			local Z = Block:Read(FLOAT)
+			Block:Line(`{Variable} = Vector3.new(buffer.readf32({RECIEVE_BUFFER}, {X}), buffer.readf32({RECIEVE_BUFFER}, {Y}), buffer.readf32({RECIEVE_BUFFER}, {Z}))`)
 		end,
 		Write = function(Value: string, Block: Block)
-			Block:Line(`Allocate({FLOAT * 3})`)
 			Block:Line(`local Vector = {Value}`)
-			Block:Line(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION}, Vector.X)`)
-			Block:Line(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION} + {FLOAT}, Vector.Y)`)
-			Block:Line(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION} + {FLOAT * 2}, Vector.Z)`)
+			Types.f32.Write("Vector.X", Block)
+			Types.f32.Write("Vector.Y", Block)
+			Types.f32.Write("Vector.Z", Block)
 		end
 	}
 	
@@ -393,14 +393,16 @@ end
 do
 	Types.Color3 = {
 		Read = function(Variable: string, Block: Block)
-			Block:Line(`{Variable} = Color3.new(buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})), buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})), buffer.readu8({RECIEVE_BUFFER}, Read({BYTE})))`)
+			local R = Block:Read(BYTE)
+			local G = Block:Read(BYTE)
+			local B = Block:Read(BYTE)
+			Block:Line(`{Variable} = Color3.new(buffer.readu8({RECIEVE_BUFFER}, {R}), buffer.readu8({RECIEVE_BUFFER}, {G}), buffer.readu8({RECIEVE_BUFFER}, {B}))`)
 		end,
 		Write = function(Value: string, Block: Block)
-			Block:Line(`Allocate({FLOAT * 3})`)
 			Block:Line(`local Color = {Value}`)
-			Block:Line(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION}, Color.R * 8)`)
-			Block:Line(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION} + {FLOAT}, Color.G * 8)`)
-			Block:Line(`buffer.writef32({SEND_BUFFER}, {SEND_POSITION} + {FLOAT * 2}, Color.B * 8)`)
+			Types.u8.Write("Color.R * 255", Block)
+			Types.u8.Write("Color.G * 255", Block)
+			Types.u8.Write("Color.B * 255", Block)
 		end
 	}
 	

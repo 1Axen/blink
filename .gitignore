@@ -4,10 +4,9 @@
 # Roblox Studio lock files
 /*.rbxlx.lock
 /*.rbxl.lock
-/sourcemap.json
 
 /release
 /Network
 /Blink
 test/Sources/Game.txt
-plugin/bundle
+sourcemap.json

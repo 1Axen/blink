@@ -1,6 +1,10 @@
 local task = require("@lune/task")
 
-local Player = newproxy()
+local Player = newproxy(true)
+local Metatable = getmetatable(Player)
+Metatable.__tostring = function()
+    return "Player"
+end
 
 local Signal = {}
 Signal.__index = Signal

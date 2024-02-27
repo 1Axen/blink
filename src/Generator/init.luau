@@ -117,7 +117,7 @@ function Declarations.Enum(Declaration: Parser.EnumDeclaration, Read: Blocks.Blo
 	:End()
 
 	--> Write body
-	Write:Line(`Allocate(1)`)
+	local Allocation = Write:Allocate(1)
 		for Index, EnumItem in Enums do
 			if Index == 1 then
 				Write = Write:Compare(Variable, `"{EnumItem}"`, "Equals")
@@ -125,7 +125,7 @@ function Declarations.Enum(Declaration: Parser.EnumDeclaration, Read: Blocks.Blo
 				Write = Write:Branch("Conditional", Variable, `"{EnumItem}"`, "Equals")
 			end
 
-			Write:Line(`buffer.writeu8(SendBuffer, SendOffset, {Index - 1})`)
+			Write:Line(`buffer.writeu8(SendBuffer, {Allocation}, {Index - 1})`)
 		end
 	Write:Branch("Default")
 		:Line(`error(\`Unexpected enum: \{{Variable}\}, expectd one of {Literal}.\`)`)
@@ -223,7 +223,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 
 	--> Data body
 	local _, Values, _, Arguments = Generators.LuauType(Value.Data, true)
-	local Read, Write = Generators.Event(Value.Data :: Type, Index, Identifier, false)
+	local Read, Write = Generators.Event(Value.Data :: Type, Index, Identifier)
 	UserTypes.PushMultiline(Read, 1, 0, false)
 	UserTypes.PushMultiline(Write, 1, 0, false)
 
@@ -251,14 +251,15 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 		Channel.Listening = true
 
 		--> Event recieve body
+		local ListenerArguments = `{Context == "Server" and "Player, " or ""}{Arguments}`
 		Block:Line(`local {Values} = {GetTypesPath(Identifier, Scope, false)}()`)
 		Block:Compare(Connection, "nil", "Not")
-			:Line(Value.Call == "SingleSync" and `{Connection}({Arguments})` or `task.spawn({Connection}, {Arguments})`)
+			:Line(Value.Call == "SingleSync" and `{Connection}({ListenerArguments})` or `task.spawn({Connection}, {ListenerArguments})`)
 		:Branch("Default")
 			:Compare(`#{Queue}`, "256", "Greater")
 				:Line(`warn("[Blink]: Event queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement a listener?")`)
 			:End()
-			:Line(`table.insert({Queue}, \{{Arguments}\} :: \{any\})`)
+			:Line(`table.insert({Queue}, \{{ListenerArguments}\} :: \{any\})`)
 		:End()
 
 		local ContextArguments = `Listener: ({Context == "Server" and "Player: Player, " or ""}{Values}) -> ()`
@@ -561,7 +562,7 @@ function Generators.Optional(Declaration: Type, Read: Blocks.Block, Write: Block
 		Read = Read:Compare("typeof(RecieveInstances[RecieveInstanceCursor])", "\"Instance\"", "Equals")
 	else
 		Types.u8.Write(`{Variable} ~= nil and 1 or 0`, Write)
-		Read = Read:Compare(`buffer.readu8(RecieveBuffer, Read(1))`, "1", "Equals")
+		Read = Read:Compare(`buffer.readu8(RecieveBuffer, {Read:Read(1)})`, "1", "Equals")
 		Write = Write:Compare(Variable, "nil", "Not")
 	end
 
@@ -762,20 +763,28 @@ function Generators.AbstractSyntaxTree(Value: { Parser.Declaration })
 	end
 end
 
-return function(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Body, UserOptions: Parser.Options): string
-    local Imports = Builder.new()
+local Generator = {}
+
+function Generator.Reset()
+	--> Setup new builders
 	Events = Builder.new()
     UserTypes = Builder.new()
     LuauTypes = Builder.new()
 	Return = Builder.new()
 
-	--> Reset previous generation
-	Context = FileContext
-	Options = UserOptions
+	--> Reset channels
 	Channels.Reliable.Count = 0
 	Channels.Unreliable.Count = 0
 	Channels.Reliable.Listening = false
 	Channels.Unreliable.Listening = false
+end
+
+function Generator.Generate(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Body, UserOptions: Parser.Options): string
+    local Imports = Builder.new()
+	
+	Generator.Reset()
+	Context = FileContext
+	Options = UserOptions
 
 	--> Setup remote events
 	local Signal = Context == "Client" and "OnClientEvent" or "OnServerEvent"
@@ -853,3 +862,17 @@ return function(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Bod
 		.. Unreliables:Unwrap() .. "\n"
 		.. `\nreturn \{\n{Return.Dump()}\}`
 end
+
+function Generator.GenerateTypeDefinitions(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Body, UserOptions: Parser.Options): string
+	Generator.Reset()
+	Context = FileContext
+	Options = UserOptions
+
+	--> Parse declarations
+	Generators.AbstractSyntaxTree(AbstractSyntaxTree.Value)
+
+	return LuauTypes.Dump() 
+		.. `\nreturn true`
+end
+
+return Generator
