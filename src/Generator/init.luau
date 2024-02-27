@@ -573,7 +573,14 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 	local Value = Declaration.Value
 	local Optional = Value.Optional
 	local Variable = Variable or "Value"
-	local IsInstance = (Declaration.Type == "TypeDeclaration" and ((Value :: any).Primitive :: string) == "Instance")
+	local IsInstance, IsUnknown;
+
+	if Declaration.Type == "TypeDeclaration" then
+		local Primitive: string = (Value :: any).Primitive
+		IsUnknown = (Primitive == "unknown")
+		IsInstance = (Primitive == "Instance")
+		Optional = if IsUnknown then true else Optional
+	end
 
 	if not _G.BUNDLED then
 		Read:Comment(`{Variable}: {Value.Identifier}`)

@@ -1,0 +1,6 @@
+{
+    "name": "Blink",
+    "tree": {
+      "$path": "plugin/src"
+    }
+  }

@@ -3,13 +3,13 @@ option ClientOutput = "../Network/ClientConflict.luau"
 option ServerOutput = "../Network/ServerConflict.luau"
 
 type Name = u8?
-type Unknown = i8[1]
+type Variable = unknown
 
 event Name = {
     From = Server,
     Type = Reliable,
     Call = SingleSync,
-    Data = u8
+    Data = Variable
 }
 
 scope s = {

@@ -6,73 +6,96 @@ local Lexer = require("./Lexer")
 local Error = require("./Modules/Error")
 local Table = require("./Modules/Table")
 
+type Token = Lexer.Token
 type NumberRange = {Min: number, Max: number}
 type Declarations = "TypeReference" | "MapDeclaration" | "TypeDeclaration" | "EnumDeclaration" | "StructDeclaration" 
     | "TupleDeclaration" | "EventDeclaration" | "FunctionDeclaration" | "ScopeDeclaration"
 
-type Node<Type, Value> = {
+type Node<Type, Value, Tokens> = {
     Type: Type,
-    Value: Value
+    Value: Value,
+    Tokens: Tokens
 }
 
-export type Body = Node<"Body", {Declaration}>
+export type Body = Node<"Body", {Declaration}, {}>
 export type Declaration = Node<Declarations, {
+    Scope: string?,
     Identifier: string,
     Optional: boolean,
-    
-    [any]: any,
+    [any]: any
+}, {
+    Identifier: Token,
+    [any]: any
 }>
 
 export type TypeReference = Node<"TypeReference", {
     Scope: string?,
     Identifier: string,
+    Optional: boolean,
+
     Reference: string,
-    
+
     Array: NumberRange?,
     Range: NumberRange?,
-    Optional: boolean,
-}>
-
-export type MapDeclaration = Node<"MapDeclaration", {
-    Scope: string?,
-    Identifier: string,
-
-    Key: Declaration,
-    Value: Declaration,
-
-    Array: NumberRange?,
-    Optional: boolean,
+}, {
+    Identifier: Token,
 }>
 
 export type TypeDeclaration = Node<"TypeDeclaration", {
     Scope: string?,
     Identifier: string,
+    Optional: boolean,
+
     Primitive: string,
 
     Class: string?,
     Array: NumberRange?,
     Range: NumberRange?,
+}, {
+    Identifier: Token,
+    Value: Token,
+}>
+
+export type MapDeclaration = Node<"MapDeclaration", {
+    Scope: string?,
+    Identifier: string,
     Optional: boolean,
+
+    Key: Declaration,
+    Value: Declaration,
+
+    Array: NumberRange?,
+}, {
+    Identifier: Token,
 }>
 
 export type EnumDeclaration = Node<"EnumDeclaration", {
     Scope: string?,
     Identifier: string,
-    Enums: {string},
     Optional: boolean,
+
+    Enums: {string},
+}, {
+    Identifier: Token,
 }>
 
 export type StructDeclaration = Node<"StructDeclaration", {
     Scope: string?,
     Identifier: string,
-    Fields: {Declaration},
     Optional: boolean,
+
+    Fields: {Declaration},
+}, {
+    Identifier: Token,
 }>
 
 export type TupleDeclaration = Node<"TupleDeclaration", {
+    Scope: string?,
     Identifier: string,
+    Optional: boolean,
     Values: {Declaration},
-    Optional: boolean
+}, {
+    Identifier: Token
 }>
 
 export type EventDeclaration = Node<"EventDeclaration", {
@@ -83,6 +106,14 @@ export type EventDeclaration = Node<"EventDeclaration", {
     Type: "Reliable" | "Unreliable",
     Call: "SingleSync" | "ManySync" | "SingleAsync" | "ManyAsync",
     Data: Declaration
+}, {
+    Identifier: Token,
+    Fields: {
+        {
+            Field: Token, 
+            Value: Token
+        }
+    },
 }>
 
 export type FunctionDeclaration = Node<"FunctionDeclaration", {
@@ -92,12 +123,23 @@ export type FunctionDeclaration = Node<"FunctionDeclaration", {
     Yield: "Future" | "Promise" | "Coroutine",
     Data: Declaration,
     Return: Declaration
+}, {
+    Identifier: Token,
+    Fields: {
+        {
+            Field: Token, 
+            Value: Token
+        }
+    },
 }>
 
 export type ScopeDeclaration = Node<"ScopeDeclaration", {
+    Scope: string?,
     Identifier: string,
-    Declarations: {Declaration},
     Optional: boolean,
+    Declarations: {Declaration},
+}, {
+    Identifier: Token,
 }>
 
 export type Options = {
@@ -111,7 +153,7 @@ export type Options = {
 
 export type Duplicate = {
     Type: string,
-    Identifier: Lexer.Token,
+    Identifier: Token,
     Declaration: Declaration
 }
 
@@ -122,12 +164,12 @@ export type Parser = {
     Scope: string?,
     Types: {[string]: Duplicate},
     Events: {[string]: Duplicate},
-    LookAhead: Lexer.Token?,
+    LookAhead: Token?,
 
     Parse: (self: Parser, Source: string) -> (Body, Options),
-    Consume: (self: Parser, Type: Lexer.Types) -> Lexer.Token,
-    ConsumeAny: (self: Parser, Types: {Lexer.Types}) -> Lexer.Token,
-    GetSafeLookAhead: (self: Parser) -> Lexer.Token,
+    Consume: (self: Parser, Type: Lexer.Types) -> Token,
+    ConsumeAny: (self: Parser, Types: {Lexer.Types}) -> Token,
+    GetSafeLookAhead: (self: Parser) -> Token,
 
     --> Parsable types
     Body: (self: Parser) -> Body,
@@ -136,22 +178,18 @@ export type Parser = {
     Declaration: (self: Parser) -> Declaration,
     Declarations: (self: Parser) -> {Declaration},
 
-    MapDeclaration: (self: Parser, Identifier: Lexer.Token) -> MapDeclaration,
-    TypeDeclaration: (self: Parser, Identifier: Lexer.Token) -> TypeDeclaration,
-    EnumDeclaration: (self: Parser, Identifier: Lexer.Token) -> EnumDeclaration,
-    TupleDeclaration: (self: Parser, Identifier: Lexer.Token) -> TupleDeclaration,
-    StructDeclaration: (self: Parser, Identifier: Lexer.Token) -> StructDeclaration,
-    EventDeclaration: (self: Parser, Identifier: Lexer.Token) -> EventDeclaration,
-    FunctionDeclaration: (self: Parser, Identifier: Lexer.Token) -> FunctionDeclaration,
-    ScopeDeclaration: (self: Parser, Identifier: Lexer.Token) -> ScopeDeclaration,
+    MapDeclaration: (self: Parser, Identifier: Token) -> MapDeclaration,
+    TypeDeclaration: (self: Parser, Identifier: Token) -> TypeDeclaration,
+    EnumDeclaration: (self: Parser, Identifier: Token) -> EnumDeclaration,
+    TupleDeclaration: (self: Parser, Identifier: Token) -> TupleDeclaration,
+    StructDeclaration: (self: Parser, Identifier: Token) -> StructDeclaration,
+    EventDeclaration: (self: Parser, Identifier: Token) -> EventDeclaration,
+    FunctionDeclaration: (self: Parser, Identifier: Token) -> FunctionDeclaration,
+    ScopeDeclaration: (self: Parser, Identifier: Token) -> ScopeDeclaration,
 
-    GetReference: (self: Parser, Reference: Lexer.Token) -> Declaration,
-    GetTypeAttributes: (self: Parser, Primitive: Lexer.Token?) -> (NumberRange?, NumberRange?),
-    GetDeclarationFromToken: (self: Parser, Token: Lexer.Token, Identifier: Lexer.Token) -> (Declaration, Lexer.Token?),
-}
-
-local Errors = {
-    DuplicateDeclaration = 3001
+    GetReference: (self: Parser, Reference: Token) -> Declaration,
+    GetTypeAttributes: (self: Parser, Primitive: Token?) -> (NumberRange?, NumberRange?),
+    GetDeclarationFromToken: (self: Parser, Token: Token, Identifier: Token) -> (Declaration, Token?),
 }
 
 local RangePrimitives = {
@@ -167,6 +205,25 @@ local RangePrimitives = {
     string = true,
     vector = true,
     buffer = true,
+}
+
+local OptionalPrimitives = {
+    u8 = true,
+    u16 = true,
+    u32 = true,
+    i8 = true,
+    i16 = true,
+    i32 = true,
+    f16 = true,
+    f32 = true,
+    f64 = true,
+    boolean = true,
+    string = true,
+    vector = true,
+    buffer = true,
+    Color3 = true,
+    CFrame = true,
+    Instance = true,
 }
 
 local OptionsTypes: {[string]: Lexer.Types} = {
@@ -216,52 +273,63 @@ local NumberRange = {
     end
 }
 
-local function GetAttributeRange(Token: Lexer.Token, Array: boolean, Source: string): NumberRange
-    local Lower, Upper;
-    if Array then
-        Lower, Upper = string.match(Token.Value, `^%[({Number})..({Number})]`)
-        Lower = Lower or string.match(Token.Value, `^%[({Number})]`)
+local function GetTypeRange(Token: Token, Array: boolean, Source: string): NumberRange
+    local Value = Token.Value
+    local function ThrowMalformedRange(): never
+        Error.new(Error.AnalyzeInvalidRange, Source, "Malformed range")
+            :Primary(Token, "Unable to parse range")
+        :Emit()
+        error("Unable to parse range")
+    end
 
-        local Size = tonumber(Lower) or -1
-        if Size < 0 then
+    --> Exact size array/range
+    local Single = Array 
+        and string.match(Value, "%[(%d+)%]") 
+        or string.match(Value, "%((%d+)%)")
+
+    if Single then
+        local Number: number = tonumber(Single) :: number
+        if not Number then
+            ThrowMalformedRange()
+        end
+
+        if Array and Number < 0 then
             Error.new(Error.AnalyzeInvalidRange, Source, "Invalid array size")
                 :Primary(Token, "Array cannot be smaller than 0 elements")
             :Emit()
         end
 
-        if not Upper then
-            return NumberRange.new(Size) :: NumberRange
-        end
-    else
-        Lower, Upper = string.match(Token.Value, `^%(({Number})..({Number})%)`)
-        if not Upper then
-            Lower = string.match(Token.Value, `^%(({Number})%)`)
-        end
+        return NumberRange.new(Number, Number)
     end
 
-    if not Lower then
-        error(`Unexpected error while trying to parse range.`)
-    end
+    --> Variable size array/range
+    local Lower = Array and 
+        string.match(Value, "%[(%d+)") 
+        or string.match(Value, "%((%d+)") 
 
-    local Min = tonumber(Lower) or 0
-    local Max;
+    local Upper = Array 
+        and string.match(Value, "(%d+)%]") 
+        or string.match(Value, "(%d+)%)")
 
-    --[[if Min < 0 then
-        Error.new(Error.AnalyzeInvalidRange, Source, "Invalid range")
-            :Primary(Token, "Minimum cannot be negative")
-        :Emit()
-    end]]
+    if Lower and Upper then
+        local Minimum: number = tonumber(Lower) :: number
+        local Maximum: number = tonumber(Upper) :: number
 
-    if Upper then
-        Max = tonumber(Upper) or 0
-        if Min >= Max then
+        if not Minimum or not Maximum then
+            ThrowMalformedRange()
+        end
+
+        if Minimum >= Maximum then
             Error.new(Error.AnalyzeInvalidRange, Source, "Invalid range")
                 :Primary(Token, "Maximum must be greater than minimum")
             :Emit()
         end
+
+        return NumberRange.new(Minimum, Maximum)
     end
 
-    return NumberRange.new(Min, Max)
+    ThrowMalformedRange()
+    return NumberRange.new(0, 0)
 end
 
 local Parser = {}
@@ -295,7 +363,7 @@ function Parser.Parse(self: Parser, Source: string): (Body, Options)
     return Body, Options
 end
 
-function Parser.Consume(self: Parser, Type: string): Lexer.Token
+function Parser.Consume(self: Parser, Type: string): Token
     local Token = self.LookAhead
     if not Token then
         Error.new(Error.ParserUnexpectedEndOfFile, self.Source, "Unexpected end of file")
@@ -318,7 +386,7 @@ function Parser.Consume(self: Parser, Type: string): Lexer.Token
     return Token
 end
 
-function Parser.ConsumeAny(self: Parser, Types: {Lexer.Types}): Lexer.Token
+function Parser.ConsumeAny(self: Parser, Types: {Lexer.Types}): Token
     local Token = self.LookAhead
     if not Token then
         Error.new(Error.ParserUnexpectedEndOfFile, self.Source, "Unexpected end of file")
@@ -341,7 +409,7 @@ function Parser.ConsumeAny(self: Parser, Types: {Lexer.Types}): Lexer.Token
     return Token
 end
 
-function Parser.GetSafeLookAhead(self: Parser): Lexer.Token
+function Parser.GetSafeLookAhead(self: Parser): Token
     if self.LookAhead then
         return self.LookAhead
     end
@@ -357,7 +425,8 @@ end
 function Parser.Body(self: Parser): Body
     return {
         Type = "Body",
-        Value = self:Declarations()
+        Value = self:Declarations(),
+        Tokens = {}
     }
 end
 
@@ -401,18 +470,18 @@ function Parser.Declarations(self: Parser): {Declaration}
 end
 
 function Parser.Declaration(self: Parser): Declaration
-    local Keyword = self:Consume("Keyword")
+    local Keyword = self:Consume("Keyword").Value
     local Identifier = self:Consume("Identifier")
     self:Consume("Assign")
 
     --> Handle duplicate declarations
-    local Type = KeywordTypes[Keyword.Value]
+    local Type = KeywordTypes[Keyword]
     local Duplicates: {[string]: Duplicate} = self[Type]
     local ScopedIdentifier = `{self.Scope and `{self.Scope}.` or ""}{Identifier.Value}`
     local Duplicate = Duplicates[ScopedIdentifier]
 
     if Duplicate then
-        Error.new(Errors.DuplicateDeclaration, self.Source, `Duplicate {Keyword.Value} "{Identifier.Value}"`)
+        Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate {Keyword} "{Identifier.Value}"`)
             :Secondary(Duplicate.Identifier, "Previously delcared here")
             :Primary(Identifier, "Duplicate declaration here")
         :Emit()
@@ -420,32 +489,42 @@ function Parser.Declaration(self: Parser): Declaration
 
     --> Parse declaration
     local Declaration: Declaration?;
-    if Keyword.Value == "map" then
+    if Keyword == "map" then
         Declaration = self:MapDeclaration(Identifier)
-    elseif Keyword.Value == "type" then
+    elseif Keyword == "type" then
         Declaration = self:TypeDeclaration(Identifier)
-    elseif Keyword.Value == "enum" then
+    elseif Keyword == "enum" then
         Declaration = self:EnumDeclaration(Identifier)
-    elseif Keyword.Value == "struct" then
+    elseif Keyword == "struct" then
         Declaration = self:StructDeclaration(Identifier)
-    elseif Keyword.Value == "event" then
+    elseif Keyword == "event" then
         Declaration = self:EventDeclaration(Identifier)
-    elseif Keyword.Value == "function" then
+    elseif Keyword == "function" then
         Declaration = self:FunctionDeclaration(Identifier)
-    elseif Keyword.Value == "scope" then
+    elseif Keyword == "scope" then
         Declaration = self:ScopeDeclaration(Identifier)
     end
     
     if not Declaration then
-        error(`{Keyword.Value} has no declaration handler.`)
+        error(`{Keyword} has no declaration handler.`)
     end
 
     if 
         Duplicates == self.Types 
         and (self:GetSafeLookAhead().Type == "Optional")
     then
-        self:Consume("Optional")
+        local Optional = self:Consume("Optional")
+        if Declaration.Type == "TypeDeclaration" then
+            local Primitive = (Declaration :: TypeDeclaration).Value.Primitive
+            if Primitive == "unknown" then
+                Error.new(Error.AnalyzeInvalidOptionalType, self.Source, `Invalid optional type`)
+                    :Primary(Optional, `"unknown" cannot be optional`)
+                :Emit()
+            end
+        end
+
         Declaration.Value.Optional = true
+        Declaration.Tokens.Optional = Optional
     end
 
     --> Save declaration to duplicates
@@ -458,10 +537,10 @@ function Parser.Declaration(self: Parser): Declaration
     return Declaration
 end
 
-function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDeclaration
+function Parser.TypeDeclaration(self: Parser, Identifier: Token): TypeDeclaration
     local LookAhead = self:GetSafeLookAhead()
 
-    local Primitive: Lexer.Token;
+    local Primitive: Token;
     local Declaration: TypeDeclaration; 
 
     if LookAhead.Type == "Identifier" then
@@ -475,6 +554,8 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
         self:Consume("Identifier")
         Declaration = Table.DeepClone(Reference)
         Declaration.Value.Identifier = Identifier.Value
+        Declaration.Tokens.Identifier = Identifier
+        Declaration.Tokens.Value = LookAhead
     else
         Primitive = self:Consume("Primitive")
         Declaration = {
@@ -484,6 +565,10 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
                 Identifier = Identifier.Value,
                 Primitive = Primitive.Value,
                 Optional = false
+            },
+            Tokens = {
+                Identifier = Identifier,
+                Value = Primitive,
             }
         }
 
@@ -510,7 +595,7 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Lexer.Token): TypeDecl
     return Declaration
 end
 
-function Parser.EnumDeclaration(self: Parser, Identifier: Lexer.Token): EnumDeclaration
+function Parser.EnumDeclaration(self: Parser, Identifier: Token): EnumDeclaration
     self:Consume("OpenBrackets")
 
     local Enums: {string} = {}
@@ -548,11 +633,14 @@ function Parser.EnumDeclaration(self: Parser, Identifier: Lexer.Token): EnumDecl
             Identifier = Identifier.Value,
             Enums = Enums,
             Optional = false
+        },
+        Tokens = {
+            Identifier = Identifier,
         }
     }
 end
 
-function Parser.MapDeclaration(self: Parser, Identifier: Lexer.Token): MapDeclaration
+function Parser.MapDeclaration(self: Parser, Identifier: Token): MapDeclaration
     self:Consume("OpenCurlyBrackets")
     self:Consume("OpenSquareBrackets")
 
@@ -625,14 +713,19 @@ function Parser.MapDeclaration(self: Parser, Identifier: Lexer.Token): MapDeclar
 
             Array = Array,
             Optional = false,
+        },
+        Tokens = {
+            Identifier = Identifier,
+            Key = Key,
+            Value = Value,
         }
     }
 end
 
-function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): StructDeclaration
+function Parser.StructDeclaration(self: Parser, Identifier: Token): StructDeclaration
     self:Consume("OpenCurlyBrackets")
 
-    local Keys: {[string]: Lexer.Token} = {}
+    local Keys: {[string]: Token} = {}
     local Fields = {}
 
     while (self.LookAhead) do
@@ -673,11 +766,14 @@ function Parser.StructDeclaration(self: Parser, Identifier: Lexer.Token): Struct
             Identifier = Identifier.Value,
             Fields = Fields,
             Optional = false,
+        },
+        Tokens = {
+            Identifier = Identifier,
         }
     }
 end
 
-function Parser.TupleDeclaration(self: Parser, Identifier: Lexer.Token): TupleDeclaration
+function Parser.TupleDeclaration(self: Parser, Identifier: Token): TupleDeclaration
     self:Consume("OpenSquareBrackets")
 
     local Values: {Declaration} = {}
@@ -706,11 +802,14 @@ function Parser.TupleDeclaration(self: Parser, Identifier: Lexer.Token): TupleDe
             Identifier = Identifier.Value,
             Values = Values,
             Optional = false
+        },
+        Tokens = {
+            Identifier = Identifier
         }
     }
 end
 
-function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDeclaration
+function Parser.EventDeclaration(self: Parser, Identifier: Token): EventDeclaration
     self:Consume("OpenCurlyBrackets")
 
     if ReservedMembers[Identifier.Value] then
@@ -729,6 +828,10 @@ function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDe
             Call = "SingleSync",
             Data = nil :: any,
             Optional = false
+        },
+        Tokens = {
+            Identifier = Identifier,
+            Fields = {}
         }
     }
 
@@ -740,11 +843,12 @@ function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDe
             :Emit()
         end
 
-        local Value: unknown;
+        local Value: any;
         local Assign = self:Consume("Assign")
+        local Token = self:GetSafeLookAhead()
         
         if Entry.Key ~= "Data" then
-            local Token = self:Consume(Entry.Type)
+            Token = self:Consume(Entry.Type)
             if not table.find(Entry.Values, Token.Value) then
                 Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`)
                     :Primary(Token, `Expected one of "{table.concat(Entry.Values, "\" or \"")}", found "{Token.Value}"`)
@@ -753,8 +857,7 @@ function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDe
 
             Value = Token.Value
         else
-            local Token = self.LookAhead
-            if not Token then
+            if not self.LookAhead then
                 Error.new(Error.ParserExpectedExtraToken, self.Source, `Expected a token`)
                     :Primary(Assign, `Expected a value to follow after assignment`)
                 :Emit()
@@ -769,6 +872,10 @@ function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDe
         end
 
         Event.Value[Entry.Key] = Value 
+        table.insert(Event.Tokens, {
+            Field = Key,
+            Value = Token
+        })
 
         if Index ~= #EventStructure then
             self:Consume("Comma")
@@ -780,7 +887,7 @@ function Parser.EventDeclaration(self: Parser, Identifier: Lexer.Token): EventDe
     return Event
 end
 
-function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): FunctionDeclaration
+function Parser.FunctionDeclaration(self: Parser, Identifier: Token): FunctionDeclaration
     self:Consume("OpenCurlyBrackets")
 
     if ReservedMembers[Identifier.Value] then
@@ -798,6 +905,10 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): Func
             Yield = "Coroutine",
             Data = nil :: any,
             Return = nil :: any
+        },
+        Tokens = {
+            Identifier = Identifier,
+            Fields = {}
         }
     }
 
@@ -811,9 +922,10 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): Func
 
         local Value: unknown;
         local Assign = self:Consume("Assign")
+        local Token = self:GetSafeLookAhead()
         
         if Entry.Key ~= "Data" and Entry.Key ~= "Return" then
-            local Token = self:Consume(Entry.Type)
+            Token = self:Consume(Entry.Type)
             if not table.find(Entry.Values, Token.Value) then
                 Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`)
                     :Primary(Token, `Expected one of "{table.concat(Entry.Values, "\" or \"")}", found "{Token.Value}"`)
@@ -822,8 +934,7 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): Func
 
             Value = Token.Value
         else
-            local Token = self.LookAhead
-            if not Token then
+            if not self.LookAhead then
                 Error.new(Error.ParserExpectedExtraToken, self.Source, `Expected a token`)
                     :Primary(Assign, `Expected a value to follow after assignment`)
                 :Emit()
@@ -838,6 +949,10 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): Func
         end
 
         Function.Value[Entry.Key] = Value 
+        table.insert(Function.Tokens, {
+            Field = Key,
+            Value = Token
+        })
 
         if Index ~= #FunctionStructure then
             self:Consume("Comma")
@@ -849,7 +964,7 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Lexer.Token): Func
     return Function
 end
 
-function Parser.ScopeDeclaration(self: Parser, Identifier: Lexer.Token): ScopeDeclaration
+function Parser.ScopeDeclaration(self: Parser, Identifier: Token): ScopeDeclaration
     if self.Scope then
         Error.new(Error.AnalyzeNestedScope, self.Source, "Nested scope")
             :Primary(Identifier, `Blink doesn't currently support declaring scopes within scopes`)
@@ -870,6 +985,9 @@ function Parser.ScopeDeclaration(self: Parser, Identifier: Lexer.Token): ScopeDe
             Identifier = Scope,
             Optional = false,
             Declarations = Declarations
+        }, 
+        Tokens = {
+            Identifier = Identifier
         }
     }
 
@@ -890,7 +1008,7 @@ function Parser.ScopeDeclaration(self: Parser, Identifier: Lexer.Token): ScopeDe
     return Declaration
 end
 
-function Parser.GetReference(self: Parser, Token: Lexer.Token): Declaration
+function Parser.GetReference(self: Parser, Token: Token): Declaration
     local Identifier = `{self.Scope and `{self.Scope}.` or ""}{Token.Value}`
     local Reference = self.Types[Identifier] or self.Types[Token.Value]
     if not Reference then
@@ -902,7 +1020,7 @@ function Parser.GetReference(self: Parser, Token: Lexer.Token): Declaration
     return Reference.Declaration
 end
 
-function Parser.GetTypeAttributes(self: Parser, Primitive: Lexer.Token?): (NumberRange?, NumberRange?)
+function Parser.GetTypeAttributes(self: Parser, Primitive: Token?): (NumberRange?, NumberRange?)
     local Array, Range;
     for _, Expected in {"Range", "Array"} do
         local LookAhead = self.LookAhead
@@ -926,9 +1044,9 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Lexer.Token?): (Numbe
                 :Emit()
             end
 
-            Range = GetAttributeRange(LookAhead, false, self.Source)
+            Range = GetTypeRange(LookAhead, false, self.Source)
         elseif Type == "Array" then
-            Array = GetAttributeRange(LookAhead, true, self.Source)
+            Array = GetTypeRange(LookAhead, true, self.Source)
         end
 
         self:Consume(Type)
@@ -937,7 +1055,7 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Lexer.Token?): (Numbe
     return Array, Range
 end
 
-function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identifier: Lexer.Token): (Declaration, Lexer.Token?)
+function Parser.GetDeclarationFromToken(self: Parser, Token: Token, Identifier: Token): (Declaration, Token?)
     local Declaration: Declaration;
     if Token.Type == "OpenCurlyBrackets" then
         local NextToken = self.Lexer:GetNextToken(true)
@@ -951,8 +1069,8 @@ function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identi
     elseif Token.Type == "Primitive" then
         Declaration = self:TypeDeclaration(Identifier)
     elseif Token.Type == "Identifier" then
-        local Type = self:Consume("Identifier")
-        local Reference = self:GetReference(Type)
+        self:Consume("Identifier")
+        local Reference = self:GetReference(Token)
         local Array, Range = self:GetTypeAttributes()
 
         Declaration = {
@@ -965,6 +1083,9 @@ function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identi
                 Array = Array,
                 Range = Range,
                 Optional = false
+            },
+            Tokens = {
+                Identifier = Identifier
             }
         }
     end
@@ -979,6 +1100,16 @@ function Parser.GetDeclarationFromToken(self: Parser, Token: Lexer.Token, Identi
     if self:GetSafeLookAhead().Type == "Optional" then
         Optional = self:Consume("Optional")
         Declaration.Value.Optional = true
+
+        if Token.Type == "Identifier" then
+            local Type: TypeDeclaration = self:GetReference(Token) :: TypeDeclaration
+            if Type.Value.Primitive == "unknown" then
+                Error.new(Error.AnalyzeInvalidOptionalType, self.Source, `Invalid optional type`)
+                    :Secondary(Type.Tokens.Value, "Declared here")
+                    :Primary(Optional, `{Type.Value.Identifier} is of type "unknown", "unknown" cannot be optional`)
+                :Emit()
+            end
+        end
     end
 
     return Declaration, Optional

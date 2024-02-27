@@ -49,6 +49,7 @@ Blink supports the following primitives:
 |CFrame  |24 Bytes    |No               |N/A            |N/A          |
 |Color3  |12 Bytes    |No               |N/A            |N/A          |
 |Instance|4 Bytes     |No               |N/A            |N/A          |
+|unknown |N/A         |No               |N/A            |N/A          |
 
 Arrays can be defined by appending `[SIZE]` or `[[MIN]..[MAX]]` after the primitive type  
 Primitives can be constrained to ranges by writing `([MIN]..[MAX])` after the primitive type. Ranges are inclusive.  

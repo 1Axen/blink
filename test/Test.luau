@@ -403,6 +403,8 @@ FireAndExpect("Unreliable Server", Server.UnreliableServer, Client.UnreliableSer
 FireAndExpect("Reliable Client", Client.ReliableClient, Server.ReliableClient, 1)
 FireAndExpect("Unreliable Client", Client.UnreliableClient, Server.UnreliableClient, 1)
 
+FireAndExpect("Unknown", Server.Unknown, Client.Unknown, newproxy())
+
 FireAndExpect("Map", Server.MapEvent, Client.MapEvent, {["string"] = 1})
 FireAndExpect("Map Struct", Server.MapStructEvent, Client.MapStructEvent, {Map = {string = 1}})
 FireAndExpect("Map Complex", Server.MapComplexEvent, Client.MapComplexEvent, {string = table.create(8, 1)})

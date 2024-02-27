@@ -27,8 +27,8 @@ echo Zipping files
 echo Packaging plugin
 cd ../plugin
 copy "..\build\.darklua.json" ".\.darklua.json"
-darklua process "./src/init.luau" "./bundle/init.server.lua"
-rojo build --output "../release/Plugin-%VERSION%.rbxmx"
+darklua process "./src/init.server.luau" "./bundle/init.server.lua"
+rojo build bundle.project.json --output "../release/Plugin-%VERSION%.rbxmx"
 
 cd ../build
 

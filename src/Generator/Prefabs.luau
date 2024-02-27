@@ -74,7 +74,7 @@ local Asserts = {
 			Upper = `error("Something has gone wrong")`,
 			Exact = `if (not {Variable}) or typeof({Variable}) ~= "Instance" then error(\`Expected an Instance, got \{typeof({Variable})} instead.\`) end\nif not {Variable}:IsA("{Class}") then error(\`Expected an Instance of type "{Class}", got "\{{Variable}.ClassName}" instead.\`) end`,
 		}
-	end
+	end,
 }
 local Structures = {
 	Array = nil :: any
@@ -99,7 +99,11 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 		local IsVariableSize = (Range and Range.Max ~= Range.Min)
 
 		local function GenerateValidation(Block: Block, Variable: string)
-			if Range and AssertGenerator then
+			if not AssertGenerator then
+				return
+			end
+
+			if Range then
 				local Assert = AssertGenerator(Variable, Range.Min, Range.Max)
 				if not IsVariableSize and Assert.Exact then
 					Block:Line(Assert.Exact)
@@ -107,7 +111,7 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 					Block:Line(Assert.Lower)
 					Block:Line(Assert.Upper)
 				end
-			elseif Primitive == "Instance" and AssertGenerator then
+			elseif Primitive == "Instance" then
 				local Assert = AssertGenerator(Variable, Class)
 				if Value.Optional and Block == Write then
 					Block:Compare(Variable, "nil", "Not")
@@ -429,6 +433,24 @@ do
 			return Declaration.Value.Class
 		end,
 		Generate = GeneratePrimitivePrefab(Types.Instance, Asserts.Instance)
+	}
+end
+
+--> unknown
+do
+	Types.unknown = {
+		Read = function(Variable: string, Block: Block)
+			Block:Line("RecieveInstanceCursor += 1")
+			Block:Line(`{Variable} = RecieveInstances[RecieveInstanceCursor]`)
+		end,
+		Write = function(Value: string, Block: Block)
+			Block:Line(`table.insert(SendInstances, {Value})`)
+		end,
+	}
+
+	Primitives.unknown = {
+		Type = "any",
+		Generate = GeneratePrimitivePrefab(Types.unknown)
 	}
 end
 

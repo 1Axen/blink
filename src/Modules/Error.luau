@@ -24,6 +24,12 @@ type Slice = {
     Underlines: number,
 }
 
+export type Label = {
+    Span: Span,
+    Text: string,
+    Type: "Primary" | "Secondary"
+}
+
 type Color = "red" | "green" | "blue" | "black" | "white" | "cyan" | "purple" | "yellow" | "reset"
 
 export type Span = {
@@ -43,6 +49,8 @@ local Colors = {
 }
 
 local Error = {
+    OnEmit = nil,
+
     LexerUnexpectedToken = 1001,
 
     ParserUnexpectedEndOfFile = 2001,
@@ -59,12 +67,14 @@ local Error = {
     AnalyzeNestedScope = 3006,
     AnalyzeUnknownReference = 3007,
     AnalyzeInvalidRangeType = 3008,
-    AnalyzeInvalidRange = 3009
+    AnalyzeInvalidRange = 3009,
+    AnalyzeDuplicateDeclaration = 3010
 }
 
 Error.__index = Error
 
 export type Class = typeof(setmetatable({} :: {
+    Labels: {Label},
     Source: {string},
     Message: string,
 }, Error))
@@ -89,6 +99,7 @@ function Error.new(Code: number, Source: string, Message: string): Class
     Content ..= `\n{INDENT}┌─{SPACE}input.blink`
 
     return setmetatable({
+        Labels = {},
         Source = string.split(Source, "\n"),
         Message = Content
     }, Error)
@@ -125,19 +136,44 @@ end
 
 function Error.Primary(self: Class, Span: Span, Text: string): Class
     local Slice = self:Slice(Span)
+
+    --> Analyze hook
+    table.insert(self.Labels, {
+        Span = Span,
+        Text = Text,
+        Type = "Primary"
+    })
+
+    --> Construct message
     self.Message ..= `\n{Color(string.format("%03i", Slice.Line), "blue")}{SPACE}│{SPACE}{Slice.Text}`
     self.Message ..= `\n{INDENT}│{SPACE}{string.rep(SPACE, Slice.Spaces)}{Color(`{string.rep("^", Slice.Underlines)}{SPACE}{Fix(Text)}`, "red")}`
+
     return self
 end
 
 function Error.Secondary(self: Class, Span: Span, Text: string): Class
     local Slice = self:Slice(Span)
+
+    --> Analyze hook
+    table.insert(self.Labels, {
+        Span = Span,
+        Text = Text,
+        Type = "Secondary"
+    })
+
+    --> Construct message
     self.Message ..= `\n{Color(string.format("%03i", Slice.Line), "blue")}{SPACE}│{SPACE}{Slice.Text}`
     self.Message ..= `\n{INDENT}│{SPACE}{string.rep(SPACE, Slice.Spaces)}{Color(`{string.rep("^", Slice.Underlines)}{SPACE}{Fix(Text)}`, "blue")}`
+
     return self
 end
 
 function Error.Emit(self: Class): never
+    local OnEmit: (({Label}) -> ())? = Error.OnEmit
+    if OnEmit then
+        OnEmit(self.Labels)
+    end
+
     error(self.Message, 2)
 end
 
