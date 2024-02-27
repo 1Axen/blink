@@ -9,9 +9,10 @@ Options go at the top of a source file and are used to configure the output of B
 ```
 option [OPTION] = [VALUE]
 ```
-## `ServerOutput` and `ClientOutput`
+## `ServerOutput`, `ClientOutput`, `TypesOutput`
 These options allow you to specify where Blink will generate files.
 ```
+option TypesOutput = "../Network/Types.luau"
 option ServerOutput = "../Network/Server.luau"
 option ClientOutput = "../Network/Client.luau"
 ```
@@ -26,7 +27,7 @@ Default: `false`
 Controls wether Blink will replicate events and functions automatically at the end of every frame.  
 When set to `true` automatic replication will be disabled and instead a `StepReplication` function will be exposed.
 # Basic syntax and supported types
-You can mark any type (`struct`, `enum`, `type`) as optional by appending `?` after it
+You can mark any type as optional by appending `?` after it
 ## Primitives
 You can define a primitive using the `type` keyword  
 Blink supports the following primitives:  
@@ -51,13 +52,18 @@ Blink supports the following primitives:
 |Instance|4 Bytes     |No               |N/A            |N/A          |
 |unknown |N/A         |No               |N/A            |N/A          |
 
-Arrays can be defined by appending `[SIZE]` or `[[MIN]..[MAX]]` after the primitive type  
+Arrays can be defined by appending `[SIZE]` or `[[MIN]..[MAX]]` after the type declaration
 Primitives can be constrained to ranges by writing `([MIN]..[MAX])` after the primitive type. Ranges are inclusive.  
 ```
 type Simple = u8
 type Optional = u8?
 type Array = u8[1]
 type Range = u8[0..100]
+map Players = {[u8]: Instance(Player)}[0..255]
+enum States = (A, B, C, D)[0..255]
+struct Dictionary {
+    Field: u8
+}[0..255]
 ```
 ## Enums
 You can define enums using the `enum` keyword  
@@ -68,15 +74,15 @@ enum State = ( Starting, Started, Stopping, Stopped )
 You can define structs using the `struct` keyword  
 Structs can also hold structs within.  
 ```
-struct Entity = {
-    Identifier = u8,
-    Health = u8(0..100),
-    State = ( Dead, Alive )?,
-    Direction = vector(0..1),
-    Substruct = {
-        Empty = u8[0],
-        Complex = u8[1..12],
-        Vector = UnitVector,
+struct Entity {
+    Identifier: u8,
+    Health: u8(0..100),
+    State: ( Dead, Alive )?,
+    Direction: vector(0..1),
+    Substruct: {
+        Empty: u8[0],
+        Complex: u8[1..12],
+        Vector: UnitVector,
     }?
 }
 ```
@@ -86,13 +92,13 @@ You can define maps using the `map` keyword
 > Maps cannot currently have maps as keys or values.  
 > You also cannot have optional keys or values as there is no way to represent those in Luau.
 ```
-map Example = {[string] = u8}
+map Example = {[string]: u8}
 ```
 ## Instances
 Instances are another type of Primitive and as such they can be defined using the `type` keyword  
 ```
 type Example = Instance
-type Example = Instance (ClassName) -- You can also specify instance class
+type Example = Instance(ClassName) -- You can also specify instance class
 ```
 > [!WARNING]
 > If a non optional instance results in nil on the recieving side it will result in an error, this may be caused by various things like streaming, players leaving etc.  
@@ -101,11 +107,11 @@ type Example = Instance (ClassName) -- You can also specify instance class
 Tuples can be defined using the square brackets `[]`.  
 **Tuples can only be defined within the data field of an event/function.**  
 ``` 
-event Example = {
-    From = Server,
-    Type = Reliable,
-    Call = SingleSync,
-    Data = [u8, u16?, Instance, Instance?, u8[8]]
+event Example {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+    Data: [u8, u16?, Instance, Instance?, u8[8]]
 }
 ```
 ## Events
@@ -118,25 +124,25 @@ Events have 4 fields which must be defined in the **correct order**:
 `Call` - `SingleSync` or `ManySync` or `SingleAsync` or `ManyAsync`  
 `Data` - Can hold either a type definition or a reference to an already defined type  
 ```
-event Simple = {
-    From = Client,
-    Type = Unreliable,
-    Call = SingleSync,
-    Data = u8
+event Simple {
+    From: Client,
+    Type: Unreliable,
+    Call: SingleSync,
+    Data: u8
 }
 
-event Reference = {
-    From = Client,
-    Type = Unreliable,
-    Call = SingleSync,
-    Data = Entity
+event Reference {
+    From: Client,
+    Type: Unreliable,
+    Call: SingleSync,
+    Data: Entity
 }
 
-event Complex = {
-    From = Client,
-    Type = Unreliable,
-    Call = SingleSync,
-    Data = {
+event Complex {
+    From: Client,
+    Type: Unreliable,
+    Call: SingleSync,
+    Data: {
         Field = u8
     }
 }
@@ -150,22 +156,22 @@ Functions have 3 fields which must be defined in the **correct order**:
 `Data` - Can hold either a type definition or a reference to an already defined type  
 `Return` - Can hold either a type definition or a reference to an already defined type 
 ```
-function Example = {
-    Yield = Coroutine,
-    Data = u8,
-    Return = u8
+function Example {
+    Yield: Coroutine,
+    Data: u8,
+    Return: u8
 }
 
-function ExampleFuture = {
-    Yield = Future,
-    Data = u8,
-    Return = u8
+function ExampleFuture {
+    Yield: Future,
+    Data: u8,
+    Return: u8
 }
 
-function ExamplePromise = {
-    Yield = Promise,
-    Data = u8,
-    Return = u8
+function ExamplePromise {
+    Yield: Promise,
+    Data: u8,
+    Return: u8
 }
 ```
 # Scopes (Namespaces)
@@ -174,18 +180,17 @@ Scopes allow you to group similiar types together for further organization
 
 Defining scopes:  
 ```
-scope ExampleScope = {
+scope ExampleScope {
     type InScopeType = u8
-
-    event InScopeEvent = {
-        From = Server,
-        Type = Reliable,
-        Call = SingleSync,
-        Data = u8
+    event InScopeEvent {
+        From: Server,
+        Type: Reliable,
+        Call: SingleSync,
+        Data: u8
     }
 }
 
-struct Example = {
+struct Example {
     Reference = ExampleScope.InScopeType
 }
 ```
@@ -201,8 +206,8 @@ local Number: Blink.ExampleScope_InScopeEvent = 0
 ## Referencing types
 A type must be defined earlier in the source for it to be referenceable, you cannot reference a type before it has been defined.
 ```
-struct Invalid = {
-    Field = Number
+struct Invalid {
+    Field: Number
 }
 type Number = u8
 ```
@@ -215,11 +220,11 @@ type Number = u8
 ## Events order
 Event fields must be in the exact order specified in the Events section.
 ```
-event Example = {
-    Type = Reliable,
-    From = Server,
-    Call = SingleSync,
-    Data = u8
+event Example {
+    Type: Reliable,
+    From: Server,
+    Call: SingleSync,
+    Data: u8
 }
 ```
 ```

@@ -8,7 +8,7 @@ export type Types =
     "Comma" | "OpenBrackets" | "CloseBrackets" | "OpenCurlyBrackets" | "CloseCurlyBrackets" | "OpenSquareBrackets" | "CloseSquareBrackets" --> Structs & enums
     | "String" | "Boolean" | "Number"   --> Literals
     | "Array" | "Range" | "Optional" | "Class"    --> Attributes
-    | "Assign" | "Keyword" | "Primitive" | "Identifier" --> Reserved
+    | "Assign" | "FieldAssign" | "Keyword" | "Primitive" | "Identifier" --> Reserved
     | "Whitespace" | "Unknown" 
 
 export type Keywords = "type" | "enum" | "struct" | "event" | "function"
@@ -47,6 +47,7 @@ local Matches = {
     --> Simple patterns
     {"^%s+", "Whitespace"},     
     {"^=", "Assign"},
+    {"^:", "FieldAssign"},
     {"^{", "OpenCurlyBrackets"},
     {"^}", "CloseCurlyBrackets"},
     {"^,", "Comma"},
@@ -87,10 +88,9 @@ local Lexer = {}
 Lexer.__index = Lexer
 
 function Lexer.new(Mode: Mode?): Lexer
-    local Mode: Mode = Mode or "Parsing"
     return setmetatable({
         Size = 0,
-        Mode = Mode,
+        Mode = Mode or "Parsing",
         Source = "",
         Cursor = 1
     } :: any, Lexer)

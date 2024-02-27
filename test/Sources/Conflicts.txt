@@ -5,19 +5,19 @@ option ServerOutput = "../Network/ServerConflict.luau"
 type Name = u8?
 type Variable = unknown
 
-event Name = {
-    From = Server,
-    Type = Reliable,
-    Call = SingleSync,
-    Data = Variable
+event Name {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+    Data: Variable
 }
 
-scope s = {
+scope s {
     type Name = u8
-    event Name = {
-        From = Server,
-        Type = Reliable,
-        Call = SingleSync,
-        Data = u8
+    event Name {
+        From: Server,
+        Type: Reliable,
+        Call: SingleSync,
+        Data: u8
     }
 }

@@ -45,7 +45,7 @@ local task = require("@lune/task")
 local game = _G.%s.game
 ]]
 
-type Type = Parser.TypeDeclaration | Parser.EnumDeclaration | Parser.MapDeclaration | Parser.StructDeclaration | Parser.TupleDeclaration | Parser.TypeReference
+type Type = Parser.TypeDeclaration | Parser.EnumDeclaration | Parser.MapDeclaration | Parser.StructDeclaration | Parser.TupleDeclaration | Parser.ReferenceDeclaration
 
 local Scope: string?
 local Context: string;
@@ -179,7 +179,7 @@ function Declarations.Tuple(Declaration: Parser.TupleDeclaration, Read: Blocks.B
 	end
 end
 
-function Declarations.Reference(Declaration: Parser.TypeReference, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
+function Declarations.Reference(Declaration: Parser.ReferenceDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
     local Value = Declaration.Value
 	local Array = Value.Array
 	local Reference = Value.Reference
@@ -571,6 +571,7 @@ end
 
 function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string?)
 	local Value = Declaration.Value
+	local Array = Value.Array
 	local Optional = Value.Optional
 	local Variable = Variable or "Value"
 	local IsInstance, IsUnknown;
@@ -587,27 +588,41 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 		Write:Comment(`{Variable}: {Value.Identifier}`)
 	end
 
+	--> Array
+	if Array then
+		Read, Write = Structures.Array(Variable, Read, Write, Array)
+	end
+
+	--> Instance
 	if IsInstance then
 		Read:Line("RecieveInstanceCursor += 1")
 	end
 
+	--> Optional
 	if Optional then
 		Read, Write = Generators.Optional(Declaration, Read, Write, Variable)
 	end
 
+	local ActualVariable = Array and "Item" or Variable
 	if Declaration.Type == "TypeDeclaration" then
-        Declarations.Primitive(Declaration, Read, Write, Variable)
+        Declarations.Primitive(Declaration, Read, Write, ActualVariable)
 	elseif Declaration.Type == "EnumDeclaration" then
-		Declarations.Enum(Declaration, Read, Write, Variable)
+		Declarations.Enum(Declaration, Read, Write, ActualVariable)
 	elseif Declaration.Type == "MapDeclaration" then
-		Declarations.Map(Declaration, Read, Write, Variable)
+		Declarations.Map(Declaration, Read, Write, ActualVariable)
 	elseif Declaration.Type == "StructDeclaration" then
-		Declarations.Struct(Declaration, Read, Write, Variable)
+		Declarations.Struct(Declaration, Read, Write, ActualVariable)
 	elseif Declaration.Type == "TupleDeclaration" then
 		Declarations.Tuple(Declaration, Read, Write)
-	elseif Declaration.Type == "TypeReference" then
-		Declarations.Reference(Declaration, Read, Write, Variable)
+	elseif Declaration.Type == "ReferenceDeclaration" then
+		Declarations.Reference(Declaration, Read, Write, ActualVariable)
     end
+
+	if Array then
+		Read:Line(`table.insert({Variable}, Item)`)
+		Read:End()
+		Write:End()
+	end
 
 	if Optional then
 		Read:End()
@@ -617,7 +632,7 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 	end
 end
 
-function Generators.LuauType(Declaration: Parser.Declaration, UseTypeAsValue: boolean?): (string, string, string, string)
+function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (string, string, string, string)
 	local Type = ""
 	local Values = ""
 	local Export = GetExportName(Declaration.Value.Identifier)
@@ -631,17 +646,13 @@ function Generators.LuauType(Declaration: Parser.Declaration, UseTypeAsValue: bo
 		else
 			Type = Primitive.Type
 		end
-
-		if Value.Array then
-			Type = `\{{Type}\}`
-		end
 	elseif Declaration.Type == "EnumDeclaration" then
 		local Value = (Declaration :: Parser.EnumDeclaration).Value
 		Type = GenerateEnumLiterals(Value.Enums)
 	elseif Declaration.Type == "MapDeclaration" then
 		local MapValue = (Declaration :: Parser.MapDeclaration).Value
-		local Key = Generators.LuauType(MapValue.Key)
-		local Value = Generators.LuauType(MapValue.Value)
+		local Key = Generators.LuauType(MapValue.Key :: Type)
+		local Value = Generators.LuauType(MapValue.Value :: Type)
 		Type = `\{[{Key}]: {Value}\}`
 	elseif Declaration.Type == "StructDeclaration" then
 		local Value = Declaration.Value
@@ -650,13 +661,13 @@ function Generators.LuauType(Declaration: Parser.Declaration, UseTypeAsValue: bo
 		for _, Field in Value.Fields do
 			local FieldValue = Field.Value
 			local Identifier = FieldValue.Identifier
-			local FieldType = Generators.LuauType(Field)
+			local FieldType = Generators.LuauType(Field :: Type)
 			Type ..= `{Identifier}: {FieldType}, `
 		end
 
 		Type ..= " }"
-	elseif Declaration.Type == "TypeReference" then
-		local Value = (Declaration :: Parser.TypeReference).Value
+	elseif Declaration.Type == "ReferenceDeclaration" then
+		local Value = (Declaration :: Parser.ReferenceDeclaration).Value
 		local Reference = Value.Reference
 		local ReferenceScope = Value.Scope
 		local Prefix = ReferenceScope and `{ReferenceScope}_` or ""
@@ -673,12 +684,16 @@ function Generators.LuauType(Declaration: Parser.Declaration, UseTypeAsValue: bo
 
 		for Index, TupleValue in TupleValues do
 			local Variable = `Value{Index}`
-			local ValueType = Generators.LuauType(TupleValue)
+			local ValueType = Generators.LuauType(TupleValue :: Type)
 			local Seperator = Index < #TupleValues and ", " or ""
 			Type ..= `{ValueType}{Seperator}`
 			Values ..= `{Variable}: {ValueType}{Seperator}`
 			Returns ..= `{Variable}{Seperator}`
 		end
+	end
+
+	if Declaration.Value.Array then
+		Type = `\{{Type}\}`
 	end
 
 	--> Generalized type generation, works for everything except tuples

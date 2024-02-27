@@ -8,7 +8,7 @@ local Table = require("./Modules/Table")
 
 type Token = Lexer.Token
 type NumberRange = {Min: number, Max: number}
-type Declarations = "TypeReference" | "MapDeclaration" | "TypeDeclaration" | "EnumDeclaration" | "StructDeclaration" 
+type Declarations = "ReferenceDeclaration" | "MapDeclaration" | "TypeDeclaration" | "EnumDeclaration" | "StructDeclaration" 
     | "TupleDeclaration" | "EventDeclaration" | "FunctionDeclaration" | "ScopeDeclaration"
 
 type Node<Type, Value, Tokens> = {
@@ -28,29 +28,15 @@ export type Declaration = Node<Declarations, {
     [any]: any
 }>
 
-export type TypeReference = Node<"TypeReference", {
-    Scope: string?,
-    Identifier: string,
-    Optional: boolean,
-
-    Reference: string,
-
-    Array: NumberRange?,
-    Range: NumberRange?,
-}, {
-    Identifier: Token,
-}>
-
 export type TypeDeclaration = Node<"TypeDeclaration", {
     Scope: string?,
     Identifier: string,
-    Optional: boolean,
-
-    Primitive: string,
-
-    Class: string?,
     Array: NumberRange?,
     Range: NumberRange?,
+    Optional: boolean,
+    
+    Class: string?,
+    Primitive: string,
 }, {
     Identifier: Token,
     Value: Token,
@@ -59,12 +45,11 @@ export type TypeDeclaration = Node<"TypeDeclaration", {
 export type MapDeclaration = Node<"MapDeclaration", {
     Scope: string?,
     Identifier: string,
+    Array: NumberRange?,
     Optional: boolean,
 
     Key: Declaration,
     Value: Declaration,
-
-    Array: NumberRange?,
 }, {
     Identifier: Token,
 }>
@@ -72,6 +57,7 @@ export type MapDeclaration = Node<"MapDeclaration", {
 export type EnumDeclaration = Node<"EnumDeclaration", {
     Scope: string?,
     Identifier: string,
+    Array: NumberRange?,
     Optional: boolean,
 
     Enums: {string},
@@ -82,6 +68,7 @@ export type EnumDeclaration = Node<"EnumDeclaration", {
 export type StructDeclaration = Node<"StructDeclaration", {
     Scope: string?,
     Identifier: string,
+    Array: NumberRange?,
     Optional: boolean,
 
     Fields: {Declaration},
@@ -92,10 +79,24 @@ export type StructDeclaration = Node<"StructDeclaration", {
 export type TupleDeclaration = Node<"TupleDeclaration", {
     Scope: string?,
     Identifier: string,
+    Array: NumberRange?,
     Optional: boolean,
+
     Values: {Declaration},
 }, {
     Identifier: Token
+}>
+
+export type ReferenceDeclaration = Node<"ReferenceDeclaration", {
+    Scope: string?,
+    Identifier: string,
+    Array: NumberRange?,
+    Range: NumberRange?,
+    Optional: boolean,
+
+    Reference: string,
+}, {
+    Identifier: Token,
 }>
 
 export type EventDeclaration = Node<"EventDeclaration", {
@@ -188,7 +189,7 @@ export type Parser = {
     ScopeDeclaration: (self: Parser, Identifier: Token) -> ScopeDeclaration,
 
     GetReference: (self: Parser, Reference: Token) -> Declaration,
-    GetTypeAttributes: (self: Parser, Primitive: Token?) -> (NumberRange?, NumberRange?),
+    GetAttributes: (self: Parser, Primitive: Token?) -> (NumberRange?, NumberRange?),
     GetDeclarationFromToken: (self: Parser, Token: Token, Identifier: Token) -> (Declaration, Token?),
 }
 
@@ -472,7 +473,14 @@ end
 function Parser.Declaration(self: Parser): Declaration
     local Keyword = self:Consume("Keyword").Value
     local Identifier = self:Consume("Identifier")
-    self:Consume("Assign")
+    
+    if 
+        Keyword == "map" 
+        or Keyword == "type" 
+        or Keyword == "enum" 
+    then
+        self:Consume("Assign")
+    end
 
     --> Handle duplicate declarations
     local Type = KeywordTypes[Keyword]
@@ -516,9 +524,9 @@ function Parser.Declaration(self: Parser): Declaration
         local Optional = self:Consume("Optional")
         if Declaration.Type == "TypeDeclaration" then
             local Primitive = (Declaration :: TypeDeclaration).Value.Primitive
-            if Primitive == "unknown" then
+            if not OptionalPrimitives[Primitive] then
                 Error.new(Error.AnalyzeInvalidOptionalType, self.Source, `Invalid optional type`)
-                    :Primary(Optional, `"unknown" cannot be optional`)
+                    :Primary(Optional, `"{Primitive}" cannot be optional`)
                 :Emit()
             end
         end
@@ -588,9 +596,7 @@ function Parser.TypeDeclaration(self: Parser, Identifier: Token): TypeDeclaratio
 
     --> Attempt to read type attributes [Primitive][Range][Array][Optional] [u8(0..1)[10]?]
     local Value = Declaration.Value
-    local Array, Range = self:GetTypeAttributes(Primitive)
-    Value.Array = Array
-    Value.Range = Range
+    Value.Array, Value.Range = self:GetAttributes(Primitive)
 
     return Declaration
 end
@@ -626,12 +632,15 @@ function Parser.EnumDeclaration(self: Parser, Identifier: Token): EnumDeclaratio
         end
     end
 
+    local Array = self:GetAttributes()
+
     return {
         Type = "EnumDeclaration",
         Value = {
             Scope = self.Scope,
             Identifier = Identifier.Value,
             Enums = Enums,
+            Array = Array,
             Optional = false
         },
         Tokens = {
@@ -657,7 +666,7 @@ function Parser.MapDeclaration(self: Parser, Identifier: Token): MapDeclaration
         Error.new(Error.AnalyzeNestedMap, self.Source, "Nested map")
             :Primary(Key, `Maps cannot have maps as keys or values`)
         :Emit()
-    elseif KeyDeclaration.Type == "TypeReference" then
+    elseif KeyDeclaration.Type == "ReferenceDeclaration" then
         local Reference = self:GetReference(Key)
         if Reference.Value.Optional then
             Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type")
@@ -671,7 +680,7 @@ function Parser.MapDeclaration(self: Parser, Identifier: Token): MapDeclaration
     end
 
     self:Consume("CloseSquareBrackets")
-    self:Consume("Assign")
+    self:Consume("FieldAssign")
 
     local Value = self:GetSafeLookAhead()
     local ValueDeclaration, ValueOptional = self:GetDeclarationFromToken(Value, Value)
@@ -686,7 +695,7 @@ function Parser.MapDeclaration(self: Parser, Identifier: Token): MapDeclaration
         Error.new(Error.AnalyzeNestedMap, self.Source, "Nested map")
             :Primary(Value, `Maps cannot have maps as keys or values`)
         :Emit()
-    elseif ValueDeclaration.Type == "TypeReference" then
+    elseif ValueDeclaration.Type == "ReferenceDeclaration" then
         local Reference = self:GetReference(Value)
         if Reference.Value.Optional then
             Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type")
@@ -701,7 +710,8 @@ function Parser.MapDeclaration(self: Parser, Identifier: Token): MapDeclaration
 
     self:Consume("CloseCurlyBrackets")
 
-    local Array = self:GetTypeAttributes()
+    local Array = self:GetAttributes()
+
     return {
         Type = "MapDeclaration",
         Value = {
@@ -736,7 +746,7 @@ function Parser.StructDeclaration(self: Parser, Identifier: Token): StructDeclar
         end
 
         local Key = self:Consume("Identifier")
-        self:Consume("Assign")
+        self:Consume("FieldAssign")
 
         local Duplicate = Keys[Key.Value]
         if Duplicate then
@@ -759,12 +769,15 @@ function Parser.StructDeclaration(self: Parser, Identifier: Token): StructDeclar
         self:Consume("Comma")
     end
 
+    local Array = self:GetAttributes()
+
     return {
         Type = "StructDeclaration",
         Value = {
             Scope = self.Scope,
             Identifier = Identifier.Value,
             Fields = Fields,
+            Array = Array,
             Optional = false,
         },
         Tokens = {
@@ -844,7 +857,7 @@ function Parser.EventDeclaration(self: Parser, Identifier: Token): EventDeclarat
         end
 
         local Value: any;
-        local Assign = self:Consume("Assign")
+        local Assign = self:Consume("FieldAssign")
         local Token = self:GetSafeLookAhead()
         
         if Entry.Key ~= "Data" then
@@ -921,7 +934,7 @@ function Parser.FunctionDeclaration(self: Parser, Identifier: Token): FunctionDe
         end
 
         local Value: unknown;
-        local Assign = self:Consume("Assign")
+        local Assign = self:Consume("FieldAssign")
         local Token = self:GetSafeLookAhead()
         
         if Entry.Key ~= "Data" and Entry.Key ~= "Return" then
@@ -1020,7 +1033,7 @@ function Parser.GetReference(self: Parser, Token: Token): Declaration
     return Reference.Declaration
 end
 
-function Parser.GetTypeAttributes(self: Parser, Primitive: Token?): (NumberRange?, NumberRange?)
+function Parser.GetAttributes(self: Parser, Primitive: Token?): (NumberRange?, NumberRange?)
     local Array, Range;
     for _, Expected in {"Range", "Array"} do
         local LookAhead = self.LookAhead
@@ -1059,7 +1072,15 @@ function Parser.GetDeclarationFromToken(self: Parser, Token: Token, Identifier: 
     local Declaration: Declaration;
     if Token.Type == "OpenCurlyBrackets" then
         local NextToken = self.Lexer:GetNextToken(true)
-        if NextToken and NextToken.Type == "OpenSquareBrackets" then
+        if not NextToken then
+            Error.new(Error.ParserExpectedExtraToken, self.Source, `Expected a token`)
+                :Primary(Identifier, `Expected a value to follow after assignment`)
+            :Emit()
+
+            error("Expected a token to follow!")
+        end
+
+        if NextToken.Type == "OpenSquareBrackets" then
             Declaration = self:MapDeclaration(Identifier)
         else
             Declaration = self:StructDeclaration(Identifier)
@@ -1071,10 +1092,10 @@ function Parser.GetDeclarationFromToken(self: Parser, Token: Token, Identifier: 
     elseif Token.Type == "Identifier" then
         self:Consume("Identifier")
         local Reference = self:GetReference(Token)
-        local Array, Range = self:GetTypeAttributes()
+        local Array, Range = self:GetAttributes()
 
         Declaration = {
-            Type = "TypeReference",
+            Type = "ReferenceDeclaration",
             Value = {
                 Scope = Reference.Value.Scope,
                 Identifier = Identifier.Value,
@@ -1103,10 +1124,11 @@ function Parser.GetDeclarationFromToken(self: Parser, Token: Token, Identifier: 
 
         if Token.Type == "Identifier" then
             local Type: TypeDeclaration = self:GetReference(Token) :: TypeDeclaration
-            if Type.Value.Primitive == "unknown" then
+            local Primitive = Type.Value.Primitive
+            if Type.Type == "TypeDeclaration" and not OptionalPrimitives[Primitive] then
                 Error.new(Error.AnalyzeInvalidOptionalType, self.Source, `Invalid optional type`)
                     :Secondary(Type.Tokens.Value, "Declared here")
-                    :Primary(Optional, `{Type.Value.Identifier} is of type "unknown", "unknown" cannot be optional`)
+                    :Primary(Optional, `{Type.Value.Identifier} is of type "{Primitive}", "{Primitive}" cannot be optional`)
                 :Emit()
             end
         end

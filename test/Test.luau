@@ -20,6 +20,13 @@ local function PrettyPrint(Color: stdio.Color, Message: string, DontReturn: bool
     stdio.write(`{stdio.color(Color)}{Message}{not DontReturn and "\n" or ""}{stdio.color("reset")}`)
 end
 
+PrettyPrint("blue", "Clearing Network folder...")
+if fs.isDir("../Network") then
+    fs.removeDir("../Network")
+    fs.writeDir("../Network")
+    OkPrint(`Cleared Network folder.`)
+end
+
 PrettyPrint("blue", "Compiling source files...")
 for _, File in Sources do
     if table.find(Arguments, "nocompile") then

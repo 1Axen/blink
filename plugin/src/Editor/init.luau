@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 
 local Table = require("../Table")
 local State = require("../State")
+local Utility = require("Utility")
 
 local Lexer = require("../../../src/Lexer")
 local Parser = require("../../../src/Parser")
@@ -35,7 +36,7 @@ local ICONS = {
     Primitive = "rbxassetid://16506695241"
 }
 
-local COLORS = {
+local THEME = {
     Text = Color3.fromHex("#FFFFFF"),
     Keyword = Color3.fromHex("#6796E6"),
     Primitive = Color3.fromHex("#4EC9B0"),
@@ -49,7 +50,12 @@ local COLORS = {
 
     Error = Color3.fromHex("#FF5050"),
 
-    Complete = Color3.fromHex("#04385f")
+    Complete = Color3.fromHex("#04385f"),
+
+    Line = {
+        Active = Color3.fromHex("FFFFFF"),
+        Inactive = Color3.fromHex("787878")
+    }
 }
 
 local SYMBOLS: {[string]: {string}} = {
@@ -115,6 +121,7 @@ local Errors: State.Class<{Error.Label}> = State.new({})
 
 local CursorTimer = 0
 local PreviousText = Input.Text
+local PreviousLine: TextLabel?;
 
 ---- Private Functions ----
 
@@ -136,7 +143,7 @@ local function ClearChildrenWhichAre(Parent: Instance, Class: string)
     end
 end
 
-local function DoLexerPass()
+local function Colorify()
     local Source = Input.Text
     local RichText = ""
 
@@ -167,16 +174,16 @@ local function DoLexerPass()
 
         if Type == "Keyword" then
             Keyword = Value
-            RichText ..= WrapColor(Value, COLORS.Keyword)
+            RichText ..= WrapColor(Value, THEME.Keyword)
         elseif Type == "Primitive" then
-            RichText ..= WrapColor(Value, COLORS.Primitive)
+            RichText ..= WrapColor(Value, THEME.Primitive)
         elseif Type == "Identifier" then
-            RichText ..= WrapColor(Value, IsField and COLORS.Text or COLORS.Identifier)
+            RichText ..= WrapColor(Value, IsField and THEME.Text or THEME.Identifier)
         elseif Type == "Array" or Type == "Range" then
             --> Exact size array/range
             local Single = string.match(Value, "%[(%d+)%]") or string.match(Value, "%((%d+)%)")
             if Single then
-                RichText ..= string.gsub(Value, Single, WrapColor(Single, COLORS.Number))
+                RichText ..= string.gsub(Value, Single, WrapColor(Single, THEME.Number))
                 continue
             end
 
@@ -184,7 +191,7 @@ local function DoLexerPass()
             local Lower = string.match(Value, "%[(%d+)") or string.match(Value, "%((%d+)") 
             local Upper = string.match(Value, "(%d+)%]") or string.match(Value, "(%d+)%)")
             if Lower and Upper then
-                RichText ..= `{string.sub(Value, 1, 1)}{WrapColor(Lower, COLORS.Number)}..{WrapColor(Upper, COLORS.Number)}{string.sub(Value, #Value, #Value)}`
+                RichText ..= `{string.sub(Value, 1, 1)}{WrapColor(Lower, THEME.Number)}..{WrapColor(Upper, THEME.Number)}{string.sub(Value, #Value, #Value)}`
                 continue
             end
 
@@ -194,17 +201,17 @@ local function DoLexerPass()
                 IsField = false
             end
 
-            RichText ..= WrapColor(Value, COLORS.Bracket)
+            RichText ..= WrapColor(Value, THEME.Bracket)
         elseif Type == "Class" then
-            RichText ..= `({WrapColor(string.sub(Value, 2, #Value - 1), COLORS.Class)})`
+            RichText ..= `({WrapColor(string.sub(Value, 2, #Value - 1), THEME.Class)})`
         elseif Type == "String" then
-            RichText ..= WrapColor(Value, COLORS.String)
+            RichText ..= WrapColor(Value, THEME.String)
         elseif Type == "Boolean" then
-            RichText ..= WrapColor(Value, COLORS.Boolean)
+            RichText ..= WrapColor(Value, THEME.Boolean)
         elseif Type == "Unknown" then
             --> Reset all state
             IsField = false
-            RichText ..= WrapColor(Value, COLORS.Error)
+            RichText ..= WrapColor(Value, THEME.Error)
         else
             RichText ..= Value
         end
@@ -218,6 +225,21 @@ local function DoLexerPass()
     end
 
     Display.Text = RichText
+end
+
+local function HighlightCurrentLine()
+    local Line = Utility.GetCurrentLine(Input.Text, Input.CursorPosition)
+    local Label: TextLabel? = LinesContainer:FindFirstChild(tostring(Line))
+    if not Label or Label == PreviousLine then
+        return
+    end
+
+    if PreviousLine then
+        PreviousLine.TextColor3 = THEME.Line.Inactive
+    end
+
+    PreviousLine = Label
+    Label.TextColor3 = THEME.Line.Active
 end
 
 --[[local function DoCompletionPass()
@@ -319,12 +341,21 @@ end
 
 --> State functions
 local function OnLinesChanged(Value: number)
+    --> Remove previous lines
+    PreviousLine = nil
     ClearChildrenWhichAre(LinesContainer, "TextLabel")
+
+    --> Insert new lines
     for Index = 1, Value do
         local Line = LineTemplate:Clone()
+        Line.Name = tostring(Index)
         Line.Text = tostring(Index)
+        Line.TextColor3 = THEME.Line.Inactive
         Line.Parent = LinesContainer
     end
+
+    --> Update highlighted line
+    HighlightCurrentLine()
 end
 
 local function OnScrollChanged(Value: number)
@@ -376,6 +407,9 @@ local function OnCursorPositionChanged()
     --> Update cursor size and position
     Cursor.Size = UDim2.fromOffset(2, TextSize)
     Cursor.Position = UDim2.fromOffset(TextBounds.X - 1, TextHeight * (#Slices - 1))
+
+    --> Update highlighted line
+    HighlightCurrentLine()
 
     --> Perform auto completion pass
     --[[DoCompletionPass()
@@ -473,19 +507,13 @@ local function OnSourceChanged()
 
     PreviousText = Text
 
-    --> Update line counter
-    local SourceLines = #string.split(Text, "\n")
-    if SourceLines ~= Lines:Get() then
-        Lines:Set(SourceLines)
-    end
-
     --> Run styling hooks
     local FinalText, FinalCursor = Text, Input.CursorPosition
     for Index, Hook in StylingHooks do
         FinalText, FinalCursor = Hook.OnSourceChanged(FinalText, FinalCursor, Gain)
     end
 
-    --> If a styling hook altered the final text then don't do a lexer pass as OnSourcChanged will be called again
+    --> If a styling hook altered the final text then don't do any additional work
     if FinalText ~= Text then
         Input.CursorPosition = -1
         Input.Text = FinalText
@@ -494,8 +522,14 @@ local function OnSourceChanged()
         return
     end
 
+    --> Update line counter
+    local Slices = string.split(Text, "\n")
+    if #Slices ~= Lines:Get() then
+        Lines:Set(#Slices)
+    end
+
     --> Perform lexer pass
-    DoLexerPass()
+    Colorify()
 end
 
 ---- Public Functions ----

@@ -93,9 +93,6 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 		local Array = Value.Array
 		local Class = Value.Class
 		local Primitive = Value.Primitive
-
-		local ReadVariable = (Array and "Item" or Variable)
-		local WriteVariable = (Array and `{Variable}[Index]` or Variable)
 		local IsVariableSize = (Range and Range.Max ~= Range.Min)
 
 		local function GenerateValidation(Block: Block, Variable: string)
@@ -123,20 +120,10 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 			end
 		end
 
-		if Array then
-			Read, Write = Structures.Array(Variable, Read, Write, Array)
-		end
-
-		GenerateValidation(Write, WriteVariable)
-		Prefab.Read(Array and `local {ReadVariable}` or Variable, Read, Range)
-		Prefab.Write(WriteVariable, Write, Range)
-		GenerateValidation(Read, ReadVariable)
-		
-		if Array then
-			Read:Line(`table.insert({Variable}, {ReadVariable})`)
-			Read:End()
-			Write:End()
-		end
+		GenerateValidation(Write, Variable)
+		Prefab.Read(Array and `local {Variable}` or Variable, Read, Range)
+		Prefab.Write(Variable, Write, Range)
+		GenerateValidation(Read, Variable)
 	end
 end
 
@@ -261,6 +248,9 @@ Structures.Array = function(Variable: string, Read: Block, Write: Block, Length:
 	--> Body
 	ReadArray = Read:Loop("Index = 1", "Length")
 	WriteArray = Write:Loop("Index = 1", IsVariableSize and `math.min(#{Variable}, {Upper})` or Upper)
+
+	ReadArray:Line(`local Item;`)
+	WriteArray:Line(`local Item = {Variable}[Index]`)
 
 	return ReadArray, WriteArray
 end

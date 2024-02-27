@@ -944,7 +944,7 @@ do
             end
             if KeyDeclaration.Type == 'MapDeclaration' then
                 Error.new(Error.AnalyzeNestedMap, self.Source, 'Nested map'):Primary(Key, `Maps cannot have maps as keys or values`):Emit()
-            elseif KeyDeclaration.Type == 'TypeReference' then
+            elseif KeyDeclaration.Type == 'ReferenceDeclaration' then
                 local Reference = self:GetReference(Key)
 
                 if Reference.Value.Optional then
@@ -965,7 +965,7 @@ do
             end
             if ValueDeclaration.Type == 'MapDeclaration' then
                 Error.new(Error.AnalyzeNestedMap, self.Source, 'Nested map'):Primary(Value, `Maps cannot have maps as keys or values`):Emit()
-            elseif ValueDeclaration.Type == 'TypeReference' then
+            elseif ValueDeclaration.Type == 'ReferenceDeclaration' then
                 local Reference = self:GetReference(Value)
 
                 if Reference.Value.Optional then
@@ -1329,7 +1329,7 @@ do
                 local Array, Range = self:GetTypeAttributes()
 
                 Declaration = {
-                    Type = 'TypeReference',
+                    Type = 'ReferenceDeclaration',
                     Value = {
                         Scope = Reference.Value.Scope,
                         Identifier = Identifier.Value,
@@ -2896,7 +2896,7 @@ do
                 Declarations.Struct(Declaration, Read, Write, Variable)
             elseif Declaration.Type == 'TupleDeclaration' then
                 Declarations.Tuple(Declaration, Read, Write)
-            elseif Declaration.Type == 'TypeReference' then
+            elseif Declaration.Type == 'ReferenceDeclaration' then
                 Declarations.Reference(Declaration, Read, Write, Variable)
             end
             if Optional then
@@ -2949,7 +2949,7 @@ do
                 end
 
                 Type ..= ' }'
-            elseif Declaration.Type == 'TypeReference' then
+            elseif Declaration.Type == 'ReferenceDeclaration' then
                 local Value = (Declaration).Value
                 local Reference = Value.Reference
                 local ReferenceScope = Value.Scope
