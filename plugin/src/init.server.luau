@@ -29,11 +29,11 @@ local TEMPLATE_FILE = {
     Name = "Template",
     Source = table.concat({
         "type Example = u8",
-        "event MyEvent = {",
-        "\tFrom = Server,",
-        "\tType = Reliable,",
-        "\tCall = SingleSync,",
-        "\tData = Example",
+        "event MyEvent {",
+        "\tFrom: Server,",
+        "\tType: Reliable,",
+        "\tCall: SingleSync,",
+        "\tData: Example",
         "}"
     }, "\n")
 }
@@ -359,12 +359,6 @@ local function OnSaveActivated()
 end
 
 local function OnExpandActivated()
-    if not WasOpened then
-        WasOpened = true
-        CreateTemplateFile()
-        LoadFiles()
-    end
-
     Expanded:Set(not Expanded:Get())
 end
 
@@ -375,6 +369,8 @@ end
 ---- Initialization ----
 
 Editor.Initialize()
+CreateTemplateFile()
+LoadFiles()
 
 ---- Connections ----
 

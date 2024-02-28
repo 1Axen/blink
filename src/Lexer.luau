@@ -21,20 +21,10 @@ export type Token = {
     End: number,
 }
 
-export type Lexer = {
-    Mode: Mode,
-    Size: number,
-    Source: string,
-    Cursor: number,
-
-    Initialize: (self: Lexer, Source: string) -> (),
-    GetNextToken: (self: Lexer, DontAdvanceCursor: boolean?) -> Token?,
-}
-
 export type Mode = "Parsing" | "Highlighting"
 
-local Primitives = Settings.Primtives
 local Keywords = Settings.Keywords
+local Primitives = Settings.Primtives
 
 local Booleans = {
     ["true"] = true,
@@ -87,6 +77,13 @@ local Matches = {
 local Lexer = {}
 Lexer.__index = Lexer
 
+export type Lexer = typeof(setmetatable({} :: {
+    Mode: Mode,
+    Size: number,
+    Source: string,
+    Cursor: number,
+}, Lexer))
+
 function Lexer.new(Mode: Mode?): Lexer
     return setmetatable({
         Size = 0,
@@ -102,12 +99,12 @@ function Lexer.Initialize(self: Lexer, Source: string)
     self.Cursor = 1
 end
 
-function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?): Token?
+function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: number?): Token?
     if self.Cursor > self.Size then
         return
     end
 
-    local Slice = string.sub(self.Source, self.Cursor)
+    local Slice = string.sub(self.Source, Position or self.Cursor)
     local IsHighlighting = (self.Mode == "Highlighting")
 
     local function Match(Pattern: string): (string?, number, number)
@@ -118,7 +115,7 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?): Token?
 
         local Matched = string.sub(Slice, Start, End)
 
-        Start = self.Cursor
+        Start = Position or self.Cursor
         return Matched, Start, math.min(Start + #Matched, self.Size)
     end
 
@@ -133,7 +130,7 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?): Token?
             continue
         end
 
-        if (DontAdvanceCursor ~= true or Type == "Whitespace") then
+        if (DontAdvanceCursor ~= true or (Type == "Whitespace" and IsHighlighting ~= true)) then
             self.Cursor += #Matched
         end
         
@@ -165,21 +162,22 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?): Token?
         Error.new(Error.LexerUnexpectedToken, self.Source, "Unexpected token")
             :Primary({Start = self.Cursor, End = self.Cursor}, `Unexpected token`)
         :Emit()
-    else
-        --> Attempt to recover the lexer
-        local Cursor = self.Cursor
-        local Symbol = string.sub(self.Source, Cursor, Cursor)
-        self.Cursor += 1
-
-        return {
-            Type = "Unknown",
-            Value = Symbol,
-            Start = Cursor,
-            End = Cursor,
-        }
     end
 
-    return
+    --> Attempt to recover the lexer
+    local Cursor = self.Cursor
+    local Symbol = string.sub(self.Source, Cursor, Cursor)
+
+    if DontAdvanceCursor ~= true then
+        self.Cursor += 1
+    end
+
+    return {
+        Type = "Unknown",
+        Value = Symbol,
+        Start = Cursor,
+        End = Cursor,
+    }
 end
 
 return Lexer

@@ -13,7 +13,7 @@ local RunService = game:GetService("RunService")
 
 local Table = require("../Table")
 local State = require("../State")
-local Utility = require("Utility")
+local Utility = require("./Utility")
 
 local Lexer = require("../../../src/Lexer")
 local Parser = require("../../../src/Parser")
@@ -82,6 +82,14 @@ local BRACKETS = {
     CloseSquareBrackets = true
 }
 
+local RICH_TEXT_ESCAPES: {[string]: string} = {
+    ["&"] = "&amp;",
+    ["<"] = "&lt;",
+    [">"] = "&gt;",
+    ["\""] = "&quot;",
+    ["\'"] = "&apos;",
+}
+
 local SCROLL_LINES = 2
 local CURSOR_BLINK_RATE = 0.5
 
@@ -132,6 +140,12 @@ local function ScrollTowards(Direction: number)
 end
 
 local function WrapColor(Text: string, Color: Color3): string
+    --> Escape rich text
+    for Symbol, Escape in RICH_TEXT_ESCAPES do
+        Text = string.gsub(Text, Symbol, Escape)
+    end
+
+    --> Append color tags
     return `<font color="#{Color:ToHex()}">{Text}</font>`
 end
 
@@ -140,6 +154,24 @@ local function ClearChildrenWhichAre(Parent: Instance, Class: string)
         if Child:IsA(Class) then
             Child:Destroy()
         end
+    end
+end
+
+local function GetNextToken(DontAdvanceCursor: boolean?): Lexer.Token?
+    local Success, Error, Token = pcall(function()
+        return nil, SourceLexer:GetNextToken(DontAdvanceCursor)
+    end)
+
+    if Success then
+        return Token
+    else
+        warn(`[BLINK]: Lexer encountered an exception, {Error}.`)
+        return {
+            Type = "Unknown",
+            Value = "\0",
+            Start = 1,
+            End = 1,
+        }
     end
 end
 
@@ -152,23 +184,9 @@ local function Colorify()
 
     --> Highlight state
     local Keyword = "none"
-    local IsField = false
-    --local IsAssigning = false
+    local Token = GetNextToken()
     
-    while true do
-        local Success, Error, Token = pcall(function()
-            return nil, SourceLexer:GetNextToken()
-        end)
-
-        if not Success then
-            warn(`Lexer error: {Error}`)
-            break
-        end
-
-        if not Token then
-            break
-        end
-
+    while Token do
         local Type: Lexer.Types = Token.Type
         local Value = Token.Value
 
@@ -178,29 +196,23 @@ local function Colorify()
         elseif Type == "Primitive" then
             RichText ..= WrapColor(Value, THEME.Primitive)
         elseif Type == "Identifier" then
+            local LookAhead = GetNextToken(true)
+            local IsField = (LookAhead and LookAhead.Type == "FieldAssign" and Keyword ~= "map")
             RichText ..= WrapColor(Value, IsField and THEME.Text or THEME.Identifier)
         elseif Type == "Array" or Type == "Range" then
             --> Exact size array/range
             local Single = string.match(Value, "%[(%d+)%]") or string.match(Value, "%((%d+)%)")
-            if Single then
-                RichText ..= string.gsub(Value, Single, WrapColor(Single, THEME.Number))
-                continue
-            end
-
-            --> Variable size array/range
             local Lower = string.match(Value, "%[(%d+)") or string.match(Value, "%((%d+)") 
             local Upper = string.match(Value, "(%d+)%]") or string.match(Value, "(%d+)%)")
-            if Lower and Upper then
+
+            if Single then
+                RichText ..= string.gsub(Value, Single, WrapColor(Single, THEME.Number))
+            elseif Lower and Upper then
                 RichText ..= `{string.sub(Value, 1, 1)}{WrapColor(Lower, THEME.Number)}..{WrapColor(Upper, THEME.Number)}{string.sub(Value, #Value, #Value)}`
-                continue
+            else
+                RichText ..= Value
             end
-
-            RichText ..= Value
         elseif BRACKETS[Type] then
-            if Type == "CloseCurlyBrackets" then
-                IsField = false
-            end
-
             RichText ..= WrapColor(Value, THEME.Bracket)
         elseif Type == "Class" then
             RichText ..= `({WrapColor(string.sub(Value, 2, #Value - 1), THEME.Class)})`
@@ -209,19 +221,12 @@ local function Colorify()
         elseif Type == "Boolean" then
             RichText ..= WrapColor(Value, THEME.Boolean)
         elseif Type == "Unknown" then
-            --> Reset all state
-            IsField = false
             RichText ..= WrapColor(Value, THEME.Error)
         else
             RichText ..= Value
         end
 
-        if Type == "Whitespace" then
-            continue
-        end
-
-        IsField = (Type == "Comma" or Type == "OpenCurlyBrackets") and FIELDS[Keyword]
-        --IsAssigning = (Type == "Assign") 
+        Token = GetNextToken()
     end
 
     Display.Text = RichText

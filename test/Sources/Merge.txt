@@ -3,7 +3,7 @@ option ServerOutput = "../Network/ServerMerge.luau"
 
 struct Example {
     Number: u8,
-    Field0: (One, Two, Three),
+    Field0: {One, Two, Three},
     Field1: CFrame,
     Field2: vector,
     Field3: Color3,

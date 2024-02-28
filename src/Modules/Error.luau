@@ -59,7 +59,7 @@ local Error = {
     ParserUnexpectedSymbol = 2004,
     ParserExpectedExtraToken = 2005,
     
-    AnalyzePrimitiveReferencesNonPrimitive = 3001,
+    AnalyzeReferenceInvalidType = 3001,
     AnalyzeInvalidOptionalType = 3002,
     AnalyzeNestedMap = 3003,
     AnalyzeDuplicateField = 3004,

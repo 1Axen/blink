@@ -137,8 +137,8 @@ function Declarations.Map(Declaration: Parser.MapDeclaration, Read: Blocks.Block
 	local Key = MapValue.Key
 	local Value = MapValue.Value
 
-	local KeyType = Generators.LuauType(Key)
-	local ValueType = Generators.LuauType(Value)
+	local KeyType = Generators.LuauType(Key :: Type)
+	local ValueType = Generators.LuauType(Value :: Type)
 
 	Read:Line(`{Variable} = \{\}`)
 	Write:Line("local Elements = 0")
@@ -181,28 +181,14 @@ end
 
 function Declarations.Reference(Declaration: Parser.ReferenceDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
     local Value = Declaration.Value
-	local Array = Value.Array
 	local Reference = Value.Reference
 	local ReferenceScope = Value.Scope
 
 	local ReadPath = GetTypesPath(Reference, ReferenceScope, false)
 	local WritePath = GetTypesPath(Reference, ReferenceScope, true)
 
-	local ReadVariable = (Array and "Item" or Variable)
-	local WriteVariable = (Array and `{Variable}[Index]` or Variable)
-
-	if Array then
-		Read, Write = Structures.Array(Variable, Read, Write, Array)
-	end
-
-	Read:Line(`{Array and `local {ReadVariable}` or ReadVariable} = {ReadPath}()`)
-	Write:Line(`{WritePath}({WriteVariable})`)
-
-	if Array then
-		Read:Line(`table.insert({Variable}, {ReadVariable})`)
-		Read:End()
-		Write:End()
-	end
+	Read:Line(`{Variable} = {ReadPath}()`)
+	Write:Line(`{WritePath}({Variable})`)
 end
 
 function Declarations.Event(Declaration: Parser.EventDeclaration)
@@ -222,7 +208,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 	local Connection = `Events.{Reliability}[{Index}]`
 
 	--> Data body
-	local _, Values, _, Arguments = Generators.LuauType(Value.Data, true)
+	local _, Values, _, Arguments = Generators.LuauType(Value.Data :: Type, true)
 	local Read, Write = Generators.Event(Value.Data :: Type, Index, Identifier)
 	UserTypes.PushMultiline(Read, 1, 0, false)
 	UserTypes.PushMultiline(Write, 1, 0, false)
@@ -408,8 +394,8 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 	local Connection = `Events.Reliable[{Index}]`
 
 	--> Data and return body
-	local DataTypes, DataValues, _, DataArguments = Generators.LuauType(Value.Data, true)
-	local ReturnTypes, ReturnValues, _, ReturnArguments = Generators.LuauType(Value.Return, true)
+	local DataTypes, DataValues, _, DataArguments = Generators.LuauType(Value.Data :: Type, true)
+	local ReturnTypes, ReturnValues, _, ReturnArguments = Generators.LuauType(Value.Return :: Type, true)
 
 	do
 		local Read, Write = Generators.Event(Value.Data :: Type, Index, DataIdentifier, "Data")
@@ -558,7 +544,7 @@ end
 
 --> Generator functions
 function Generators.Optional(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string): (Blocks.Block, Blocks.Block)
-	if Declaration.Type == "TypeDeclaration" and Declaration.Value.Primitive == "Instance" then
+	if Declaration.Type == "TypeDeclaration" and Declaration.Value.Primitive == "Instance" and Declaration.Value.Array == nil then
 		Read = Read:Compare("typeof(RecieveInstances[RecieveInstanceCursor])", "\"Instance\"", "Equals")
 	else
 		Types.u8.Write(`{Variable} ~= nil and 1 or 0`, Write)
@@ -588,19 +574,25 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 		Write:Comment(`{Variable}: {Value.Identifier}`)
 	end
 
-	--> Array
-	if Array then
-		Read, Write = Structures.Array(Variable, Read, Write, Array)
-	end
-
 	--> Instance
-	if IsInstance then
+	if IsInstance and Array == nil then
 		Read:Line("RecieveInstanceCursor += 1")
 	end
 
 	--> Optional
 	if Optional then
 		Read, Write = Generators.Optional(Declaration, Read, Write, Variable)
+	end
+
+	--> Array
+	if Array then
+		Read:Comment("START ARRAY")
+		Write:Comment("START ARRAY")
+		Read, Write = Structures.Array(Variable, Read, Write, Array)
+		
+		if IsInstance then
+			Read:Line("RecieveInstanceCursor += 1")
+		end
 	end
 
 	local ActualVariable = Array and "Item" or Variable
@@ -620,8 +612,10 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 
 	if Array then
 		Read:Line(`table.insert({Variable}, Item)`)
-		Read:End()
-		Write:End()
+		Read = Read:End()
+		Write = Write:End()
+		Read:Comment("END ARRAY")
+		Write:Comment("END ARRAY")
 	end
 
 	if Optional then
@@ -671,12 +665,8 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 		local Reference = Value.Reference
 		local ReferenceScope = Value.Scope
 		local Prefix = ReferenceScope and `{ReferenceScope}_` or ""
-		
-		Type = `{Prefix}{Reference}` 
 
-		if Value.Array then
-			Type = `\{{Type}\}`
-		end
+		Type = `{Prefix}{Reference}` 
 	elseif Declaration.Type == "TupleDeclaration" then
 		local Value = (Declaration :: Parser.TupleDeclaration).Value
 		local TupleValues = Value.Values
