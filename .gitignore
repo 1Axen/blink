@@ -10,3 +10,4 @@
 /Blink
 test/Sources/Game.txt
 sourcemap.json
+/plugin/bundle/*
