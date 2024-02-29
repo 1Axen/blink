@@ -178,6 +178,10 @@ local TYPE_KEYWORDS = {
     type = "Primitive"
 }
 
+local RESERVED = {
+    StepReplication = true
+}
+
 local PRIMITIVES = Settings.Primtives
 local ARRAY_BOUNDS = NumberRange.new(0, (PRIMITIVES.u16.Bounds :: NumberRange).Max)
 
@@ -290,6 +294,12 @@ end
 function Parser.SetReference(self: Parser, Type: Type, Identifier: Token, Declaration: Declaration)
     local Name = `{self.Scope and `{self.Scope}_` or ""}{Identifier.Value}`
     local ReferenceHashMap = (Type == "Type" and self.Types or self.Events)
+    if Type ~= "Type" and RESERVED[Name] then
+        Error.new(Error.AnalyzeReservedIdentifier, self.Source, `Reserved identifier`)
+            :Primary(Identifier, `"{Name}" is reserved and cannot be used as an identifier.`)
+            :Emit()
+    end
+
     ReferenceHashMap[Name] = {
         Identifier = Identifier,
         Declaration = Declaration

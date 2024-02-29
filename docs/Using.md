@@ -9,6 +9,13 @@ Options go at the top of a source file and are used to configure the output of B
 ```
 option [OPTION] = [VALUE]
 ```
+## `Casing`
+Default: `Pascal`  
+Options: `Pascal`, `Camel`, `Snake`  
+Controls the casing with which event/function methods generate.
+```
+option Casing = Camel
+```
 ## `ServerOutput`, `ClientOutput`, `TypesOutput`
 These options allow you to specify where Blink will generate files.
 ```
@@ -116,12 +123,10 @@ event Example {
 ```
 ## Events
 You can define events using the `event` keyword  
-Events have 4 fields which must be defined in the **correct order**: 
-
-`From`, `Type`, `Data`  
+Events have 4 fields:  
 `From` - `Client` or `Server`  
 `Type` - `Reliable` or `Unreliable`  
-`Call` - `SingleSync` or `SingleAsync`
+`Call` - `SingleSync` or `SingleAsync`  
 `Data` - Can hold either a type definition or a reference to an already defined type  
 ```
 event Simple {
@@ -149,10 +154,9 @@ event Complex {
 ```
 ## Functions
 You can define functions using the `function` keyword  
-Functions have 3 fields which must be defined in the **correct order**:
-
-`Yield` - `Coroutine` or `Future` or `Promise`  
-**Deifnes what library will be used to handle invocations**  
+Functions have 3 fields:  
+`Yield` - `Coroutine` or `Future` or `Promise`    
+Deifnes what library will be used to handle invocations  
 `Data` - Can hold either a type definition or a reference to an already defined type  
 `Return` - Can hold either a type definition or a reference to an already defined type 
 ```
@@ -216,22 +220,6 @@ type Number = u8
     |
 002 |     Field = Number
     |             ^^^^^^ Unknown type referenced.
-```
-## Events order
-Event fields must be in the exact order specified in the Events section.
-```
-event Example {
-    Type: Reliable,
-    From: Server,
-    Call: SingleSync,
-    Data: u8
-}
-```
-```
-[ERROR]
-    |
-002 |     Type = Reliable,
-    |     ^^^^ Unexpected key: Type, expected: "From".
 ```
 ## Keywords
 You cannot use any keywords as "Identifiers".

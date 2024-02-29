@@ -40,10 +40,10 @@ struct MapStruct {
 }
 
 event Unknown {
-    From: Server,
     Type: Reliable,
-    Call: SingleSync,
+    From: Server,
     Data: unknown
+    Call: SingleSync,
 }
 
 event MapEvent {
