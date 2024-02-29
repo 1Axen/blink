@@ -18,9 +18,10 @@ local function StepReplication()
     buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)
     Reliable:FireServer(Buffer, SendInstances)
 
+    SendSize = 64
     SendCursor = 0
     SendOffset = 0
-    buffer.fill(SendBuffer, 0, 0)
+    SendBuffer = buffer.create(64)
     table.clear(SendInstances)
 end
 ]]

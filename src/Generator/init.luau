@@ -6,6 +6,7 @@ local Blocks = require("./Blocks")
 local Parser = require("../Parser")
 local Builder = require("../Modules/Builder")
 local Prefabs = require("./Prefabs")
+local Settings = require("../Settings")
 
 local Sources = {
 	Base = require("../Templates/Base"),
@@ -45,7 +46,9 @@ local task = require("@lune/task")
 local game = _G.%s.game
 ]]
 
-type Type = Parser.TypeDeclaration | Parser.EnumDeclaration | Parser.MapDeclaration | Parser.StructDeclaration | Parser.TupleDeclaration | Parser.ReferenceDeclaration
+local PRIMITIVES = Settings.Primtives
+
+type Type = Parser.TypeDeclaration
 
 local Scope: string?
 local Context: string;
@@ -89,16 +92,16 @@ end
 
 --> Declaration functions
 
-function Declarations.Primitive(Declaration: Parser.TypeDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
-	local Value = Declaration.Value
-	local Primitive = Value.Primitive
+function Declarations.Primitive(Declaration: Parser.PrimitiveDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
+	local Tokens = Declaration.Tokens
+	local Primitive = Tokens.Primitive.Value
     local Generator = Primitives[Primitive]
     Generator.Generate(Declaration, Variable, Read, Write)
 end
 
 function Declarations.Enum(Declaration: Parser.EnumDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local Value = Declaration.Value
-	local Enums = Value.Enums
+	local Enums = Value.Values
 	local Literal = GenerateEnumLiterals(Enums)
 	Literal = string.gsub(Literal, "|", "or")
 
@@ -142,7 +145,6 @@ function Declarations.Map(Declaration: Parser.MapDeclaration, Read: Blocks.Block
 
 	Read:Line(`{Variable} = \{\}`)
 	Write:Line("local Elements = 0")
-	Write:Line("local Position = Allocate(2)")
 	Types.u16.Read(`local Elements`, Read)
 
 	local ReadLoop = Read:Loop("_ = 1", "Elements")
@@ -157,14 +159,14 @@ function Declarations.Map(Declaration: Parser.MapDeclaration, Read: Blocks.Block
 	WriteLoop:End()
 	ReadLoop:End()
 
-	Write:Line("buffer.writeu16(SendBuffer, Position, Elements)")
+	Write:Line(`buffer.writeu16(SendBuffer, {Write:Allocate(2)}, Elements)`)
 end
 
 function Declarations.Struct(Declaration: Parser.StructDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local Value = Declaration.Value
 	Read:Line(`{Variable} = \{\} :: any`)
 
-	for _, Field in Value.Fields do
+	for _, Field in Value.Values do
 		local FieldValue = Field.Value
 		local Identifier = FieldValue.Identifier
 		local FieldVariable = `{Variable}.{Identifier}`
@@ -181,11 +183,11 @@ end
 
 function Declarations.Reference(Declaration: Parser.ReferenceDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
     local Value = Declaration.Value
-	local Reference = Value.Reference
-	local ReferenceScope = Value.Scope
+	local Scope = Value.Scope
+	local Identifier = Value.Declaration.Value.Identifier
 
-	local ReadPath = GetTypesPath(Reference, ReferenceScope, false)
-	local WritePath = GetTypesPath(Reference, ReferenceScope, true)
+	local ReadPath = GetTypesPath(Identifier, Scope, false)
+	local WritePath = GetTypesPath(Identifier, Scope, true)
 
 	Read:Line(`{Variable} = {ReadPath}()`)
 	Write:Line(`{WritePath}({Variable})`)
@@ -543,8 +545,12 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 end
 
 --> Generator functions
-function Generators.Optional(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string): (Blocks.Block, Blocks.Block)
-	if Declaration.Type == "TypeDeclaration" and Declaration.Value.Primitive == "Instance" and Declaration.Value.Array == nil then
+function Generators.Optional(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string, Default: boolean?): (Blocks.Block, Blocks.Block)
+	if 
+		Declaration.Type == "Primitive" 
+		and Declaration.Tokens.Primitive.Value == "Instance" 
+		and Default ~= true 
+	then
 		Read = Read:Compare("typeof(RecieveInstances[RecieveInstanceCursor])", "\"Instance\"", "Equals")
 	else
 		Types.u8.Write(`{Variable} ~= nil and 1 or 0`, Write)
@@ -555,15 +561,18 @@ function Generators.Optional(Declaration: Type, Read: Blocks.Block, Write: Block
 	return Read, Write
 end
 
-function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string?)
+function Generators.UserType(Declaration: Parser.TypeDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string?)
 	local Value = Declaration.Value
 	local Array = Value.Array
 	local Optional = Value.Optional
-	local Variable = Variable or "Value"
 	local IsInstance, IsUnknown;
 
-	if Declaration.Type == "TypeDeclaration" then
-		local Primitive: string = (Value :: any).Primitive
+	local Variable = Variable or "Value"
+	local ActualVariable = Array and "Item" or Variable
+
+	if Declaration.Type == "Primitive" then
+		local Tokens = (Declaration :: Parser.PrimitiveDeclaration).Tokens
+		local Primitive = Tokens.Primitive.Value
 		IsUnknown = (Primitive == "unknown")
 		IsInstance = (Primitive == "Instance")
 		Optional = if IsUnknown then true else Optional
@@ -579,34 +588,37 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 		Read:Line("RecieveInstanceCursor += 1")
 	end
 
-	--> Optional
-	if Optional then
-		Read, Write = Generators.Optional(Declaration, Read, Write, Variable)
-	end
-
 	--> Array
 	if Array then
+		if Array.Optional then
+			Read, Write = Generators.Optional(Declaration, Read, Write, Variable, true)
+		end
+
 		Read:Comment("START ARRAY")
 		Write:Comment("START ARRAY")
-		Read, Write = Structures.Array(Variable, Read, Write, Array)
+		Read, Write = Structures.Array(Variable, Read, Write, Array.Bounds)
 		
 		if IsInstance then
 			Read:Line("RecieveInstanceCursor += 1")
 		end
 	end
 
-	local ActualVariable = Array and "Item" or Variable
-	if Declaration.Type == "TypeDeclaration" then
+	--> Optional
+	if Optional then
+		Read, Write = Generators.Optional(Declaration, Read, Write, ActualVariable)
+	end
+
+	if Declaration.Type == "Primitive" then
         Declarations.Primitive(Declaration, Read, Write, ActualVariable)
-	elseif Declaration.Type == "EnumDeclaration" then
+	elseif Declaration.Type == "Enum" then
 		Declarations.Enum(Declaration, Read, Write, ActualVariable)
-	elseif Declaration.Type == "MapDeclaration" then
+	elseif Declaration.Type == "Map" then
 		Declarations.Map(Declaration, Read, Write, ActualVariable)
-	elseif Declaration.Type == "StructDeclaration" then
+	elseif Declaration.Type == "Struct" then
 		Declarations.Struct(Declaration, Read, Write, ActualVariable)
-	elseif Declaration.Type == "TupleDeclaration" then
+	elseif Declaration.Type == "Tuple" then
 		Declarations.Tuple(Declaration, Read, Write)
-	elseif Declaration.Type == "ReferenceDeclaration" then
+	elseif Declaration.Type == "Reference" then
 		Declarations.Reference(Declaration, Read, Write, ActualVariable)
     end
 
@@ -616,6 +628,11 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 		Write = Write:End()
 		Read:Comment("END ARRAY")
 		Write:Comment("END ARRAY")
+
+		if Array.Optional then
+			Read = Read:End()
+			Write = Write:End()
+		end
 	end
 
 	if Optional then
@@ -626,55 +643,55 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 	end
 end
 
-function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (string, string, string, string)
+function Generators.LuauType(Declaration: Parser.TypeDeclaration, UseTypeAsValue: boolean?): (string, string, string, string)
 	local Type = ""
 	local Values = ""
 	local Export = GetExportName(Declaration.Value.Identifier)
 	local Returns = "Value"
 
-	if Declaration.Type == "TypeDeclaration" then
-		local Value = (Declaration :: Parser.TypeDeclaration).Value
-		local Primitive = Primitives[Value.Primitive]
+	if Declaration.Type == "Primitive" then
+		local Tokens = (Declaration :: Parser.PrimitiveDeclaration).Tokens
+		local Primitive = Primitives[Tokens.Primitive.Value]
 		if type(Primitive.Type) == "function" then
 			Type = Primitive.Type(Declaration :: Parser.TypeDeclaration)
 		else
 			Type = Primitive.Type
 		end
-	elseif Declaration.Type == "EnumDeclaration" then
+	elseif Declaration.Type == "Enum" then
 		local Value = (Declaration :: Parser.EnumDeclaration).Value
-		Type = GenerateEnumLiterals(Value.Enums)
-	elseif Declaration.Type == "MapDeclaration" then
+		Type = GenerateEnumLiterals(Value.Values)
+	elseif Declaration.Type == "Map" then
 		local MapValue = (Declaration :: Parser.MapDeclaration).Value
-		local Key = Generators.LuauType(MapValue.Key :: Type)
-		local Value = Generators.LuauType(MapValue.Value :: Type)
+		local Key = Generators.LuauType(MapValue.Key)
+		local Value = Generators.LuauType(MapValue.Value)
 		Type = `\{[{Key}]: {Value}\}`
-	elseif Declaration.Type == "StructDeclaration" then
+	elseif Declaration.Type == "Struct" then
 		local Value = Declaration.Value
 		Type = "{ "
 
-		for _, Field in Value.Fields do
+		for _, Field in Value.Values do
 			local FieldValue = Field.Value
 			local Identifier = FieldValue.Identifier
-			local FieldType = Generators.LuauType(Field :: Type)
+			local FieldType = Generators.LuauType(Field)
 			Type ..= `{Identifier}: {FieldType}, `
 		end
 
 		Type ..= " }"
-	elseif Declaration.Type == "ReferenceDeclaration" then
+	elseif Declaration.Type == "Reference" then
 		local Value = (Declaration :: Parser.ReferenceDeclaration).Value
-		local Reference = Value.Reference
+		local Reference = Value.Declaration.Value.Identifier
 		local ReferenceScope = Value.Scope
 		local Prefix = ReferenceScope and `{ReferenceScope}_` or ""
 
 		Type = `{Prefix}{Reference}` 
-	elseif Declaration.Type == "TupleDeclaration" then
+	elseif Declaration.Type == "Tuple" then
 		local Value = (Declaration :: Parser.TupleDeclaration).Value
 		local TupleValues = Value.Values
 		Returns = ""
 
 		for Index, TupleValue in TupleValues do
 			local Variable = `Value{Index}`
-			local ValueType = Generators.LuauType(TupleValue :: Type)
+			local ValueType = Generators.LuauType(TupleValue)
 			local Seperator = Index < #TupleValues and ", " or ""
 			Type ..= `{ValueType}{Seperator}`
 			Values ..= `{Variable}: {ValueType}{Seperator}`
@@ -682,16 +699,22 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 		end
 	end
 
-	if Declaration.Value.Array then
+	local Value = Declaration.Value
+	local Array = Value.Array
+
+	if Value.Optional then
+		Type = `({Type})?`
+	end
+
+	if Array then
 		Type = `\{{Type}\}`
+		if Array.Optional then
+			Type = `({Type})?`
+		end
 	end
 
 	--> Generalized type generation, works for everything except tuples
-	if Declaration.Type ~= "TupleDeclaration" then
-		if Declaration.Value.Optional then
-			Type = `({Type})?`
-		end
-
+	if Declaration.Type ~= "Tuple" then
 		Values = `Value: {UseTypeAsValue and Type or Export}`
 	end
 
@@ -748,28 +771,28 @@ function Generators.Scope(Declaration: Parser.ScopeDeclaration)
 	Scope = Identifier
 	Return.Push(`{Identifier} = \{`, 1, 1)
 	UserTypes.PushFront(`Types.{Identifier} = \{\}`, 2)
-	Generators.AbstractSyntaxTree(Value.Declarations)
+	Generators.AbstractSyntaxTree(Value.Values)
 	Return.Push(`},`, 1, 1)
 	Scope = nil
 end
 
-function Generators.AbstractSyntaxTree(Value: { Parser.Declaration })
-	for Index, Declaration in Value do
+function Generators.AbstractSyntaxTree(Tree: {Parser.Declaration})
+	for Index, Declaration in Tree do
 		if
-			Declaration.Type == "TypeDeclaration"
-			or Declaration.Type == "EnumDeclaration"
-			or Declaration.Type == "StructDeclaration"
-			or Declaration.Type == "MapDeclaration"
+			Declaration.Type == "Primitive"
+			or Declaration.Type == "Enum"
+			or Declaration.Type == "Struct"
+			or Declaration.Type == "Map"
 		then
-			local Export, Read, Write = Generators.Type(Declaration :: Type)
+			local Export, Read, Write = Generators.Type(Declaration :: any)
 			UserTypes.PushMultiline(Read, 1, 0, false)
 			UserTypes.PushMultiline(Write, 1, 0, false)
 			LuauTypes.PushMultiline(Export, 0, 0, false)
-		elseif Declaration.Type == "ScopeDeclaration" then
+		elseif Declaration.Type == "Scope" then
 			Generators.Scope(Declaration :: Parser.ScopeDeclaration)
-		elseif Declaration.Type == "EventDeclaration" then
+		elseif Declaration.Type == "Event" then
 			Declarations.Event(Declaration :: Parser.EventDeclaration)
-		elseif Declaration.Type == "FunctionDeclaration" then
+		elseif Declaration.Type == "Function" then
 			Declarations.Function(Declaration :: Parser.FunctionDeclaration)
 		end
 	end
@@ -791,12 +814,12 @@ function Generator.Reset()
 	Channels.Unreliable.Listening = false
 end
 
-function Generator.Generate(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Body, UserOptions: Parser.Options): string
+function Generator.Generate(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Body): string
     local Imports = Builder.new()
 	
 	Generator.Reset()
 	Context = FileContext
-	Options = UserOptions
+	Options = AbstractSyntaxTree.Value.Options
 
 	--> Setup remote events
 	local Signal = Context == "Client" and "OnClientEvent" or "OnServerEvent"
@@ -814,19 +837,19 @@ function Generator.Generate(FileContext: "Client" | "Server", AbstractSyntaxTree
 	Types.u8.Read("local Index", Unreliables)
 
 	--> Import async libraries
-	if UserOptions.FutureLibrary then
-		Imports.Push(`local Future = require({UserOptions.FutureLibrary})`)
+	if Options.FutureLibrary then
+		Imports.Push(`local Future = require({Options.FutureLibrary})`)
 	end
 
-	if UserOptions.PromiseLibrary then
-		Imports.Push(`local Promise = require({UserOptions.PromiseLibrary})`)
+	if Options.PromiseLibrary then
+		Imports.Push(`local Promise = require({Options.PromiseLibrary})`)
 	end
 
 	--> Replication
 	local Replication = Builder.new()
 	Return.Push("StepReplication = StepReplication,", 1, 1)
 
-	if not UserOptions.ManualReplication then
+	if not Options.ManualReplication then
 		if Context == "Server" then
 			Replication.Push("RunService.Heartbeat:Connect(StepReplication)")
 		elseif Context == "Client" then
@@ -843,7 +866,7 @@ function Generator.Generate(FileContext: "Client" | "Server", AbstractSyntaxTree
 	end
 
 	--> Parse declarations
-	Generators.AbstractSyntaxTree(AbstractSyntaxTree.Value)
+	Generators.AbstractSyntaxTree(AbstractSyntaxTree.Value.Declarations)
 
 	--> Generate context source
 	local Source = Sources[Context]

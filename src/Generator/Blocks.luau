@@ -22,11 +22,10 @@ export type Block = typeof(setmetatable({} :: {
     Allocations: number,
 }, Block))
 
-function Block.new<Parent>(Parent: Block?): Block
+function Block.new<Parent>(Parent: Block?, Unique: string?): Block
     local Indent = (Parent and Parent.Indent + 1 or 1)
-    local Unique = `BLOCK_START`
     return setmetatable({
-        Unique = Unique,
+        Unique = Unique or `BLOCK_START`,
         Parent = Parent,
         Indent = Indent,
         Content = "",
@@ -100,7 +99,7 @@ end
 
 function Block.Loop(self: Block, Counter: string, Length: string): Block
     self:Line(`for {Counter}, {Length} do`)
-    return Block.new(self)
+    return Block.new(self, "ARRAY_START")
 end
 
 function Block.While(self: Block, Condition: string): Block

@@ -39,8 +39,9 @@ local function StepReplication()
         buffer.copy(Buffer, 0, Send.Buffer, 0, Send.Cursor)
         Reliable:FireClient(Player, Buffer, Send.Instances)
 
+        Send.Size = 64
         Send.Cursor = 0
-        buffer.fill(Send.Buffer, 0, 0)
+        Send.Buffer = buffer.create(64)
         table.clear(Send.Instances)
     end
 end

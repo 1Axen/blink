@@ -9,7 +9,7 @@ export type Types =
     | "String" | "Boolean" | "Number"   --> Literals
     | "Array" | "Range" | "Optional" | "Class"    --> Attributes
     | "Assign" | "FieldAssign" | "Keyword" | "Primitive" | "Identifier" --> Reserved
-    | "Whitespace" | "Unknown" 
+    | "Whitespace" | "Unknown" | "EndOfFile"
 
 export type Keywords = "type" | "enum" | "struct" | "event" | "function"
 
@@ -45,6 +45,7 @@ local Matches = {
     --> Attribute patterns
     {"^?", "Optional"},
     {`^%(%a+%)`, "Class"},
+    {`^%[]`, "Array"},
     {`^%({Number}%)`, "Range"},
     {`^%({Number}..{Number}%)`, "Range"},
     {`^%[{Number}]`, "Array"},
@@ -99,9 +100,14 @@ function Lexer.Initialize(self: Lexer, Source: string)
     self.Cursor = 1
 end
 
-function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: number?): Token?
+function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: number?): Token
     if self.Cursor > self.Size then
-        return
+        return {
+            Type = "EndOfFile",
+            Value = "",
+            Start = #self.Source,
+            End = #self.Source
+        }
     end
 
     local Slice = string.sub(self.Source, Position or self.Cursor)

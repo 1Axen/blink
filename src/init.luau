@@ -37,20 +37,23 @@ local Source = fs.readFile(SourcePath)
 stdio.write(stdio.color("blue"))
 print("Parsing source into AST...")
 local ParseStart = os.clock()
-local AbstractSyntaxTree, Options = SourceParser:Parse(Source)
+local AbstractSyntaxTree = SourceParser:Parse(Source)
 local ParseTime = (os.clock() - ParseStart)
 
 if table.find(Arguments, "ast") then
-	print(AbstractSyntaxTree.Value[2])
+	print(AbstractSyntaxTree.Value.Options)
+	print(AbstractSyntaxTree.Value.Declarations)
+	return
 end
 
+local Options = AbstractSyntaxTree.Value.Options
 assert(Options.ClientOutput, "A client output path must be defined.")
 assert(Options.ServerOutput, "A server output path must be defined.")
 
 print("Generating output files...")
 local GenerateStart = os.clock()
-local ServerSource = Generator.Generate("Server", AbstractSyntaxTree, Options)
-local ClientSource = Generator.Generate("Client", AbstractSyntaxTree, Options)
+local ServerSource = Generator.Generate("Server", AbstractSyntaxTree)
+local ClientSource = Generator.Generate("Client", AbstractSyntaxTree)
 
 local TypesSource: string?;
 if Options.TypesOutput then

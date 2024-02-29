@@ -3,7 +3,6 @@
 
 local Blocks = require("./Blocks")
 local Parser = require("../Parser")
-local Builder = require("../Modules/Builder")
 
 type Block = Blocks.Block
 type Writer = (Value: string, Block: Block, Range: NumberRange?) -> ()
@@ -121,7 +120,7 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 		end
 
 		GenerateValidation(Write, Variable)
-		Prefab.Read(Array and `local {Variable}` or Variable, Read, Range)
+		Prefab.Read(Variable, Read, Range)
 		Prefab.Write(Variable, Write, Range)
 		GenerateValidation(Read, Variable)
 	end
@@ -223,9 +222,9 @@ Primitives.f16 = {
 }
 
 --> Structures
-Structures.Array = function(Variable: string, Read: Block, Write: Block, Length: NumberRange): (Block, Block)
-	local Lower = Length.Min
-	local Upper = Length.Max
+Structures.Array = function(Variable: string, Read: Block, Write: Block, Bounds: NumberRange): (Block, Block)
+	local Lower = Bounds.Min
+	local Upper = Bounds.Max
 	local ReadArray, WriteArray;
 
 	local IsVariableSize = (Lower ~= Upper)
@@ -247,7 +246,7 @@ Structures.Array = function(Variable: string, Read: Block, Write: Block, Length:
 
 	--> Body
 	ReadArray = Read:Loop("Index = 1", "Length")
-	WriteArray = Write:Loop("Index = 1", IsVariableSize and `math.min(#{Variable}, {Upper})` or Upper)
+	WriteArray = Write:Loop("Index = 1", IsVariableSize and `#{Variable}` or Upper)
 
 	ReadArray:Line(`local Item;`)
 	WriteArray:Line(`local Item = {Variable}[Index]`)
