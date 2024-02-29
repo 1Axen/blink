@@ -1,6 +1,6 @@
-option TypesOutput = "../Network/TypesConflict.luau"
-option ClientOutput = "../Network/ClientConflict.luau"
-option ServerOutput = "../Network/ServerConflict.luau"
+option TypesOutput = "../Invalid/TypesConflict.luau"
+option ClientOutput = "../Invalid/ClientConflict.luau"
+option ServerOutput = "../Invalid/ServerConflict.luau"
 
 type Name = u8?
 type Variable = unknown

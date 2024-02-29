@@ -1,6 +1,7 @@
 --!native
 --!optimize 2
 
+---- Imports ----
 local fs = require("@lune/fs")
 local stdio = require("@lune/stdio")
 local process = require("@lune/process")
@@ -8,6 +9,7 @@ local process = require("@lune/process")
 local Parser = require("./Parser")
 local Generator = require("./Generator/init.luau")
 
+---- Functions -----
 local function FormatTime(Time: number): string
 	if Time < 1E-6 then
 		return `{Time * 1E+9} ns`
@@ -20,7 +22,22 @@ local function FormatTime(Time: number): string
 	end
 end
 
-local SourceParser = Parser.new()
+local function CreateDirIfNotFound(path: string)
+    local dir = path:match("(.-)%/[^%/]*$") 
+    if fs.isDir(dir) then
+       return   
+    end
+
+	local Result = stdio.prompt("confirm", `Directory {dir} doesn't exist, create directory?`)
+	if Result then
+		fs.writeDir(dir)
+		return
+	end
+
+	error("User refused prompt to create directory")
+end
+
+---- Constants ----
 
 local Arguments = process.args
 if #Arguments < 1 then
@@ -28,6 +45,9 @@ if #Arguments < 1 then
 end
 
 local SourcePath = Arguments[1]
+local SourceParser = Parser.new()
+
+---- Main ----
 
 print(`Blink {_G.VERSION or "DEBUG"}`)
 stdio.write(stdio.color("cyan"))
@@ -49,6 +69,9 @@ end
 local Options = AbstractSyntaxTree.Value.Options
 assert(Options.ClientOutput, "A client output path must be defined.")
 assert(Options.ServerOutput, "A server output path must be defined.")
+
+CreateDirIfNotFound(Options.ClientOutput)
+CreateDirIfNotFound(Options.ServerOutput)
 
 print("Generating output files...")
 local GenerateStart = os.clock()
