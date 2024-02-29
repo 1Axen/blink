@@ -517,7 +517,8 @@ end
 function Parser.GetOptionFromToken(self: Parser, Token: Token, Structure: {EventOption}): EventOption
     local Value = Token.Value
     for Index, Option in Structure do
-        if Option.Key == Value then
+        local Key = Option.Key
+        if Key == Value or string.lower(Key) == Value then
             return Option
         end
     end
