@@ -8,10 +8,35 @@ local NumberRange = {
     end
 }
 
+export type Case = "Camel" | "Snake" | "Pascal"
+export type Cases = {
+    Fire: string,
+    FireAll: string,
+    FireList: string,
+    FireExcept: string,
+    On: string,
+    Invoke: string,
+}
+
 export type Primitive = {
     Bounds: NumberRange?,
     AllowsRange: boolean,
     AllowsOptional: boolean,
+}
+
+local Indexes = {
+    Pascal = 1,
+    Camel = 2,
+    Snake = 3
+}
+
+local Cases = {
+    On = {"On", "on", "on"},
+    Invoke = {"Invoke", "invoke", "invoke"},
+    Fire = {"Fire", "fire", "fire"},
+    FireAll = {"FireAll", "fireAll", "fire_all"},
+    FireList = {"FireList", "fireList", "fire_list"},
+    FireExcept = {"FireExcept", "fireExcept", "fire_except"},
 }
 
 local Primitives: {[string]: Primitive} = {
@@ -110,5 +135,17 @@ return {
         option = true,
     },
 
-    Primtives = Primitives
+    Primtives = Primitives,
+    GetCasing = function(Case: Case): Cases
+        local Index = Indexes[Case]
+        if not Index then
+            error(`Unknown casing "{Case}", expectd one of "Pascal" or "Camel" or "Snake"`)
+        end
+
+        local Casing: any = {}
+        for Key, Options in Cases do
+            Casing[Key] = Options[Index]
+        end
+        return Casing
+    end
 }

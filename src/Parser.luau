@@ -59,6 +59,7 @@ type Reference = {
 }
 
 export type Options = {
+    Casing: string?,
     TypesOutput: string?,
     ClientOutput: string?,
     ServerOutput: string?,
@@ -139,6 +140,7 @@ export type ScopeDeclaration = Node<"Scope", {
 ---- Settings ----
 
 local OPTIONS: {[string]: Lexer.Types} = {
+    Casing = "Identifier",
     TypesOutput = "String",
     ClientOutput = "String",
     ServerOutput = "String",

@@ -1,3 +1,4 @@
+option Casing = Snake
 option ClientOutput = "../Network/Client.luau"
 option ServerOutput = "../Network/Server.luau"
 option ManualReplication = false

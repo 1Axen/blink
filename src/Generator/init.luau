@@ -52,6 +52,7 @@ type Type = Parser.TypeDeclaration
 
 local Scope: string?
 local Context: string;
+local Casing: Settings.Cases;
 local Events: Builder.Builder;
 local UserTypes: Builder.Builder;
 local LuauTypes: Builder.Builder;
@@ -264,7 +265,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 			:End()
 		:End()
 
-		local Listener = Blocks.Function("On", ContextArguments, `() -> ()`, true)
+		local Listener = Blocks.Function(Casing.On, ContextArguments, `() -> ()`, true)
 			:Line(`{Connection} = Listener`)
 			:Multiline(`task.spawn({FlushQueue:Unwrap()})`, 1)
 			:Multiline(`return {Disconnect:Unwrap()}`, 1)
@@ -272,7 +273,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 
 		Body.PushMultiline(Listener:Unwrap(), 0, Indent + 1)
 	elseif Context == "Client" then
-		local Fire = Blocks.Function("Fire", Values, "()", true)
+		local Fire = Blocks.Function(Casing.Fire, Values, "()", true)
 			if IsReliable then
 				Fire:Line(WriteEvent)
 			else
@@ -287,7 +288,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 		Fire:End()
 		Body.PushMultiline(Fire:Unwrap(), 0, Indent + 1)
 	else
-		local Fire = Blocks.Function("Fire", `Player: Player, {Values}`, "()", true)
+		local Fire = Blocks.Function(Casing.Fire, `Player: Player, {Values}`, "()", true)
 			if IsReliable then
 				Fire:Line("Load(PlayersMap[Player])")
 				Fire:Line(WriteEvent)
@@ -300,7 +301,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 			end
 		Fire:End()
 
-		local FireAll = Blocks.Function("FireAll", Values, "()", true)
+		local FireAll = Blocks.Function(Casing.FireAll, Values, "()", true)
 			if IsReliable then
 				FireAll:Line("Load()")
 				FireAll:Line(WriteEvent)
@@ -316,7 +317,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 			end
 		FireAll:End()
 
-		local FireList = Blocks.Function("FireList", `List: \{Player\}, {Values}`, "()", true)
+		local FireList = Blocks.Function(Casing.FireList, `List: \{Player\}, {Values}`, "()", true)
 			if IsReliable then
 				FireList:Line("Load()")
 				FireList:Line(WriteEvent)
@@ -334,7 +335,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 			end
 		FireList:End()
 
-		local FireExcept = Blocks.Function("FireExcept", `Except: Player, {Values}`, "()", true)
+		local FireExcept = Blocks.Function(Casing.FireExcept, `Except: Player, {Values}`, "()", true)
 			if IsReliable then
 				FireExcept:Line("Load()")
 				FireExcept:Line(WriteEvent)
@@ -470,7 +471,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 			:Line("PlayersMap[Player] = Save()")
 		:End()
 
-		local Listener = Blocks.Function("On", `Listener: (Player, {DataTypes}) -> ({ReturnTypes})`, "()", true)
+		local Listener = Blocks.Function(Casing.On, `Listener: (Player, {DataTypes}) -> ({ReturnTypes})`, "()", true)
 			:Multiline(TrueListener:Unwrap(), 1)
 			:Multiline(`task.spawn({FlushQueue:Unwrap()})`, 1)
 		:End()
@@ -507,7 +508,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 				:Multiline(Contents)
 			:End()
 
-			Invoke = Blocks.Function("Invoke", DataValues, `Future.Future<{ReturnTypes}>`, true)
+			Invoke = Blocks.Function(Casing.Invoke, DataValues, `Future.Future<{ReturnTypes}>`, true)
 			Invoke:Multiline(`return Future.Try({Wrapper:Unwrap()})`, 1)
 		elseif IsPromise then
 			local OnCancel = Blocks.Function("", "")
@@ -527,10 +528,10 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 				:Line(`Resolve({ReturnArguments})`)
 			:End()
 
-			Invoke = Blocks.Function("Invoke", DataValues, `unknown`, true)
+			Invoke = Blocks.Function(Casing.Invoke, DataValues, `unknown`, true)
 			Invoke:Multiline(`return Promise.new({Promise:Unwrap()})`, 1)
 		else
-			Invoke = Blocks.Function("Invoke", DataValues, `({ReturnTypes})`, true)
+			Invoke = Blocks.Function(Casing.Invoke, DataValues, `({ReturnTypes})`, true)
 			Invoke:Multiline(Contents, 1)
 		end
 
@@ -820,6 +821,7 @@ function Generator.Generate(FileContext: "Client" | "Server", AbstractSyntaxTree
 	Generator.Reset()
 	Context = FileContext
 	Options = AbstractSyntaxTree.Value.Options
+	Casing = Settings.GetCasing((Options.Casing :: Settings.Case) or "Pascal")
 
 	--> Setup remote events
 	local Signal = Context == "Client" and "OnClientEvent" or "OnServerEvent"
