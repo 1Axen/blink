@@ -7,7 +7,7 @@ local Parser = require("../Parser")
 type Block = Blocks.Block
 type Writer = (Value: string, Block: Block, Range: NumberRange?) -> ()
 type Reader = (Variable: string, Block: Block, Range: NumberRange?) -> ()
-type Generate = (Declaration: Parser.TypeDeclaration, Variable: string?, Read: Block, Write: Block) -> ()
+type Generate = (Declaration: Parser.PrimitiveDeclaration, Variable: string?, Read: Block, Write: Block) -> ()
 
 type TypePrefab = {
 	Read: Reader,
@@ -79,19 +79,19 @@ local Structures = {
 	Array = nil :: any
 }
 local Primitives: {[string]: {
-	Type: string | (Declaration: Parser.TypeDeclaration) -> string,
+	Type: string | (Declaration: Parser.PrimitiveDeclaration) -> string,
 	Generate: Generate
 }} = {}
 
 local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: AssertGenerator?): Generate
-	return function(Declaration: Parser.TypeDeclaration, Variable: string?, Read: Block, Write: Block)
+	return function(Declaration: Parser.PrimitiveDeclaration, Variable: string?, Read: Block, Write: Block)
 		local Value = Declaration.Value
+		local Tokens = Declaration.Tokens
 		local Variable = Variable or "Value"
 
 		local Range = Value.Range
-		local Array = Value.Array
 		local Class = Value.Class
-		local Primitive = Value.Primitive
+		local Primitive = Tokens.Primitive.Value
 		local IsVariableSize = (Range and Range.Max ~= Range.Min)
 
 		local function GenerateValidation(Block: Block, Variable: string)
@@ -306,10 +306,10 @@ end
 do
 	Types.vector = {
 		Read = function(Variable: string, Block: Block)
-			local X = Block:Read(FLOAT)
-			local Y = Block:Read(FLOAT)
-			local Z = Block:Read(FLOAT)
-			Block:Line(`{Variable} = Vector3.new(buffer.readf32({RECIEVE_BUFFER}, {X}), buffer.readf32({RECIEVE_BUFFER}, {Y}), buffer.readf32({RECIEVE_BUFFER}, {Z}))`)
+			Types.f32.Read("local X", Block)
+			Types.f32.Read("local Y", Block)
+			Types.f32.Read("local Z", Block)
+			Block:Line(`{Variable} = Vector3.new(X, Y, Z)`)
 		end,
 		Write = function(Value: string, Block: Block)
 			Block:Line(`local Vector = {Value}`)

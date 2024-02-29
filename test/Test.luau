@@ -106,6 +106,7 @@ local function FireAndFail(Name: string, OutgoingEvent: any, IncomingEvent: any,
 
     local Result: unknown;
     local Disconnect = IncomingEvent.On(function(First, Second)
+        print(First, Second)
         Result = if (Second ~= nil) then Second else First
     end)
 

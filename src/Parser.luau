@@ -72,7 +72,7 @@ export type Body = Node<"Body", {
     Declarations: {Declaration}
 }, {}>
 
-type Declarations = "Map" | "Enum" | "Tuple" | "Struct" | "Primitive" | "Event" | "Function" | "Scope" 
+type Declarations = "Map" | "Enum" | "Tuple" | "Struct" | "Primitive" | "Reference" | "Event" | "Function" | "Scope" 
 export type TypeDeclaration = MapDeclaration | EnumDeclaration | TupleDeclaration | StructDeclaration | PrimitiveDeclaration | ReferenceDeclaration
 
 export type Declaration = Node<Declarations, {
@@ -274,10 +274,14 @@ end
 
 ---- Utility Parsing Functions ----
 
-function Parser.GetReference(self: Parser, Type: Type, Identifier: Token): Reference?
+function Parser.GetReference(self: Parser, Type: Type, Identifier: Token, OnlyWithinScope: boolean?): Reference?
     local Name = Identifier.Value
-    local WithScope = `{self.Scope}_{Identifier}`
+    local WithScope = `{self.Scope and `{self.Scope}_` or ""}{Identifier}`
     local ReferenceHashMap = (Type == "Type" and self.Types or self.Events)
+    if OnlyWithinScope then
+        return ReferenceHashMap[WithScope]
+    end
+
     return ReferenceHashMap[Name] or ReferenceHashMap[WithScope]
 end
 
@@ -339,7 +343,7 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
         --> Empty bounds
         if Value == "[]" then
             return {
-                Bounds = PRIMITIVES.u16.Bounds :: NumberRange,
+                Bounds = ARRAY_BOUNDS,
                 Optional = Optional,
             }, Token, OptionalToken
         end
@@ -458,13 +462,17 @@ function Parser.Declarations(self: Parser): {Declaration}
             break
         end
 
+        if self.Scope and self:TryConsume("CloseCurlyBrackets") then
+            break
+        end
+
         local Keyword = self:Consume("Keyword")
         local Identifier = self:Consume("Identifier")
         local Declaration: Declaration;
 
         --> Prevent duplicates
         local Type = KEYWORDS[Keyword.Value]
-        local Reference = self:GetReference(Type, Identifier)
+        local Reference = self:GetReference(Type, Identifier, true)
         if Reference then
             Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate {Keyword.Value} declared`)
                 :Secondary(Reference.Identifier, "Previously declared here")
@@ -473,7 +481,16 @@ function Parser.Declarations(self: Parser): {Declaration}
         end
 
         if Type == "Type" then
-           Declaration = self:Type(Identifier, Keyword)
+           local TypeDeclaration = self:Type(Identifier, Keyword)
+           local Value: Attributes = TypeDeclaration.Value
+           Value.Scope = self.Scope
+           Declaration = TypeDeclaration
+        elseif Type == "Event" then
+            Declaration = self:Event(Identifier)
+        elseif Type == "Function" then
+            Declaration = self:Function(Identifier)
+        elseif Type  == "Scope" then
+            Declaration = self:Namespace(Identifier)
         end
         
         table.insert(Declarations, Declaration)
@@ -485,11 +502,117 @@ end
 
 ---- Structure Parsing Functions ----
 
+function Parser.GetOptionFromToken(self: Parser, Token: Token, Structure: {EventOption}): EventOption
+    local Value = Token.Value
+    for Index, Option in Structure do
+        if Option.Key == Value then
+            return Option
+        end
+    end
 
+    local OptionsString = ""
+    for Index, Option in Structure do
+        OptionsString ..= `{Index ~= 1 and " or " or ""}"Option.Key"`
+    end
+
+    error(Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Value}"`)
+        :Primary(Token, `Expected one of {OptionsString}`)
+        :Emit())
+end
+
+function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOption}): {[string]: any}
+    local Fields: {[string]: any} = {}
+    for Index = 1, #Structure do
+        local Field = self:ConsumeAll("Identifier", "FieldAssign")
+        local Option = self:GetOptionFromToken(Field, Structure)
+
+        --> Parse non data field
+        local Value: any;
+        if Option.Key ~= "Data" and Option.Key ~= "Return" then
+            local Token = self:Consume(Option.Type)
+            Value = Token.Value
+
+            if not table.find(Option.Values, Value) then
+                Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Value}"`)
+                    :Primary(Token, `Expected of on "{table.concat(Option.Values, `" or "`)}"`)
+                    :Emit()
+            end
+        else
+            Value = self:Type(Identifier, nil, true)
+        end
+
+        Fields[Field.Value] = Value
+        self:TryConsume("Comma")
+    end
+
+    return Fields
+end
+
+function Parser.Event(self: Parser, Identifier: Token): EventDeclaration
+    self:Consume("OpenCurlyBrackets")
+    local Structure = self:Structure(Identifier, EVENT)
+    self:Consume("CloseCurlyBrackets")
+
+    return {
+        Type = "Event",
+        Value = {
+            Identifier = Identifier.Value,
+            From = Structure.From,
+            Type = Structure.Type,
+            Call = Structure.Call,
+            Data = Structure.Data
+        },
+        Tokens = {}
+    }
+end
+
+function Parser.Function(self: Parser, Identifier: Token): FunctionDeclaration
+    self:Consume("OpenCurlyBrackets")
+    local Structure = self:Structure(Identifier, FUNCTION)
+    self:Consume("CloseCurlyBrackets")
+
+    return {
+        Type = "Function",
+        Value = {
+            Identifier = Identifier.Value,
+            Yield = Structure.Yield,
+            Data = Structure.Data,
+            Return = Structure.Return
+        },
+        Tokens = {}
+    }
+end
+
+function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
+    if self.Scope then
+        Error.new(Error.AnalyzeNestedScope, self.Source, "You cannot declare a scope within a scope")
+            :Primary(Identifier, `Nested scope declared`)
+            :Emit()
+    end
+
+    self:Consume("OpenCurlyBrackets")
+
+    --> Open scope
+    self.Scope = Identifier.Value
+    local Declarations = self:Declarations()
+
+    --> Close scope
+    self.Scope = nil
+    --self:Consume("CloseCurlyBrackets") --> Consumed by self:Declarations()
+
+    return {
+        Type = "Scope",
+        Value = {
+            Identifier = Identifier.Value,
+            Values = Declarations
+        },
+        Tokens = {}
+    }
+end
 
 ---- Type Parsing Functions ----
 
-function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?): TypeDeclaration
+function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataField: boolean?): TypeDeclaration
     local Declaration: TypeDeclaration;
 
     --> Fast path: We know the exact type
@@ -548,11 +671,9 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?): TypeDecl
             Declaration = self:Primitive(Identifier)
         elseif Type == "Identifier" then
             Declaration = self:Reference(Identifier)
+        elseif Type == "OpenBrackets" and IsDataField then
+            Declaration = self:Tuple(Identifier)
         end
-    end
-
-    if not Declaration then
-        print(Identifier.Value, Keyword ~= nil)
     end
 
     --> Set type attributes
@@ -654,6 +775,35 @@ function Parser.Enum(self: Parser, Identifier: Token): EnumDeclaration
     }
 end
 
+function Parser.Tuple(self: Parser, Identifier: Token): TupleDeclaration
+    local Values: {TypeDeclaration} = {}
+    self:Consume("OpenBrackets")
+
+    while true do
+        if self:TryConsume("CloseBrackets") then
+            break
+        end
+
+        local Value = self:Type(Identifier)
+        table.insert(Values, Value)
+
+        if self:TryConsume("CloseBrackets") then
+            break
+        end
+
+        self:Consume("Comma")
+    end
+
+    return {
+        Type = "Tuple",
+        Value = {
+            Identifier = Identifier.Value,
+            Values = Values,
+        },
+        Tokens = {}
+    }
+end
+
 function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
     local Values: {TypeDeclaration} = {}
     self:Consume("OpenCurlyBrackets")
@@ -692,7 +842,7 @@ function Parser.Primitive(self: Parser, Identifier: Token): PrimitiveDeclaration
 
     if Value == "Instance" then
         local ClassToken = self:TryConsume("Class")
-        Class = if ClassToken then string.sub(ClassToken.Value, 1, #ClassToken.Value) else nil
+        Class = if ClassToken then string.sub(ClassToken.Value, 1, #ClassToken.Value) else "Instance"
     end
 
     return {

@@ -1,5 +1,0 @@
-option ClientOutput = "../Network/Client.luau"
-option ServerOutput = "../Network/Server.luau"
-
-type Exact = u8[255]
-type Variable = u8[0..255]

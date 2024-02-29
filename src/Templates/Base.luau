@@ -1,6 +1,6 @@
 return [[local Invocations = 0
 
-local SendSize = 0
+local SendSize = 64
 local SendOffset = 0
 local SendCursor = 0
 local SendBuffer = buffer.create(64)
