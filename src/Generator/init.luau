@@ -659,7 +659,7 @@ function Generators.LuauType(Declaration: Parser.TypeDeclaration, UseTypeAsValue
 		local Tokens = (Declaration :: Parser.PrimitiveDeclaration).Tokens
 		local Primitive = Primitives[Tokens.Primitive.Value]
 		if type(Primitive.Type) == "function" then
-			Type = Primitive.Type(Declaration :: Parser.TypeDeclaration)
+			Type = Primitive.Type(Declaration :: Parser.PrimitiveDeclaration)
 		else
 			Type = Primitive.Type
 		end
@@ -685,11 +685,13 @@ function Generators.LuauType(Declaration: Parser.TypeDeclaration, UseTypeAsValue
 		Type ..= " }"
 	elseif Declaration.Type == "Reference" then
 		local Value = (Declaration :: Parser.ReferenceDeclaration).Value
-		local Reference = Value.Declaration.Value.Identifier
-		local ReferenceScope = Value.Scope
-		local Prefix = ReferenceScope and `{ReferenceScope}_` or ""
+		local Reference = Value.Declaration.Value
 
-		Type = `{Prefix}{Reference}` 
+		local Name = Reference.Identifier
+		local Scope = Reference.Scope
+		local Prefix = Scope and `{Scope}_` or ""
+
+		Type = `{Prefix}{Name}` 
 	elseif Declaration.Type == "Tuple" then
 		local Value = (Declaration :: Parser.TupleDeclaration).Value
 		local TupleValues = Value.Values
