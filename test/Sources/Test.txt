@@ -1,6 +1,6 @@
-option Casing = Snake
-option ClientOutput = "../Network/Client.luau"
-option ServerOutput = "../Network/Server.luau"
+option Casing = Pascal
+option ClientOutput = "../../Network/Client.luau"
+option ServerOutput = "../../Network/Server.luau"
 option ManualReplication = false
 
 type A = CFrame

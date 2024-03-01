@@ -136,10 +136,10 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: 
             continue
         end
 
-        if (DontAdvanceCursor ~= true or (Type == "Whitespace" and IsHighlighting ~= true)) then
+        if (DontAdvanceCursor ~= true or Type == "Whitespace") then
             self.Cursor += #Matched
         end
-        
+
         --> Whitespace matched, skip token.
         --> We don't want to skip whitespaces in highlighting mode.
         if (Type == "Whitespace") and not IsHighlighting then

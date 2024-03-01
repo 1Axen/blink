@@ -15,6 +15,7 @@ darklua process ../src/init.luau ./Bundled.luau
 echo Building standalone executable
 lune build ./Bundled.luau
 ren "./Bundled.exe" "blink.exe"
+copy "blink.exe" "..\release\blink.exe"
 
 echo Compiling bytecode
 lune run compile.luau

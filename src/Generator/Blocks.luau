@@ -125,7 +125,7 @@ function Block.Multiline(self: Block, Content: string, Indent: number?): Block
 end
 
 function Block.Loop(self: Block, Counter: string, Length: string): Block
-    local Loop = Block.new(self, ARRAY_UNIQUE)
+    local Loop = Block.new(self, `{ARRAY_UNIQUE}_{self.Indent}`)
     Loop:Line(`for {Counter}, {Length} do`, Loop.Indent - 1)
     Loop.Operation.Variable = Length
     return Loop

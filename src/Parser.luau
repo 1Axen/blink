@@ -248,6 +248,7 @@ function Parser.Consume(self: Parser, Type: Lexer.Types): Token
     end
 
     --> Advance tokenizer
+    --print(Type, Token.Value, debug.info(2, "nl"))
     self.LookAhead = self.Lexer:GetNextToken()
 
     return Token
@@ -264,6 +265,7 @@ function Parser.TryConsume(self: Parser, Type: Lexer.Types): Token?
     end
 
     --> Advance lexer
+    --print(Type, Token.Value, debug.info(2, "nl"))
     self.LookAhead = self.Lexer:GetNextToken()
 
     return Token
@@ -282,7 +284,7 @@ end
 
 function Parser.GetReference(self: Parser, Type: Type, Identifier: Token, OnlyWithinScope: boolean?): Reference?
     local Name = Identifier.Value
-    local WithScope = `{self.Scope and `{self.Scope}_` or ""}{Identifier}`
+    local WithScope = `{self.Scope and `{self.Scope}.` or ""}{Name}`
     local ReferenceHashMap = (Type == "Type" and self.Types or self.Events)
     if OnlyWithinScope then
         return ReferenceHashMap[WithScope]
@@ -292,7 +294,7 @@ function Parser.GetReference(self: Parser, Type: Type, Identifier: Token, OnlyWi
 end
 
 function Parser.SetReference(self: Parser, Type: Type, Identifier: Token, Declaration: Declaration)
-    local Name = `{self.Scope and `{self.Scope}_` or ""}{Identifier.Value}`
+    local Name = `{self.Scope and `{self.Scope}.` or ""}{Identifier.Value}`
     local ReferenceHashMap = (Type == "Type" and self.Types or self.Events)
     if Type ~= "Type" and RESERVED[Name] then
         Error.new(Error.AnalyzeReservedIdentifier, self.Source, `Reserved identifier`)
@@ -672,6 +674,8 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
             local FarPeek = self.Lexer:GetNextToken(true)
             if FarPeek.Type == "OpenSquareBrackets" then
                 Declaration = self:Map(Identifier)
+            elseif FarPeek.Type == "CloseCurlyBrackets" then
+                Declaration = self:Struct(Identifier) 
             else
                 local FurtherPeek = self.Lexer:GetNextToken(true, FarPeek.End)
                 if FurtherPeek.Type == "FieldAssign" then 
@@ -855,7 +859,7 @@ function Parser.Primitive(self: Parser, Identifier: Token): PrimitiveDeclaration
 
     if Value == "Instance" then
         local ClassToken = self:TryConsume("Class")
-        Class = if ClassToken then string.sub(ClassToken.Value, 1, #ClassToken.Value) else "Instance"
+        Class = if ClassToken then string.sub(ClassToken.Value, 2, #ClassToken.Value - 1) else "Instance"
     end
 
     return {

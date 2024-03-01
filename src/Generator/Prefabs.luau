@@ -107,7 +107,7 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 					Block:Line(Assert.Lower)
 					Block:Line(Assert.Upper)
 				end
-			elseif Primitive == "Instance" then
+			elseif Primitive == "Instance" and Class then
 				local Assert = AssertGenerator(Variable, Class)
 				if Value.Optional and Block == Write then
 					Block:Compare(Variable, "nil", "Not")
@@ -222,11 +222,12 @@ Primitives.f16 = {
 }
 
 --> Structures
-Structures.Array = function(Variable: string, Read: Block, Write: Block, Bounds: NumberRange): (Block, Block)
+Structures.Array = function(Variable: string, Read: Block, Write: Block, Bounds: NumberRange, Iterator: string?): (Block, Block)
 	local Lower = Bounds.Min
 	local Upper = Bounds.Max
 	local ReadArray, WriteArray;
 
+	local Iterator = Iterator or "Item"
 	local IsVariableSize = (Lower ~= Upper)
 
 	--> Length
@@ -248,8 +249,8 @@ Structures.Array = function(Variable: string, Read: Block, Write: Block, Bounds:
 	ReadArray = Read:Loop("Index = 1", "Length")
 	WriteArray = Write:Loop("Index = 1", IsVariableSize and `#{Variable}` or Upper)
 
-	ReadArray:Line(`local Item;`)
-	WriteArray:Line(`local Item = {Variable}[Index]`)
+	ReadArray:Line(`local {Iterator};`)
+	WriteArray:Line(`local {Iterator} = {Variable}[Index]`)
 
 	return ReadArray, WriteArray
 end

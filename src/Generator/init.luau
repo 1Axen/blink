@@ -185,13 +185,18 @@ end
 function Declarations.Reference(Declaration: Parser.ReferenceDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
     local Value = Declaration.Value
 	local Scope = Value.Scope
-	local Identifier = Value.Declaration.Value.Identifier
+	local Reference = Value.Declaration
+	local Identifier = Reference.Value.Identifier
 
+	--[[
 	local ReadPath = GetTypesPath(Identifier, Scope, false)
 	local WritePath = GetTypesPath(Identifier, Scope, true)
 
 	Read:Line(`{Variable} = {ReadPath}()`)
-	Write:Line(`{WritePath}({Variable})`)
+	Write:Line(`{WritePath}({Variable})`)]]
+
+	--> Inline reference
+	Generators.UserType(Reference, Read, Write, Variable)
 end
 
 function Declarations.Event(Declaration: Parser.EventDeclaration)
@@ -569,7 +574,7 @@ function Generators.UserType(Declaration: Parser.TypeDeclaration, Read: Blocks.B
 	local IsInstance, IsUnknown;
 
 	local Variable = Variable or "Value"
-	local ActualVariable = Array and "Item" or Variable
+	local ActualVariable = Array and `Item_{Read.Indent}` or Variable
 
 	if Declaration.Type == "Primitive" then
 		local Tokens = (Declaration :: Parser.PrimitiveDeclaration).Tokens
@@ -597,7 +602,7 @@ function Generators.UserType(Declaration: Parser.TypeDeclaration, Read: Blocks.B
 
 		Read:Comment("START ARRAY")
 		Write:Comment("START ARRAY")
-		Read, Write = Structures.Array(Variable, Read, Write, Array.Bounds)
+		Read, Write = Structures.Array(Variable, Read, Write, Array.Bounds, ActualVariable)
 		
 		if IsInstance then
 			Read:Line("RecieveInstanceCursor += 1")
@@ -624,7 +629,7 @@ function Generators.UserType(Declaration: Parser.TypeDeclaration, Read: Blocks.B
     end
 
 	if Array then
-		Read:Line(`table.insert({Variable}, Item)`)
+		Read:Line(`table.insert({Variable}, {ActualVariable})`)
 		Read = Read:End()
 		Write = Write:End()
 		Read:Comment("END ARRAY")

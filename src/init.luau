@@ -10,6 +10,7 @@ local Parser = require("./Parser")
 local Generator = require("./Generator/init.luau")
 
 ---- Functions -----
+
 local function FormatTime(Time: number): string
 	if Time < 1E-6 then
 		return `{Time * 1E+9} ns`
@@ -22,15 +23,15 @@ local function FormatTime(Time: number): string
 	end
 end
 
-local function CreateDirIfNotFound(path: string)
-    local dir = path:match("(.-)%/[^%/]*$") 
-    if fs.isDir(dir) then
+local function CreateDirIfNotFound(Path: string)
+    local Directory = string.match(Path, "(.-)%/[^%/]*$") 
+    if fs.isDir(Directory) then
        return   
     end
 
-	local Result = stdio.prompt("confirm", `Directory {dir} doesn't exist, create directory?`)
+	local Result = stdio.prompt("confirm", `Directory {Directory} doesn't exist, create directory?`)
 	if Result then
-		fs.writeDir(dir)
+		fs.writeDir(Directory)
 		return
 	end
 
@@ -47,13 +48,18 @@ end
 local SourcePath = Arguments[1]
 local SourceParser = Parser.new()
 
+if not fs.isFile(SourcePath) then
+	error(`Unable to find "{SourcePath}"`)
+end
+
+local SourceDirectory = string.match(SourcePath, "(.-)%/[^%/]*$") 
+
 ---- Main ----
 
 print(`Blink {_G.VERSION or "DEBUG"}`)
 stdio.write(stdio.color("cyan"))
 print(`Reading source from {SourcePath}...`)
 local Source = fs.readFile(SourcePath)
-
 stdio.write(stdio.color("blue"))
 print("Parsing source into AST...")
 local ParseStart = os.clock()
@@ -70,8 +76,12 @@ local Options = AbstractSyntaxTree.Value.Options
 assert(Options.ClientOutput, "A client output path must be defined.")
 assert(Options.ServerOutput, "A server output path must be defined.")
 
-CreateDirIfNotFound(Options.ClientOutput)
-CreateDirIfNotFound(Options.ServerOutput)
+local TypesOutput: string;
+local ClientOutput = `{SourceDirectory}/{Options.ClientOutput}`
+local ServerOutput = `{SourceDirectory}/{Options.ServerOutput}`
+
+CreateDirIfNotFound(ClientOutput)
+CreateDirIfNotFound(ServerOutput)
 
 print("Generating output files...")
 local GenerateStart = os.clock()
@@ -80,16 +90,17 @@ local ClientSource = Generator.Generate("Client", AbstractSyntaxTree)
 
 local TypesSource: string?;
 if Options.TypesOutput then
+	TypesOutput = `{SourceDirectory}/{Options.TypesOutput}`
 	TypesSource = Generator.GenerateTypeDefinitions("Server", AbstractSyntaxTree, Options)
 end
 
 local GenerateTime = (os.clock() - GenerateStart)
+fs.writeFile(ServerOutput, ServerSource)
+fs.writeFile(ClientOutput, ClientSource)
 
-fs.writeFile(`{Options.ServerOutput}`, ServerSource)
-fs.writeFile(`{Options.ClientOutput}`, ClientSource)
-
-if TypesSource then
-	fs.writeFile(`{Options.TypesOutput}`, TypesSource)
+if TypesSource and TypesOutput then
+	CreateDirIfNotFound(TypesOutput)
+	fs.writeFile(TypesOutput, TypesSource)
 end
 
 stdio.write(stdio.color("green"))

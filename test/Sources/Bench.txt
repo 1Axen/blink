@@ -1,5 +1,5 @@
-option ClientOutput = "../Network/ClientBench.luau"
-option ServerOutput = "../Network/ServerBench.luau"
+option ClientOutput = "../../Network/ClientBench.luau"
+option ServerOutput = "../../Network/ServerBench.luau"
 
 struct Entity {
     id: u8,
