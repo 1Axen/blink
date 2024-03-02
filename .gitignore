@@ -11,3 +11,7 @@
 test/Sources/Game.txt
 sourcemap.json
 /plugin/bundle/*
+
+/benchmark/roblox
+*.rbxl
+*.rbxl.lock

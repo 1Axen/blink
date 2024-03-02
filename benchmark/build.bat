@@ -16,4 +16,7 @@ echo Compiling definitions
 "./tools/blink.exe" "./definitions/Definition.blink"
 endlocal
 
-rojo build default.project.json --output "./Benchmark.rbxl"
+echo Building ROBLOX place
+rojo sourcemap default.project.json --output sourcemap.json
+darklua process src roblox
+rojo build build.project.json --output "./Benchmark.rbxl"

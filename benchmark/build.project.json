@@ -1,0 +1,32 @@
+{
+    "name": "benchmark",
+    "tree": {
+      "$className": "DataModel",
+
+      "Players": {
+        "$properties": {
+          "CharacterAutoLoads": false
+        }
+      },
+  
+      "ReplicatedStorage": {
+        "Shared": {
+          "$path": "roblox/shared"
+        }
+      },
+  
+      "ServerScriptService": {
+        "Server": {
+          "$path": "roblox/server"
+        }
+      },
+  
+      "StarterPlayer": {
+        "StarterPlayerScripts": {
+          "Client": {
+            "$path": "roblox/client"
+          }
+        }
+      }
+    }
+  }

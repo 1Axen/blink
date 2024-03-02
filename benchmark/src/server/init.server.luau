@@ -1,6 +1,6 @@
-local Zap = require(game.ReplicatedStorage.zap.Server)
-local Blink = require(game.ReplicatedStorage.blink.Server)
-local Benches = require(game.ReplicatedStorage.benches)
+local Zap = require(game:GetService('ReplicatedStorage').Shared.zap.Server)
+local Blink = require(game:GetService('ReplicatedStorage').Shared.blink.Server)
+local Benches = require(game:GetService('ReplicatedStorage').Shared.benches)
 
 function CompareTables(a, b)
     if a == b then 
@@ -41,14 +41,19 @@ local function CompareValues(a, b): boolean
 end
 
 for Name, Data in Benches do
-    local function OnRecieve(Player, Recieve)
-        if not CompareValues(Data, Recieve) then
-            warn(`Recieved incorrect data for {Name}`)
-        end
+    local function OnRecieve(Tool: string)
+		return function(Player, Recieve)
+            if not _G.VALIDATE then
+                return
+            end
+
+			if not CompareValues(Data, Recieve) then
+				warn(`Recieved incorrect data with {Tool} for {Name}`)
+			end
+		end
     end
     
-    Blink[Name].On(OnRecieve)
-    Zap[Name].SetCallback(OnRecieve)
+    Blink[Name].On(OnRecieve("Blink"))
+    Zap[Name].SetCallback(OnRecieve("Zap"))
 end
-
 
