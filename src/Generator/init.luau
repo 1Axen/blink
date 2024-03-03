@@ -245,36 +245,55 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 		Channel.Listening = true
 
 		--> Event recieve body
-		local ListenerArguments = `{Context == "Server" and "Player, " or ""}{Arguments}`
-		Block:Line(`local {Values} = {GetTypesPath(Identifier, Scope, false)}()`)
-		Block:Compare(Connection, "nil", "Not")
-			:Line(Value.Call == "SingleSync" and `{Connection}({ListenerArguments})` or `task.spawn({Connection}, {ListenerArguments})`)
-		:Branch("Default")
-			:Compare(`#{Queue}`, "256", "Greater")
-				:Line(`warn("[Blink]: Event queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement a listener?")`)
-			:End()
-			:Line(`table.insert({Queue}, \{{ListenerArguments}\} :: \{any\})`)
-		:End()
-
+		local Listener: Blocks.Block;
 		local ContextArguments = `Listener: ({Context == "Server" and "Player: Player, " or ""}{Values}) -> ()`
-		local Disconnect = Blocks.Function("", "", "()")
-			:Line(`{Queue} = \{\}`)
-			:Line(`{Connection} = nil`)
-		:End()
+		local ListenerArguments = `{Context == "Server" and "Player, " or ""}{Arguments}`
+		local CallListenerFunction = Value.Call == "SingleSync" and `{Connection}({ListenerArguments})` or `task.spawn({Connection}, {ListenerArguments})`
 
-		local FlushQueue = Blocks.Function("", "", "()")
-			:Line(`local EventQueue = {Queue} or \{\}`)
-			:Line(`{Queue} = nil`)
-			:Iterator("Index", "Arguments", "EventQueue")
-				:Line(Value.Call == "SingleSync" and `Listener(table.unpack(Arguments))` or `task.spawn(Listener, table.unpack(Arguments))`)
+		Block:Line(`local {Values} = {GetTypesPath(Identifier, Scope, false)}()`)
+
+		if IsReliable then
+			Block:Compare(Connection, "nil", "Not")
+				:Line(CallListenerFunction)
+			:Branch("Default")
+				:Compare(`#{Queue}`, "256", "Greater")
+					:Line(`warn("[Blink]: Event queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement a listener?")`)
+				:End()
+				:Line(`table.insert({Queue}, \{{ListenerArguments}\} :: \{any\})`)
 			:End()
-		:End()
 
-		local Listener = Blocks.Function(Casing.On, ContextArguments, `() -> ()`, true)
-			:Line(`{Connection} = Listener`)
-			:Multiline(`task.spawn({FlushQueue:Unwrap()})`, 1)
-			:Multiline(`return {Disconnect:Unwrap()}`, 1)
-		:End()
+			local Disconnect = Blocks.Function("", "", "()")
+				:Line(`{Queue} = \{\}`)
+				:Line(`{Connection} = nil`)
+			:End()
+
+			local FlushQueue = Blocks.Function("", "", "()")
+				:Line(`local EventQueue = {Queue} or \{\}`)
+				:Line(`{Queue} = nil`)
+				:Iterator("Index", "Arguments", "EventQueue")
+					:Line(Value.Call == "SingleSync" and `Listener(table.unpack(Arguments))` or `task.spawn(Listener, table.unpack(Arguments))`)
+				:End()
+			:End()
+
+			Listener = Blocks.Function(Casing.On, ContextArguments, `() -> ()`, true)
+				:Line(`{Connection} = Listener`)
+				:Multiline(`task.spawn({FlushQueue:Unwrap()})`, 1)
+				:Multiline(`return {Disconnect:Unwrap()}`, 1)
+			:End()
+		else
+			Block:Compare(Connection, "nil", "Not")
+				:Line(CallListenerFunction)
+			:End()
+
+			local Disconnect = Blocks.Function("", "", "()")
+				:Line(`{Connection} = nil`)
+			:End()
+
+			Listener = Blocks.Function(Casing.On, ContextArguments, `() -> ()`, true)
+				:Line(`{Connection} = Listener`)
+				:Multiline(`return {Disconnect:Unwrap()}`, 1)
+			:End()
+		end
 
 		Body.PushMultiline(Listener:Unwrap(), 0, Indent + 1)
 	elseif Context == "Client" then

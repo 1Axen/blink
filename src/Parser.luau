@@ -61,6 +61,7 @@ type Reference = {
 
 export type Options = {
     Casing: string?,
+    UseColon: boolean?,
     TypesOutput: string?,
     ClientOutput: string?,
     ServerOutput: string?,
@@ -142,6 +143,7 @@ export type ScopeDeclaration = Node<"Scope", {
 
 local OPTIONS: {[string]: Lexer.Types} = {
     Casing = "Identifier",
+    UseColon = "Boolean",
     TypesOutput = "String",
     ClientOutput = "String",
     ServerOutput = "String",

@@ -438,7 +438,7 @@ InvokeAndExpect("Remote Function", Client.RemoteFunction, Server.RemoteFunction,
 InvokeAndExpect("Remote Function (error)", Client.RemoteFunction, Server.RemoteFunction, 1, false)
 
 QueueAndExpect("Reliable Queue", Server.ReliableServer, Client.ReliableServer, 1)
-QueueAndExpect("Unreliable Queue", Server.UnreliableServer, Client.UnreliableServer, 1)
+--QueueAndExpect("Unreliable Queue", Server.UnreliableServer, Client.UnreliableServer, 1)
 
 FireAndFail("Invalid Instance Any", Server.InstanceAny, Client.InstanceAny, true)
 FireAndFail("Invalid Instance Type", Server.InstanceOfType, Client.InstanceOfType, InstanceNeverIsA)
