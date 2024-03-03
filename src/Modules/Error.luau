@@ -1,14 +1,15 @@
 --!native
 --!optimize 2
 
+local IS_ROBLOX = _G.PLUGIN
+
 local stdio;
-if not _G.BUNDLED then
+if not IS_ROBLOX then
     stdio = require("@lune/stdio")
 end
 
 local SPACE = " "
 local INDENT = "    "
-local IS_ROBLOX = (game ~= nil)
 local INVISIBLE_SPACE = `<font transparency="1">0</font>`
 
 --> ROBLOX is ROBLOX and renders spaces at half width
@@ -59,7 +60,7 @@ local Error = {
     ParserUnexpectedSymbol = 2004,
     ParserExpectedExtraToken = 2005,
     
-    AnalyzePrimitiveReferencesNonPrimitive = 3001,
+    AnalyzeReferenceInvalidType = 3001,
     AnalyzeInvalidOptionalType = 3002,
     AnalyzeNestedMap = 3003,
     AnalyzeDuplicateField = 3004,
@@ -88,7 +89,7 @@ local function Fix(Text: string): string
 end
 
 local function Color(Text: string, Color: Color): string
-    if _G.BUNDLED then
+    if IS_ROBLOX then
         return `<font color="{Colors[Color]}">{Text}</font>`
     end
     return `{stdio.color(Color)}{Text}{stdio.color("reset")}`

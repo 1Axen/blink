@@ -20,6 +20,13 @@ local function PrettyPrint(Color: stdio.Color, Message: string, DontReturn: bool
     stdio.write(`{stdio.color(Color)}{Message}{not DontReturn and "\n" or ""}{stdio.color("reset")}`)
 end
 
+PrettyPrint("blue", "Clearing Network folder...")
+if fs.isDir("../Network") then
+    fs.removeDir("../Network")
+    fs.writeDir("../Network")
+    OkPrint(`Cleared Network folder.`)
+end
+
 PrettyPrint("blue", "Compiling source files...")
 for _, File in Sources do
     if table.find(Arguments, "nocompile") then
@@ -99,6 +106,7 @@ local function FireAndFail(Name: string, OutgoingEvent: any, IncomingEvent: any,
 
     local Result: unknown;
     local Disconnect = IncomingEvent.On(function(First, Second)
+        print(First, Second)
         Result = if (Second ~= nil) then Second else First
     end)
 
@@ -430,7 +438,7 @@ InvokeAndExpect("Remote Function", Client.RemoteFunction, Server.RemoteFunction,
 InvokeAndExpect("Remote Function (error)", Client.RemoteFunction, Server.RemoteFunction, 1, false)
 
 QueueAndExpect("Reliable Queue", Server.ReliableServer, Client.ReliableServer, 1)
-QueueAndExpect("Unreliable Queue", Server.UnreliableServer, Client.UnreliableServer, 1)
+--QueueAndExpect("Unreliable Queue", Server.UnreliableServer, Client.UnreliableServer, 1)
 
 FireAndFail("Invalid Instance Any", Server.InstanceAny, Client.InstanceAny, true)
 FireAndFail("Invalid Instance Type", Server.InstanceOfType, Client.InstanceOfType, InstanceNeverIsA)

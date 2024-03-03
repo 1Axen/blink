@@ -1,6 +1,16 @@
 type BranchType = "Conditional" | "Default"
 type EqualityOperator = "Not" | "Equals" | "Greater" | "Less" | "GreaterOrEquals" | "LessOrEquals"
 
+type Method = "Read" | "Allocate" | "None"
+type Operation = {
+    Method: Method,
+    Bytes: number,
+    Variable: string?
+}
+
+local DEFAULT_UNIQUE = "BLOCK_START"
+local ARRAY_UNIQUE = "ARRAY_START"
+
 local Operators = {
     Not = "~=",
     Equals = "==",
@@ -18,55 +28,71 @@ export type Block = typeof(setmetatable({} :: {
     Parent: Block?,
     Indent: number,
     Content: string,
-    Reads: number,
-    Allocations: number,
+    Operation: Operation
 }, Block))
 
-function Block.new<Parent>(Parent: Block?): Block
+function Block.new<Parent>(Parent: Block?, Unique: string?): Block
     local Indent = (Parent and Parent.Indent + 1 or 1)
-    local Unique = `BLOCK_START`
     return setmetatable({
-        Unique = Unique,
+        Unique = Unique or DEFAULT_UNIQUE,
         Parent = Parent,
         Indent = Indent,
         Content = "",
-        Reads = 0,
-        Allocations = 0
+        Operation = {
+            Method = "None",
+            Bytes = 0
+        }
     } :: any, Block)
 end
 
+function Block._operation(self: Block, Method: Method, Bytes: number): string
+    local Operation = self.Operation
+    if Operation.Method ~= "None" and Operation.Method ~= Method then
+        error(`Block can't both Allocate and Read`)
+    end
+
+    local Offset = Operation.Bytes
+    Operation.Bytes += Bytes
+    Operation.Method = Method
+
+    if self.Unique ~= DEFAULT_UNIQUE then
+        self:Line(`local OPERATION_OFFSET = {self.Unique}; {self.Unique} += {Bytes};`)
+        --self:Line(`{self.Unique} += {Bytes}`)
+        return "OPERATION_OFFSET"
+    end
+
+    return `{self.Unique} + {Offset}` 
+end
+
 function Block.Read(self: Block, Bytes: number): string
-    local Offset = self.Reads
-    self.Reads += Bytes
-    return `{self.Unique} + {Offset}`
+    return self:_operation("Read", Bytes)
 end
 
 function Block.Allocate(self: Block, Bytes: number): string
-    local Offset = self.Allocations
-    self.Allocations += Bytes
-    return `{self.Unique} + {Offset}`
+    return self:_operation("Allocate", Bytes)
 end
 
-function Block._lineFront(self: Block, Text: string): Block
+function Block._lineFront(self: Block, Text: string, Indent: number): Block
     if self.Parent == nil then
         local Lines = string.split(self.Content, "\n")
         local First = table.remove(Lines, 1)
-        self.Content = First .. `\n{string.rep("\t", self.Indent)}{Text}\n` .. table.concat(Lines, "\n")
+        self.Content = First .. `\n{string.rep("\t", Indent or self.Indent)}{Text}\n` .. table.concat(Lines, "\n")
     else
-        self.Content = `{string.rep("\t", self.Indent)}{Text}\n` .. self.Content
+        self.Content = `{string.rep("\t", Indent or self.Indent)}{Text}\n` .. self.Content
     end
 
     return self
 end
 
 function Block._appendOperations(self: Block): Block
-    if self.Reads > 0 then
-        self:_lineFront(`local {self.Unique} = Read({self.Reads})`)
+    local Operation = self.Operation
+    local Variable = Operation.Variable
+    if Operation.Method == "None" then
+        return self
     end
 
-    if self.Allocations > 0 then
-        self:_lineFront(`local {self.Unique} = Allocate({self.Allocations})`)
-    end
+    local Append = `local {self.Unique} = {Operation.Method}({Operation.Bytes}{Variable and ` * {Variable}` or ""})`
+    self:_lineFront(Append, self.Unique ~= DEFAULT_UNIQUE and self.Indent - 1 or self.Indent)
 
     return self
 end
@@ -99,8 +125,10 @@ function Block.Multiline(self: Block, Content: string, Indent: number?): Block
 end
 
 function Block.Loop(self: Block, Counter: string, Length: string): Block
-    self:Line(`for {Counter}, {Length} do`)
-    return Block.new(self)
+    local Loop = Block.new(self, `{ARRAY_UNIQUE}_{self.Indent}`)
+    Loop:Line(`for {Counter}, {Length} do`, Loop.Indent - 1)
+    Loop.Operation.Variable = Length
+    return Loop
 end
 
 function Block.While(self: Block, Condition: string): Block

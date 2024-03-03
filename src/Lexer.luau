@@ -7,9 +7,9 @@ local Settings = require("./Settings")
 export type Types = 
     "Comma" | "OpenBrackets" | "CloseBrackets" | "OpenCurlyBrackets" | "CloseCurlyBrackets" | "OpenSquareBrackets" | "CloseSquareBrackets" --> Structs & enums
     | "String" | "Boolean" | "Number"   --> Literals
-    | "Array" | "Range" | "Optional" | "Class"    --> Attributes
-    | "Assign" | "Keyword" | "Primitive" | "Identifier" --> Reserved
-    | "Whitespace" | "Unknown" 
+    | "Array" | "Range" | "Optional" | "Class" | "Component"    --> Attributes
+    | "Assign" | "FieldAssign" | "Keyword" | "Primitive" | "Identifier" --> Reserved
+    | "Whitespace" | "Unknown" | "EndOfFile"
 
 export type Keywords = "type" | "enum" | "struct" | "event" | "function"
 
@@ -21,20 +21,10 @@ export type Token = {
     End: number,
 }
 
-export type Lexer = {
-    Mode: Mode,
-    Size: number,
-    Source: string,
-    Cursor: number,
-
-    Initialize: (self: Lexer, Source: string) -> (),
-    GetNextToken: (self: Lexer, DontAdvanceCursor: boolean?) -> Token?,
-}
-
 export type Mode = "Parsing" | "Highlighting"
 
-local Primitives = Settings.Primtives
 local Keywords = Settings.Keywords
+local Primitives = Settings.Primtives
 
 local Booleans = {
     ["true"] = true,
@@ -47,6 +37,7 @@ local Matches = {
     --> Simple patterns
     {"^%s+", "Whitespace"},     
     {"^=", "Assign"},
+    {"^:", "FieldAssign"},
     {"^{", "OpenCurlyBrackets"},
     {"^}", "CloseCurlyBrackets"},
     {"^,", "Comma"},
@@ -54,10 +45,12 @@ local Matches = {
     --> Attribute patterns
     {"^?", "Optional"},
     {`^%(%a+%)`, "Class"},
+    {`^%[]`, "Array"},
     {`^%({Number}%)`, "Range"},
     {`^%({Number}..{Number}%)`, "Range"},
     {`^%[{Number}]`, "Array"},
     {`^%[{Number}..{Number}]`, "Array"},
+    {`^%b<>`, "Component"},
 
     {"^%(", "OpenBrackets"},
     {"^%)", "CloseBrackets"},
@@ -86,11 +79,17 @@ local Matches = {
 local Lexer = {}
 Lexer.__index = Lexer
 
+export type Lexer = typeof(setmetatable({} :: {
+    Mode: Mode,
+    Size: number,
+    Source: string,
+    Cursor: number,
+}, Lexer))
+
 function Lexer.new(Mode: Mode?): Lexer
-    local Mode: Mode = Mode or "Parsing"
     return setmetatable({
         Size = 0,
-        Mode = Mode,
+        Mode = Mode or "Parsing",
         Source = "",
         Cursor = 1
     } :: any, Lexer)
@@ -102,12 +101,17 @@ function Lexer.Initialize(self: Lexer, Source: string)
     self.Cursor = 1
 end
 
-function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?): Token?
+function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: number?): Token
     if self.Cursor > self.Size then
-        return
+        return {
+            Type = "EndOfFile",
+            Value = "",
+            Start = #self.Source,
+            End = #self.Source
+        }
     end
 
-    local Slice = string.sub(self.Source, self.Cursor)
+    local Slice = string.sub(self.Source, Position or self.Cursor)
     local IsHighlighting = (self.Mode == "Highlighting")
 
     local function Match(Pattern: string): (string?, number, number)
@@ -118,7 +122,7 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?): Token?
 
         local Matched = string.sub(Slice, Start, End)
 
-        Start = self.Cursor
+        Start = Position or self.Cursor
         return Matched, Start, math.min(Start + #Matched, self.Size)
     end
 
@@ -136,7 +140,7 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?): Token?
         if (DontAdvanceCursor ~= true or Type == "Whitespace") then
             self.Cursor += #Matched
         end
-        
+
         --> Whitespace matched, skip token.
         --> We don't want to skip whitespaces in highlighting mode.
         if (Type == "Whitespace") and not IsHighlighting then
@@ -165,21 +169,22 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?): Token?
         Error.new(Error.LexerUnexpectedToken, self.Source, "Unexpected token")
             :Primary({Start = self.Cursor, End = self.Cursor}, `Unexpected token`)
         :Emit()
-    else
-        --> Attempt to recover the lexer
-        local Cursor = self.Cursor
-        local Symbol = string.sub(self.Source, Cursor, Cursor)
-        self.Cursor += 1
-
-        return {
-            Type = "Unknown",
-            Value = Symbol,
-            Start = Cursor,
-            End = Cursor,
-        }
     end
 
-    return
+    --> Attempt to recover the lexer
+    local Cursor = self.Cursor
+    local Symbol = string.sub(self.Source, Cursor, Cursor)
+
+    if DontAdvanceCursor ~= true then
+        self.Cursor += 1
+    end
+
+    return {
+        Type = "Unknown",
+        Value = Symbol,
+        Start = Cursor,
+        End = Cursor,
+    }
 end
 
 return Lexer

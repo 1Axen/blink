@@ -1,0 +1,1 @@
+return table.create(1000, true)

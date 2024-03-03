@@ -3,12 +3,11 @@
 
 local Blocks = require("./Blocks")
 local Parser = require("../Parser")
-local Builder = require("../Modules/Builder")
 
 type Block = Blocks.Block
-type Writer = (Value: string, Block: Block, Range: NumberRange?) -> ()
-type Reader = (Variable: string, Block: Block, Range: NumberRange?) -> ()
-type Generate = (Declaration: Parser.TypeDeclaration, Variable: string?, Read: Block, Write: Block) -> ()
+type Writer = (Value: string, Block: Block, Range: NumberRange?, Components: {string}?) -> ()
+type Reader = (Variable: string, Block: Block, Range: NumberRange?, Components: {string}?) -> ()
+type Generate = (Declaration: Parser.PrimitiveDeclaration, Variable: string?, Read: Block, Write: Block) -> ()
 
 type TypePrefab = {
 	Read: Reader,
@@ -80,22 +79,20 @@ local Structures = {
 	Array = nil :: any
 }
 local Primitives: {[string]: {
-	Type: string | (Declaration: Parser.TypeDeclaration) -> string,
+	Type: string | (Declaration: Parser.PrimitiveDeclaration) -> string,
 	Generate: Generate
 }} = {}
 
 local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: AssertGenerator?): Generate
-	return function(Declaration: Parser.TypeDeclaration, Variable: string?, Read: Block, Write: Block)
+	return function(Declaration: Parser.PrimitiveDeclaration, Variable: string?, Read: Block, Write: Block)
 		local Value = Declaration.Value
+		local Tokens = Declaration.Tokens
 		local Variable = Variable or "Value"
 
 		local Range = Value.Range
-		local Array = Value.Array
 		local Class = Value.Class
-		local Primitive = Value.Primitive
-
-		local ReadVariable = (Array and "Item" or Variable)
-		local WriteVariable = (Array and `{Variable}[Index]` or Variable)
+		local Components = Value.Components
+		local Primitive = Tokens.Primitive.Value
 		local IsVariableSize = (Range and Range.Max ~= Range.Min)
 
 		local function GenerateValidation(Block: Block, Variable: string)
@@ -111,7 +108,7 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 					Block:Line(Assert.Lower)
 					Block:Line(Assert.Upper)
 				end
-			elseif Primitive == "Instance" then
+			elseif Primitive == "Instance" and Class then
 				local Assert = AssertGenerator(Variable, Class)
 				if Value.Optional and Block == Write then
 					Block:Compare(Variable, "nil", "Not")
@@ -123,20 +120,10 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 			end
 		end
 
-		if Array then
-			Read, Write = Structures.Array(Variable, Read, Write, Array)
-		end
-
-		GenerateValidation(Write, WriteVariable)
-		Prefab.Read(Array and `local {ReadVariable}` or Variable, Read, Range)
-		Prefab.Write(WriteVariable, Write, Range)
-		GenerateValidation(Read, ReadVariable)
-		
-		if Array then
-			Read:Line(`table.insert({Variable}, {ReadVariable})`)
-			Read:End()
-			Write:End()
-		end
+		GenerateValidation(Write, Variable)
+		Prefab.Read(Variable, Read, Range, Components)
+		Prefab.Write(Variable, Write, Range, Components)
+		GenerateValidation(Read, Variable)
 	end
 end
 
@@ -236,11 +223,12 @@ Primitives.f16 = {
 }
 
 --> Structures
-Structures.Array = function(Variable: string, Read: Block, Write: Block, Length: NumberRange): (Block, Block)
-	local Lower = Length.Min
-	local Upper = Length.Max
+Structures.Array = function(Variable: string, Read: Block, Write: Block, Bounds: NumberRange, Iterator: string?): (Block, Block)
+	local Lower = Bounds.Min
+	local Upper = Bounds.Max
 	local ReadArray, WriteArray;
 
+	local Iterator = Iterator or "Item"
 	local IsVariableSize = (Lower ~= Upper)
 
 	--> Length
@@ -260,7 +248,10 @@ Structures.Array = function(Variable: string, Read: Block, Write: Block, Length:
 
 	--> Body
 	ReadArray = Read:Loop("Index = 1", "Length")
-	WriteArray = Write:Loop("Index = 1", IsVariableSize and `math.min(#{Variable}, {Upper})` or Upper)
+	WriteArray = Write:Loop("Index = 1", IsVariableSize and `#{Variable}` or Upper)
+
+	ReadArray:Line(`local {Iterator};`)
+	WriteArray:Line(`local {Iterator} = {Variable}[Index]`)
 
 	return ReadArray, WriteArray
 end
@@ -316,17 +307,28 @@ end
 --> Vector
 do
 	Types.vector = {
-		Read = function(Variable: string, Block: Block)
-			local X = Block:Read(FLOAT)
-			local Y = Block:Read(FLOAT)
-			local Z = Block:Read(FLOAT)
-			Block:Line(`{Variable} = Vector3.new(buffer.readf32({RECIEVE_BUFFER}, {X}), buffer.readf32({RECIEVE_BUFFER}, {Y}), buffer.readf32({RECIEVE_BUFFER}, {Z}))`)
+		Read = function(Variable: string, Block: Block, _, Components: {string}?)
+			local Prefab: TypePrefab = Types.f32
+			if Components then
+				Prefab = Types[Components[#Components]] or Prefab
+			end
+
+			Block:Line(`local X, Y, Z;`)
+			Prefab.Read("X", Block)
+			Prefab.Read("Y", Block)
+			Prefab.Read("Z", Block)
+			Block:Line(`{Variable} = Vector3.new(X, Y, Z)`)
 		end,
-		Write = function(Value: string, Block: Block)
+		Write = function(Value: string, Block: Block, _, Components: {string}?)
+			local Prefab: TypePrefab = Types.f32
+			if Components then
+				Prefab = Types[Components[#Components]] or Prefab
+			end
+
 			Block:Line(`local Vector = {Value}`)
-			Types.f32.Write("Vector.X", Block)
-			Types.f32.Write("Vector.Y", Block)
-			Types.f32.Write("Vector.Z", Block)
+			Prefab.Write("Vector.X", Block)
+			Prefab.Write("Vector.Y", Block)
+			Prefab.Write("Vector.Z", Block)
 		end
 	}
 	
@@ -371,19 +373,29 @@ end
 --> CFrame
 do
 	Types.CFrame = {
-		Read = function(Variable: string, Block: Block)
-			Types.vector.Read("local Position", Block)
-			Types.f32.Read("local rX", Block)
-			Types.f32.Read("local rY", Block)
-			Types.f32.Read("local rZ", Block)
+		Read = function(Variable: string, Block: Block, _, Components: {string}?) 
+			local Prefab: TypePrefab = Types.f32
+			if Components then
+				Prefab = Types[Components[1]]
+			end
+
+			Types.vector.Read("local Position", Block, nil, Components)
+			Prefab.Read("local rX", Block)
+			Prefab.Read("local rY", Block)
+			Prefab.Read("local rZ", Block)
 			Block:Line(`{Variable} = CFrame.new(Position) * CFrame.fromOrientation(rX, rY, rZ)`)
 		end,
-		Write = function(Value: string, Block: Block)
-			Types.vector.Write(`{Value}.Position`, Block)
+		Write = function(Value: string, Block: Block, _, Components: {string}?)
+			local Prefab: TypePrefab = Types.f32
+			if Components then
+				Prefab = Types[Components[1]]
+			end
+
+			Types.vector.Write(`{Value}.Position`, Block, nil, Components)
 			Block:Line(`local rX, rY, rZ = {Value}:ToOrientation()`)
-			Types.f32.Write("rX", Block)
-			Types.f32.Write("rY", Block)
-			Types.f32.Write("rZ", Block)
+			Prefab.Write("rX", Block)
+			Prefab.Write("rY", Block)
+			Prefab.Write("rZ", Block)
 		end
 	}
 

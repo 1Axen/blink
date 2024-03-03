@@ -1,5 +1,6 @@
 return [[local Invocations = 0
 
+local SendSize = 64
 local SendOffset = 0
 local SendCursor = 0
 local SendBuffer = buffer.create(64)
@@ -11,7 +12,7 @@ local RecieveBuffer = buffer.create(64)
 local RecieveInstances = {}
 local RecieveInstanceCursor = 0
 
-type BufferSave = {Cursor: number, Buffer: buffer, Instances: {Instance}}
+type BufferSave = {Size: number, Cursor: number, Buffer: buffer, Instances: {Instance}}
 
 local function Read(Bytes: number)
     local Offset = RecieveCursor
@@ -21,6 +22,7 @@ end
 
 local function Save(): BufferSave
     return {
+        Size = SendSize,
         Cursor = SendCursor,
         Buffer = SendBuffer,
         Instances = SendInstances
@@ -29,6 +31,7 @@ end
 
 local function Load(Save: BufferSave?)
     if Save then
+        SendSize = Save.Size
         SendCursor = Save.Cursor
         SendOffset = Save.Cursor
         SendBuffer = Save.Buffer
@@ -36,6 +39,7 @@ local function Load(Save: BufferSave?)
         return
     end
 
+    SendSize = 64
     SendCursor = 0
     SendOffset = 0
     SendBuffer = buffer.create(64)
@@ -53,19 +57,15 @@ local function Invoke()
 end
 
 local function Allocate(Bytes: number)
-    local Len = buffer.len(SendBuffer)
-
-    local Size = Len
     local InUse = (SendCursor + Bytes)
-    
-    if InUse > Size then
+    if InUse > SendSize then
         --> Avoid resizing the buffer for every write
-        while InUse > Size do
-            Size *= 1.5
+        while InUse > SendSize do
+            SendSize *= 1.5
         end
 
-        local Buffer = buffer.create(Size)
-        buffer.copy(Buffer, 0, SendBuffer, 0, Len)
+        local Buffer = buffer.create(SendSize)
+        buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)
         SendBuffer = Buffer
     end
 
