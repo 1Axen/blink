@@ -23,8 +23,25 @@ local function FormatTime(Time: number): string
 	end
 end
 
-local function CreateDirIfNotFound(Path: string)
-    local Directory = string.match(Path, "(.-)%/[^%/]*$") 
+local Extensions = {"", ".txt", ".blink"}
+local function TryLocateSourceFile(Path: string): string
+	for _, Extension in Extensions do
+		local Temporary = `{Path}{Extension}`
+		print(Temporary)
+		if fs.isFile(Temporary) then
+			return Temporary
+		end
+	end
+
+	error(`Unable to locate source file at {Path}`)
+end
+
+local function ExtractDirectory(Path: string): string
+	return string.match(Path, "(.-)%/[^%/]*$") or "./"
+end
+
+local function CreateDirectoryIfNotFound(Path: string)
+    local Directory = ExtractDirectory(Path)
     if fs.isDir(Directory) then
        return   
     end
@@ -45,14 +62,9 @@ if #Arguments < 1 then
     error(`Expected at least 1 argument.`)
 end
 
-local SourcePath = Arguments[1]
+local SourcePath = TryLocateSourceFile(Arguments[1])
 local SourceParser = Parser.new()
-
-if not fs.isFile(SourcePath) then
-	error(`Unable to find "{SourcePath}"`)
-end
-
-local SourceDirectory = string.match(SourcePath, "(.-)%/[^%/]*$") 
+local SourceDirectory = ExtractDirectory(SourcePath)
 
 ---- Main ----
 
@@ -80,8 +92,8 @@ local TypesOutput: string;
 local ClientOutput = `{SourceDirectory}/{Options.ClientOutput}`
 local ServerOutput = `{SourceDirectory}/{Options.ServerOutput}`
 
-CreateDirIfNotFound(ClientOutput)
-CreateDirIfNotFound(ServerOutput)
+CreateDirectoryIfNotFound(ClientOutput)
+CreateDirectoryIfNotFound(ServerOutput)
 
 print("Generating output files...")
 local GenerateStart = os.clock()
@@ -99,7 +111,7 @@ fs.writeFile(ServerOutput, ServerSource)
 fs.writeFile(ClientOutput, ClientSource)
 
 if TypesSource and TypesOutput then
-	CreateDirIfNotFound(TypesOutput)
+	CreateDirectoryIfNotFound(TypesOutput)
 	fs.writeFile(TypesOutput, TypesSource)
 end
 
