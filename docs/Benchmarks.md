@@ -19,10 +19,10 @@ Memory #2: `8GB 2400`
 ## Zap
 |Zap (FPS)|Median|P0|P80|P90|P95|P100|
 |---|---|---|---|---|---|---|
-|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau)|27|22|28|28|28|29|
-|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau)|17|16|17|17|17|19|
+|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau)|28|24|29|29|29|30|
+|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau)|21|21|21|21|21|23|
 ## Blink
 |Blink (FPS)|Median|P0|P80|P90|P95|P100|
 |---|---|---|---|---|---|---|
-|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau)|46|44|49|49|49|53|
-|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau)|20|20|21|21|21|22|
+|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau)|60|60|60|60|60|60|
+|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau)|24|23|25|25|25|27|
