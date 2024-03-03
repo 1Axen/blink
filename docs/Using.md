@@ -66,7 +66,7 @@ Arrays can be defined by appending `[SIZE]` or `[[MIN]..[MAX]]` after the type d
 
 Primitives can be constrained to ranges by writing `([MIN]..[MAX])` after the primitive type. Ranges are inclusive.  
 
-Components can be specified using the angeled brackets `<>`, they allow you to specify what numerical type (`u8`, `u16`, `u32`, `i8`, `i16`, `i32`, `f16`, `f32`, `f64`) to use for `vector` and `CFrame` axes.  
+Components can be specified using the angled brackets `<>`, they allow you to specify what numerical type (`u8`, `u16`, `u32`, `i8`, `i16`, `i32`, `f16`, `f32`, `f64`) to use for `vector` and `CFrame` axes.  
 For example `vector<i16>` will define a vector that represents its axes using `i16`.  
 CFrames take two components `CFrame<f32, f32>`, one representing position and one representing rotation in order.
 > [!WARNING]
