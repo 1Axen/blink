@@ -44,7 +44,8 @@ type Attributes = {
     Scope: string?,
     Array: Array?,
     Range: NumberRange?,
-    Optional: boolean?
+    Optional: boolean?,
+    Components: {string}?
 }
 
 type AttributesTokens = {
@@ -104,7 +105,7 @@ export type PrimitiveDeclaration = Node<"Primitive", {
     Class: string?,
     Primitive: Settings.Primitive,
 } & Attributes, {
-    Primitive: Token
+    Primitive: Token,
 } & AttributesTokens>
 
 export type ReferenceDeclaration = Node<"Reference", {
@@ -308,7 +309,7 @@ function Parser.SetReference(self: Parser, Type: Type, Identifier: Token, Declar
     }
 end
 
-function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?): (NumberRange?, boolean, Array?, Token?, Token?, Token?, Token?)
+function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?): (Attributes, AttributesTokens)
     local function TryToParseOptional(): (boolean, Token?)
         local Token = self:TryConsume("Optional")
         return (Token ~= nil), Token
@@ -387,7 +388,67 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
         )
     end
 
+    local function TryToParseComponents(): {string}?
+        if not Primitive then
+            return
+        end
+
+        local Token = self:TryConsume("Component")
+        if not Token then
+            return
+        end
+
+        local Value = Token.Value
+        Value = string.sub(Value, 2, #Value - 1)
+        Value = string.gsub(Value, "[%c%s]+", "")
+
+        local Components = {}
+        local Primitives = string.split(Value, ",")
+        
+        if Primitive.AllowedComponents == 0 then
+            error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Type doesn't accept components`)
+                :Primary(Token, `Remove component here`)
+            :Emit())
+        end
+
+        if Primitive.AllowedComponents < #Primitives then
+            error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Too many components specified`)
+                :Primary(Token, `Expected #{Primitive.AllowedComponents} components, got #{#Primitives}`)
+            :Emit())
+        end
+
+        for Index, Component in Primitives do
+            if Component == "" then
+                continue
+            end
+
+            local ComponentPrimitive = PRIMITIVES[Component]
+            if not ComponentPrimitive then
+                error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Unknown primitive used as component`)
+                    :Primary(Token, `"{Component}" is invalid`)
+                :Emit())
+            end
+
+            if not ComponentPrimitive.Component then
+                error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Invalid primitive used as component`)
+                    :Primary(Token, `"{Component}" cannot be used as a component`)
+                :Emit())
+            end
+
+            table.insert(Components, Component)
+        end
+
+        if #Components == 0 then
+            error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Too few components`)
+                :Primary(Token, `Expected at least 1 component, 0 are specified`)
+            :Emit())
+        end
+
+        return Components
+    end
+
     local Range, RangeToken = TryToParseRange()
+    local Components = TryToParseComponents()
     local Optional, OptionalToken = TryToParseOptional()
     local Array, ArrayToken, ArrayOptionalToken = TryToParseArray()
 
@@ -412,7 +473,16 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
         end
     end
 
-    return Range, Optional, Array, RangeToken, OptionalToken, ArrayToken, ArrayOptionalToken
+    return {
+        Range = Range,
+        Array = Array,
+        Optional = Optional,
+        Components = Components
+    }, {
+        Range = RangeToken,
+        Array = ArrayToken,
+        Optional = OptionalToken,
+    }
 end
 
 ---- Top-Level Parsing Functions ----
@@ -701,7 +771,11 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
 
     local Value = Declaration.Value :: Attributes
     local Tokens = Declaration.Tokens :: AttributesTokens
-    Value.Range, Value.Optional, Value.Array, Tokens.Range, Tokens.Optional, Tokens.Array = self:GetTypeAttributes(Primitive)
+    local Attributes, AttributesTokens = self:GetTypeAttributes(Primitive)
+
+    Value.Range, Value.Optional, Value.Array, Value.Components = Attributes.Range, Attributes.Optional, Attributes.Array, Attributes.Components
+    Tokens.Range, Tokens.Optional, Tokens.Array = AttributesTokens.Range, AttributesTokens.Optional, AttributesTokens.Array
+
 
     return Declaration
 end

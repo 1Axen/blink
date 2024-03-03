@@ -39,33 +39,45 @@ You can mark any type as optional by appending `?` after it
 You can define a primitive using the `type` keyword  
 Blink supports the following primitives:  
 
-|Name    |Size (Bytes)|Supports ranges  |Minimum        |Maximum      | 
-|--------|------------|-----------------|---------------|-------------|
-|u8      |1 Byte      |Yes              |0              |255          |
-|u16     |2 Bytes     |Yes              |0              |65,535       |
-|u32     |4 Bytes     |Yes              |0              |4,294,967,295|
-|i8      |1 Byte      |Yes              |-128           |127          |
-|i16     |2 Bytes     |Yes              |-32,768        |32,767       |
-|i32     |4 Bytes     |Yes              |-2,147,483,648 |2,147,483,647|
-|f16     |2 Bytes     |Yes              |-65504         |65504        |
-|f32     |4 Bytes     |Yes              |−16777216      |16777216     |
-|f64     |8 Bytes     |Yes              |-2^53          |2^53         |
-|vector  |12 Bytes    |Yes (Magnitude)  |N/A            |N/A          |
-|buffer  |N/A         |Yes (buffer.len) |N/A            |65,535 Bytes |
-|string  |N/A         |Yes (string.len) |N/A            |65,535 Bytes |
-|boolean |1 Byte      |No               |N/A            |N/A          |
-|CFrame  |24 Bytes    |No               |N/A            |N/A          |
-|Color3  |12 Bytes    |No               |N/A            |N/A          |
-|Instance|4 Bytes     |No               |N/A            |N/A          |
-|unknown |N/A         |No               |N/A            |N/A          |
+|Name    |Size (Bytes)|Supports ranges  |Minimum        |Maximum      |Components| 
+|--------|------------|-----------------|---------------|-------------|----------|
+|u8      |1 Byte      |Yes              |0              |255          |No        |
+|u16     |2 Bytes     |Yes              |0              |65,535       |No        |
+|u32     |4 Bytes     |Yes              |0              |4,294,967,295|No        |
+|i8      |1 Byte      |Yes              |-128           |127          |No        |
+|i16     |2 Bytes     |Yes              |-32,768        |32,767       |No        |
+|i32     |4 Bytes     |Yes              |-2,147,483,648 |2,147,483,647|No        |
+|f16     |2 Bytes     |Yes              |-65504         |65504        |No        |
+|f32     |4 Bytes     |Yes              |−16777216      |16777216     |No        |
+|f64     |8 Bytes     |Yes              |-2^53          |2^53         |No        |
+|vector  |12 Bytes    |Yes (Magnitude)  |N/A            |N/A          |Yes (1)   |
+|buffer  |N/A         |Yes (buffer.len) |N/A            |65,535 Bytes |No        |
+|string  |N/A         |Yes (string.len) |N/A            |65,535 Bytes |No        |
+|boolean |1 Byte      |No               |N/A            |N/A          |No        |
+|CFrame  |24 Bytes    |No               |N/A            |N/A          |Yes (2)   |
+|Color3  |12 Bytes    |No               |N/A            |N/A          |No        |
+|Instance|4 Bytes     |No               |N/A            |N/A          |No        |
+|unknown |N/A         |No               |N/A            |N/A          |No        |
 
-Arrays can be defined by appending `[SIZE]` or `[[MIN]..[MAX]]` after the type declaration
+### Attributes
+A type can be marked optional by appending `?` at the end.
+
+Arrays can be defined by appending `[SIZE]` or `[[MIN]..[MAX]]` after the type declaration.  
+
 Primitives can be constrained to ranges by writing `([MIN]..[MAX])` after the primitive type. Ranges are inclusive.  
+
+Components can be specified using the angeled brackets `<>`, they allow you to specify what numerical type (`u8`, `u16`, `u32`, `i8`, `i16`, `i32`, `f16`, `f32`, `f64`) to use for `vector` and `CFrame` axes.  
+For example `vector<i16>` will define a vector that represents its axes using `i16`.  
+CFrames take two components `CFrame<f32, f32>`, one representing position and one representing rotation in order.
+> [!WARNING]
+> Using non float types for CFrame will result in the rotation being reset to 0.
 ```
 type Simple = u8
 type Optional = u8?
 type Array = u8[1]
 type Range = u8[0..100]
+type VectorInt16 = vector<int16>
+type Orientation = CFrame<int16, f16>
 map Players = {[u8]: Instance(Player)}[0..255]
 enum States = (A, B, C, D)[0..255]
 struct Dictionary {

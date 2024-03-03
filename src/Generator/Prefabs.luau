@@ -5,8 +5,8 @@ local Blocks = require("./Blocks")
 local Parser = require("../Parser")
 
 type Block = Blocks.Block
-type Writer = (Value: string, Block: Block, Range: NumberRange?) -> ()
-type Reader = (Variable: string, Block: Block, Range: NumberRange?) -> ()
+type Writer = (Value: string, Block: Block, Range: NumberRange?, Components: {string}?) -> ()
+type Reader = (Variable: string, Block: Block, Range: NumberRange?, Components: {string}?) -> ()
 type Generate = (Declaration: Parser.PrimitiveDeclaration, Variable: string?, Read: Block, Write: Block) -> ()
 
 type TypePrefab = {
@@ -91,6 +91,7 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 
 		local Range = Value.Range
 		local Class = Value.Class
+		local Components = Value.Components
 		local Primitive = Tokens.Primitive.Value
 		local IsVariableSize = (Range and Range.Max ~= Range.Min)
 
@@ -120,8 +121,8 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 		end
 
 		GenerateValidation(Write, Variable)
-		Prefab.Read(Variable, Read, Range)
-		Prefab.Write(Variable, Write, Range)
+		Prefab.Read(Variable, Read, Range, Components)
+		Prefab.Write(Variable, Write, Range, Components)
 		GenerateValidation(Read, Variable)
 	end
 end
@@ -306,17 +307,28 @@ end
 --> Vector
 do
 	Types.vector = {
-		Read = function(Variable: string, Block: Block)
-			Types.f32.Read("local X", Block)
-			Types.f32.Read("local Y", Block)
-			Types.f32.Read("local Z", Block)
+		Read = function(Variable: string, Block: Block, _, Components: {string}?)
+			local Prefab: TypePrefab = Types.f32
+			if Components then
+				Prefab = Types[Components[#Components]] or Prefab
+			end
+
+			Block:Line(`local X, Y, Z;`)
+			Prefab.Read("X", Block)
+			Prefab.Read("Y", Block)
+			Prefab.Read("Z", Block)
 			Block:Line(`{Variable} = Vector3.new(X, Y, Z)`)
 		end,
-		Write = function(Value: string, Block: Block)
+		Write = function(Value: string, Block: Block, _, Components: {string}?)
+			local Prefab: TypePrefab = Types.f32
+			if Components then
+				Prefab = Types[Components[#Components]] or Prefab
+			end
+
 			Block:Line(`local Vector = {Value}`)
-			Types.f32.Write("Vector.X", Block)
-			Types.f32.Write("Vector.Y", Block)
-			Types.f32.Write("Vector.Z", Block)
+			Prefab.Write("Vector.X", Block)
+			Prefab.Write("Vector.Y", Block)
+			Prefab.Write("Vector.Z", Block)
 		end
 	}
 	
@@ -361,19 +373,29 @@ end
 --> CFrame
 do
 	Types.CFrame = {
-		Read = function(Variable: string, Block: Block)
-			Types.vector.Read("local Position", Block)
-			Types.f32.Read("local rX", Block)
-			Types.f32.Read("local rY", Block)
-			Types.f32.Read("local rZ", Block)
+		Read = function(Variable: string, Block: Block, _, Components: {string}?) 
+			local Prefab: TypePrefab = Types.f32
+			if Components then
+				Prefab = Types[Components[1]]
+			end
+
+			Types.vector.Read("local Position", Block, nil, Components)
+			Prefab.Read("local rX", Block)
+			Prefab.Read("local rY", Block)
+			Prefab.Read("local rZ", Block)
 			Block:Line(`{Variable} = CFrame.new(Position) * CFrame.fromOrientation(rX, rY, rZ)`)
 		end,
-		Write = function(Value: string, Block: Block)
-			Types.vector.Write(`{Value}.Position`, Block)
+		Write = function(Value: string, Block: Block, _, Components: {string}?)
+			local Prefab: TypePrefab = Types.f32
+			if Components then
+				Prefab = Types[Components[1]]
+			end
+
+			Types.vector.Write(`{Value}.Position`, Block, nil, Components)
 			Block:Line(`local rX, rY, rZ = {Value}:ToOrientation()`)
-			Types.f32.Write("rX", Block)
-			Types.f32.Write("rY", Block)
-			Types.f32.Write("rZ", Block)
+			Prefab.Write("rX", Block)
+			Prefab.Write("rY", Block)
+			Prefab.Write("rZ", Block)
 		end
 	}
 
