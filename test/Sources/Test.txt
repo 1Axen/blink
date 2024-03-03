@@ -1,4 +1,5 @@
 option Casing = Pascal
+option TypesOutput = "../../Network/Types.luau"
 option ClientOutput = "../../Network/Client.luau"
 option ServerOutput = "../../Network/Server.luau"
 option ManualReplication = false

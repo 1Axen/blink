@@ -103,7 +103,7 @@ local ClientSource = Generator.Generate("Client", AbstractSyntaxTree)
 local TypesSource: string?;
 if Options.TypesOutput then
 	TypesOutput = `{SourceDirectory}/{Options.TypesOutput}`
-	TypesSource = Generator.GenerateTypeDefinitions("Server", AbstractSyntaxTree, Options)
+	TypesSource = Generator.GenerateTypeDefinitions("Server", AbstractSyntaxTree)
 end
 
 local GenerateTime = (os.clock() - GenerateStart)
