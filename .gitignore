@@ -13,8 +13,11 @@ sourcemap.json
 /plugin/bundle/*
 
 /benchmark/tools
+/benchmark/packages
+/benchmark/config.json
 /benchmark/src/shared/blink
 /benchmark/src/shared/zap
 /benchmark/roblox
+
 *.rbxl
 *.rbxl.lock
