@@ -204,7 +204,7 @@ end
 local function GenerateFile(File: StringValue, Directory: Instance)
     local Source = File.Value
     local SourceParser = Parser.new()
-    local Success, Error, AbstractSyntaxTree, UserOptions = pcall(function()
+    local Success, Error, AbstractSyntaxTree = pcall(function()
         return nil, SourceParser:Parse(Source)
     end)
 
@@ -218,9 +218,9 @@ local function GenerateFile(File: StringValue, Directory: Instance)
         return
     end
 
-    local ServerSource = Generator.Generate("Server", AbstractSyntaxTree, UserOptions)
-    local ClientSource = Generator.Generate("Client", AbstractSyntaxTree, UserOptions)   
-    local TypesSource = Generator.GenerateTypeDefinitions("Server", AbstractSyntaxTree, UserOptions)
+    local ServerSource = Generator.Generate("Server", AbstractSyntaxTree)
+    local ClientSource = Generator.Generate("Client", AbstractSyntaxTree)   
+    local TypesSource = Generator.GenerateTypeDefinitions("Server", AbstractSyntaxTree)
 
     local BlinkFolder: Folder = Directory:FindFirstChild("Blink") :: Folder
     if not BlinkFolder then

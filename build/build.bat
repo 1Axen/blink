@@ -5,6 +5,7 @@ SET /p VERSION=What version is being built?:
 echo Clearing release folder
 del /s /q "../release"
 rmdir /s/q "../Blink"
+mkdir "../release"
 mkdir "../Blink"
 
 lune run version.luau %VERSION%

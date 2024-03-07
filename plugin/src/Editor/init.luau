@@ -190,6 +190,10 @@ local function Colorify()
         local Type: Lexer.Types = Token.Type
         local Value = Token.Value
 
+        if Type == "EndOfFile" then
+            break
+        end
+
         if Type == "Keyword" then
             Keyword = Value
             RichText ..= WrapColor(Value, THEME.Keyword)
