@@ -26,16 +26,12 @@
     {
       "identifier": "VERSION",
       "rule": "inject_global_value",
-<<<<<<< Updated upstream
-      "value": "1.0.0-rc.1"
-=======
       "value": "0.8.1"
     },
     {
       "identifier": "PLUGIN",
       "rule": "inject_global_value",
       "value": true
->>>>>>> Stashed changes
     }
   ]
 }

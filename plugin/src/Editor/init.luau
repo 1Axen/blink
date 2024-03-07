@@ -238,7 +238,7 @@ end
 
 local function HighlightCurrentLine()
     local Line = Utility.GetCurrentLine(Input.Text, Input.CursorPosition)
-    local Label: TextLabel? = LinesContainer:FindFirstChild(tostring(Line))
+    local Label: TextLabel = LinesContainer:FindFirstChild(tostring(Line))
     if not Label or Label == PreviousLine then
         return
     end
