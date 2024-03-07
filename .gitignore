@@ -12,6 +12,9 @@ test/Sources/Game.txt
 sourcemap.json
 /plugin/bundle/*
 
+/benchmark/tools
+/benchmark/src/shared/blink
+/benchmark/src/shared/zap
 /benchmark/roblox
 *.rbxl
 *.rbxl.lock
