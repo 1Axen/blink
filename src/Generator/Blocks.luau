@@ -42,7 +42,7 @@ function Block.new<Parent>(Parent: Block?, Unique: string?): Block
             Method = "None",
             Bytes = 0
         }
-    } :: any, Block)
+    }, Block)
 end
 
 function Block._operation(self: Block, Method: Method, Bytes: number): string
