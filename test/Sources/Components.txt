@@ -1,7 +1,0 @@
-option ClientOutput = "../../Network/ClientComponents.luau"
-option ServerOutput = "../../Network/ServerComponents.luau"
-
-type Number = u8
-type VectorInt16 = vector<i16>
-type VectorFloat64 = vector<f64>
-type Orientation = CFrame<f32>

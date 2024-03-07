@@ -926,13 +926,13 @@ function Generator.Generate(FileContext: "Client" | "Server", AbstractSyntaxTree
 		.. `\nreturn \{\n{Return.Dump()}\}`
 end
 
-function Generator.GenerateTypeDefinitions(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Body, UserOptions: Parser.Options): string
+function Generator.GenerateTypeDefinitions(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Body): string
+	local Value = AbstractSyntaxTree.Value
+
 	Generator.Reset()
 	Context = FileContext
-	Options = UserOptions
-
-	--> Parse declarations
-	Generators.AbstractSyntaxTree(AbstractSyntaxTree.Value)
+	Options = Value.Options
+	Generators.AbstractSyntaxTree(Value.Declarations)
 
 	return LuauTypes.Dump() 
 		.. `\nreturn true`

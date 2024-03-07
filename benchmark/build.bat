@@ -3,7 +3,7 @@
 setlocal
 :PROMPT
 SET /P AREYOUSURE=Download tools? (Y/[N])?
-IF /I "%AREYOUSURE%" NEQ Y GOTO COMPILE
+IF /I %AREYOUSURE% NEQ Y GOTO COMPILE
 
 echo Downloading dependencies...
 del /q ".\tools\*.*"
