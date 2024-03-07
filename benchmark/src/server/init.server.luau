@@ -1,6 +1,8 @@
-local Zap = require(game:GetService('ReplicatedStorage').Shared.zap.Server)
-local Blink = require(game:GetService('ReplicatedStorage').Shared.blink.Server)
-local Benches = require(game:GetService('ReplicatedStorage').Shared.benches)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Zap = require("../shared/zap/Server")
+local Blink = require("../shared/blink/Server")
+local Benches = require("../shared/benches")
 
 function CompareTables(a, b)
     if a == b then 
@@ -40,10 +42,20 @@ local function CompareValues(a, b): boolean
     return (a == b)
 end
 
+local Recieved = {}
 for Name, Data in Benches do
     local function OnRecieve(Tool: string)
+        local ToolRecieved = Recieved[Tool]
+        if not ToolRecieved then
+            ToolRecieved = {}
+            Recieved[Tool] = ToolRecieved
+        end
+
+        ToolRecieved[Name] = 0
+
 		return function(Player, Recieve)
-            if not _G.VALIDATE then
+            ToolRecieved[Name] += 1
+            if ToolRecieved[Name] > 1 then
                 return
             end
 
@@ -57,3 +69,6 @@ for Name, Data in Benches do
     Zap[Name].SetCallback(OnRecieve("Zap"))
 end
 
+ReplicatedStorage.Shared.GetRecieved.OnServerInvoke = function()
+    return Recieved
+end

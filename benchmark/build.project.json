@@ -11,7 +11,10 @@
   
       "ReplicatedStorage": {
         "Shared": {
-          "$path": "roblox/shared"
+          "$path": "roblox/shared",
+          "GetRecieved": {
+            "$className": "RemoteFunction"
+          }
         }
       },
   

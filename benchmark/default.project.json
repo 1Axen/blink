@@ -5,7 +5,10 @@
 
     "ReplicatedStorage": {
       "Shared": {
-        "$path": "src/shared"
+        "$path": "src/shared",
+        "GetRecieved": {
+          "$className": "RemoteFunction"
+        }
       }
     },
 

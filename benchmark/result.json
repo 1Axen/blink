@@ -1,1 +1,1 @@
-{"Blink":{"Entities":[24,23,25,25,25,27],"Booleans":[60,60,60,60,60,60]},"Zap":{"Entities":[21,21,21,21,21,23],"Booleans":[28,24,29,29,29,30]}}
+{"Blink":{"Booleans":{"Framerate":[60,60,60,60,60,60],"Sent":300000,"Recieve":300000},"Entities":{"Framerate":[29,28,29,29,29,32],"Sent":147000,"Recieve":147000}},"Zap":{"Booleans":{"Framerate":[36,36,37,37,37,37],"Sent":183000,"Recieve":183000},"Entities":{"Framerate":[24,22,25,25,25,25],"Sent":109000,"Recieve":109000}}}

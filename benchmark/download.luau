@@ -8,6 +8,10 @@ local Tools = {
     blink = "https://api.github.com/repos/1Axen/blink/releases/latest",
 }
 
+local Packages = {
+    bytenet = "https://api.github.com/ffrostflame/ByteNet/releases/latest"
+}
+
 for Name, Url in Tools do
     local Response = net.request({
         url = Url,
@@ -32,6 +36,33 @@ for Name, Url in Tools do
 
     local UnzipResult = process.spawn(`{PATH_TO_7ZIP}`, {"e", `./tools/{Name}.zip`, "-y", "-o./tools"})
     assert(UnzipResult.ok, `Encountered an exception while unzipping downloads for {Name}, {UnzipResult.stderr}`)
+
+    print("Downloaded", Name)
+end
+
+for Name, Url in Packages do
+    local Response = net.request({
+        url = Url,
+        method = "GET",
+    })
+
+    assert(Response.ok, Response.statusMessage)
+    print(Response.body)
+
+    local Json = net.jsonDecode(Response.body)
+    local DownloadUrl: string
+    for Index, Asset in Json.assets do
+        if not string.find(Asset.name, "rbxm", 1, true) then
+            continue
+        end
+
+        DownloadUrl = Asset.browser_download_url
+    end
+
+    assert(DownloadUrl, `Unable to find download URL for {Name}`)
+
+    local CurlResult = process.spawn("curl", {"--location", DownloadUrl, "--output", `./tools/{Name}.rbxm`})
+    assert(CurlResult.ok, `Encountered an exception while downloading files for {Name}, {CurlResult.code}`)
 
     print("Downloaded", Name)
 end

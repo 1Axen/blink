@@ -27,7 +27,7 @@ local function QueryWMIC(Component: string, Properties: string): {string}
         Line = string.gsub(Line, "\r", "")
         Line = string.sub(Line, 1, #Line - 1)
 
-        if #Lines == 1 then
+        if Component == "cpu" then
             table.insert(QueryResult, Line)
             continue
         end
@@ -55,6 +55,7 @@ local function WriteComputerSpecs()
     
     Contents ..= `\n## Computer Specs`
     Contents ..= `\nProcessor: \`{Processor[1]}\`  `
+
     for Slot, Stick in MemorySticks do
         local Capacity = tonumber(Stick[1])
         Capacity //= 1e+9
@@ -62,12 +63,26 @@ local function WriteComputerSpecs()
     end
 end
 
-local function WriteToolResults(Name: string, Results: {[string]: {[string]: number}})
+type Benchmark = {
+    Sent: number,
+    Recieve: number,
+    Framerate: {number}
+}
+
+local function WriteToolResults(Name: string, Results: {[string]: Benchmark})
     local Output = `\n## {Name}\n`
-    Output ..= `|{Name} (FPS)|Median|P0|P80|P90|P95|P100|`
-    Output ..= `\n|---|---|---|---|---|---|---|`
+    Output ..= `|{Name} (FPS)|Median|P0|P80|P90|P95|P100|Loss (%)|`
+    Output ..= `\n|---|---|---|---|---|---|---|---|`
     for Benchmark, Samples in Results do
-        Output ..= `\n|[{Benchmark}](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/{Benchmark}.luau)|{table.concat(Samples, "|")}|`
+        local Link = `[{Benchmark}](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/{Benchmark}.luau)`
+        local Loss = math.floor((1 - (Samples.Recieve / Samples.Sent)) * 100)
+
+        if Loss > 50 then
+            Output ..= `\n|{Link}|-|-|-|-|-|-|{Loss}%`
+            continue
+        end
+
+        Output ..= `\n|{Link}|{table.concat(Samples.Framerate, "|")}|{Loss}%|`
     end
     Contents ..= Output
 end

@@ -2,13 +2,20 @@ local Zap = require("../shared/zap/Client")
 local Blink = require("../shared/blink/Client")
 local Benches = require("../shared/benches")
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local Stats = game:GetService("Stats")
 
 type Tool = "Zap" | "Blink"
+type Benchmark = {
+    Sent: number,
+    Recieve: number,
+    Framerate: {number}
+}
+
 type ToolResults = {
-    [string]: {number}
+    [string]: Benchmark
 }
 
 local function Percentile(Samples: {number}, Percentile: number)
@@ -18,12 +25,14 @@ local function Percentile(Samples: {number}, Percentile: number)
     return Samples[Index]
 end
 
-local function RunBenchmark(Tool: Tool, Bench: string): {number}
+local function RunBenchmark(Tool: Tool, Bench: string): Benchmark
     local Total = 0
     local Frames = 0
     local Framerates = {}
 
+    local Sent = 0
     local Data = Benches[Bench]
+
     local Method = Tool == "Blink" and Blink[Bench].Fire or Zap[Bench].Fire
     local Connection = RunService.PostSimulation:Connect(function(DeltaTime: number)
         Total += DeltaTime
@@ -36,6 +45,7 @@ local function RunBenchmark(Tool: Tool, Bench: string): {number}
         end
 
         for Index = 1, 1000 do
+            Sent += 1
             Method(Data)
         end
     end)
@@ -51,7 +61,11 @@ local function RunBenchmark(Tool: Tool, Bench: string): {number}
         table.insert(Result, Percentile(Framerates, Percentage))
     end
 
-    return Result
+    return {
+        Sent = Sent,
+        Recieve = 0,
+        Framerate = Result
+    }
 end
 
 local function RunBenchmarks()
@@ -68,6 +82,13 @@ local function RunBenchmarks()
 
         --> Give ROBLOX some time to rest in-between tools
         task.wait(2)
+    end
+
+    local Recieved = ReplicatedStorage.Shared.GetRecieved:InvokeServer()
+    for Tool, Benchmarks in Recieved do
+        for Bench, Recieve in Benchmarks do
+            Results[Tool][Bench].Recieve = Recieve
+        end
     end
 
     print("Finished running benchmarks, generating results...")
