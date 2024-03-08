@@ -27,7 +27,6 @@ local Extensions = {"", ".txt", ".blink"}
 local function TryLocateSourceFile(Path: string): string
 	for _, Extension in Extensions do
 		local Temporary = `{Path}{Extension}`
-		print(Temporary)
 		if fs.isFile(Temporary) then
 			return Temporary
 		end
