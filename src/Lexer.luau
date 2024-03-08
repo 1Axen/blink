@@ -151,7 +151,7 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: 
             --> Only overwrite the type when highlighting
             local TrueType, TrueMatched = Type(Matched)
             Type = TrueType
-            Matched = (not IsHighlighting and TrueMatched or Matched)
+            Matched = if (IsHighlighting ~= true) then TrueMatched else Matched
         end
 
         return {
