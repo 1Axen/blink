@@ -7,10 +7,10 @@ SET /P "AREYOUSURE=Download tools? (Y/[N])?"
 IF /I %AREYOUSURE% NEQ Y GOTO COMPILE
 
 echo Downloading dependencies...
-if not exist tools mkdir tools
-if not exist packages mkdir packages
-del /q ".\tools\*.*"
-del /q ".\packages\*.*"
+rmdir /s /q ".\tools"
+rmdir /s /q ".\packages"
+mkdir ".\tools"
+mkdir ".\packages"
 lune run download
 del /q ".\tools\*.zip"
 del /q ".\packages\*.zip"

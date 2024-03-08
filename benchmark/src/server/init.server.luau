@@ -1,7 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Zap = require("../shared/zap/Server")
-local Blink = require("../shared/blink/Server")
+local Modes = require("../shared/modes")
 local Benches = require("../shared/benches")
 
 function CompareTables(a, b)
@@ -59,14 +58,31 @@ for Name, Data in Benches do
                 return
             end
 
+            if Tool == "bytenet" then
+                Player, Recieve = Recieve, Player
+            end
+
 			if not CompareValues(Data, Recieve) then
 				warn(`Recieved incorrect data with {Tool} for {Name}`)
 			end
 		end
     end
     
-    Blink[Name].On(OnRecieve("Blink"))
-    Zap[Name].SetCallback(OnRecieve("Zap"))
+    for Tool, Events in Modes  do
+        local Event = Events[Name]
+        local Callback = OnRecieve(Tool)
+
+        if Tool == "warp" then
+            Event:Connect(Callback)
+            continue
+        elseif Tool == "roblox" then
+            Event.OnServerEvent:Connect(Callback)
+            continue
+        end
+
+        local Method = Event.On or Event.SetCallback or Event.listen
+        Method(Callback)
+    end
 end
 
 ReplicatedStorage.Shared.GetRecieved.OnServerInvoke = function()

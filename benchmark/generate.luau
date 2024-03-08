@@ -69,31 +69,65 @@ end
 type Benchmark = {
     Sent: number,
     Recieve: number,
+    Bandwidth: {number},
     Framerate: {number}
 }
 
+local Metrics = {
+    {
+        Label = "FPS",
+        Samples = "Framerate"
+    },
+    {
+        Label = "Kbps",
+        Samples = "Bandwidth"
+    }
+}
+
 local function WriteToolResults(Name: string, Results: {[string]: Benchmark})
-    local Output = `\n## {Name} {Versions[string.lower(Name)]}\n`
-    Output ..= `|{Name} (FPS)|Median|P0|P80|P90|P95|P100|Loss (%)|`
+    local Output = `\n## {Name} {Versions[string.lower(Name)] or ""}\n`
+    Output ..= `|Benchmark (Metric)|Median|P0|P80|P90|P95|P100|Loss (%)|`
     Output ..= `\n|---|---|---|---|---|---|---|---|`
-    for Benchmark, Samples in Results do
-        local Link = `[{Benchmark}](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/{Benchmark}.luau)`
-        local Loss = math.floor((1 - (Samples.Recieve / Samples.Sent)) * 100)
 
-        if Loss > 50 then
-            Output ..= `\n|{Link}|-|-|-|-|-|-|{Loss}%`
-            continue
+    for Benchmark, Result in Results do
+        local Loss = math.floor((1 - (Result.Recieve / Result.Sent)) * 100)
+        for _, Metric in Metrics do
+            local Link = `[{Benchmark}](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/{Benchmark}.luau) ({Metric.Label})`
+            if Loss > 50 then
+                Output ..= `\n|{Link}|-|-|-|-|-|-|{Loss}%`
+                continue
+            end
+
+            local Numbers = Result[Metric.Samples]
+            local Formatted = table.create(#Numbers)
+            for Index, Value in Numbers do
+                Formatted[Index] = string.format("%.2f", Value)
+            end
+
+            Output ..= `\n|{Link}|{table.concat(Formatted, "|")}|{Loss}%|`
         end
-
-        Output ..= `\n|{Link}|{table.concat(Samples.Framerate, "|")}|{Loss}%|`
     end
+
     Contents ..= Output
 end
 
+--> Write computer specs
 WriteComputerSpecs()
 
+--> Sort tools alphabetically
+local Array = {}
 for Name, Benchmarks in Result do
-    WriteToolResults(Name, Benchmarks)
+    table.insert(Array, Name)
 end
 
+table.sort(Array, function(a, b)
+    return #a < #b
+end)
+
+for _, Name in Array do
+    WriteToolResults(Name, Result[Name])
+end
+
+--> Output results
 fs.writeFile("../docs/Benchmarks.md", Contents)
+print(`Success!`)

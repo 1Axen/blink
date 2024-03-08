@@ -6,6 +6,9 @@
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared",
+        "Packages": {
+          "$path": "packages"
+        },
         "GetRecieved": {
           "$className": "RemoteFunction"
         }

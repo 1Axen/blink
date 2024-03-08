@@ -1,7 +1,7 @@
 # Navigation
 [Return](https://github.com/1Axen/Blink/blob/main/README.md)  
 
-# Information
+# Methodology
 Benchmarks are done by firing the event 1000 times per frame with the same data every frame for 5 seconds. 
 
 Source code can be found here [here](https://github.com/1Axen/Blink/blob/main/benchmark/src).  
@@ -16,13 +16,38 @@ Defenition files used for benchmarks can be found [here](https://github.com/1Axe
 Processor: `Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz `  
 Memory #1: `8GB 2400`  
 Memory #2: `8GB 2400`  
-## Zap v0.6.1
-|Zap (FPS)|Median|P0|P80|P90|P95|P100|Loss (%)|
+## zap v0.6.1
+|Benchmark (Metric)|Median|P0|P80|P90|P95|P100|Loss (%)|
 |---|---|---|---|---|---|---|---|
-|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau)|24|22|25|25|25|25|0%|
-|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau)|36|36|37|37|37|37|0%|
-## Blink v0.8.1
-|Blink (FPS)|Median|P0|P80|P90|P95|P100|Loss (%)|
+|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau) (FPS)|32.00|32.00|32.00|32.00|32.00|33.00|0%|
+|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau) (Kbps)|4.24|2.85|4.77|4.77|4.77|4.71|0%|
+|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau) (FPS)|20.00|20.00|21.00|21.00|21.00|23.00|0%|
+|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau) (Kbps)|13.10|8.99|14.44|14.44|14.44|14.57|0%|
+## warp 1.0.6
+|Benchmark (Metric)|Median|P0|P80|P90|P95|P100|Loss (%)|
 |---|---|---|---|---|---|---|---|
-|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau)|29|28|29|29|29|32|0%|
-|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau)|60|60|60|60|60|60|0%|
+|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau) (FPS)|16.00|16.00|17.00|17.00|17.00|17.00|0%|
+|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau) (Kbps)|12692.35|12692.35|19902.81|19902.81|19902.81|20167.75|0%|
+|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau) (FPS)|16.00|16.00|16.00|16.00|16.00|16.00|0%|
+|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau) (Kbps)|24257.08|24257.08|24257.08|24257.08|24257.08|24257.08|0%|
+## blink v0.8.1
+|Benchmark (Metric)|Median|P0|P80|P90|P95|P100|Loss (%)|
+|---|---|---|---|---|---|---|---|
+|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau) (FPS)|59.00|59.00|60.00|60.00|60.00|60.00|0%|
+|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau) (Kbps)|8.30|6.75|8.54|8.54|8.54|8.52|0%|
+|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau) (FPS)|23.00|23.00|23.00|23.00|23.00|26.00|0%|
+|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau) (Kbps)|14.78|10.60|16.01|16.01|16.01|16.51|0%|
+## roblox 
+|Benchmark (Metric)|Median|P0|P80|P90|P95|P100|Loss (%)|
+|---|---|---|---|---|---|---|---|
+|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau) (FPS)|16.00|16.00|16.00|16.00|16.00|17.00|0%|
+|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau) (Kbps)|73179.38|73179.38|115821.80|115821.80|115821.80|74540.51|0%|
+|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau) (FPS)|16.00|16.00|16.00|16.00|16.00|16.00|0%|
+|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau) (Kbps)|118436.78|118436.78|118436.78|118436.78|118436.78|118436.78|0%|
+## bytenet v0.4.0
+|Benchmark (Metric)|Median|P0|P80|P90|P95|P100|Loss (%)|
+|---|---|---|---|---|---|---|---|
+|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau) (FPS)|15.00|15.00|15.00|15.00|15.00|15.00|0%|
+|[Booleans](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Booleans.luau) (Kbps)|240.00|240.00|240.00|240.00|240.00|240.00|0%|
+|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau) (FPS)|17.00|17.00|18.00|18.00|18.00|19.00|0%|
+|[Entities](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/Entities.luau) (Kbps)|39.98|69.45|23.44|23.44|23.44|16.23|0%|
