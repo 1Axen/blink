@@ -26,12 +26,7 @@
     {
       "identifier": "VERSION",
       "rule": "inject_global_value",
-      "value": "0.8.1"
-    },
-    {
-      "identifier": "PLUGIN",
-      "rule": "inject_global_value",
-      "value": true
+      "value": "0.8.2"
     }
   ]
 }

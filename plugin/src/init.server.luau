@@ -81,6 +81,7 @@ ErrorWidget.Title = "Error"
 ErrorWidget.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local ErrorInterface = script.Error:Clone()
+ErrorInterface.Visible = true
 ErrorInterface.Parent = ErrorWidget
 
 local ErrorText: TextLabel = ErrorInterface.Text
