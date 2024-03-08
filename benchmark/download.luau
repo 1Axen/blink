@@ -126,7 +126,7 @@ for Name, Urls in Packages do
 
     local DownloadUrl = `{Urls.Wally}{PackageVersion}`
     local CurlResult = Curl(DownloadUrl, `{ZipPath}.zip`, {"Wally-Version: 0.3.2"})
-    assert(CurlResult.ok, `Encountered an exception while downloading files for {Name}, {CurlResult.code}`)
+    assert(CurlResult.ok, `Encountered an exception while downloading files for {Name}, {CurlResult.stderr}`)
 
     if not fs.isDir(ZipPath) then
         fs.writeDir(ZipPath)
