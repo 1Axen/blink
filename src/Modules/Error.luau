@@ -1,7 +1,7 @@
 --!native
 --!optimize 2
 
-local IS_ROBLOX = _G.PLUGIN
+local IS_ROBLOX = (game ~= nil)
 
 local stdio;
 if not IS_ROBLOX then

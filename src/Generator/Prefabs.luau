@@ -83,6 +83,22 @@ local Primitives: {[string]: {
 	Generate: Generate
 }} = {}
 
+local NumberTypeBounds = {
+	{Maximum = 255, Type = "u8"},
+	{Maximum = 65535, Type = "u16"},
+	{Maximum = 4294967295, Type = "u32"},
+}
+
+local function GetTypeToUse(UpperSize: number): TypePrefab
+	for _, NumberType in NumberTypeBounds do
+		if NumberType.Maximum >= UpperSize then
+			return Types[NumberType.Type]
+		end
+	end
+
+	error("Value is too large to be written to a buffer.")
+end
+
 local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: AssertGenerator?): Generate
 	return function(Declaration: Parser.PrimitiveDeclaration, Variable: string?, Read: Block, Write: Block)
 		local Value = Declaration.Value
@@ -233,12 +249,13 @@ Structures.Array = function(Variable: string, Read: Block, Write: Block, Bounds:
 
 	--> Length
 	if IsVariableSize then
-		Types.u16.Read("local Length", Read)
+		local LengthType = GetTypeToUse(Upper)
+		LengthType.Read("local Length", Read)
 		local Assert = Asserts.number("Length", Lower, Upper)
 
 		Read:Line(Assert.Lower)
 		Read:Line(Assert.Upper)
-		Types.u16.Write(`#{Variable}`, Write)
+		LengthType.Write(`#{Variable}`, Write)
 	else
 		Read:Line(`local Length = {Upper}`)
 	end
@@ -283,18 +300,25 @@ do
 				return
 			end
 	
-			Types.u16.Read("local Length", Block)
+			local Upper = Range and Range.Max or (2^16 - 1)
+			local LengthType = GetTypeToUse(Upper)
+
+			LengthType.Read("local Length", Block)
 			Block:Line(`{Variable} = buffer.readstring({RECIEVE_BUFFER}, Read(Length), Length)`)
 		end,
 		Write = function(Value: string, Block: Block, Range: NumberRange?)
 			if Range and Range.Min == Range.Max then
 				Block:Line(`buffer.writestring({SEND_BUFFER}, {Block:Allocate(Range.Min)}, {Value}, {Range.Min})`)
-			else
-				Block:Line(`local Length = #{Value}`)
-				Types.u16.Write("Length", Block)
-				Block:Line(`Allocate(Length)`)
-				Block:Line(`buffer.writestring({SEND_BUFFER}, {SEND_POSITION}, {Value}, Length)`)
+				return
 			end
+
+			local Upper = Range and Range.Max or (2^16 - 1)
+			local LengthType = GetTypeToUse(Upper)
+
+			Block:Line(`local Length = #{Value}`)
+			LengthType.Write("Length", Block)
+			Block:Line(`Allocate(Length)`)
+			Block:Line(`buffer.writestring({SEND_BUFFER}, {SEND_POSITION}, {Value}, Length)`)
 		end
 	}
 	
@@ -345,7 +369,9 @@ do
 			if Range and Range.Min == Range.Max then
 				Block:Line(`local Length = {Range.Min}`)
 			else
-				Types.u16.Read("local Length", Block)
+				local Upper = Range and Range.Max or (2^16 - 1)
+				local LengthType = GetTypeToUse(Upper)
+				LengthType.Read("local Length", Block)
 			end
 			
 			Block:Line(`{Variable} = buffer.create(Length)`)
@@ -355,8 +381,10 @@ do
 			if Range and Range.Min == Range.Max then
 				Block:Line(`local Length = {Range.Max}`)
 			else
+				local Upper = Range and Range.Max or (2^16 - 1)
+				local LengthType = GetTypeToUse(Upper)
 				Block:Line(`local Length = buffer.len({Value})`)
-				Types.u16.Write("Length", Block)
+				LengthType.Write("Length", Block)
 			end
 			
 			Block:Line(`Allocate(Length)`)

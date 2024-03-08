@@ -137,7 +137,7 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: 
             continue
         end
 
-        if (DontAdvanceCursor ~= true or Type == "Whitespace") then
+        if (DontAdvanceCursor ~= true or (Type == "Whitespace" and IsHighlighting ~= true)) then
             self.Cursor += #Matched
         end
 
@@ -149,13 +149,11 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: 
 
         if type(Type) == "function" then
             --> Only overwrite the type when highlighting
-            if IsHighlighting then
-                Type = Type(Matched)
-            else
-                Type, Matched = Type(Matched)
-            end
+            local TrueType, TrueMatched = Type(Matched)
+            Type = TrueType
+            Matched = if (IsHighlighting ~= true) then TrueMatched else Matched
         end
-    
+
         return {
             Type = Type,
             Value = Matched,

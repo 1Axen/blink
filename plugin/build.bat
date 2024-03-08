@@ -1,5 +1,6 @@
 @echo Off
 
+mkdir "./bundle"
 copy ".\src\Error.rbxmx" ".\bundle\Error.rbxmx"
 copy ".\src\Widget.rbxmx" ".\bundle\Widget.rbxmx"
 copy "..\build\.darklua.json" ".\.darklua.json"
