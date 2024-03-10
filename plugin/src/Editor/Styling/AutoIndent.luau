@@ -25,7 +25,7 @@ local function GetLineIndentation(Line: string): number
     return #(string.match(Line, "^\t*") :: string)
 end
 
-function Hook.OnSourceChanged(Text: string, Cursor: number, Gain: number): (string, number)
+function Hook.OnSourceChanged(Text: string, PreviousText: string, Cursor: number, Gain: number): (string, number)
 	if Gain ~= 1 then
 		return Text, Cursor
 	end
@@ -52,8 +52,9 @@ function Hook.OnSourceChanged(Text: string, Cursor: number, Gain: number): (stri
 	end
 
 	--> Update text and cursor
+	local NextCharacter = string.sub(Text, Cursor, Cursor)
 	local Indentation = GetLineIndentation(Previous) + AdditionalIndent
-	Text = string.sub(Text, 1, Cursor - 1) .. string.rep("\t", Indentation) .. string.sub(Text, Cursor)
+	Text = string.sub(Text, 1, Cursor - 1) .. string.rep("\t", Indentation) .. (NextCharacter and "\n" or "")  .. string.sub(Text, Cursor)
 
 	return Text, Cursor + Indentation
 end

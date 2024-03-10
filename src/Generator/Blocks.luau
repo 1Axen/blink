@@ -56,8 +56,9 @@ function Block._operation(self: Block, Method: Method, Bytes: number): string
     Operation.Method = Method
 
     if self.Unique ~= DEFAULT_UNIQUE then
-        self:Line(`local OPERATION_OFFSET = {self.Unique}; {self.Unique} += {Bytes};`)
-        --self:Line(`{self.Unique} += {Bytes}`)
+        self:Comment(`{Method} {Bytes}`)
+        self:Line(`local OPERATION_OFFSET = {self.Unique}`)
+        self:Line(`{self.Unique} += {Bytes}`)
         return "OPERATION_OFFSET"
     end
 

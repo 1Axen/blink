@@ -97,7 +97,7 @@ function Declarations.Primitive(Declaration: Parser.PrimitiveDeclaration, Read: 
 	local Tokens = Declaration.Tokens
 	local Primitive = Tokens.Primitive.Value
     local Generator = Primitives[Primitive]
-    Generator.Generate(Declaration, Variable, Read, Write)
+    Generator.Generate(Declaration, Variable, Read, Write, Options.WriteValidations)
 end
 
 function Declarations.Enum(Declaration: Parser.EnumDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
@@ -184,16 +184,7 @@ end
 
 function Declarations.Reference(Declaration: Parser.ReferenceDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
     local Value = Declaration.Value
-	local Scope = Value.Scope
 	local Reference = Value.Declaration
-	local Identifier = Reference.Value.Identifier
-
-	--[[
-	local ReadPath = GetTypesPath(Identifier, Scope, false)
-	local WritePath = GetTypesPath(Identifier, Scope, true)
-
-	Read:Line(`{Variable} = {ReadPath}()`)
-	Write:Line(`{WritePath}({Variable})`)]]
 
 	--> Inline reference
 	Generators.UserType(Reference, Read, Write, Variable)

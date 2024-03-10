@@ -7,7 +7,7 @@ local Parser = require("../Parser")
 type Block = Blocks.Block
 type Writer = (Value: string, Block: Block, Range: NumberRange?, Components: {string}?) -> ()
 type Reader = (Variable: string, Block: Block, Range: NumberRange?, Components: {string}?) -> ()
-type Generate = (Declaration: Parser.PrimitiveDeclaration, Variable: string?, Read: Block, Write: Block) -> ()
+type Generate = (Declaration: Parser.PrimitiveDeclaration, Variable: string?, Read: Block, Write: Block, WriteValidations: boolean?) -> ()
 
 type TypePrefab = {
 	Read: Reader,
@@ -99,8 +99,8 @@ local function GetTypeToUse(UpperSize: number): TypePrefab
 	error("Value is too large to be written to a buffer.")
 end
 
-local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: AssertGenerator?): Generate
-	return function(Declaration: Parser.PrimitiveDeclaration, Variable: string?, Read: Block, Write: Block)
+local function GeneratePrimitivePrefab(Type: string, Prefab: TypePrefab, AssertGenerator: AssertGenerator?): Generate
+	return function(Declaration: Parser.PrimitiveDeclaration, Variable: string?, Read: Block, Write: Block, WriteValidations: boolean?)
 		local Value = Declaration.Value
 		local Tokens = Declaration.Tokens
 		local Variable = Variable or "Value"
@@ -112,6 +112,16 @@ local function GeneratePrimitivePrefab(Prefab: TypePrefab, AssertGenerator: Asse
 		local IsVariableSize = (Range and Range.Max ~= Range.Min)
 
 		local function GenerateValidation(Block: Block, Variable: string)
+			if Block == Write and WriteValidations ~= true then
+				return
+			end
+
+			if Block == Write and Type ~= "any" then
+				Block:Compare(`typeof({Variable})`, `"{Type}"`, "Not")
+					:Line(`error(\`Expected {Variable} to be of type {Type}, got \{type({Variable})} instead.\`)`)
+				:End()
+			end
+
 			if not AssertGenerator then
 				return
 			end
@@ -155,7 +165,7 @@ local function GenerateNumberGenerator(Type: string, Size: number): (TypePrefab,
 
 	local Primitive = {
 		Type = "number",
-		Generate = GeneratePrimitivePrefab(Prefab, Asserts.number)
+		Generate = GeneratePrimitivePrefab("number", Prefab, Asserts.number)
 	}
 
 	return Prefab, Primitive
@@ -235,7 +245,7 @@ local Result = Mantissa
 
 Primitives.f16 = {
 	Type = "number",
-	Generate = GeneratePrimitivePrefab(Types.f16, Asserts.number)
+	Generate = GeneratePrimitivePrefab("number", Types.f16, Asserts.number)
 }
 
 --> Structures
@@ -286,7 +296,7 @@ do
 	
 	Primitives.boolean = {
 		Type = "boolean",
-		Generate = GeneratePrimitivePrefab(Types.boolean)
+		Generate = GeneratePrimitivePrefab("boolean", Types.boolean)
 	}
 end
 
@@ -324,7 +334,7 @@ do
 	
 	Primitives.string = {
 		Type = "string",
-		Generate = GeneratePrimitivePrefab(Types.string, Asserts.string)
+		Generate = GeneratePrimitivePrefab("string", Types.string, Asserts.string)
 	}
 end
 
@@ -358,7 +368,7 @@ do
 	
 	Primitives.vector = {
 		Type = "Vector3",
-		Generate = GeneratePrimitivePrefab(Types.vector, Asserts.vector)
+		Generate = GeneratePrimitivePrefab("Vector3", Types.vector, Asserts.vector)
 	}
 end
 
@@ -394,7 +404,7 @@ do
 
 	Primitives.buffer = {
 		Type = "buffer",
-		Generate = GeneratePrimitivePrefab(Types.buffer, Asserts.buffer)
+		Generate = GeneratePrimitivePrefab("buffer", Types.buffer, Asserts.buffer)
 	}
 end
 
@@ -429,7 +439,7 @@ do
 
 	Primitives.CFrame = {
 		Type = "CFrame",
-		Generate = GeneratePrimitivePrefab(Types.CFrame)
+		Generate = GeneratePrimitivePrefab("CFrame", Types.CFrame)
 	}
 end
 
@@ -452,7 +462,7 @@ do
 	
 	Primitives.Color3 = {
 		Type = "Color3",
-		Generate = GeneratePrimitivePrefab(Types.Color3)
+		Generate = GeneratePrimitivePrefab("Color3", Types.Color3)
 	}
 end
 
@@ -472,7 +482,7 @@ do
 		Type = function(Declaration)
 			return Declaration.Value.Class
 		end,
-		Generate = GeneratePrimitivePrefab(Types.Instance, Asserts.Instance)
+		Generate = GeneratePrimitivePrefab("any", Types.Instance, Asserts.Instance)
 	}
 end
 
@@ -490,7 +500,7 @@ do
 
 	Primitives.unknown = {
 		Type = "any",
-		Generate = GeneratePrimitivePrefab(Types.unknown)
+		Generate = GeneratePrimitivePrefab("any", Types.unknown)
 	}
 end
 

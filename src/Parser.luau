@@ -67,6 +67,7 @@ export type Options = {
     ServerOutput: string?,
     FutureLibrary: string?,
     PromiseLibrary: string?,
+    WriteValidations: boolean?,
     ManualReplication: boolean?,
 }
 
@@ -149,6 +150,7 @@ local OPTIONS: {[string]: Lexer.Types} = {
     ServerOutput = "String",
     FutureLibrary = "String",
     PromiseLibrary = "String",
+    WriteValidations = "Boolean",
     ManualReplication = "Boolean",
 }
 
@@ -548,7 +550,7 @@ function Parser.Declarations(self: Parser): {Declaration}
             break
         end
 
-        if self.Scope and self:TryConsume("CloseCurlyBrackets") then
+        if self.Scope and self:TryConsume("CloseBraces") then
             break
         end
 
@@ -636,9 +638,9 @@ function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOpti
 end
 
 function Parser.Event(self: Parser, Identifier: Token): EventDeclaration
-    self:Consume("OpenCurlyBrackets")
+    self:Consume("OpenBraces")
     local Structure = self:Structure(Identifier, EVENT)
-    self:Consume("CloseCurlyBrackets")
+    self:Consume("CloseBraces")
 
     return {
         Type = "Event",
@@ -654,9 +656,9 @@ function Parser.Event(self: Parser, Identifier: Token): EventDeclaration
 end
 
 function Parser.Function(self: Parser, Identifier: Token): FunctionDeclaration
-    self:Consume("OpenCurlyBrackets")
+    self:Consume("OpenBraces")
     local Structure = self:Structure(Identifier, FUNCTION)
-    self:Consume("CloseCurlyBrackets")
+    self:Consume("CloseBraces")
 
     return {
         Type = "Function",
@@ -677,7 +679,7 @@ function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
             :Emit()
     end
 
-    self:Consume("OpenCurlyBrackets")
+    self:Consume("OpenBraces")
 
     --> Open scope
     self.Scope = Identifier.Value
@@ -685,7 +687,7 @@ function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
 
     --> Close scope
     self.Scope = nil
-    --self:Consume("CloseCurlyBrackets") --> Consumed by self:Declarations()
+    --self:Consume("CloseBraces") --> Consumed by self:Declarations()
 
     return {
         Type = "Scope",
@@ -742,11 +744,11 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
         local Peek = self:Peek()
         local Type: Lexer.Types = Peek.Type :: Lexer.Types
         
-        if Type == "OpenCurlyBrackets" then
+        if Type == "OpenBraces" then
             local FarPeek = self.Lexer:GetNextToken(true)
-            if FarPeek.Type == "OpenSquareBrackets" then
+            if FarPeek.Type == "OpenBrackets" then
                 Declaration = self:Map(Identifier)
-            elseif FarPeek.Type == "CloseCurlyBrackets" then
+            elseif FarPeek.Type == "CloseBraces" then
                 Declaration = self:Struct(Identifier) 
             else
                 local FurtherPeek = self.Lexer:GetNextToken(true, FarPeek.End)
@@ -760,7 +762,7 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
             Declaration = self:Primitive(Identifier)
         elseif Type == "Identifier" then
             Declaration = self:Reference(Identifier)
-        elseif Type == "OpenBrackets" and IsDataField then
+        elseif Type == "OpenParentheses" and IsDataField then
             Declaration = self:Tuple(Identifier)
         end
     end
@@ -784,7 +786,7 @@ end
 
 
 function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
-    self:ConsumeAll("OpenCurlyBrackets", "OpenSquareBrackets")
+    self:ConsumeAll("OpenBraces", "OpenBrackets")
 
     --> Errors
     local function ThrowOptional(Token: Error.Span, IsReference: boolean?): never
@@ -822,11 +824,11 @@ function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
 
     --> Parse key and value
     local Key = ParseElement()
-    self:Consume("CloseSquareBrackets")
+    self:Consume("CloseBrackets")
     self:Consume("FieldAssign")
 
     local Value = ParseElement()
-    self:Consume("CloseCurlyBrackets")
+    self:Consume("CloseBraces")
 
     return {
         Type = "Map",
@@ -841,17 +843,17 @@ end
 
 function Parser.Enum(self: Parser, Identifier: Token): EnumDeclaration
     local Values: {string} = {}
-    self:Consume("OpenCurlyBrackets")
+    self:Consume("OpenBraces")
 
     while true do
-        if self:TryConsume("CloseCurlyBrackets") then
+        if self:TryConsume("CloseBraces") then
             break
         end
 
         local Token = self:Consume("Identifier")
         table.insert(Values, Token.Value)
 
-        if self:TryConsume("CloseCurlyBrackets") then
+        if self:TryConsume("CloseBraces") then
             break
         end
 
@@ -870,17 +872,17 @@ end
 
 function Parser.Tuple(self: Parser, Identifier: Token): TupleDeclaration
     local Values: {TypeDeclaration} = {}
-    self:Consume("OpenBrackets")
+    self:Consume("OpenParentheses")
 
     while true do
-        if self:TryConsume("CloseBrackets") then
+        if self:TryConsume("CloseParentheses") then
             break
         end
 
         local Value = self:Type(Identifier)
         table.insert(Values, Value)
 
-        if self:TryConsume("CloseBrackets") then
+        if self:TryConsume("CloseParentheses") then
             break
         end
 
@@ -899,17 +901,17 @@ end
 
 function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
     local Values: {TypeDeclaration} = {}
-    self:Consume("OpenCurlyBrackets")
+    self:Consume("OpenBraces")
 
     while true do
-        if self:TryConsume("CloseCurlyBrackets") then
+        if self:TryConsume("CloseBraces") then
             break
         end
 
         local Field = self:ConsumeAll("Identifier", "FieldAssign")
         table.insert(Values, self:Type(Field))
 
-        if self:TryConsume("CloseCurlyBrackets") then
+        if self:TryConsume("CloseBraces") then
             break
         end
 

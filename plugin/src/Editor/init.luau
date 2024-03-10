@@ -21,8 +21,9 @@ local Settings = require("../../../src/Settings")
 
 local Error = require("../../../src/Modules/Error")
 
-local StylingHooks: {{OnSourceChanged: (Text: string, Cursor: number, Gain: number) -> (string, number)}} = {
+local StylingHooks: {{OnSourceChanged: (Text: string, PreviousText: string, Cursor: number, Gain: number) -> (string, number)}} = {
    require("./Styling/AutoIndent"),
+   require("./Styling/AutoBracket"),
 }
 
 ---- Settings ----
@@ -47,8 +48,10 @@ local THEME = {
     String = Color3.fromHex("#ADF195"),
     Bracket = Color3.fromHex("#FFFFFF"),
     Boolean = Color3.fromHex("#B5CEA8"),
+    Comment = Color3.fromHex("#529955"),
 
     Error = Color3.fromHex("#FF5050"),
+    Warning = Color3.fromHex("#FF5050"),
 
     Complete = Color3.fromHex("#04385f"),
 
@@ -57,7 +60,7 @@ local THEME = {
         Inactive = Color3.fromHex("787878")
     }
 }
-
+-- This is a comment
 local SYMBOLS: {[string]: {string}} = {
     Event = {},
     Field = {},
@@ -67,31 +70,31 @@ local SYMBOLS: {[string]: {string}} = {
     Primitive = Table.GetDictionaryKeys(Settings.Primtives)
 }
 
-local FIELDS = {
-    struct = true,
-    event = true,
-    ["function"] = true,
-}
-
 local BRACKETS = {
+    OpenParentheses = true,
+    CloseParentheses = true,
+    OpenBraces = true,
+    CloseBraces = true,
     OpenBrackets = true,
     CloseBrackets = true,
-    OpenCurlyBrackets = true,
-    CloseCurlyBrackets = true,
-    OpenSquareBrackets = true,
-    CloseSquareBrackets = true
 }
 
 local RICH_TEXT_ESCAPES: {[string]: string} = {
-    ["&"] = "&amp;",
+    --["&"] = "&amp;",
     ["<"] = "&lt;",
     [">"] = "&gt;",
-    ["\""] = "&quot;",
-    ["\'"] = "&apos;",
+    --["\""] = "&quot;",
+    --["\'"] = "&apos;",
 }
 
 local SCROLL_LINES = 2
 local CURSOR_BLINK_RATE = 0.5
+
+type CompletionItem = {
+    Icon: string,
+    Label: string,
+    Insert: string
+}
 
 ---- Constants ----
 
@@ -125,6 +128,7 @@ local SourceParser = Parser.new()
 
 local Lines = State.new(0)
 local Scroll = State.new(0)
+local Predictions: State.Class<{Index: number, Items: {CompletionItem}}> = State.new({Index = 1, Items = {}})
 local Errors: State.Class<{Error.Label}> = State.new({})
 
 local CursorTimer = 0
@@ -175,7 +179,7 @@ local function GetNextToken(DontAdvanceCursor: boolean?): Lexer.Token?
     end
 end
 
-local function Colorify()
+local function UpdateColors()
     local Source = Input.Text
     local RichText = ""
 
@@ -216,6 +220,9 @@ local function Colorify()
             else
                 RichText ..= Value
             end
+        elseif Type == "Component" then
+            local Primitive = string.match(Value, "(%w+)") or ""
+            RichText ..= `{WrapColor("<", THEME.Bracket)}{WrapColor(Primitive, THEME.Primitive)}{WrapColor(">", THEME.Bracket)}`
         elseif BRACKETS[Type] then
             RichText ..= WrapColor(Value, THEME.Bracket)
         elseif Type == "Class" then
@@ -224,10 +231,12 @@ local function Colorify()
             RichText ..= WrapColor(Value, THEME.String)
         elseif Type == "Boolean" then
             RichText ..= WrapColor(Value, THEME.Boolean)
+        elseif Type == "Comment" then
+            RichText ..= WrapColor(Value, THEME.Comment)
         elseif Type == "Unknown" then
             RichText ..= WrapColor(Value, THEME.Error)
         else
-            RichText ..= Value
+            RichText ..= WrapColor(Value, THEME.Text)
         end
 
         Token = GetNextToken()
@@ -236,7 +245,38 @@ local function Colorify()
     Display.Text = RichText
 end
 
-local function HighlightCurrentLine()
+local function UpdateCompletion()
+    local Word = Utility.GetWordRangeBeforePosition(Input.Text, Input.CursorPosition)
+    local Items: {CompletionItem} = {}
+
+    --> Match Keywords
+    if Word.Start == 1 then
+        local Text = Word.Text
+        for _, Label in SYMBOLS.Keyword do
+            print(string.sub(Label, 1, #Text), Text)
+            
+            if string.sub(Label, 1, #Text) ~= Text then
+                continue
+            end
+
+            table.insert(Items, {
+                Icon = ICONS.Keyword,
+                Label = Label,
+                Insert = Label
+            })
+
+            break
+        end
+    end
+
+    --> Update predictions
+    Predictions:Set({
+        Index = 1,
+        Items = Items
+    })
+end
+
+local function UpdateHighlightedLine()
     local Line = Utility.GetCurrentLine(Input.Text, Input.CursorPosition)
     local Label: TextLabel = LinesContainer:FindFirstChild(tostring(Line))
     if not Label or Label == PreviousLine then
@@ -364,35 +404,36 @@ local function OnLinesChanged(Value: number)
     end
 
     --> Update highlighted line
-    HighlightCurrentLine()
+    UpdateHighlightedLine()
 end
 
 local function OnScrollChanged(Value: number)
     EditorContainer.Position = UDim2.fromOffset(EditorContainer.Position.X.Offset, TextHeight * -Value)
 end
 
---[[local function OnPredictionsChanged()
+local function OnPredictionsChanged()
     local Value = Predictions:Get()
-    if #Value.Predictions == 0 then
-        Completion.Visible = false
+    local Items = Value.Items
+    if #Items == 0 then
+        CompletionContainer.Visible = false
         return
     end
 
-    Completion.Visible = true
-    ClearChildrenWhichAre(Completion, "Frame")
+    CompletionContainer.Visible = true
+    ClearChildrenWhichAre(CompletionContainer, "Frame")
 
-    for Index, Item in Value.Predictions do
-        local Frame = CompletionItem:Clone()
+    for Index, Item in Items do
+        local Frame = CompletionTemplate:Clone()
         Frame.Icon.Image = Item.Icon
-        Frame.Text.Text = Item.Prediction
+        Frame.Text.Text = Item.Label
 
-        if Index == Value.Item then
-            Frame.BackgroundColor3 = EDITOR_COLORS.Complete
+        if Index == Value.Index then
+            Frame.BackgroundColor3 = THEME.Complete
         end
 
-        Frame.Parent = Completion
+        Frame.Parent = CompletionContainer
     end
-end]]
+end
 
 --> RBXScriptSignal functions
 local function OnCursorPositionChanged()
@@ -418,7 +459,7 @@ local function OnCursorPositionChanged()
     Cursor.Position = UDim2.fromOffset(TextBounds.X - 1, TextHeight * (#Slices - 1))
 
     --> Update highlighted line
-    HighlightCurrentLine()
+    UpdateHighlightedLine()
 
     --> Perform auto completion pass
     --[[DoCompletionPass()
@@ -514,17 +555,18 @@ local function OnSourceChanged()
         return
     end
 
-    PreviousText = Text
 
     --> Run styling hooks
     local FinalText, FinalCursor = Text, Input.CursorPosition
     for Index, Hook in StylingHooks do
-        FinalText, FinalCursor = Hook.OnSourceChanged(FinalText, FinalCursor, Gain)
+        FinalText, FinalCursor = Hook.OnSourceChanged(FinalText, PreviousText, FinalCursor, Gain)
     end
+
+    --> Update previous text
+    PreviousText = FinalText
 
     --> If a styling hook altered the final text then don't do any additional work
     if FinalText ~= Text then
-        Input.CursorPosition = -1
         Input.Text = FinalText
         Input.CursorPosition = FinalCursor
 
@@ -538,7 +580,8 @@ local function OnSourceChanged()
     end
 
     --> Perform lexer pass
-    Colorify()
+    UpdateColors()
+    UpdateCompletion()
 end
 
 ---- Public Functions ----
@@ -572,6 +615,7 @@ function Editor.Initialize()
 
     Lines:OnChange(OnLinesChanged)
     Scroll:OnChange(OnScrollChanged)
+    Predictions:OnChange(OnPredictionsChanged)
 
     Input:GetPropertyChangedSignal("Text"):Connect(OnSourceChanged)
     Input:GetPropertyChangedSignal("SelectionStart"):Connect(OnSelectionChanged)

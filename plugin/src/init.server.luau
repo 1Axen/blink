@@ -7,11 +7,8 @@
 ---- Services ----
 
 local ServerStorage = game:GetService("ServerStorage")
-local UserInputService = game:GetService("UserInputService")
-local ContextActionService = game:GetService("ContextActionService")
+local StudioService = game:GetService("StudioService")
 local TweenService = game:GetService("TweenService")
-local TextService = game:GetService("TextService")
-local RunService = game:GetService("RunService")
 local Selection = game:GetService("Selection")
 
 ---- Imports ----
@@ -97,14 +94,20 @@ EditorInterface.Parent = EditorWidget
 
 local Side = EditorInterface.Side
 local Overlay = EditorInterface.Overlay
+local QuickActions = EditorInterface.Quick
+
+local QuickSave = QuickActions.Save
+local QuickClear = QuickActions.Clear
 
 local Content = Side.Content
 local Expand = Side.Expand
+local Settings = Side.Settings
 
 local Top = Content.Top
 local Bottom = Content.Bottom
 
 local Files = Top.Files
+local Import = Top.Title.Import
 local Search = Top.Title.Search.Input
 
 local Prompt = Bottom.Save
@@ -127,12 +130,14 @@ local Tweens = {
             Side = TweenService:Create(Side, EXPAND_TWEEN, {Position = UDim2.new()}),
             Content = TweenService:Create(Content, EXPAND_TWEEN, {GroupTransparency = 0}),
             Overlay = TweenService:Create(Overlay, EXPAND_TWEEN, {BackgroundTransparency = 0.5}),
+            Settings = TweenService:Create(Settings, EXPAND_TWEEN, {ImageTransparency = 1})
         },
 
         Retract = {
             Side = TweenService:Create(Side, EXPAND_TWEEN, {Position = Side.Position}),
             Content = TweenService:Create(Content, EXPAND_TWEEN, {GroupTransparency = 1}),
             Overlay = TweenService:Create(Overlay, EXPAND_TWEEN, {BackgroundTransparency = 1}),
+            Settings = TweenService:Create(Settings, EXPAND_TWEEN, {ImageTransparency = 0})
         }
     }
 }
@@ -367,6 +372,39 @@ local function OnEditorButtonClicked()
     EditorWidget.Enabled = not EditorWidget.Enabled
 end
 
+local function OnQuickSave()
+    if Expanded:Get() then
+        return
+    end
+
+    if not Editing then
+        Expanded:Set(true)
+        OnSaveActivated()
+        return
+    end
+
+    SaveFile(Editing, Editor.GetSource())
+end
+
+local function OnQuickClear()
+    if Expanded:Get() then
+        return
+    end
+
+    Editor.SetSource("")
+end
+
+local function OnImport()
+    local File: File? = StudioService:PromptImportFile({"blink", "txt"})
+    if not File then
+        return
+    end
+
+    Editing = nil
+    Expanded:Set(false)
+    Editor.SetSource(File:GetBinaryContents())
+end
+
 ---- Initialization ----
 
 Editor.Initialize()
@@ -414,8 +452,11 @@ CancelGenerate.Activated:Connect(function()
     Generating:Set()
 end)
 
+Import.Activated:Connect(OnImport)
 Search.FocusLost:Connect(OnSearch)
 Save.Activated:Connect(OnSaveActivated)
 Cancel.Activated:Connect(OnSaveCompleted)
 Expand.Activated:Connect(OnExpandActivated)
+QuickSave.Activated:Connect(OnQuickSave)
+QuickClear.Activated:Connect(OnQuickClear)
 EditorButton.Click:Connect(OnEditorButtonClicked)

@@ -29,10 +29,15 @@ In order to use future and promise yield types with functions a path to each lib
 option FutureLibrary = "ReplicatedStorage.Packages.Future"
 option PromiseLibrary = "ReplicatedStorage.Packages.Promise"
 ```
+## `WriteValidations`
+Default: `false`
+Controls if Blink will check types when writing them (firing an event/invoking a function). Helpful for debugging and during development, but it might result in degraded performance. It is encouraged you disable this option in production.
+> [!TIP]
+> Blink only checks for builtin primitives. For example if a number was passed. More complicated types like structs, maps and enums cannot be validated.
 ## `ManualReplication`
 Default: `false`  
-Controls wether Blink will replicate events and functions automatically at the end of every frame.  
-When set to `true` automatic replication will be disabled and instead a `StepReplication` function will be exposed.
+Controls if Blink will replicate events and functions automatically at the end of every frame.  
+When set to `true` automatic replication will be disabled and a `StepReplication` function will be exposed instead.
 # Basic syntax and supported types
 You can mark any type as optional by appending `?` after it
 ## Primitives

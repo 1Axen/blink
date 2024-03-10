@@ -5,11 +5,11 @@ local Error = require("./Modules/Error")
 local Settings = require("./Settings")
 
 export type Types = 
-    "Comma" | "OpenBrackets" | "CloseBrackets" | "OpenCurlyBrackets" | "CloseCurlyBrackets" | "OpenSquareBrackets" | "CloseSquareBrackets" --> Structs & enums
+    "Comma" | "OpenParentheses" | "CloseParentheses" | "OpenBraces" | "CloseBraces" | "OpenBrackets" | "CloseBrackets" --> Structs & enums
     | "String" | "Boolean" | "Number"   --> Literals
-    | "Array" | "Range" | "Optional" | "Class" | "Component"    --> Attributes
+    | "Array" | "Range" | "Optional" | "Class" | "Component"  --> Attributes
     | "Assign" | "FieldAssign" | "Keyword" | "Primitive" | "Identifier" --> Reserved
-    | "Whitespace" | "Unknown" | "EndOfFile"
+    | "Whitespace" | "Comment" | "Unknown" | "EndOfFile"
 
 export type Keywords = "type" | "enum" | "struct" | "event" | "function"
 
@@ -38,9 +38,15 @@ local Matches = {
     {"^%s+", "Whitespace"},     
     {"^=", "Assign"},
     {"^:", "FieldAssign"},
-    {"^{", "OpenCurlyBrackets"},
-    {"^}", "CloseCurlyBrackets"},
+    {"^{", "OpenBraces"},
+    {"^}", "CloseBraces"},
     {"^,", "Comma"},
+
+    --> Comments
+    {"^%-%-.-\n", "Comment"},
+    {"^%-%-.-.*", "Comment"},
+    {"^%-%-%[(=*)%[.-%]%1%]", "Comment"},
+    {"^%-%-%[%[.-.*", "Comment"},
 
     --> Attribute patterns
     {"^?", "Optional"},
@@ -52,13 +58,18 @@ local Matches = {
     {`^%[{Number}..{Number}]`, "Array"},
     {`^%b<>`, "Component"},
 
-    {"^%(", "OpenBrackets"},
-    {"^%)", "CloseBrackets"},
-    {"^%[", "OpenSquareBrackets"},
-    {"^%]", "CloseSquareBrackets"},
+    {"^%(", "OpenParentheses"},
+    {"^%)", "CloseParentheses"},
+    {"^%[", "OpenBrackets"},
+    {"^%]", "CloseBrackets"},
 
+    --> String patterns
     {[[^(['"]).-[^\](\*)%2%1]], function(Token: string)
         return "String", string.sub(Token, 2, #Token - 1)
+    end},
+
+    {"^(['\"]).-.*", function(Token: string)
+        return "String", string.sub(Token, 2)
     end},
 
     --> Complex patterns
@@ -74,6 +85,11 @@ local Matches = {
 
         return "Identifier", Token
     end},   
+}
+
+local SKIPPED_PATTERNS = {
+    Comment = true,
+    Whitespace = true
 }
 
 local Lexer = {}
@@ -137,13 +153,13 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: 
             continue
         end
 
-        if (DontAdvanceCursor ~= true or (Type == "Whitespace" and IsHighlighting ~= true)) then
+        if (DontAdvanceCursor ~= true or (SKIPPED_PATTERNS[Type] and IsHighlighting ~= true)) then
             self.Cursor += #Matched
         end
 
         --> Whitespace matched, skip token.
         --> We don't want to skip whitespaces in highlighting mode.
-        if (Type == "Whitespace") and not IsHighlighting then
+        if SKIPPED_PATTERNS[Type] and not IsHighlighting then
             return self:GetNextToken(DontAdvanceCursor)
         end
 
