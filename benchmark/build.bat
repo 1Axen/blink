@@ -36,7 +36,7 @@ SET "OPENSTUDIO=N"
 SET /P OPENSTUDIO=Open generated place? (Y/[N])?
 if /I %OPENSTUDIO% NEQ Y GOTO END
 
-start Benchmark.rbxl
+lune run generate
 
 :END
 endlocal
