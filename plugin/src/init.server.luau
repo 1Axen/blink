@@ -9,7 +9,12 @@
 local ServerStorage = game:GetService("ServerStorage")
 local StudioService = game:GetService("StudioService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local Selection = game:GetService("Selection")
+
+if RunService:IsRunning() then
+    return
+end
 
 ---- Imports ----
 

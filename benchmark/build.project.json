@@ -1,5 +1,6 @@
 {
     "name": "benchmark",
+    "emitLegacyScripts": false,
     "tree": {
       "$className": "DataModel",
 
@@ -17,21 +18,19 @@
           },
           "GetRecieved": {
             "$className": "RemoteFunction"
+          },
+          "Generate": {
+            "$className": "RemoteEvent"
           }
+        },
+        "Client": {
+          "$path": "roblox/client"
         }
       },
   
       "ServerScriptService": {
         "Server": {
           "$path": "roblox/server"
-        }
-      },
-  
-      "StarterPlayer": {
-        "StarterPlayerScripts": {
-          "Client": {
-            "$path": "roblox/client"
-          }
         }
       }
     }

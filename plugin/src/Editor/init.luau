@@ -253,8 +253,6 @@ local function UpdateCompletion()
     if Word.Start == 1 then
         local Text = Word.Text
         for _, Label in SYMBOLS.Keyword do
-            print(string.sub(Label, 1, #Text), Text)
-            
             if string.sub(Label, 1, #Text) ~= Text then
                 continue
             end

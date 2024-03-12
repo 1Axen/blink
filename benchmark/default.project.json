@@ -1,5 +1,6 @@
 {
   "name": "benchmark",
+  "emitLegacyScripts": false,
   "tree": {
     "$className": "DataModel",
 
@@ -11,21 +12,19 @@
         },
         "GetRecieved": {
           "$className": "RemoteFunction"
+        },
+        "Generate": {
+          "$className": "RemoteEvent"
         }
+      },
+      "Client": {
+        "$path": "src/client"
       }
     },
 
     "ServerScriptService": {
       "Server": {
         "$path": "src/server"
-      }
-    },
-
-    "StarterPlayer": {
-      "StarterPlayerScripts": {
-        "Client": {
-          "$path": "src/client"
-        }
       }
     }
   }

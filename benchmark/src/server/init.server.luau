@@ -1,4 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
 
 local Modes = require("../shared/modes")
 local Benches = require("../shared/benches")
@@ -43,18 +44,15 @@ end
 
 local Recieved = {}
 for Name, Data in Benches do
-    local function OnRecieve(Tool: string)
-        local ToolRecieved = Recieved[Tool]
-        if not ToolRecieved then
-            ToolRecieved = {}
-            Recieved[Tool] = ToolRecieved
-        end
+    local BenchRecieved = {}
+    Recieved[Name] = BenchRecieved
 
-        ToolRecieved[Name] = 0
+    local function OnRecieve(Tool: string)
+        BenchRecieved[Tool] = 0
 
 		return function(Player, Recieve)
-            ToolRecieved[Name] += 1
-            if ToolRecieved[Name] > 1 then
+            BenchRecieved[Tool] += 1
+            if BenchRecieved[Tool] > 1 then
                 return
             end
 
@@ -88,3 +86,11 @@ end
 ReplicatedStorage.Shared.GetRecieved.OnServerInvoke = function()
     return Recieved
 end
+
+ReplicatedStorage.Shared.Generate.OnServerEvent:Connect(function(Player, JSON)
+    local OutputJSON = Instance.new("StringValue")
+    OutputJSON.Name = "Result"
+    OutputJSON.Value = JSON
+    OutputJSON.Parent = game
+    print("Generated results")
+end)

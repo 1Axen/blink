@@ -1,11 +1,33 @@
 local Modes = require("../shared/modes")
 local Benches = require("../shared/benches")
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
-local Selection = game:GetService("Selection")
+local StarterGui = game:GetService("StarterGui")
 local Stats = game:GetService("Stats")
+
+local MAXIMUM_FRAMERATE = 60
+
+local Camera = workspace.CurrentCamera
+Camera.FieldOfView = 1
+Camera.CFrame = CFrame.new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+
+Players.LocalPlayer.PlayerGui:ClearAllChildren()
+Players.LocalPlayer.PlayerScripts:ClearAllChildren()
+
+for _, Item in Enum.CoreGuiType:GetEnumItems() do
+    while true do
+        local Success = pcall(function()
+            StarterGui:SetCoreGuiEnabled(Item, false)
+        end)
+
+        if Success then
+            break
+        end
+    end
+end
 
 type Benchmark = {
     Sent: number,
@@ -14,8 +36,10 @@ type Benchmark = {
     Framerate: {number}
 }
 
-type ToolResults = {
-    [string]: Benchmark
+type Results = {
+    [string]: {
+        [string]: Benchmark
+    }
 }
 
 local function Percentile(Samples: {number}, Percentile: number)
@@ -56,7 +80,8 @@ local function RunBenchmark(Tool: string, Bench: string): Benchmark
 
         if Total >= 1 then
             Total -= 1
-            table.insert(Bandwidth, Stats.DataSendKbps)
+            local Scale = (MAXIMUM_FRAMERATE / Frames)
+            table.insert(Bandwidth, Stats.DataSendKbps * Scale)
             table.insert(Framerates, Frames)
             Frames = 0
         end
@@ -67,7 +92,7 @@ local function RunBenchmark(Tool: string, Bench: string): Benchmark
         end
     end)
 
-    task.wait(5)
+    task.wait(10)
     Connection:Disconnect()
 
     --> Generate results
@@ -90,38 +115,32 @@ local function RunBenchmark(Tool: string, Bench: string): Benchmark
 end
 
 local function RunBenchmarks()
-    local Results: {[string]: ToolResults} = {}
-    for Tool in Modes do
-        Results[Tool] = {}
-        warn(`Running benchmarks with {Tool}...`)
-        for Bench in Benches do
-            print(`> Running {Bench}`)
-            Results[Tool][Bench] = RunBenchmark(Tool, Bench)
-            --> Give ROBLOX some time to rest in-between benchmarks
-            task.wait(2)
+    local Results: Results = {}
+    for Bench in Benches do
+        warn(`Running {Bench} benchmark`)
+        Results[Bench] = {}
+
+        for Tool in Modes do
+            print(`> Running with {Tool}`)
+            Results[Bench][Tool] = RunBenchmark(Tool, Bench)
+    
+            --> Give ROBLOX some time to rest in-between tools
+            task.wait(5)
         end
 
-        --> Give ROBLOX some time to rest in-between tools
+        --> Give ROBLOX some time to rest in-between benchmarks
         task.wait(5)
     end
-
+    
     local Recieved = ReplicatedStorage.Shared.GetRecieved:InvokeServer()
-    for Tool, Benchmarks in Recieved do
-        for Bench, Recieve in Benchmarks do
-            Results[Tool][Bench].Recieve = Recieve
+    for Bench, Tools in Recieved do
+        for Tool, Recieve in Tools do
+            Results[Bench][Tool].Recieve = Recieve
         end
     end
 
     print("Finished running benchmarks, generating results...")
-
-    local OutputJSON = Instance.new("StringValue")
-    OutputJSON.Name = "Result"
-    OutputJSON.Value = HttpService:JSONEncode(Results)
-    OutputJSON.Parent = game
-
-    print("Generated results")
-    print(OutputJSON)
-    Selection:Set({OutputJSON})
+    ReplicatedStorage.Shared.Generate:FireServer(HttpService:JSONEncode(Results))
 end
 
 RunBenchmarks()
