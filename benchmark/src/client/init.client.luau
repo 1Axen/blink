@@ -94,9 +94,13 @@ local function RunBenchmark(Tool: string, Bench: string): Benchmark
 
     task.wait(10)
     Connection:Disconnect()
+    print(`> Finished running with {Tool}`)
 
     --> Generate results
-    table.sort(Framerates)
+    table.sort(Bandwidth)
+    table.sort(Framerates, function(a, b)
+        return a > b
+    end)
 
     local FrameratePercentiles = {}
     local BandwidthPercentiles = {}

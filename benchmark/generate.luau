@@ -7,7 +7,9 @@ local VersionsJSON = fs.readFile("./tools/versions.json")
 local Versions = net.jsonDecode(VersionsJSON)
 
 local RobloxResult = process.spawn("run-in-roblox", {"--place", "Benchmark.rbxl", "--script", "run.luau"})
-assert(RobloxResult.ok, `Unable to run benchmark, {RobloxResult.stderr}`)
+if not RobloxResult.ok then
+    error(RobloxResult.stderr)
+end
 
 local Stdout = string.split(RobloxResult.stdout, "--RESULTS JSON--")
 table.remove(Stdout, 1)
@@ -106,15 +108,18 @@ local Metrics = {
 
 local function WriteBenchResults(Name: string, Results: {[string]: Benchmark})
     local Output = `\n## [{Name}](https://github.com/1Axen/Blink/blob/main/benchmark/src/shared/benches/{Name}.luau)\n`
-    Output ..= `|Tool (Metric)|Median|P0|P80|P90|P95|P100|Loss (%)|`
-    Output ..= `\n|---|---|---|---|---|---|---|---|`
+   
+    for Index, Metric in Metrics do
+        if Index > 1 then
+            Output ..= "\n\n"
+        end
 
-    for Tool, Result in Results do
-        local Loss = math.floor((1 - (Result.Recieve / Result.Sent)) * 100)
-        for _, Metric in Metrics do
-            local Link = `{Tool} ({Metric.Label})`
+        Output ..= `|Tool ({Metric.Label})|Median|P0|P80|P90|P95|P100|Loss (%)|`
+        Output ..= `\n|---|---|---|---|---|---|---|---|`
+        for Tool, Result in Results do
+            local Loss = math.floor((1 - (Result.Recieve / Result.Sent)) * 100)
             if Loss > 50 then
-                Output ..= `\n|{Link}|-|-|-|-|-|-|{Loss}%`
+                Output ..= `\n|{Tool}|-|-|-|-|-|-|{Loss}%`
                 continue
             end
 
@@ -124,7 +129,7 @@ local function WriteBenchResults(Name: string, Results: {[string]: Benchmark})
                 Formatted[Index] = string.format("%.2f", Value)
             end
 
-            Output ..= `\n|{Link}|{table.concat(Formatted, "|")}|{Loss}%|`
+            Output ..= `\n|{Tool}|{table.concat(Formatted, "|")}|{Loss}%|`
         end
     end
 

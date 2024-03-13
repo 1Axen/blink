@@ -62,7 +62,9 @@ for Name, Data in Benches do
 
 			if not CompareValues(Data, Recieve) then
 				warn(`Recieved incorrect data with {Tool} for {Name}`)
-			end
+			else
+                print(`> {Tool} passed {Name} validation!`)
+            end
 		end
     end
     
