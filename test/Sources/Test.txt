@@ -185,11 +185,17 @@ function TupleFunction {
     Return: (Instance?, Instance, u16?, States, u8)
 }
 
-scope Example {
+scope AnotherScope {
+    scope ScopeWithinAnotherScope {
+        type ExampleType = u8
+    }
+}
+
+scope ExampleScope {
     event InScopeEvent {
         From: Server,
         Type: Reliable,
         Call: SingleSync,
-        Data: u8
+        Data: AnotherScope.ScopeWithinAnotherScope.ExampleType
     }
 }

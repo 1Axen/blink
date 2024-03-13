@@ -699,7 +699,13 @@ function Generators.LuauType(Declaration: Parser.TypeDeclaration, UseTypeAsValue
 
 		local Name = Reference.Identifier
 		local Scope = Reference.Scope
-		local Prefix = Scope and `{Scope}_` or ""
+		local Prefix = ""
+	
+		if Scope then
+			while (Scope.Identifier ~= "") do
+				Prefix ..= `{Scope.Identifier}_`
+			end
+		end
 
 		Type = `{Prefix}{Name}` 
 	elseif Declaration.Type == "Tuple" then

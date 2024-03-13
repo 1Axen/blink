@@ -29,6 +29,12 @@ type Node<Type, Body, Tokens> = {
     Tokens: Tokens
 }
 
+export type Scope = {
+    Identifier: string,
+    Parent: Scope?,
+    Symbols: {[string]: {Type: "Scope", Value: Scope} | {Type: "Reference", Value: Reference}},
+}
+
 type Array = {
     Bounds: NumberRange,
     Optional: boolean
@@ -41,7 +47,7 @@ type EventOption = {
 }
 
 type Attributes = {
-    Scope: string?,
+    Scope: Scope?,
     Array: Array?,
     Range: NumberRange?,
     Optional: boolean?,
@@ -208,17 +214,14 @@ export type Parser = typeof(setmetatable({} :: {
     Lexer: Lexer.Lexer,
     LookAhead: Token?,
 
-    Scope: string?,
-    Types: {[string]: Reference},
-    Events: {[string]: Reference}
+    Scope: Scope,
 }, Parser))
 
 function Parser.new(): Parser
     return setmetatable({
         Source = "",
         Lexer = Lexer.new("Parsing"),
-        Types = {},
-        Events = {}
+        Scope = {Identifier = "", Symbols = {}},
     }, Parser)
 end
 
@@ -287,30 +290,55 @@ end
 
 ---- Utility Parsing Functions ----
 
-function Parser.GetReference(self: Parser, Type: Type, Identifier: Token, OnlyWithinScope: boolean?): Reference?
-    local Name = Identifier.Value
-    local WithScope = `{self.Scope and `{self.Scope}.` or ""}{Name}`
-    local ReferenceHashMap = (Type == "Type" and self.Types or self.Events)
-    if OnlyWithinScope then
-        return ReferenceHashMap[WithScope]
+function Parser.GetReference(self: Parser, Identifier: Token): Reference?
+    local Path = string.split(Identifier.Value, ".")
+    local Scope: Scope? = self.Scope
+    local Offset = 1
+
+    while (Scope) do
+        local Index = Path[Offset]
+        if not Index then
+            break
+        end
+
+        local Symbol = Scope.Symbols[Index]
+
+        --> Nothing found in the current scope search upwards
+        if Symbol == nil then
+            Scope = Scope.Parent
+            continue
+        end
+
+        --> We found a scope, start searching in it
+        if Symbol.Type == "Scope" then
+            Offset += 1
+            Scope = Symbol :: any
+            continue
+        end
+
+        --> Found the reference
+        return Symbol.Value
     end
 
-    return ReferenceHashMap[Name] or ReferenceHashMap[WithScope]
+    return nil
 end
 
-function Parser.SetReference(self: Parser, Type: Type, Identifier: Token, Declaration: Declaration)
-    local Name = `{self.Scope and `{self.Scope}.` or ""}{Identifier.Value}`
-    local ReferenceHashMap = (Type == "Type" and self.Types or self.Events)
-    if Type ~= "Type" and RESERVED[Name] then
+function Parser.SetReference(self: Parser, Identifier: Token, Declaration: Declaration)
+    local Name = Identifier.Value
+
+    if RESERVED[Name] then
         Error.new(Error.AnalyzeReservedIdentifier, self.Source, `Reserved identifier`)
             :Primary(Identifier, `"{Name}" is reserved and cannot be used as an identifier.`)
             :Emit()
     end
 
-    ReferenceHashMap[Name] = {
-        Identifier = Identifier,
-        Declaration = Declaration
-    }
+    self.Scope.Symbols[Name] = {
+        Type = "Reference",
+        Value = {
+            Identifier = Identifier,
+            Declaration = Declaration
+        }
+    } :: any
 end
 
 function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?): (Attributes, AttributesTokens)
@@ -493,10 +521,8 @@ end
 
 function Parser.Parse(self: Parser, Source: string): Body
     --> Set state
-    self.Scope = nil
+    self.Scope = {Identifier = "", Symbols = {}}
     self.Source = Source
-    table.clear(self.Types)
-    table.clear(self.Events)
     
     --> Start the lexer
     self.Lexer:Initialize(Source)
@@ -560,9 +586,9 @@ function Parser.Declarations(self: Parser): {Declaration}
 
         --> Prevent duplicates
         local Type = KEYWORDS[Keyword.Value]
-        local Reference = self:GetReference(Type, Identifier, true)
+        local Reference = self:GetReference(Identifier)
         if Reference then
-            Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate {Keyword.Value} declared`)
+            Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration`)
                 :Secondary(Reference.Identifier, "Previously declared here")
                 :Primary(Identifier, "Duplicate declared here")
                 :Emit()
@@ -582,7 +608,7 @@ function Parser.Declarations(self: Parser): {Declaration}
         end
         
         table.insert(Declarations, Declaration)
-        self:SetReference(Type, Identifier, Declaration)
+        self:SetReference(Identifier, Declaration)
     end
 
     return Declarations
@@ -673,21 +699,27 @@ function Parser.Function(self: Parser, Identifier: Token): FunctionDeclaration
 end
 
 function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
-    if self.Scope then
+    --[[if self.Scope then
         Error.new(Error.AnalyzeNestedScope, self.Source, "You cannot declare a scope within a scope")
             :Primary(Identifier, `Nested scope declared`)
             :Emit()
-    end
+    end]]
 
     self:Consume("OpenBraces")
 
     --> Open scope
-    self.Scope = Identifier.Value
+    local Parent = self.Scope
+    self.Scope = {
+        Identifier = Identifier.Value,
+        Parent = Parent,
+        Symbols = {}
+    }
+
+    --> Gather declarations
     local Declarations = self:Declarations()
 
     --> Close scope
-    self.Scope = nil
-    --self:Consume("CloseBraces") --> Consumed by self:Declarations()
+    self.Scope = Parent
 
     return {
         Type = "Scope",
@@ -807,6 +839,7 @@ function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
 
         local Type = Declaration.Type
         local Value = Declaration.Value
+        print(Type, Value)
 
         if Type == "Map" then
             ThrowNestedMap(Token)
@@ -955,7 +988,9 @@ end
 
 function Parser.Reference(self: Parser, Identifier: Token): ReferenceDeclaration
     local Token = self:Consume("Identifier")
-    local Reference = self:GetReference("Type", Token)
+    local Reference = self:GetReference(Token)
+    print(Reference)
+
     if not Reference then
         error(Error.new(Error.AnalyzeUnknownReference, self.Source, `Unknown reference`)
             :Primary(Token, "Unknown reference")
