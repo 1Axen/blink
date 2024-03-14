@@ -73,7 +73,7 @@ local Matches = {
     end},
 
     --> Complex patterns
-    {"^%a+%.%a+", "Identifier"},
+    {"^[%w_]+%.[%w_%.]+", "Identifier"},
     {"^[%a_][%w_]*", function(Token: string)
         if Keywords[Token] then
             return "Keyword", Token

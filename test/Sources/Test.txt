@@ -186,8 +186,21 @@ function TupleFunction {
 }
 
 scope AnotherScope {
+    event InScopeEvent {
+        From: Server,
+        Type: Reliable,
+        Call: SingleSync,
+        Data: u8
+    }
+
     scope ScopeWithinAnotherScope {
         type ExampleType = u8
+        event InAnotherScopeEvent {
+            From: Server,
+            Type: Reliable,
+            Call: SingleSync,
+            Data: ExampleType
+        }
     }
 }
 

@@ -32,7 +32,10 @@ type Node<Type, Body, Tokens> = {
 export type Scope = {
     Identifier: string,
     Parent: Scope?,
-    Symbols: {[string]: {Type: "Scope", Value: Scope} | {Type: "Reference", Value: Reference}},
+    Symbols: {
+        Types: {[string]: Reference},
+        Scopes: {[string]: Scope},
+    },
 }
 
 type Array = {
@@ -142,6 +145,7 @@ export type FunctionDeclaration = Node<"Function", {
 }, {}>
 
 export type ScopeDeclaration = Node<"Scope", {
+    Scope: Scope,
     Identifier: string,
     Values: {Declaration}
 }, {}> 
@@ -171,6 +175,15 @@ local FUNCTION: {EventOption} = {
     {Key = "Yield", Type = "Identifier", Values = {"Future", "Promise", "Coroutine"}},
     {Key = "Data", Type = "Identifier", Values = {}},
     {Key = "Return", Type = "Identifier", Values = {}}
+}
+
+type Bucket = "Types" | "Scopes"
+
+local BUCKETS: {[string]: Bucket} = {
+    Type = "Types",
+    Event = "Scopes",
+    Function = "Scopes",
+    Scope = "Scopes"
 }
 
 local KEYWORDS = {
@@ -221,7 +234,7 @@ function Parser.new(): Parser
     return setmetatable({
         Source = "",
         Lexer = Lexer.new("Parsing"),
-        Scope = {Identifier = "", Symbols = {}},
+        Scope = {Identifier = "", Symbols = {Types = {}, Scopes = {}}},
     }, Parser)
 end
 
@@ -290,10 +303,12 @@ end
 
 ---- Utility Parsing Functions ----
 
-function Parser.GetReference(self: Parser, Identifier: Token): Reference?
+function Parser.GetReference(self: Parser, Bucket: Bucket, Identifier: Token): Reference?
     local Path = string.split(Identifier.Value, ".")
     local Scope: Scope? = self.Scope
+
     local Offset = 1
+    local Length = #Path
 
     while (Scope) do
         local Index = Path[Offset]
@@ -301,7 +316,11 @@ function Parser.GetReference(self: Parser, Identifier: Token): Reference?
             break
         end
 
-        local Symbol = Scope.Symbols[Index]
+        local Symbols = Scope.Symbols
+        local Symbol = 
+            (Offset == Length) 
+            and Symbols[Bucket][Index] 
+            or Symbols.Scopes[Index]
 
         --> Nothing found in the current scope search upwards
         if Symbol == nil then
@@ -310,20 +329,20 @@ function Parser.GetReference(self: Parser, Identifier: Token): Reference?
         end
 
         --> We found a scope, start searching in it
-        if Symbol.Type == "Scope" then
+        if Symbol and Offset < Length then
             Offset += 1
             Scope = Symbol :: any
             continue
         end
 
         --> Found the reference
-        return Symbol.Value
+        return Symbol :: Reference
     end
 
     return nil
 end
 
-function Parser.SetReference(self: Parser, Identifier: Token, Declaration: Declaration)
+function Parser.SetReference(self: Parser, Bucket: Bucket, Identifier: Token, Declaration: Declaration)
     local Name = Identifier.Value
 
     if RESERVED[Name] then
@@ -332,13 +351,10 @@ function Parser.SetReference(self: Parser, Identifier: Token, Declaration: Decla
             :Emit()
     end
 
-    self.Scope.Symbols[Name] = {
-        Type = "Reference",
-        Value = {
-            Identifier = Identifier,
-            Declaration = Declaration
-        }
-    } :: any
+    self.Scope.Symbols[Bucket][Name] = {
+        Identifier = Identifier,
+        Declaration = Declaration
+    }
 end
 
 function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?): (Attributes, AttributesTokens)
@@ -521,7 +537,7 @@ end
 
 function Parser.Parse(self: Parser, Source: string): Body
     --> Set state
-    self.Scope = {Identifier = "", Symbols = {}}
+    self.Scope = {Identifier = "", Symbols = {Types = {}, Scopes = {}}}
     self.Source = Source
     
     --> Start the lexer
@@ -586,7 +602,8 @@ function Parser.Declarations(self: Parser): {Declaration}
 
         --> Prevent duplicates
         local Type = KEYWORDS[Keyword.Value]
-        local Reference = self:GetReference(Identifier)
+        local Bucket: Bucket = BUCKETS[Type]
+        local Reference = self:GetReference(Bucket, Identifier)
         if Reference then
             Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration`)
                 :Secondary(Reference.Identifier, "Previously declared here")
@@ -606,9 +623,11 @@ function Parser.Declarations(self: Parser): {Declaration}
         elseif Type  == "Scope" then
             Declaration = self:Namespace(Identifier)
         end
-        
+
         table.insert(Declarations, Declaration)
-        self:SetReference(Identifier, Declaration)
+        if Type ~= "Scope" then
+            self:SetReference(Bucket, Identifier, Declaration)
+        end
     end
 
     return Declarations
@@ -709,11 +728,17 @@ function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
 
     --> Open scope
     local Parent = self.Scope
-    self.Scope = {
+    local Scope: Scope = {
         Identifier = Identifier.Value,
         Parent = Parent,
-        Symbols = {}
+        Symbols = {
+            Types = {},
+            Scopes = {}
+        }
     }
+
+    self.Scope = Scope
+    Parent.Symbols.Scopes[Identifier.Value] = Scope
 
     --> Gather declarations
     local Declarations = self:Declarations()
@@ -724,6 +749,7 @@ function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
     return {
         Type = "Scope",
         Value = {
+            Scope = Scope,
             Identifier = Identifier.Value,
             Values = Declarations
         },
@@ -839,7 +865,6 @@ function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
 
         local Type = Declaration.Type
         local Value = Declaration.Value
-        print(Type, Value)
 
         if Type == "Map" then
             ThrowNestedMap(Token)
@@ -988,8 +1013,7 @@ end
 
 function Parser.Reference(self: Parser, Identifier: Token): ReferenceDeclaration
     local Token = self:Consume("Identifier")
-    local Reference = self:GetReference(Token)
-    print(Reference)
+    local Reference = self:GetReference("Types", Token)
 
     if not Reference then
         error(Error.new(Error.AnalyzeUnknownReference, self.Source, `Unknown reference`)

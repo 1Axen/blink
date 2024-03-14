@@ -215,7 +215,19 @@ struct Example {
     Reference = ExampleScope.InScopeType
 }
 ```
-
+---
+Scopes automatically inherit any declarations made within their parent scopes (including main)  
+```
+type Example = u8
+scope ExampleScope {
+    type TypeInScope = u8
+    scope ExampleNestedScope {
+        -- Example is taken from the main (global) scope
+        -- TypeInScope is taken from the parent scope (ExampleScope)
+        map ExampleMap = {[Example]: TypeInScope}
+    }
+}
+---
 Using scopes in code:  
 ```lua
 local Blink = require(PATH_TO_BLINK)
