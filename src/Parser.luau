@@ -29,6 +29,10 @@ type Node<Type, Body, Tokens> = {
     Tokens: Tokens
 }
 
+type Generics = {
+    [string]: {{Key: string, Values: {[string]: Declaration}}}
+}
+
 export type Scope = {
     Identifier: string,
     Parent: Scope?,
@@ -228,6 +232,7 @@ export type Parser = typeof(setmetatable({} :: {
     LookAhead: Token?,
 
     Scope: Scope,
+    Generics: Generics?,
 }, Parser))
 
 function Parser.new(): Parser
@@ -355,6 +360,36 @@ function Parser.SetReference(self: Parser, Bucket: Bucket, Identifier: Token, De
         Identifier = Identifier,
         Declaration = Declaration
     }
+end
+
+function Parser.GetGenerics(self: Parser): Generics?
+    if self.Generics then
+        return self.Generics
+    end
+    
+    local Token = self:TryConsume("Component")
+    if not Token then
+        return
+    end
+
+    --> Remove whitespace and seperate into identifiers
+    local Value = string.gsub(Token.Value, "%s", "")
+    local Identifiers = string.split(Value, ",")
+
+    --> Parse generics
+    local Generics: Generics = {}
+    for _, Identifier in Identifiers do
+        if Generics[Identifier] then
+            Error.new(Error.AnalyzeDuplicateTypeGeneric, self.Source, `Duplicate type parameter "{Identifier}"`)
+                :Primary(Token, `Type parameter "{Identifier}" was already used`)
+            :Emit()
+        end
+
+        Generics[Identifier] = {}
+    end
+
+    self.Generics = Generics
+    return Generics
 end
 
 function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?): (Attributes, AttributesTokens)
@@ -959,6 +994,9 @@ end
 
 function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
     local Values: {TypeDeclaration} = {}
+    local Generics = self:GetGenerics()
+    print(Generics)
+
     self:Consume("OpenBraces")
 
     while true do

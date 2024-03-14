@@ -69,7 +69,8 @@ local Error = {
     AnalyzeUnknownReference = 3007,
     AnalyzeInvalidRangeType = 3008,
     AnalyzeInvalidRange = 3009,
-    AnalyzeDuplicateDeclaration = 3010
+    AnalyzeDuplicateDeclaration = 3010,
+    AnalyzeDuplicateTypeGeneric = 3011
 }
 
 Error.__index = Error
