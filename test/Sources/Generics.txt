@@ -6,4 +6,18 @@ struct Packet<T> {
     Ack: u16,
     AckBits: u32,
     Data: T
-} 
+}
+
+struct Entity {
+    id: u8,
+    pos: vector,
+    angle: u16,
+}
+
+event Snapshot {
+    From: Client,
+    Type: Unreliable,
+    Call: SingleSync,
+    Data: u8
+    -- Data: Packet<Entity[]>
+}

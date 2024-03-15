@@ -710,6 +710,8 @@ function Generators.LuauType(Declaration: Parser.TypeDeclaration, UseTypeAsValue
 		end
 
 		Type ..= " }"
+	elseif Declaration.Type == "Generic" then
+		Type = `{Declaration.Value.Generic}`
 	elseif Declaration.Type == "Reference" then
 		local Value = (Declaration :: Parser.ReferenceDeclaration).Value
 		local Reference = Value.Declaration.Value
@@ -751,7 +753,7 @@ function Generators.LuauType(Declaration: Parser.TypeDeclaration, UseTypeAsValue
 	return Type, Values, Export, Returns
 end
 
-function Generators.Type(Declaration: Type): (string, string, string)
+function Generators.Type(Declaration: Type)
 	local Value = Declaration.Value
 	local Identifier = Value.Identifier
 
@@ -759,10 +761,28 @@ function Generators.Type(Declaration: Type): (string, string, string)
 	local Read = Blocks.Function(GetTypesPath(Identifier, false), "", `({Export})`)
 	local Write = Blocks.Function(GetTypesPath(Identifier, true), Values, "()")
 
-	Read:Line(`local {Values};`)
-	Generators.UserType(Declaration, Read, Write)
+	local Generics = ""
+	if Value.Generics then
+		for Generic in Value.Generics do
+			Generics ..= `{Generic},`
+		end
 
-	return `export type {Export} = {Type}`, Read:Return(Returns):End():Unwrap(), Write:End():Unwrap()
+		Generics = string.sub(Generics, 1, #Generics - 1)
+		Generics = `<{Generics}>`
+	else
+		Read:Line(`local {Values};`)
+		Generators.UserType(Declaration, Read, Write)
+		Read:Return(Returns)
+
+		Read:End()
+		Write:End()
+
+		UserTypes.PushMultiline(Read:Unwrap(), 1, 0, false)
+		UserTypes.PushMultiline(Write:Unwrap(), 1, 0, false)
+	end
+
+	--> Write luau export
+	LuauTypes.PushMultiline(`export type {Export}{Generics} = {Type}`, 0, 0, false)
 end
 
 function Generators.Event(Data: Type, Index: number, Identifier: string, Function: ("Data" | "Return")?): (string, string)
@@ -821,10 +841,7 @@ function Generators.AbstractSyntaxTree(Tree: {Parser.Declaration})
 			or Declaration.Type == "Struct"
 			or Declaration.Type == "Map"
 		then
-			local Export, Read, Write = Generators.Type(Declaration :: any)
-			UserTypes.PushMultiline(Read, 1, 0, false)
-			UserTypes.PushMultiline(Write, 1, 0, false)
-			LuauTypes.PushMultiline(Export, 0, 0, false)
+			Generators.Type(Declaration :: any)
 		elseif Declaration.Type == "Scope" then
 			Generators.Scope(Declaration :: Parser.ScopeDeclaration)
 		elseif Declaration.Type == "Event" then

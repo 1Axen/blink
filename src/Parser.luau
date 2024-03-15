@@ -30,7 +30,8 @@ type Node<Type, Body, Tokens> = {
 }
 
 type Generics = {
-    [string]: {Reference}
+    Keys: {[string]: number},
+    Ordered: {{{Key: string, Values: {[any]: any}}}}
 }
 
 export type Scope = {
@@ -58,6 +59,7 @@ type Attributes = {
     Array: Array?,
     Range: NumberRange?,
     Optional: boolean?,
+    Generics: Generics?,
     Components: {string}?
 }
 
@@ -89,8 +91,8 @@ export type Body = Node<"Body", {
     Declarations: {Declaration}
 }, {}>
 
-type Declarations = "Map" | "Enum" | "Tuple" | "Struct" | "Primitive" | "Reference" | "Event" | "Function" | "Scope" 
-export type TypeDeclaration = MapDeclaration | EnumDeclaration | TupleDeclaration | StructDeclaration | PrimitiveDeclaration | ReferenceDeclaration
+type Declarations = "Map" | "Enum" | "Tuple" | "Struct" | "Primitive" | "Generic" | "Reference" | "Event" | "Function" | "Scope" 
+export type TypeDeclaration = MapDeclaration | EnumDeclaration | TupleDeclaration | StructDeclaration | PrimitiveDeclaration | GenericDeclaration | ReferenceDeclaration
 
 export type Declaration = Node<Declarations, {
     Identifier: string,
@@ -102,7 +104,7 @@ export type Declaration = Node<Declarations, {
 export type MapDeclaration = Node<"Map", {
     Identifier: string,
     Key: TypeDeclaration,
-    Value: TypeDeclaration
+    Value: TypeDeclaration,
 } & Attributes, AttributesTokens>
 
 export type EnumDeclaration = Node<"Enum", {
@@ -122,6 +124,11 @@ export type PrimitiveDeclaration = Node<"Primitive", {
 } & Attributes, {
     Primitive: Token,
 } & AttributesTokens>
+
+export type GenericDeclaration = Node<"Generic", {
+    Identifier: string,
+    Generic: string,
+} & Attributes, AttributesTokens>
 
 export type ReferenceDeclaration = Node<"Reference", {
     Identifier: string,
@@ -382,15 +389,20 @@ function Parser.GetGenerics(self: Parser): Generics?
     local Identifiers = string.split(Value, ",")
 
     --> Parse generics
-    local Generics: Generics = {}
-    for _, Identifier in Identifiers do
+    local Generics: Generics = {
+        Keys = {},
+        Ordered = {}
+    }
+
+    for Index, Identifier in Identifiers do
         if Generics[Identifier] then
             Error.new(Error.AnalyzeDuplicateTypeGeneric, self.Source, `Duplicate type parameter "{Identifier}"`)
                 :Primary(Token, `Type parameter "{Identifier}" was already used`)
             :Emit()
         end
 
-        Generics[Identifier] = {}
+        Generics.Ordered[Index] = {}
+        Generics.Keys[Identifier] = Index
     end
 
     self.Generics = Generics
@@ -677,6 +689,7 @@ function Parser.Declarations(self: Parser): {Declaration}
 
         if Generics then
             self.Generics = nil
+            Declaration.Value.Generics = Generics
         end
 
         if Type ~= "Scope" then
@@ -1064,7 +1077,7 @@ function Parser.Primitive(self: Parser, Identifier: Token): PrimitiveDeclaration
     }
 end
 
-function Parser.Reference(self: Parser, Identifier: Token): ReferenceDeclaration
+function Parser.Reference(self: Parser, Identifier: Token): (ReferenceDeclaration | GenericDeclaration)
     local Token = self:Consume("Identifier")
 
     --> Generics reference resolution
@@ -1072,13 +1085,13 @@ function Parser.Reference(self: Parser, Identifier: Token): ReferenceDeclaration
     local Generic = Generics and Generics[Token.Value]
     if Generic then
         return {
-            Type = "Reference",
+            Type = "Generic",
             Value = {
                 Identifier = Identifier.Value,
-                Declaration = nil :: any
+                Generic = Token.Value
             },
             Tokens = {}
-        }
+        } :: GenericDeclaration
     end
 
     --> Normal reference resolution
@@ -1089,14 +1102,28 @@ function Parser.Reference(self: Parser, Identifier: Token): ReferenceDeclaration
             :Emit())
     end
 
+    local Declaration = (Reference :: Reference).Declaration
+    local TypeGenerics: Generics? = Declaration.Value.Generics
+    if TypeGenerics then
+        local ProvidedTypes = self:Consume("Component")
+
+        local Value = ProvidedTypes.Value
+        Value = string.gsub(Value, "%s<>", "")
+
+        local Identifiers = string.split(Value, ",")
+        for Index, Identifier in Identifiers do
+            local Reference = self:GetReference("Types", {})
+        end
+    end
+
     return {
         Type = "Reference",
         Value = {
             Identifier = Identifier.Value,
-            Declaration = Reference.Declaration :: TypeDeclaration
+            Declaration = (Reference :: Reference).Declaration :: TypeDeclaration
         },
         Tokens = {}
-    }
+    } :: ReferenceDeclaration
 end
 
 return Parser
