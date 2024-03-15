@@ -1,3 +1,9 @@
-struct Packet<T> = {
-    
+option ClientOutput = "../../Network/ClientGenerics.luau"
+option ServerOutput = "../../Network/ServerGenerics.luau"
+
+struct Packet<T> {
+    Sequence: u16,
+    Ack: u16,
+    AckBits: u32,
+    Data: T
 } 

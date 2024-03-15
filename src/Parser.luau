@@ -30,7 +30,7 @@ type Node<Type, Body, Tokens> = {
 }
 
 type Generics = {
-    [string]: {{Key: string, Values: {[string]: Declaration}}}
+    [string]: {Reference}
 }
 
 export type Scope = {
@@ -210,6 +210,11 @@ local RESERVED = {
     StepReplication = true
 }
 
+local SUPPORTS_GENERICS = {
+    map = true,
+    struct = true,
+}
+
 local PRIMITIVES = Settings.Primtives
 local ARRAY_BOUNDS = NumberRange.new(0, (PRIMITIVES.u16.Bounds :: NumberRange).Max)
 
@@ -373,7 +378,7 @@ function Parser.GetGenerics(self: Parser): Generics?
     end
 
     --> Remove whitespace and seperate into identifiers
-    local Value = string.gsub(Token.Value, "%s", "")
+    local Value = string.gsub(Token.Value, "[%s<>]+", "")
     local Identifiers = string.split(Value, ",")
 
     --> Parse generics
@@ -639,6 +644,7 @@ function Parser.Declarations(self: Parser): {Declaration}
         local Type = KEYWORDS[Keyword.Value]
         local Bucket: Bucket = BUCKETS[Type]
         local Reference = self:GetReference(Bucket, Identifier)
+
         if Reference then
             Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration`)
                 :Secondary(Reference.Identifier, "Previously declared here")
@@ -646,6 +652,13 @@ function Parser.Declarations(self: Parser): {Declaration}
                 :Emit()
         end
 
+        --> Generics
+        local Generics: Generics?;
+        if SUPPORTS_GENERICS[Keyword.Value] then
+            Generics = self:GetGenerics()
+        end
+
+        --> Parse declaration
         if Type == "Type" then
            local TypeDeclaration = self:Type(Identifier, Keyword)
            local Value: Attributes = TypeDeclaration.Value
@@ -659,7 +672,13 @@ function Parser.Declarations(self: Parser): {Declaration}
             Declaration = self:Namespace(Identifier)
         end
 
+        --> Update declarations
         table.insert(Declarations, Declaration)
+
+        if Generics then
+            self.Generics = nil
+        end
+
         if Type ~= "Scope" then
             self:SetReference(Bucket, Identifier, Declaration)
         end
@@ -877,7 +896,6 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
     return Declaration
 end
 
-
 function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
     self:ConsumeAll("OpenBraces", "OpenBrackets")
 
@@ -994,9 +1012,6 @@ end
 
 function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
     local Values: {TypeDeclaration} = {}
-    local Generics = self:GetGenerics()
-    print(Generics)
-
     self:Consume("OpenBraces")
 
     while true do
@@ -1051,8 +1066,23 @@ end
 
 function Parser.Reference(self: Parser, Identifier: Token): ReferenceDeclaration
     local Token = self:Consume("Identifier")
-    local Reference = self:GetReference("Types", Token)
 
+    --> Generics reference resolution
+    local Generics = self.Generics
+    local Generic = Generics and Generics[Token.Value]
+    if Generic then
+        return {
+            Type = "Reference",
+            Value = {
+                Identifier = Identifier.Value,
+                Declaration = nil :: any
+            },
+            Tokens = {}
+        }
+    end
+
+    --> Normal reference resolution
+    local Reference = self:GetReference("Types", Token)
     if not Reference then
         error(Error.new(Error.AnalyzeUnknownReference, self.Source, `Unknown reference`)
             :Primary(Token, "Unknown reference")
