@@ -568,36 +568,33 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
             return
         end
 
-        local Token = self:TryConsume("Component")
-        if not Token then
+        local OpenChevrons = self:TryConsume("OpenChevrons")
+        if not OpenChevrons then
             return
         end
 
-        local Value = Token.Value
-        Value = string.sub(Value, 2, #Value - 1)
-        Value = string.gsub(Value, "[%c%s]+", "")
-
-        local Components = {}
-        local Primitives = string.split(Value, ",")
-        
         if Primitive.AllowedComponents == 0 then
             error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Type doesn't accept components`)
-                :Primary(Token, `Remove component here`)
+                :Primary(OpenChevrons, `Remove component here`)
             :Emit())
         end
 
-        if Primitive.AllowedComponents < #Primitives then
-            error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Too many components specified`)
-                :Primary(Token, `Expected #{Primitive.AllowedComponents} components, got #{#Primitives}`)
-            :Emit())
-        end
+        local Components = {}
+        local Primitives = {}
 
-        for Index, Component in Primitives do
-            if Component == "" then
-                continue
+        for Index = 1, Primitive.AllowedComponents do
+            table.insert(Primitives, self:Consume("Primitive"))
+            if self:TryConsume("CloseChevrons") then
+                break
             end
 
+            self:Consume("Comma")
+        end
+
+        for Index, Token in Primitives do
+            local Component = Token.Value
             local ComponentPrimitive = PRIMITIVES[Component]
+
             if not ComponentPrimitive then
                 error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Unknown primitive used as component`)
                     :Primary(Token, `"{Component}" is invalid`)
@@ -611,12 +608,6 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
             end
 
             table.insert(Components, Component)
-        end
-
-        if #Components == 0 then
-            error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Too few components`)
-                :Primary(Token, `Expected at least 1 component, 0 are specified`)
-            :Emit())
         end
 
         return Components
