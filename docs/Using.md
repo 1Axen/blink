@@ -96,7 +96,7 @@ enum State = { Starting, Started, Stopping, Stopped }
 ```
 ## Structs
 You can define structs using the `struct` keyword  
-Structs can also hold structs within.  
+Structs can also hold structs within:
 ```
 struct Entity {
     Identifier: u8,
@@ -110,6 +110,46 @@ struct Entity {
     }?
 }
 ```
+
+### Generics
+---
+Structs support the use of generic type parameters, a generic is simply a type which allows you to slot in any other type, generics can be very handy in reducing repetition.
+```
+struct Packet<T> {
+    Sequence: u16,
+    Ack: u16,
+    Data: T
+}
+
+struct Entity {
+    Identifier: u8,
+    Health: u8(0..100),
+    Angle: u16,
+    Position: vector
+}
+
+struct Command {
+    X: u8,
+    Y: u8,
+    Z: u8,
+    -- ...
+}
+
+event Snapshot {
+    From: Server,
+    Type: Unreliable,
+    Call: SingleSync,
+    Data: Packet<Entity[]>
+}
+
+event Command {
+    From: Server,
+    Type: Unreliable,
+    Call: SingleSync,
+    Data: Packet<Command>
+}
+```
+In the code above we have a simple packet transmission protocol which contains the current packets identifier (Sequence), the last recieved packet (Ack) and a generic data field. Instead of repeating the contents of `Packet` everytime we need to send something over the wire we can take advantage of generics to automatically fill the `Data` field with whatever we need to transmit.
 ## Maps
 You can define maps using the `map` keyword   
 > [!NOTE]

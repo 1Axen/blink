@@ -5,7 +5,7 @@ struct Packet<T> {
     Sequence: u16,
     Ack: u16,
     AckBits: u32,
-    Data: T
+    Data: T,
 }
 
 struct Entity {
@@ -18,6 +18,5 @@ event Snapshot {
     From: Client,
     Type: Unreliable,
     Call: SingleSync,
-    Data: u8
-    -- Data: Packet<Entity[]>
+    Data: Packet<Entity>
 }

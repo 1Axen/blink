@@ -414,6 +414,8 @@ FireAndExpect("Unreliable Client", Client.UnreliableClient, Server.UnreliableCli
 
 FireAndExpect("Unknown", Server.Unknown, Client.Unknown, newproxy())
 
+FireAndExpect("Generic", Server.Generic, Client.Generic, {Data = 0, Nested = {Value = 0}})
+
 FireAndExpect("Map", Server.MapEvent, Client.MapEvent, {["string"] = 1})
 FireAndExpect("Map Struct", Server.MapStructEvent, Client.MapStructEvent, {Map = {string = 1}})
 FireAndExpect("Map Complex", Server.MapComplexEvent, Client.MapComplexEvent, {string = table.create(8, 1)})

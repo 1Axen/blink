@@ -25,6 +25,13 @@ struct ArrayStruct {
 
 }[0..20]
 
+struct Generic<A, B> {
+    Data: A,
+    Nested: {
+        Value: B
+    }
+}
+
 type Number = u8
 struct Example {
     Field: u8,
@@ -38,6 +45,13 @@ struct Example {
 
 struct MapStruct {
     Map: {[string]: u8}
+}
+
+event Generic {
+    From: Server,
+    Type: Reliable,
+    Data: Generic<u8, u8>,
+    Call: SingleSync
 }
 
 event Unknown {

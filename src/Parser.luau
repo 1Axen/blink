@@ -3,6 +3,7 @@
 --!optimize 2
 
 local Lexer = require("./Lexer")
+local Table = require("./Modules/Table")
 local Error = require("./Modules/Error")
 local Settings = require("./Settings")
 
@@ -30,8 +31,9 @@ type Node<Type, Body, Tokens> = {
 }
 
 type Generics = {
-    Keys: {[string]: number},
-    Ordered: {{{Key: string, Values: {[any]: any}}}}
+    Total: number,
+    Keys: {[number]: string},
+    Indices: {[string]: number}
 }
 
 export type Scope = {
@@ -60,6 +62,7 @@ type Attributes = {
     Range: NumberRange?,
     Optional: boolean?,
     Generics: Generics?,
+    Parameters: {TypeDeclaration}?,
     Components: {string}?
 }
 
@@ -320,8 +323,8 @@ end
 
 ---- Utility Parsing Functions ----
 
-function Parser.GetReference(self: Parser, Bucket: Bucket, Identifier: Token): Reference?
-    local Path = string.split(Identifier.Value, ".")
+function Parser.GetReference(self: Parser, Bucket: Bucket, Identifier: string): Reference?
+    local Path = string.split(Identifier, ".")
     local Scope: Scope? = self.Scope
 
     local Offset = 1
@@ -378,35 +381,107 @@ function Parser.GetGenerics(self: Parser): Generics?
     if self.Generics then
         return self.Generics
     end
-    
-    local Token = self:TryConsume("Component")
-    if not Token then
+
+    if not self:TryConsume("OpenChevrons") then
         return
     end
 
-    --> Remove whitespace and seperate into identifiers
-    local Value = string.gsub(Token.Value, "[%s<>]+", "")
-    local Identifiers = string.split(Value, ",")
-
     --> Parse generics
     local Generics: Generics = {
+        Total = 0,
         Keys = {},
-        Ordered = {}
+        Indices = {}
     }
 
-    for Index, Identifier in Identifiers do
-        if Generics[Identifier] then
-            Error.new(Error.AnalyzeDuplicateTypeGeneric, self.Source, `Duplicate type parameter "{Identifier}"`)
-                :Primary(Token, `Type parameter "{Identifier}" was already used`)
-            :Emit()
+    while true do
+        if self:TryConsume("CloseChevrons") then
+            break
         end
 
-        Generics.Ordered[Index] = {}
-        Generics.Keys[Identifier] = Index
+        local Index = (Generics.Total + 1)
+        local Token = self:Consume("Identifier")
+        local Identifier = Token.Value
+        
+        Generics.Total = Index
+        Generics.Keys[Index] = Identifier
+        Generics.Indices[Identifier] = Index
+
+        if self:Peek().Type ~= "CloseChevrons" then
+            self:Consume("Comma")
+        end
     end
 
     self.Generics = Generics
     return Generics
+end
+
+function Parser.SolveGenerics(self: Parser, Identifier: Token, Declaration: StructDeclaration)
+    local Generics = Declaration.Value.Generics
+    if not Generics then
+        return
+    end
+
+    local OpenToken = self:TryConsume("OpenChevrons")
+    if not OpenToken then
+        Error.new(Error.AnalyzeInvalidGenerics, self.Source, `Type expects parameters list`)
+            :Primary(self:Peek(), "")
+        :Emit()
+
+        return
+    end
+
+    local Maximum = Generics.Total
+    local Parameters = {}
+    local References: {[string]: TypeDeclaration} = {}
+
+    for Index, Generic in Generics.Keys do
+        local Type = self:Type(Identifier)
+        References[Generic] = Type
+        table.insert(Parameters, Type)
+        
+        if Index ~= Maximum then
+            self:Consume("Comma")
+        end
+    end
+
+    local CloseToken = self:Consume("CloseChevrons")
+    if #Parameters ~= Maximum then
+        Error.new(Error.AnalyzeInvalidGenerics, self.Source, `Type expects {Maximum} parameters, but {#Parameters} are specified`)
+            :Primary({Start = OpenToken.Start, End = CloseToken.End}, "")
+        :Emit()
+    end
+
+    --> Solve references
+    Declaration = Table.DeepClone(Declaration)
+
+    local function SolveValues(Values: {TypeDeclaration})
+        for Index, Field in Values do
+            if Field.Type == "Struct" then
+                SolveValues(Field.Value.Values)
+                continue
+            end
+
+            if Field.Type ~= "Generic" then
+                continue
+            end
+
+            local Value = Field.Value
+            local Generic = Value.Generic
+
+            --> Create a unique reference for each generic
+            local Reference = References[Generic]
+            Reference = Table.DeepClone(Reference)
+            ;(Reference :: Declaration).Value.Identifier = Value.Identifier
+            
+            --> Set value to reference
+            Values[Index] = Reference
+        end
+    end
+
+    Declaration.Value.Generics = nil
+    SolveValues(Declaration.Value.Values)
+
+    return Declaration, Parameters
 end
 
 function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?): (Attributes, AttributesTokens)
@@ -585,6 +660,7 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
     }
 end
 
+
 ---- Top-Level Parsing Functions ----
 
 function Parser.Parse(self: Parser, Source: string): Body
@@ -655,7 +731,7 @@ function Parser.Declarations(self: Parser): {Declaration}
         --> Prevent duplicates
         local Type = KEYWORDS[Keyword.Value]
         local Bucket: Bucket = BUCKETS[Type]
-        local Reference = self:GetReference(Bucket, Identifier)
+        local Reference = self:GetReference(Bucket, Identifier.Value)
 
         if Reference then
             Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration`)
@@ -887,6 +963,13 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
             Declaration = self:Primitive(Identifier)
         elseif Type == "Identifier" then
             Declaration = self:Reference(Identifier)
+            if Declaration.Type == "Reference" then
+                local Value = Declaration.Value
+                local Referencing = Value.Declaration
+                if Referencing.Value.Generics then
+                    Value.Declaration, Value.Parameters = self:SolveGenerics(Identifier, Referencing :: StructDeclaration)
+                end
+            end
         elseif Type == "OpenParentheses" and IsDataField then
             Declaration = self:Tuple(Identifier)
         end
@@ -904,7 +987,6 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
 
     Value.Range, Value.Optional, Value.Array, Value.Components = Attributes.Range, Attributes.Optional, Attributes.Array, Attributes.Components
     Tokens.Range, Tokens.Optional, Tokens.Array = AttributesTokens.Range, AttributesTokens.Optional, AttributesTokens.Array
-
 
     return Declaration
 end
@@ -1082,7 +1164,8 @@ function Parser.Reference(self: Parser, Identifier: Token): (ReferenceDeclaratio
 
     --> Generics reference resolution
     local Generics = self.Generics
-    local Generic = Generics and Generics[Token.Value]
+    local Generic = Generics and Generics.Indices[Token.Value]
+
     if Generic then
         return {
             Type = "Generic",
@@ -1095,32 +1178,18 @@ function Parser.Reference(self: Parser, Identifier: Token): (ReferenceDeclaratio
     end
 
     --> Normal reference resolution
-    local Reference = self:GetReference("Types", Token)
+    local Reference = self:GetReference("Types", Token.Value)
     if not Reference then
         error(Error.new(Error.AnalyzeUnknownReference, self.Source, `Unknown reference`)
             :Primary(Token, "Unknown reference")
             :Emit())
     end
 
-    local Declaration = (Reference :: Reference).Declaration
-    local TypeGenerics: Generics? = Declaration.Value.Generics
-    if TypeGenerics then
-        local ProvidedTypes = self:Consume("Component")
-
-        local Value = ProvidedTypes.Value
-        Value = string.gsub(Value, "%s<>", "")
-
-        local Identifiers = string.split(Value, ",")
-        for Index, Identifier in Identifiers do
-            local Reference = self:GetReference("Types", {})
-        end
-    end
-
     return {
         Type = "Reference",
         Value = {
             Identifier = Identifier.Value,
-            Declaration = (Reference :: Reference).Declaration :: TypeDeclaration
+            Declaration = Reference.Declaration
         },
         Tokens = {}
     } :: ReferenceDeclaration

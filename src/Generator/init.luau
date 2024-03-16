@@ -745,6 +745,24 @@ function Generators.LuauType(Declaration: Parser.TypeDeclaration, UseTypeAsValue
 		end
 	end
 
+	if Value.Parameters then
+		local Parameters = ""
+		local Maximum = #Value.Parameters
+
+		--> Generate luau types for parameters
+		for Index, Parameter in Value.Parameters do
+			Parameters ..= Generators.LuauType(Parameter)
+			
+			if Index ~= Maximum then
+				Parameters ..= ","
+			end
+		end
+
+		--> Wrap in chevrons
+		Parameters = `<{Parameters}>`
+		Type = `{Type}{Parameters}`
+	end
+
 	--> Generalized type generation, works for everything except tuples
 	if Declaration.Type ~= "Tuple" then
 		Values = `Value: {UseTypeAsValue and Type or Export}`
@@ -756,14 +774,14 @@ end
 function Generators.Type(Declaration: Type)
 	local Value = Declaration.Value
 	local Identifier = Value.Identifier
-
 	local Type, Values, Export, Returns = Generators.LuauType(Declaration)
+
 	local Read = Blocks.Function(GetTypesPath(Identifier, false), "", `({Export})`)
 	local Write = Blocks.Function(GetTypesPath(Identifier, true), Values, "()")
 
 	local Generics = ""
 	if Value.Generics then
-		for Generic in Value.Generics do
+		for Generic in Value.Generics.Indices do
 			Generics ..= `{Generic},`
 		end
 

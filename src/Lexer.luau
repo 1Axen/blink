@@ -7,7 +7,7 @@ local Settings = require("./Settings")
 export type Types = 
     "Comma" | "OpenParentheses" | "CloseParentheses" | "OpenBraces" | "CloseBraces" | "OpenBrackets" | "CloseBrackets" --> Structs & enums
     | "String" | "Boolean" | "Number"   --> Literals
-    | "Array" | "Range" | "Optional" | "Class" | "Component"  --> Attributes
+    | "Array" | "Range" | "Optional" | "Class" | "Component" | "OpenChevrons" | "CloseChevrons"  --> Attributes
     | "Assign" | "FieldAssign" | "Keyword" | "Primitive" | "Identifier" --> Reserved
     | "Whitespace" | "Comment" | "Unknown" | "EndOfFile"
 
@@ -40,6 +40,8 @@ local Matches = {
     {"^:", "FieldAssign"},
     {"^{", "OpenBraces"},
     {"^}", "CloseBraces"},
+    {"^<", "OpenChevrons"},
+    {"^>", "CloseChevrons"},
     {"^,", "Comma"},
 
     --> Comments
@@ -56,7 +58,7 @@ local Matches = {
     {`^%({Number}..{Number}%)`, "Range"},
     {`^%[{Number}]`, "Array"},
     {`^%[{Number}..{Number}]`, "Array"},
-    {`^%b<>`, "Component"},
+    --{`^%b<>`, "Component"},
 
     {"^%(", "OpenParentheses"},
     {"^%)", "CloseParentheses"},
