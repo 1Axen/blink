@@ -1,12 +1,17 @@
 return {
     DeepClone = function(Table: {[any]: any}): {[any]: any}
-        local function Clone(Source: {[any]: any})
-            local Result = {}
-            for Index, Value in Source do
-                if type(Value) == "table" then
-                    Result[Index] = Clone(Value)
+        local Clones = {}
+        local function Clone(Original)
+            local Result = Original
+            if type(Original) == "table" then
+                if Clones[Original] then
+                    Result = Clones[Original]
                 else
-                    Result[Index] = Value
+                    Result = {}
+                    Clones[Original] = Result
+                    for Key, Value in Original do
+                        Result[Clone(Key)] = Clone(Value)
+                    end
                 end
             end
 
