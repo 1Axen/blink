@@ -268,10 +268,10 @@ local function UpdateCompletion()
     end
 
     --> Update predictions
-    Predictions:Set({
+    --[[Predictions:Set({
         Index = 1,
         Items = Items
-    })
+    })]]
 end
 
 local function UpdateHighlightedLine()
