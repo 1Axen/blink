@@ -77,7 +77,7 @@ local ParseStart = os.clock()
 local AbstractSyntaxTree = SourceParser:Parse(Source)
 local ParseTime = (os.clock() - ParseStart)
 
-if table.find(Arguments, "ast") then
+if table.find(Arguments, "--ast") then
 	print(AbstractSyntaxTree.Value.Options)
 	print(AbstractSyntaxTree.Value.Declarations)
 	return
@@ -95,9 +95,15 @@ CreateDirectoryIfNotFound(ClientOutput)
 CreateDirectoryIfNotFound(ServerOutput)
 
 print("Generating output files...")
-local GenerateStart = os.clock()
+local FilesStart = os.clock()
+
+local ServerGenerateStart = os.clock()
 local ServerSource = Generator.Generate("Server", AbstractSyntaxTree)
+local ServerGenerateTime = (os.clock() - ServerGenerateStart)
+
+local ClientGenerateStart = os.clock()
 local ClientSource = Generator.Generate("Client", AbstractSyntaxTree)
+local ClientGenerateTime = (os.clock() - ClientGenerateStart)
 
 local TypesSource: string?;
 if Options.TypesOutput then
@@ -105,7 +111,7 @@ if Options.TypesOutput then
 	TypesSource = Generator.GenerateTypeDefinitions("Server", AbstractSyntaxTree)
 end
 
-local GenerateTime = (os.clock() - GenerateStart)
+local FilesTime = (os.clock() - FilesStart)
 fs.writeFile(ServerOutput, ServerSource)
 fs.writeFile(ClientOutput, ClientSource)
 
@@ -118,8 +124,10 @@ stdio.write(stdio.color("green"))
 print("Network files generated!")
 stdio.write(stdio.color("reset"))
 
-if not _G.BUNDLED then
+if not _G.BUNDLED or table.find(Arguments, "--stats") then
 	print(`[DEBUG]: Parsed source in {FormatTime(ParseTime)}.`)
-	print(`[DEBUG]: Generated files in {FormatTime(GenerateTime)}.`)
-	print(`[DEBUG]: Completed everything in {FormatTime(ParseTime + GenerateTime)}.`)
+	print(`[DEBUG]: Generated server luau in {FormatTime(ServerGenerateTime)}.`)
+	print(`[DEBUG]: Generated client luau in {FormatTime(ServerGenerateTime)}.`)
+	print(`[DEBUG]: Generated files in {FormatTime(FilesTime)}.`)
+	print(`[DEBUG]: Completed everything in {FormatTime(ParseTime + FilesTime)}.`)
 end

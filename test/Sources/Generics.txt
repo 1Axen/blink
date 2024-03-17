@@ -1,5 +1,7 @@
 option ClientOutput = "../../Network/ClientGenerics.luau"
 option ServerOutput = "../../Network/ServerGenerics.luau"
+option FutureLibrary = ""
+option PromiseLibrary = ""
 
 struct Packet<T> {
     Sequence: u16,

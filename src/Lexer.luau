@@ -66,6 +66,10 @@ local Matches = {
     {"^%]", "CloseBrackets"},
 
     --> String patterns
+    {"^\"\"", function(Toke: string)
+        return "String", ""
+    end},
+
     {[[^(['"]).-[^\](\*)%2%1]], function(Token: string)
         return "String", string.sub(Token, 2, #Token - 1)
     end},
@@ -129,19 +133,18 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: 
         }
     end
 
-    local Slice = string.sub(self.Source, Position or self.Cursor)
+    local Source = self.Source
+    local Position = Position or self.Cursor
     local IsHighlighting = (self.Mode == "Highlighting")
 
     local function Match(Pattern: string): (string?, number, number)
-        local Start, End = string.find(Slice, Pattern)
+        local Start, End = string.find(Source, Pattern, Position)
         if not Start or not End then
             return nil, 0, 0
         end
 
-        local Matched = string.sub(Slice, Start, End)
-
-        Start = Position or self.Cursor
-        return Matched, Start, math.min(Start + #Matched, self.Size)
+        local Matched = string.sub(Source, Start, End)
+        return Matched, Position, math.min(Position + #Matched, self.Size)
     end
 
     for Index, Token in Matches do
@@ -156,7 +159,8 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: 
         end
 
         if (DontAdvanceCursor ~= true or (SKIPPED_PATTERNS[Type] and IsHighlighting ~= true)) then
-            self.Cursor += #Matched
+            Position += #Matched
+            self.Cursor = Position
         end
 
         --> Whitespace matched, skip token.
@@ -188,9 +192,7 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: 
     end
 
     --> Attempt to recover the lexer
-    local Cursor = self.Cursor
-    local Symbol = string.sub(self.Source, Cursor, Cursor)
-
+    local Symbol = string.sub(self.Source, Position, Position)
     if DontAdvanceCursor ~= true then
         self.Cursor += 1
     end
@@ -198,8 +200,8 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: 
     return {
         Type = "Unknown",
         Value = Symbol,
-        Start = Cursor,
-        End = Cursor,
+        Start = Position,
+        End = Position,
     }
 end
 

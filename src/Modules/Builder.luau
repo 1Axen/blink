@@ -3,64 +3,65 @@
 
 local Builder = {}
 
-function Builder.new(String: string?, BaseIndentation: number?): Builder
-    local String = String or ""
-    local Indentation = (BaseIndentation or 0)
-
-    local function GetIndentation(Tabs: number?): string
-        return string.rep("\t", Indentation + (Tabs or 0))
-    end
-
+function Builder.new(): Builder
+    local Strings = table.create(512)
+    
     local function PushLines(Lines: {string}, Returns: number?, Tabs: number?)
-        local Indent = GetIndentation(Tabs)
-        local Last = Lines[#Lines]
-        if string.gsub(Last, "%c", "") == "" then
-            table.remove(Lines, #Lines)
+        local Size = #Lines
+        local Last = Lines[Size]
+
+        local Tabs = Tabs or 0
+        local Returns = Returns or 0
+
+        --> FAST PATH :SUNGLASSES:
+        if Tabs == 0 and Returns == 0 then
+            table.move(Lines, 1, Size, #Strings + 1, Strings)
+            return
+        end
+
+        local Indentation = string.rep("\t", Tabs)
+
+        if Last == "" then
+            Size -= 1
+            Lines[Size] = nil
         end
 
         for Index, Line in Lines do
-            String ..= Indent .. Line .. "\n"
+            table.insert(Strings, `{Indentation}{Line}{Index == Size and string.rep("\n", Returns) or ""}`)
         end
-
-        String ..= string.rep("\n", Returns or 0)
     end
 
     return {
         Push = function(Text: string, Returns: number?, Tabs: number?)
-            String ..= (GetIndentation(Tabs) .. Text .. string.rep("\n", Returns or 1))
+            table.insert(Strings, `{string.rep("\t", Tabs or 0)}{Text}\n{string.rep("\n", Returns or 0)}`)
         end,
 
         PushFront = function(Text: string, Returns: number?, Tabs: number?)
-            String = (GetIndentation(Tabs) .. Text .. string.rep("\n", Returns or 1)) .. String
+            table.insert(Strings, `{string.rep("\n", Returns or 1)}{Text}{string.rep("\t", Tabs or 0)}\n`)
         end,
 
         PushLines = PushLines,
-        PushMultiline = function(Text: string, Returns: number?, Tabs: number?, RemoveExistingTabs: boolean?)
-            --> Remove existing tabs
-            if RemoveExistingTabs then
-                Text = string.gsub(Text, "\t", "")
-            end
-
+        PushMultiline = function(Text: string, Returns: number?, Tabs: number?)
             PushLines(string.split(Text, "\n"), Returns, Tabs)
         end,
 
-        SetIndentation = function(NewIndentation: number)
-            Indentation = NewIndentation
-        end,
-
         Print = function()
-            print(String)
+            print(table.concat(Strings))
         end,
 
         DumpNoClear = function()
-            return String
+            return table.concat(Strings)
         end,
 
         Dump = function(): string
-            local Text = String
-            String = ""
+            local Text = table.concat(Strings)
+            table.clear(Strings)
             return Text
         end,
+
+        DumpLines = function(): {string}
+            return Strings
+        end
     }
 end
 

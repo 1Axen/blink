@@ -1,4 +1,23 @@
 return {
+    Merge = function(...: {any}): {any}
+        local Tables = {...}
+        local Allocate = 0
+
+        for _, Table in Tables do
+            Allocate += #Table
+        end
+
+        local Index = 1
+        local Merged = table.create(Allocate)
+
+        for _, Table in Tables do
+            table.move(Table, 1, #Table, Index, Merged)
+            Index += #Table
+        end
+
+        return Merged
+    end,
+
     DeepClone = function(Table: {[any]: any}): {[any]: any}
         local Clones = {}
         local function Clone(Original)

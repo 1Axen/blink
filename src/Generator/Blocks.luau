@@ -27,7 +27,7 @@ export type Block = typeof(setmetatable({} :: {
     Unique: string,
     Parent: Block?,
     Indent: number,
-    Content: string,
+    Content: {string},
     Operation: Operation
 }, Block))
 
@@ -37,7 +37,7 @@ function Block.new<Parent>(Parent: Block?, Unique: string?): Block
         Unique = Unique or DEFAULT_UNIQUE,
         Parent = Parent,
         Indent = Indent,
-        Content = "",
+        Content = table.create(64),
         Operation = {
             Method = "None",
             Bytes = 0
@@ -74,13 +74,12 @@ function Block.Allocate(self: Block, Bytes: number): string
 end
 
 function Block._lineFront(self: Block, Text: string, Indent: number): Block
+    local Index = 1
     if self.Parent == nil then
-        local Lines = string.split(self.Content, "\n")
-        local First = table.remove(Lines, 1)
-        self.Content = First .. `\n{string.rep("\t", Indent or self.Indent)}{Text}\n` .. table.concat(Lines, "\n")
-    else
-        self.Content = `{string.rep("\t", Indent or self.Indent)}{Text}\n` .. self.Content
+        Index = 2
     end
+
+    table.insert(self.Content, Index, `{string.rep("\t", Indent or self.Indent)}{Text}\n`)
 
     return self
 end
@@ -98,10 +97,13 @@ function Block._appendOperations(self: Block): Block
     return self
 end
 
-function Block.Line(self: Block, Text: string, Indent: number?, Ignore: boolean?): Block
-    local Indent = Indent or self.Indent
-    local NewLine = self.Content ~= "" and "\n" or ""
-    self.Content ..= `{NewLine}{string.rep("\t", Indent)}{Text}`
+function Block.Line(self: Block, Text: string, Indent: number?): Block
+    table.insert(self.Content, `{string.rep("\t", Indent or self.Indent)}{Text}\n`)
+    return self
+end
+
+function Block.Character(self: Block, Character: string): Block
+    table.insert(self.Content, Character)
     return self
 end
 
@@ -110,16 +112,28 @@ function Block.Comment(self: Block, Content: string): Block
     return self
 end
 
+function Block.Lines(self: Block, Lines: {string}, Indent: number?): Block
+    local Indent = Indent or 0
+
+    --> FAST PATH
+    if Indent == 0 then
+        table.move(Lines, 1, #Lines, #self.Content + 1, self.Content)
+        return self
+    end
+
+    local Indentation = string.rep("\t", Indent)
+
+    for Index, Line in Lines do
+        table.insert(self.Content, `{Indentation}{Line}`)
+    end
+
+    return self
+end
+
 function Block.Multiline(self: Block, Content: string, Indent: number?): Block
     local Lines = string.split(Content, "\n")
-    for _, Line in Lines do
-        --> Don't include lines that are only control characters
-        local NoControlCharacters = string.gsub(Line, "%c+", "")
-        if NoControlCharacters == "" then
-            continue
-        end
-
-        self:Line(Line, Indent or 0, true)
+    for Index, Line in Lines do
+        table.insert(self.Content, `{string.rep("\t", Indent or 0)}{Line}\n`)
     end
 
     return self
@@ -143,9 +157,6 @@ function Block.Iterator(self: Block, Key: string, Value: string, Iterator: strin
 end
 
 function Block.Compare(self: Block, Left: string, Right: string, Operator: EqualityOperator): Block
-    if self.Color then
-        print("COMPARE")
-    end
     self:Line(`if {Left} {Operators[Operator]} {Right} then`)
     return Block.new(self)
 end
@@ -156,7 +167,7 @@ function Block.Branch(self: Block, Branch: BranchType, Left: string?, Right: str
 
     --> Push previous branch content
     self:_appendOperations()
-    Parent:Multiline(self.Content)
+    Parent:Lines(self.Content)
     
     --> Create new branch
     if Branch == "Conditional" then
@@ -178,7 +189,7 @@ function Block.End(self: Block): Block
 
     local Parent = self.Parent
     if Parent then
-        Parent:Multiline(self.Content)
+        Parent:Lines(self.Content)
         Parent:Line("end")
         return Parent
     end
@@ -187,8 +198,18 @@ function Block.End(self: Block): Block
     return self
 end
 
+function Block.Wrap(self: Block, Front: string, Back: string): Block
+    local First = self.Content[1]
+    self.Content[1] = `{Front}{First}`
+
+    local Last = self.Content[#self.Content]
+    self.Content[#self.Content] = `{string.gsub(Last, "\n", "")}{Back}\n`
+
+    return self
+end
+
 function Block.Unwrap(self: Block)
-    return self.Content
+    return table.concat(self.Content)
 end
 
 local Function = {}
@@ -216,7 +237,7 @@ setmetatable(Connection, Block)
 function Connection.new(Signal: string, Arguments: string): Block
     local Block = Block.new()
     setmetatable(Block, Connection)
-    Block.Content = `{Signal}:Connect(function({Arguments})`
+    Block:Line(`{Signal}:Connect(function({Arguments})`, 0)
     return Block
 end
 

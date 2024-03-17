@@ -124,7 +124,7 @@ function Error.Slice(self: Class, Span: Span): Slice
         end
 
         local Spaces = (Span.Start - Start)
-        local Underlines = math.max(1, Span.End - Span.Start)
+        local Underlines = math.clamp(Span.End - Span.Start, 1, Length)
 
         return {
             Line = Line,

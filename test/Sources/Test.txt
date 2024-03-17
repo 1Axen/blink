@@ -60,8 +60,8 @@ event Generic {
 event Unknown {
     Type: Reliable,
     From: Server,
-    Data: unknown
     Call: SingleSync,
+    Data: unknown,
 }
 
 event MapEvent {

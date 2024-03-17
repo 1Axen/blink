@@ -810,7 +810,9 @@ function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOpti
         end
 
         Fields[Field.Value] = Value
-        self:TryConsume("Comma")
+        if self:Peek().Type ~= "CloseBraces" then
+            self:Consume("Comma")
+        end
     end
 
     return Fields

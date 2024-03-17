@@ -198,17 +198,17 @@ Types.f16 = {
 		:Branch("Conditional", "MantissaExponent", "0b0_00000_0000000000  ", "Equals")
 			:Line(`{Variable} = 0`)
 		:Branch("Default")
-			:Multiline([[local Mantissa = MantissaExponent % 0x400
-local Exponent = MantissaExponent // 0x400
-	
-local Fraction;
-if Exponent == 0 then
-	Fraction = Mantissa / 0x400
-else
-	Fraction = Mantissa / 0x800 + 0.5
-end
-	
-local Result = math.ldexp(Fraction, Exponent - 14)]], Block.Indent + 1)
+			:Lines({
+					"local Mantissa = MantissaExponent % 0x400",
+					"local Exponent = MantissaExponent // 0x400",
+					"local Fraction;",
+					"if Exponent == 0 then",
+					"	Fraction = Mantissa / 0x400",
+					"else",
+					"	Fraction = Mantissa / 0x800 + 0.5",
+					"end",
+					"local Result = math.ldexp(Fraction, Exponent - 14)",
+				}, Block.Indent + 1)
 			:Line(`{Variable} = if Encoded // 0x8000 == 1 then -Result else Result`)
 		:End()
 	end,
@@ -224,20 +224,19 @@ local Result = math.ldexp(Fraction, Exponent - 14)]], Block.Indent + 1)
 			:Line(`buffer.writeu16({SEND_BUFFER}, {Allocation}, 0)`)
 		:Branch("Default")
 			:Line(`local float = {Value}`)
-			:Multiline([[local Abosulte = math.abs(float)
-local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10) 
-local RoundedValue = (Abosulte // Interval) * Interval
-
-local Fraction, Exponent = math.frexp(RoundedValue)
-Exponent += 14
-
-local Mantissa = math.round(if Exponent <= 0
-	then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))
-	else Fraction * 0x800) % 0x400
-
-local Result = Mantissa
-	+ math.max(Exponent, 0) * 0x400
-	+ if float < 0 then 0x8000 else 0]], Block.Indent + 1)
+			:Lines({
+					"local Abosulte = math.abs(float)",
+					"local Interval = math.ldexp(1, math.floor(math.log(Abosulte, 2)) - 10)",
+					"local RoundedValue = (Abosulte // Interval) * Interval",
+					"local Fraction, Exponent = math.frexp(RoundedValue)",
+					"Exponent += 14",
+					"local Mantissa = math.round(if Exponent <= 0",
+					"	then Fraction * 0x400 / math.ldexp(1, math.abs(Exponent))",
+					"	else Fraction * 0x800) % 0x400",
+					"local Result = Mantissa",
+					"	+ math.max(Exponent, 0) * 0x400",
+					"	+ if float < 0 then 0x8000 else 0",
+				}, Block.Indent + 1)
 			:Line(`buffer.writeu16({SEND_BUFFER}, {Allocation}, Result)`)
 		:End()
 	end
