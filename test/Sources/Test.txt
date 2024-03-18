@@ -50,6 +50,13 @@ struct MapStruct {
     Map: {[string]: u8}
 }
 
+event Booleans {
+    from: Client,
+    type: Reliable,
+    call: SingleAsync,
+    data: boolean[]
+}
+
 event Generic {
     From: Server,
     Type: Reliable,

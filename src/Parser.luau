@@ -312,6 +312,21 @@ function Parser.TryConsume(self: Parser, Type: Lexer.Types): Token?
     return Token
 end
 
+function Parser.ConsumeAny(self: Parser, ...: Lexer.Types): Token
+    local Types = {...}
+    for _, Type: Lexer.Types in Types do
+        local Token = self:TryConsume(Type)
+        if Token then
+            return Token
+        end
+    end
+
+    local Token = self:Peek()
+    error(Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`)
+        :Primary(Token, `Expected one of "{table.concat(Types, `", "`)}", found "{Token.Type}"`)
+    :Emit())
+end
+
 function Parser.ConsumeAll(self: Parser, ...: Lexer.Types): (...Token)
     local Tokens = {}
     for _, Type: Lexer.Types in {...} do
@@ -517,8 +532,7 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
 
         error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Malformed range")
             :Primary(Token, "Unable to parse range")
-            :Emit()
-        )
+        :Emit())
     end
 
     local function TryToParseArray(): (Array?, Token?, Token?)
@@ -559,8 +573,7 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
 
         error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Malformed array range")
             :Primary(Token, "Unable to parse array range")
-            :Emit()
-        )
+        :Emit())
     end
 
     local function TryToParseComponents(): {string}?
@@ -728,7 +741,7 @@ function Parser.Declarations(self: Parser): {Declaration}
             Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration`)
                 :Secondary(Reference.Identifier, "Previously declared here")
                 :Primary(Identifier, "Duplicate declared here")
-                :Emit()
+            :Emit()
         end
 
         --> Generics
@@ -780,36 +793,39 @@ function Parser.GetOptionFromToken(self: Parser, Token: Token, Structure: {Event
 
     local OptionsString = ""
     for Index, Option in Structure do
-        OptionsString ..= `{Index ~= 1 and " or " or ""}"Option.Key"`
+        OptionsString ..= `{Index ~= 1 and " or " or ""}"{Option.Key}"`
     end
 
     error(Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Value}"`)
         :Primary(Token, `Expected one of {OptionsString}`)
-        :Emit())
+    :Emit())
 end
 
 function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOption}): {[string]: any}
     local Fields: {[string]: any} = {}
     for Index = 1, #Structure do
-        local Field = self:ConsumeAll("Identifier", "FieldAssign")
-        local Option = self:GetOptionFromToken(Field, Structure)
+        --> Identifier or Keyword ("type" might be used as a field which will be lexed as "Keyword")
+        local Field = self:ConsumeAny("Identifier", "Keyword")
+        self:Consume("FieldAssign")
 
         --> Parse non data field
         local Value: any;
+        local Option = self:GetOptionFromToken(Field, Structure)
+
         if Option.Key ~= "Data" and Option.Key ~= "Return" then
             local Token = self:Consume(Option.Type)
             Value = Token.Value
 
             if not table.find(Option.Values, Value) then
                 Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Value}"`)
-                    :Primary(Token, `Expected of on "{table.concat(Option.Values, `" or "`)}"`)
-                    :Emit()
+                    :Primary(Token, `Expected one of "{table.concat(Option.Values, `" or "`)}"`)
+                :Emit()
             end
         else
             Value = self:Type(Identifier, nil, true)
         end
 
-        Fields[Field.Value] = Value
+        Fields[Option.Key] = Value
         if self:Peek().Type ~= "CloseBraces" then
             self:Consume("Comma")
         end
@@ -991,13 +1007,13 @@ function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
     local function ThrowOptional(Token: Error.Span, IsReference: boolean?): never
         error(Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type")
             :Primary(Token, `{IsReference and "Declaration is a reference to an optional. " or ""}Maps cannot have maps as keys or values`)
-            :Emit())
+        :Emit())
     end
 
     local function ThrowNestedMap(Token: Error.Span): never
         error(Error.new(Error.AnalyzeNestedMap, self.Source, "Nested map")
             :Primary(Token, `Maps cannot have maps as keys or values`)
-            :Emit())
+        :Emit())
     end
 
     local function ParseElement(): TypeDeclaration
