@@ -72,6 +72,7 @@ local Error = {
     AnalyzeDuplicateDeclaration = 3010,
     AnalyzeDuplicateTypeGeneric = 3011,
     AnalyzeInvalidGenerics = 3012,
+    AnalyzeInvalidExport = 3013
 }
 
 Error.__index = Error

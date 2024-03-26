@@ -27,6 +27,7 @@ export type Block = typeof(setmetatable({} :: {
     Unique: string,
     Parent: Block?,
     Indent: number,
+    Cursor: number,
     Content: {string},
     Operation: Operation
 }, Block))
@@ -37,6 +38,7 @@ function Block.new<Parent>(Parent: Block?, Unique: string?): Block
         Unique = Unique or DEFAULT_UNIQUE,
         Parent = Parent,
         Indent = Indent,
+        Cursor = 1,
         Content = table.create(64),
         Operation = {
             Method = "None",
@@ -74,13 +76,7 @@ function Block.Allocate(self: Block, Bytes: number): string
 end
 
 function Block._lineFront(self: Block, Text: string, Indent: number): Block
-    local Index = 1
-    if self.Parent == nil then
-        Index = 2
-    end
-
-    table.insert(self.Content, Index, `{string.rep("\t", Indent or self.Indent)}{Text}\n`)
-
+    table.insert(self.Content, self.Cursor, `{string.rep("\t", Indent or self.Indent)}{Text}\n`)
     return self
 end
 
@@ -92,8 +88,15 @@ function Block._appendOperations(self: Block): Block
     end
 
     local Append = `local {self.Unique} = {Operation.Method}({Operation.Bytes}{Variable and ` * {Variable}` or ""})`
-    self:_lineFront(Append, self.Unique ~= DEFAULT_UNIQUE and self.Indent - 1 or self.Indent)
 
+    self:_lineFront(Append, self.Unique ~= DEFAULT_UNIQUE and self.Indent - 1 or self.Indent)
+    self:_lineFront(`-- {Operation.Method} BLOCK: {Operation.Bytes} bytes`)
+
+    return self
+end
+
+function Block.Advance(self: Block, Offset: number): Block
+    self.Cursor += Offset
     return self
 end
 
@@ -219,8 +222,10 @@ setmetatable(Function, Block)
 function Function.new(Name: string, Arguments: string, Return: string?, IsInlined: boolean?): Block
     local Block = Block.new(nil)
     setmetatable(Block, Function)
-
+    
     local Suffix = Return and `: {Return}` or ""
+    Block:Advance(1)
+
     if IsInlined then 
         Block:Line(`{Name} = function({Arguments}){Suffix}`, 0)
     else
@@ -237,6 +242,7 @@ setmetatable(Connection, Block)
 function Connection.new(Signal: string, Arguments: string): Block
     local Block = Block.new()
     setmetatable(Block, Connection)
+    Block:Advance(1)
     Block:Line(`{Signal}:Connect(function({Arguments})`, 0)
     return Block
 end

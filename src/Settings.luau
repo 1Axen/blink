@@ -169,6 +169,8 @@ return {
 
         scope = true,
         option = true,
+
+        export = true,
     },
 
     Primtives = Primitives,

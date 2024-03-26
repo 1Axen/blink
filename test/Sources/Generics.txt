@@ -10,7 +10,7 @@ struct Packet<T> {
     Data: T,
 }
 
-struct Entity {
+export struct Entity {
     id: u8,
     pos: vector,
     angle: u16,

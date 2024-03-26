@@ -611,7 +611,7 @@ function Generators.Optional(Declaration: Type, Read: Blocks.Block, Write: Block
 	return Read, Write
 end
 
-function Generators.UserType(Declaration: Parser.TypeDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string?)
+function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string?)
 	local Value = Declaration.Value
 	local Array = Value.Array
 	local Optional = Value.Optional
@@ -693,7 +693,7 @@ function Generators.UserType(Declaration: Parser.TypeDeclaration, Read: Blocks.B
 	end
 end
 
-function Generators.LuauType(Declaration: Parser.TypeDeclaration, UseTypeAsValue: boolean?): (string, string, string, string)
+function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (string, string, string, string)
 	local Type = ""
 	local Values = ""
 	local Export = GetExportName(Declaration.Value.Identifier)
@@ -820,6 +820,63 @@ function Generators.Type(Declaration: Type)
 	LuauTypes.PushMultiline(`export type {Export}{Generics} = {Type}`, 1, 0)
 end
 
+function Generators.Export(Declaration: Type)
+	local Value = Declaration.Value
+	local Identifier = Value.Identifier
+	local _, Values, Export, Returns = Generators.LuauType(Declaration)
+
+	local Arguments = "Buffer: buffer"
+	local Read = Blocks.Function("Read", Arguments, `({Export})`, true)
+	local Write = Blocks.Function("Write", `{Arguments}, {Values}`, `()`, true)
+
+	local Body = Builder.new()
+	local Indent = GetScopeIndent()
+	Body.Push(`{Identifier} = \{`, 0, Indent)
+
+	--> Overwrite buffer
+	Read:Comment("Buffer overwrite")
+	Write:Comment("Buffer overwrite")
+
+	Read:Line("local Previous = Save()")
+	Write:Line("local Previous = Save()")
+
+	Read:Lines({
+		"RecieveCursor = buffer.len(Buffer)\n",
+		"RecieveBuffer = Buffer\n",
+		"RecieveInstances = {}\n",
+		"RecieveInstanceCursor = 0\n",
+	}, 1)
+
+	Write:Lines({
+		"RecieveCursor = buffer.len(Buffer)\n",
+		"RecieveBuffer = Buffer\n",
+		"RecieveInstances = {}\n",
+		"RecieveInstanceCursor = 0\n",
+	}, 1)
+
+	Read:Advance(#Read.Content - 1)
+	Write:Advance(#Write.Content - 1)
+
+	--> Write to buffer
+	Read:Line(`local {Values};`)
+	Generators.UserType(Declaration, Read, Write)
+
+	--> Restore buffer
+	Read:Line(`Load(Previous)`)
+	Write:Line(`Load(Previous)`)
+
+	--> End export
+	Read:Return(Returns)
+	Read:End():Wrap("", ",")
+	Write:End()
+
+	Body.PushLines(Read.Content, 0, Indent + 1)
+	Body.PushLines(Write.Content, 0, Indent + 1)
+	Body.Push(`\},`, 0, Indent)
+
+	Return.PushLines(Body.DumpLines(), 0)
+end
+
 function Generators.Event(Data: Type, Index: number, Identifier: string, Function: ("Data" | "Return")?): ({string}, {string})
 	local Type, Values, _, Returns = Generators.LuauType(Data, true)
 
@@ -876,7 +933,11 @@ function Generators.AbstractSyntaxTree(Tree: {Parser.Declaration})
 			or Declaration.Type == "Struct"
 			or Declaration.Type == "Map"
 		then
-			Generators.Type(Declaration :: any)
+			if Declaration.Value.Export then
+				Generators.Export(Declaration :: Type)
+			end
+
+			Generators.Type(Declaration :: Type)
 		elseif Declaration.Type == "Scope" then
 			Generators.Scope(Declaration :: Parser.ScopeDeclaration)
 		elseif Declaration.Type == "Event" then

@@ -60,6 +60,7 @@ type Attributes = {
     Scope: Scope?,
     Array: Array?,
     Range: NumberRange?,
+    Export: boolean?,
     Optional: boolean?,
     Generics: Generics?,
     Parameters: {TypeDeclaration}?,
@@ -214,6 +215,13 @@ local TYPE_KEYWORDS = {
     map = "Map",
     enum = "Enum",
     type = "Primitive"
+}
+
+local EXPORTABLE_TYPES = {
+    map = true,
+    type = true,
+    enum = true,
+    struct = true
 }
 
 local RESERVED = {
@@ -728,6 +736,13 @@ function Parser.Declarations(self: Parser): {Declaration}
             break
         end
 
+        --> Is standalone/exported?
+        local Export: Token?
+        local LookAhead = self:Peek()
+        if LookAhead.Type == "Keyword" and LookAhead.Value == "export" then
+            Export = self:Consume("Keyword")
+        end
+
         local Keyword = self:Consume("Keyword")
         local Identifier = self:Consume("Identifier")
         local Declaration: Declaration;
@@ -766,6 +781,22 @@ function Parser.Declarations(self: Parser): {Declaration}
 
         --> Update declarations
         table.insert(Declarations, Declaration)
+
+        if Export then
+            --> Prevent non exportable types from being exported
+            if not EXPORTABLE_TYPES[Keyword.Value] then
+                Error.new(Error.AnalyzeInvalidExport, self.Source, `Declaration of type "{Keyword.Value}" is not exportable`)
+                    :Primary(Export, `Remove export here`)
+                :Emit()
+            --> Prevent types with generics from being exported
+            elseif Generics then
+                Error.new(Error.AnalyzeInvalidExport, self.Source, `Generic types can't be exported`)
+                    :Primary(Export, `Remove export here`)
+                :Emit()
+            end
+
+            Declaration.Value.Export = true
+        end
 
         if Generics then
             self.Generics = nil
