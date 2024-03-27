@@ -90,9 +90,39 @@ struct Dictionary {
 }[0..255]
 ```
 ## Enums
-You can define enums using the `enum` keyword  
+You can define enums using the `enum` keyword.  
+Blink has two type of enums, unit and tagged enums.
+### Unit Enums
+Unit enums represent a set of possible values.  
+For example, a unit enum representing the state of a car engine:
 ```
 enum State = { Starting, Started, Stopping, Stopped }
+```
+### Tagged Enums
+Tagged enums represent a set of possible variants with some data attached to each.  
+They are defined using a string which represents the tag field name.  
+Each variant is defined by a tag, followed by a struct.  
+```
+struct Vector2 {
+    X: u16,
+    Y: u16
+}
+
+enum Buttons = {Left, Right, Middle}
+enum MouseEvent = "Type" {
+    Move {
+        Delta: Vector2,
+        Position: Vector2,
+    },
+    Drag {
+        Delta: Vector2,
+        Position: Vector2
+    },
+    Click {
+        Button: Buttons,
+        Position: Vector2
+    },
+}
 ```
 ## Structs
 You can define structs using the `struct` keyword  
@@ -103,17 +133,16 @@ struct Entity {
     Health: u8(0..100),
     State: ( Dead, Alive )?,
     Direction: vector(0..1),
-    Substruct: {
+    Substruct: struct {
         Empty: u8[0],
         Complex: u8[1..12],
         Vector: UnitVector,
     }?
 }
 ```
-
 ### Generics
 ---
-Structs support the use of generic type parameters, a generic is simply a type which allows you to slot in any other type, generics can be very handy in reducing repetition.
+Structs, tagged enums and maps support the use of generic type parameters, a generic is simply a type which allows you to slot in any other type, generics can be very handy in reducing repetition.
 ```
 struct Packet<T> {
     Sequence: u16,
@@ -204,7 +233,7 @@ event Complex {
     From: Client,
     Type: Unreliable,
     Call: SingleSync,
-    Data: {
+    Data: struct {
         Field = u8
     }
 }

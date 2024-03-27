@@ -30,7 +30,7 @@ struct ArrayStruct {
 
 struct Generic<A, B> {
     Data: A,
-    Nested: {
+    Nested: struct {
         Value: B
     }
 }
@@ -53,7 +53,7 @@ type Number = u8
 struct Example {
     Field: u8,
     Enum: States,
-    Nested: {
+    Nested: struct {
         Guh: u8,
         Array: u8[10],
         OptionalArray: u8[2]?
@@ -61,7 +61,7 @@ struct Example {
 }
 
 struct MapStruct {
-    Map: {[string]: u8}
+    Map: map {[string]: u8}
 }
 
 event PlayerEvent {
