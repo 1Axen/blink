@@ -371,6 +371,17 @@ local function InvokeAndExpectTuple(Name: string, ClientFunction: any, ServerFun
     OkPrint(`Test "{Name}" passed!`)
 end
 
+local function RunClosure(Name: string, Closure: () -> ())
+    PrettyPrint("cyan", `Testing: {Name}...`, true)
+
+    local Success, Error = pcall(Closure)
+    if not Success then
+        ErrorPrint(Error)
+    end
+
+    OkPrint(`Test "{Name}" passed!`)
+end
+
 --> Tests
 local Instance = setmetatable({
     __typeof = "Instance",
@@ -487,6 +498,24 @@ FireAllAndExpectAll("Many events", 32, {
 FireAndExpect("TagEnum Join", Server.PlayerEvent, Client.PlayerEvent, {Type = "Join", Name = "Player", UserId = 5})
 FireAndExpect("TagEnum Chat", Server.PlayerEvent, Client.PlayerEvent, {Type = "Chat", UserId = 5, Message = "Hello"})
 FireAndExpect("TagEnum Leave", Server.PlayerEvent, Client.PlayerEvent, {Type = "Leave", UserId = 5})
+
+RunClosure("Standalone", function()
+    local Original = {
+        One = 1,
+        Two = 2,
+        Three = 3,
+        Event = {Type = "Join", Name = "JohnDoe", UserId = 1},
+        Nested = {
+            Four = "ABC",
+            Five = "DEF"
+        }
+    }
+
+    local Serialized = Server.Standalone.Write(Original)
+    local Deserialized = Server.Standalone.Read(Serialized)
+
+    assert(CompareTables(Original, Deserialized), "Deserialized doesn't match original")
+end)
 
 PrettyPrint("green", `All tests passed successfully!`)
 

@@ -49,6 +49,17 @@ enum Event = "Type" {
     }
 }
 
+export struct Standalone {
+    One: u8,
+    Two: u8,
+    Three: u8,
+    Event: Event,
+    Nested: struct {
+        Four: string,
+        Five: string
+    }
+}
+
 type Number = u8
 struct Example {
     Field: u8,

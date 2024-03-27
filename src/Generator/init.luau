@@ -225,6 +225,7 @@ function Declarations.TagEnum(Declaration: Parser.TagEnumDeclaration, Read: Bloc
 	local TagIndex = `{Variable}.{Tag}`
 
 	Types.u8.Read(`local Tag`, Read)
+	local Allocation = Write:Allocate(1)
 
 	Read = Read:Compare("Tag", "0", "Equals")
 	Write = Write:Compare(TagIndex, Header, "Equals")
@@ -238,7 +239,10 @@ function Declarations.TagEnum(Declaration: Parser.TagEnumDeclaration, Read: Bloc
 			Write = Write:Branch("Conditional", TagIndex, Name, "Equals")
 		end
 
-		Types.u8.Write(tostring(Index - 1), Write)
+
+		Write:_lineFront(`buffer.writeu8(SendBuffer, {Allocation}, {Index - 1})`)
+		Write:Advance(1)
+
 		Generators.UserType(Variant, Read, Write, Variable)
 		Read:Line(`{TagIndex} = {Name}`)
 	end
@@ -877,9 +881,8 @@ function Generators.Export(Declaration: Type)
 	local Identifier = Value.Identifier
 	local _, Values, Export, Returns = Generators.LuauType(Declaration)
 
-	local Arguments = "Buffer: buffer"
-	local Read = Blocks.Function("Read", Arguments, `({Export})`, true)
-	local Write = Blocks.Function("Write", `{Arguments}, {Values}`, `()`, true)
+	local Read = Blocks.Function("Read", "Buffer: buffer", `({Export})`, true)
+	local Write = Blocks.Function("Write", `{Values}`, `(buffer)`, true)
 
 	local Body = Builder.new()
 	local Indent = GetScopeIndent()
@@ -893,16 +896,13 @@ function Generators.Export(Declaration: Type)
 		"local PreviousCursor = RecieveCursor\n",
 		"local PreviousBuffer = RecieveBuffer\n",
 		"local PreviousInstanceCursor = RecieveInstanceCursor\n",
-		"RecieveCursor = buffer.len(Buffer)\n",
+		"RecieveCursor = 0\n",
 		"RecieveBuffer = Buffer\n",
 	}, 1)
 
 	Write:Lines({
 		"local Previous = Save()\n",
-		"SendSize = buffer.len(Buffer)\n",
-		"SendCursor = SendSize\n",
-		"SendOffset = SendSize\n",
-		"SendBuffer = Buffer\n",
+		"Load()\n",
 	}, 1)
 
 	Read:Advance(#Read.Content - 1)
@@ -925,10 +925,13 @@ function Generators.Export(Declaration: Type)
 		"RecieveInstanceCursor = PreviousInstanceCursor\n",
 	}, 1)
 
+	Write:Line("local Result = SendBuffer")
 	Write:Line(`Load(Previous)`)
 
 	--> End export
 	Read:Return(Returns)
+	Write:Return("Result")
+	
 	Read:End():Wrap("", ",")
 	Write:End()
 
