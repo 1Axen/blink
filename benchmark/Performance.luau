@@ -31,6 +31,8 @@ local function Percentile(Samples: {number}, Percent: number): number
 end
 
 local function BenchmarkClosure(Title: string, Closure: () -> ())
+    print(`Benchmarking: {Title}`)
+
     local Times = {}
     for Index = 1, 10_000 do
         local Start = os.clock()

@@ -109,11 +109,11 @@ local function GetExportName(Identifier: string): string
 end
 
 local function GenerateEnumLiterals(Enums: { string }): string
-	local Literal = ""
+	local Literals = {}
 	for Index, EnumItem in Enums do
-		Literal ..= `"{EnumItem}"{Index < #Enums and " | " or ""}`
+		table.insert(Literals, `"{EnumItem}"`)
 	end
-	return Literal
+	return `{table.concat(Literals, " | ")}`
 end
 
 --> Declaration functions
@@ -750,12 +750,15 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 		Type = GenerateEnumLiterals(Value.Values)
 	elseif Declaration.Type == "TagEnum" then
 		local Value = (Declaration :: Parser.TagEnumDeclaration).Value
-		local Size  = #Value.Values
+		local Literals = {}
+
 		for Index, Variant in Value.Values do
 			local TagField = `{Value.Tag}: "{Variant.Name}"`
 			local ValueType = Generators.LuauType(Variant.Value)
-			Type ..= `\{ {TagField},{string.sub(ValueType, 2)}{Index ~= Size and " | " or ""}`
+			table.insert(Literals, `\{ {TagField},{string.sub(ValueType, 2)}`)
 		end
+
+		Type = table.concat(Literals, " | ")
 	elseif Declaration.Type == "Map" then
 		local MapValue = (Declaration :: Parser.MapDeclaration).Value
 		local Key = Generators.LuauType(MapValue.Key)
@@ -763,16 +766,16 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 		Type = `\{[{Key}]: {Value}\}`
 	elseif Declaration.Type == "Struct" then
 		local Value = Declaration.Value
-		Type = "{ "
-
+		local Fields = {}
+		
 		for _, Field in Value.Values do
 			local FieldValue = Field.Value
 			local Identifier = FieldValue.Identifier
 			local FieldType = Generators.LuauType(Field)
-			Type ..= `{Identifier}: {FieldType}, `
+			table.insert(Fields, `{Identifier}: {FieldType}`)
 		end
 
-		Type ..= " }"
+		Type = `\{ {table.concat(Fields, ", ")}\ }`
 	elseif Declaration.Type == "Generic" then
 		Type = `{Declaration.Value.Generic}`
 	elseif Declaration.Type == "Reference" then
@@ -784,14 +787,21 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 		local TupleValues = Value.Values
 		Returns = ""
 
+		local Types = {}
+		local Variables = {} 
+		local VariableTypes = {}
+
 		for Index, TupleValue in TupleValues do
 			local Variable = `Value{Index}`
 			local ValueType = Generators.LuauType(TupleValue)
-			local Seperator = Index < #TupleValues and ", " or ""
-			Type ..= `{ValueType}{Seperator}`
-			Values ..= `{Variable}: {ValueType}{Seperator}`
-			Returns ..= `{Variable}{Seperator}`
+			table.insert(Types, ValueType)
+			table.insert(Variables, Variable)
+			table.insert(VariableTypes, `{Variable}: {ValueType}`)
 		end
+
+		Type = table.concat(Types, ", ")
+		Values = table.concat(VariableTypes, ", ")
+		Returns = table.concat(Variables, ", ")
 	end
 
 	local Value = Declaration.Value
@@ -809,21 +819,16 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 	end
 
 	if Value.Parameters then
-		local Parameters = ""
-		local Maximum = #Value.Parameters
+		local Parameters = {}
 
 		--> Generate luau types for parameters
 		for Index, Parameter in Value.Parameters do
-			Parameters ..= Generators.LuauType(Parameter)
-			
-			if Index ~= Maximum then
-				Parameters ..= ","
-			end
+			local ParameterType = Generators.LuauType(Parameter)
+			table.insert(Parameters, ParameterType)
 		end
 
 		--> Wrap in chevrons
-		Parameters = `<{Parameters}>`
-		Type = `{Type}{Parameters}`
+		Type = `{Type}<{table.concat(Parameters, ",")}>`
 	end
 
 	--> Generalized type generation, works for everything except tuples
@@ -844,12 +849,12 @@ function Generators.Type(Declaration: Type)
 
 	local Generics = ""
 	if Value.Generics then
+		local Types = {}
 		for Generic in Value.Generics.Indices do
-			Generics ..= `{Generic},`
+			table.insert(Types, Generic)
 		end
 
-		Generics = string.sub(Generics, 1, #Generics - 1)
-		Generics = `<{Generics}>`
+		Generics = `<{table.concat(Types, ",")}>`
 	else
 		Read:Line(`local {Values};`)
 		Generators.UserType(Declaration, Read, Write)
