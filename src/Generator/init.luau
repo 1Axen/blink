@@ -215,6 +215,42 @@ function Declarations.Reference(Declaration: Parser.ReferenceDeclaration, Read: 
 	Generators.UserType(Reference, Read, Write, Variable)
 end
 
+function Declarations.TagEnum(Declaration: Parser.TagEnumDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
+	local Value = Declaration.Value
+	local Values = Value.Values
+
+	--> Body
+	local Tag = Value.Tag
+	local Header = `"{Values[1].Name}"`
+	local TagIndex = `{Variable}.{Tag}`
+
+	Types.u8.Read(`local Tag`, Read)
+
+	Read = Read:Compare("Tag", "0", "Equals")
+	Write = Write:Compare(TagIndex, Header, "Equals")
+
+	for Index, Variant in Values do
+		local Name = `"{Variant.Name}"` 
+
+		if Index > 1 then
+			Read = Read:Branch("Conditional", "Tag", tostring(Index - 1), "Equals")
+			Write = Write:Branch("Conditional", TagIndex, Name, "Equals")
+		end
+
+		Types.u8.Write(tostring(Index - 1), Write)
+		Generators.UserType(Variant.Value, Read, Write)
+		Read:Line(`{TagIndex} = {Name}`)
+	end
+
+	Read:Branch("Default")
+		:Line(`error(\`Unexpected variant: \{Tag\}\`)`)
+	:End()
+	
+	Write:Branch("Default")
+		:Line(`error(\`Unexpected variant: \{{TagIndex}\}\`)`)
+	:End()
+end
+
 function Declarations.Event(Declaration: Parser.EventDeclaration)
 	local Value = Declaration.Value
 
@@ -668,6 +704,8 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 		Declarations.Struct(Declaration, Read, Write, ActualVariable)
 	elseif Declaration.Type == "Tuple" then
 		Declarations.Tuple(Declaration, Read, Write)
+	elseif Declaration.Type == "TagEnum" then
+		Declarations.TagEnum(Declaration, Read, Write, ActualVariable)
 	elseif Declaration.Type == "Reference" then
 		Declarations.Reference(Declaration, Read, Write, ActualVariable)
     end
@@ -710,6 +748,14 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 	elseif Declaration.Type == "Enum" then
 		local Value = (Declaration :: Parser.EnumDeclaration).Value
 		Type = GenerateEnumLiterals(Value.Values)
+	elseif Declaration.Type == "TagEnum" then
+		local Value = (Declaration :: Parser.TagEnumDeclaration).Value
+		local Size  = #Value.Values
+		for Index, Variant in Value.Values do
+			local TagField = `{Value.Tag}: "{Variant.Name}"`
+			local ValueType = Generators.LuauType(Variant.Value)
+			Type ..= `\{ {TagField},{string.sub(ValueType, 2)}{Index ~= Size and " | " or ""}`
+		end
 	elseif Declaration.Type == "Map" then
 		local MapValue = (Declaration :: Parser.MapDeclaration).Value
 		local Key = Generators.LuauType(MapValue.Key)
@@ -837,32 +883,42 @@ function Generators.Export(Declaration: Type)
 	Read:Comment("Buffer overwrite")
 	Write:Comment("Buffer overwrite")
 
-	Read:Line("local Previous = Save()")
-	Write:Line("local Previous = Save()")
-
 	Read:Lines({
+		"local PreviousCursor = RecieveCursor\n",
+		"local PreviousBuffer = RecieveBuffer\n",
+		"local PreviousInstanceCursor = RecieveInstanceCursor\n",
 		"RecieveCursor = buffer.len(Buffer)\n",
 		"RecieveBuffer = Buffer\n",
-		"RecieveInstances = {}\n",
-		"RecieveInstanceCursor = 0\n",
 	}, 1)
 
 	Write:Lines({
-		"RecieveCursor = buffer.len(Buffer)\n",
-		"RecieveBuffer = Buffer\n",
-		"RecieveInstances = {}\n",
-		"RecieveInstanceCursor = 0\n",
+		"local Previous = Save()\n",
+		"SendSize = buffer.len(Buffer)\n",
+		"SendCursor = SendSize\n",
+		"SendOffset = SendSize\n",
+		"SendBuffer = Buffer\n",
 	}, 1)
 
 	Read:Advance(#Read.Content - 1)
 	Write:Advance(#Write.Content - 1)
 
 	--> Write to buffer
-	Read:Line(`local {Values};`)
-	Generators.UserType(Declaration, Read, Write)
+	Read:Comment("Buffer read")
+	Write:Comment("Buffer write")
+
+	Read:Line(`local {Values} = {GetTypesPath(Identifier, false)}()`)
+	Write:Line(`{GetTypesPath(Identifier, true)}({Returns})`)
 
 	--> Restore buffer
-	Read:Line(`Load(Previous)`)
+	Read:Comment("Buffer restore")
+	Write:Comment("Buffer restore")
+	
+	Read:Lines({
+		"RecieveCursor = PreviousCursor\n",
+		"RecieveBuffer = PreviousBuffer\n",
+		"RecieveInstanceCursor = PreviousInstanceCursor\n",
+	}, 1)
+
 	Write:Line(`Load(Previous)`)
 
 	--> End export
@@ -932,6 +988,7 @@ function Generators.AbstractSyntaxTree(Tree: {Parser.Declaration})
 			or Declaration.Type == "Enum"
 			or Declaration.Type == "Struct"
 			or Declaration.Type == "Map"
+			or Declaration.Type == "TagEnum"
 		then
 			if Declaration.Value.Export then
 				Generators.Export(Declaration :: Type)

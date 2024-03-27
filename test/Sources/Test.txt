@@ -35,6 +35,20 @@ struct Generic<A, B> {
     }
 }
 
+enum Event = "Type" {
+    Join {
+        Name: string,
+        UserId: f64,
+    },
+    Chat {
+        UserId: f64,
+        Message: string
+    },
+    Leave {
+        UserId: f64
+    }
+}
+
 type Number = u8
 struct Example {
     Field: u8,
@@ -48,6 +62,13 @@ struct Example {
 
 struct MapStruct {
     Map: {[string]: u8}
+}
+
+event PlayerEvent {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+    Data: Event
 }
 
 event Booleans {

@@ -484,6 +484,10 @@ FireAllAndExpectAll("Many events", 32, {
     }
 })
 
+FireAndExpect("TagEnum Join", Server.PlayerEvent, Client.PlayerEvent, {Type = "Join", Name = "Player", UserId = 5})
+FireAndExpect("TagEnum Chat", Server.PlayerEvent, Client.PlayerEvent, {Type = "Chat", UserId = 5, Message = "Hello"})
+FireAndExpect("TagEnum Leave", Server.PlayerEvent, Client.PlayerEvent, {Type = "Leave", UserId = 5})
+
 PrettyPrint("green", `All tests passed successfully!`)
 
 process.exit(0)

@@ -95,8 +95,8 @@ export type Body = Node<"Body", {
     Declarations: {Declaration}
 }, {}>
 
-type Declarations = "Map" | "Enum" | "Tuple" | "Struct" | "Primitive" | "Generic" | "Reference" | "Event" | "Function" | "Scope" 
-export type TypeDeclaration = MapDeclaration | EnumDeclaration | TupleDeclaration | StructDeclaration | PrimitiveDeclaration | GenericDeclaration | ReferenceDeclaration
+type Declarations = "Map" | "Enum" | "TagEnum" | "Tuple" | "Struct" | "Primitive" | "Generic" | "Reference" | "Event" | "Function" | "Scope" 
+export type TypeDeclaration = MapDeclaration | EnumDeclaration | TagEnumDeclaration | TupleDeclaration | StructDeclaration | PrimitiveDeclaration | GenericDeclaration | ReferenceDeclaration
 
 export type Declaration = Node<Declarations, {
     Identifier: string,
@@ -114,6 +114,12 @@ export type MapDeclaration = Node<"Map", {
 export type EnumDeclaration = Node<"Enum", {
     Identifier: string,
     Values: {string}
+} & Attributes, AttributesTokens>
+
+export type TagEnumDeclaration = Node<"TagEnum", {
+    Identifier: string,
+    Tag: string,
+    Values: {{Name: string, Value: StructDeclaration}}
 } & Attributes, AttributesTokens>
 
 export type StructDeclaration = Node<"Struct", {
@@ -1087,8 +1093,15 @@ function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
     }
 end
 
-function Parser.Enum(self: Parser, Identifier: Token): EnumDeclaration
+function Parser.Enum(self: Parser, Identifier: Token): EnumDeclaration | TagEnumDeclaration
     local Values: {string} = {}
+
+    --> Is it a tagged enum?
+    local Tag = self:TryConsume("String")
+    if Tag then
+        return self:TagEnum(Tag, Identifier)
+    end
+
     self:Consume("OpenBraces")
 
     while true do
@@ -1111,6 +1124,52 @@ function Parser.Enum(self: Parser, Identifier: Token): EnumDeclaration
         Value = {
             Identifier = Identifier.Value,
             Values = Values,
+        },
+        Tokens = {}
+    } :: EnumDeclaration
+end
+
+function Parser.TagEnum(self: Parser, Tag: Token, Identifier: Token): TagEnumDeclaration
+    local Values: {{Name: string, Value: StructDeclaration}} = {}
+    self:Consume("OpenBraces")
+
+    while true do
+        if self:TryConsume("CloseBraces") then
+            break
+        end
+
+        local Token = self:Consume("Identifier")
+        local Struct = self:Struct(Token)
+        local Fields = Struct.Value.Values
+
+        --> Don't allow tag field to be set
+        for _, Field: TypeDeclaration in Fields do
+            if Field.Value.Identifier == Tag.Value then
+                Error.new(Error.AnalyzeReservedIdentifier, self.Source, `Enum tag used as field in variant`)
+                    :Secondary(Token, `Used in variant`)
+                    :Primary(Tag, `Enum tag`)
+                :Emit()
+            end
+        end
+
+        table.insert(Values, {
+            Name = Token.Value,
+            Value = Struct
+        })
+
+        if self:TryConsume("CloseBraces") then
+            break
+        end
+
+        self:Consume("Comma")
+    end
+
+    return {
+        Type = "TagEnum",
+        Value = {
+            Identifier = Identifier.Value,
+            Tag = Tag.Value,
+            Values = Values
         },
         Tokens = {}
     }

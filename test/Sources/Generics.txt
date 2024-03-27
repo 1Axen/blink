@@ -3,6 +3,17 @@ option ServerOutput = "../../Network/ServerGenerics.luau"
 option FutureLibrary = ""
 option PromiseLibrary = ""
 
+enum a = "Type" {
+    Header {
+        Sequence: u8,
+        Fragments: u8
+    },
+    Fragment {
+        Fragment: u8,
+        Fragments: u8,
+    }
+}
+
 struct Packet<T> {
     Sequence: u16,
     Ack: u16,
