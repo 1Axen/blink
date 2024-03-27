@@ -31,17 +31,17 @@ local EVENT_BODY = {
 local RELIABLE_BODY = {
 	Header = "local Buffer, Size, Instances = SendBuffer, SendCursor, SendInstances",
 	Body = {
-		"Load(PlayersMap[Player])",
-		"local Position = Allocate(Size)",
-		"buffer.copy(SendBuffer, Position, Buffer, 0, Size)",
-		"table.move(Instances, 1, #Instances, #SendInstances + 1, SendInstances)",
-		"PlayersMap[Player] = Save()",
+		"Load(PlayersMap[Player])\n",
+		"local Position = Allocate(Size)\n",
+		"buffer.copy(SendBuffer, Position, Buffer, 0, Size)\n",
+		"table.move(Instances, 1, #Instances, #SendInstances + 1, SendInstances)\n",
+		"PlayersMap[Player] = Save()\n",
 	}
 }
 
 local UNRELIABLE_BODY = {
-	"local Buffer = buffer.create(SendCursor)",
-	"buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)"
+	"local Buffer = buffer.create(SendCursor)\n",
+	"buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)\n"
 }
 
 local DEBUG_GLOBALS = {
@@ -239,7 +239,7 @@ function Declarations.TagEnum(Declaration: Parser.TagEnumDeclaration, Read: Bloc
 		end
 
 		Types.u8.Write(tostring(Index - 1), Write)
-		Generators.UserType(Variant, Read, Write)
+		Generators.UserType(Variant, Read, Write, Variable)
 		Read:Line(`{TagIndex} = {Name}`)
 	end
 
