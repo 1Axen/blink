@@ -14,11 +14,33 @@ enum a = "Type" {
     }
 }
 
+map GenericMap<Key, Value> = {[Key]: Value}
+
+enum GenericEnum<T, G> = "Type" {
+    A {
+        Data: T
+    },
+    B {
+        Data: G
+    }
+}
+
+map Map = GenericMap<string, u8>
+enum b = GenericEnum<string, u8>
+
 struct Packet<T> {
     Sequence: u16,
     Ack: u16,
-    AckBits: u32,
-    Data: T,
+    Data: enum "Type" {
+        Single {
+            Data: T
+        },
+        Fragment {
+            Fragment: u8,
+            Fragments: u8,
+            Data: T
+        }
+    }
 }
 
 export struct Entity {

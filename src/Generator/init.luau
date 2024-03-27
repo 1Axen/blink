@@ -163,8 +163,8 @@ end
 
 function Declarations.Map(Declaration: Parser.MapDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local MapValue = Declaration.Value
-	local Key = MapValue.Key
-	local Value = MapValue.Value
+	local Key = MapValue.Values[1]
+	local Value = MapValue.Values[2]
 
 	local KeyType = Generators.LuauType(Key :: Type)
 	local ValueType = Generators.LuauType(Value :: Type)
@@ -221,7 +221,7 @@ function Declarations.TagEnum(Declaration: Parser.TagEnumDeclaration, Read: Bloc
 
 	--> Body
 	local Tag = Value.Tag
-	local Header = `"{Values[1].Name}"`
+	local Header = `"{Values[1].Value.Identifier}"`
 	local TagIndex = `{Variable}.{Tag}`
 
 	Types.u8.Read(`local Tag`, Read)
@@ -230,7 +230,8 @@ function Declarations.TagEnum(Declaration: Parser.TagEnumDeclaration, Read: Bloc
 	Write = Write:Compare(TagIndex, Header, "Equals")
 
 	for Index, Variant in Values do
-		local Name = `"{Variant.Name}"` 
+		local VariantValue = Variant.Value
+		local Name = `"{VariantValue.Identifier}"` 
 
 		if Index > 1 then
 			Read = Read:Branch("Conditional", "Tag", tostring(Index - 1), "Equals")
@@ -238,7 +239,7 @@ function Declarations.TagEnum(Declaration: Parser.TagEnumDeclaration, Read: Bloc
 		end
 
 		Types.u8.Write(tostring(Index - 1), Write)
-		Generators.UserType(Variant.Value, Read, Write)
+		Generators.UserType(Variant, Read, Write)
 		Read:Line(`{TagIndex} = {Name}`)
 	end
 
@@ -753,16 +754,16 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 		local Literals = {}
 
 		for Index, Variant in Value.Values do
-			local TagField = `{Value.Tag}: "{Variant.Name}"`
-			local ValueType = Generators.LuauType(Variant.Value)
+			local TagField = `{Value.Tag}: "{Variant.Value.Identifier}"`
+			local ValueType = Generators.LuauType(Variant)
 			table.insert(Literals, `\{ {TagField},{string.sub(ValueType, 2)}`)
 		end
 
 		Type = table.concat(Literals, " | ")
 	elseif Declaration.Type == "Map" then
 		local MapValue = (Declaration :: Parser.MapDeclaration).Value
-		local Key = Generators.LuauType(MapValue.Key)
-		local Value = Generators.LuauType(MapValue.Value)
+		local Key = Generators.LuauType(MapValue.Values[1])
+		local Value = Generators.LuauType(MapValue.Values[2])
 		Type = `\{[{Key}]: {Value}\}`
 	elseif Declaration.Type == "Struct" then
 		local Value = Declaration.Value
@@ -988,24 +989,18 @@ end
 
 function Generators.AbstractSyntaxTree(Tree: {Parser.Declaration})
 	for Index, Declaration in Tree do
-		if
-			Declaration.Type == "Primitive"
-			or Declaration.Type == "Enum"
-			or Declaration.Type == "Struct"
-			or Declaration.Type == "Map"
-			or Declaration.Type == "TagEnum"
-		then
-			if Declaration.Value.Export then
-				Generators.Export(Declaration :: Type)
-			end
-
-			Generators.Type(Declaration :: Type)
-		elseif Declaration.Type == "Scope" then
+		if Declaration.Type == "Scope" then
 			Generators.Scope(Declaration :: Parser.ScopeDeclaration)
 		elseif Declaration.Type == "Event" then
 			Declarations.Event(Declaration :: Parser.EventDeclaration)
 		elseif Declaration.Type == "Function" then
 			Declarations.Function(Declaration :: Parser.FunctionDeclaration)
+		else
+			if Declaration.Value.Export then
+				Generators.Export(Declaration :: Type)
+			end
+
+			Generators.Type(Declaration :: Type)
 		end
 	end
 end

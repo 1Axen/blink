@@ -32,6 +32,7 @@ type Node<Type, Body, Tokens> = {
 
 type Generics = {
     Total: number,
+    Span: Error.Span,
     Keys: {[number]: string},
     Indices: {[string]: number}
 }
@@ -107,8 +108,7 @@ export type Declaration = Node<Declarations, {
 
 export type MapDeclaration = Node<"Map", {
     Identifier: string,
-    Key: TypeDeclaration,
-    Value: TypeDeclaration,
+    Values: {TypeDeclaration}
 } & Attributes, AttributesTokens>
 
 export type EnumDeclaration = Node<"Enum", {
@@ -119,7 +119,7 @@ export type EnumDeclaration = Node<"Enum", {
 export type TagEnumDeclaration = Node<"TagEnum", {
     Identifier: string,
     Tag: string,
-    Values: {{Name: string, Value: StructDeclaration}}
+    Values: {StructDeclaration}
 } & Attributes, AttributesTokens>
 
 export type StructDeclaration = Node<"Struct", {
@@ -223,6 +223,12 @@ local TYPE_KEYWORDS = {
     type = "Primitive"
 }
 
+local GENERICS_TYPES = {
+    Map = true,
+    Struct = true,
+    TagEnum = true
+}
+
 local EXPORTABLE_TYPES = {
     map = true,
     type = true,
@@ -236,6 +242,7 @@ local RESERVED = {
 
 local SUPPORTS_GENERICS = {
     map = true,
+    enum = true,
     struct = true,
 }
 
@@ -270,6 +277,21 @@ function Parser.new(): Parser
         Lexer = Lexer.new("Parsing"),
         Scope = {Identifier = "", Symbols = {Types = {}, Scopes = {}}},
     }, Parser)
+end
+
+---- Utility Functions ----
+
+local function IsDeclarationTypeSimiliar(A: Declarations, B: Declarations): boolean
+    if A == B then
+        return true
+    end
+
+    if A == "Enum" or B == "Enum" then
+        return (A == "TagEnum" and B == "Enum") 
+            or (A == "Enum" and B == "TagEnum")
+    end
+
+    return false
 end
 
 ---- Lexer Functions -----
@@ -411,13 +433,18 @@ function Parser.GetGenerics(self: Parser): Generics?
         return self.Generics
     end
 
-    if not self:TryConsume("OpenChevrons") then
+    local OpenChevrons = self:TryConsume("OpenChevrons")
+    if not OpenChevrons then
         return
     end
 
     --> Parse generics
     local Generics: Generics = {
         Total = 0,
+        Span = {
+            Start = OpenChevrons.Start,
+            End = OpenChevrons.End + 1
+        },
         Keys = {},
         Indices = {}
     }
@@ -432,6 +459,7 @@ function Parser.GetGenerics(self: Parser): Generics?
         local Identifier = Token.Value
         
         Generics.Total = Index
+        Generics.Span.End += (Token.End - Token.Start)
         Generics.Keys[Index] = Identifier
         Generics.Indices[Identifier] = Index
 
@@ -485,8 +513,9 @@ function Parser.SolveGenerics(self: Parser, Identifier: Token, Declaration: Stru
 
     local function SolveValues(Values: {TypeDeclaration})
         for Index, Field in Values do
-            if Field.Type == "Struct" then
-                SolveValues(Field.Value.Values)
+            if GENERICS_TYPES[Field.Type] then
+                local Value = (Field :: StructDeclaration).Value
+                SolveValues(Value.Values)
                 continue
             end
 
@@ -805,6 +834,12 @@ function Parser.Declarations(self: Parser): {Declaration}
         end
 
         if Generics then
+            if Declaration.Type == "Enum" then
+                Error.new(Error.AnalyzeInvalidGenerics, self.Source, `Unit enums don't support generics`)
+                    :Primary(Generics.Span, "Remove generics")
+                :Emit()
+            end
+
             self.Generics = nil
             Declaration.Value.Generics = Generics
         end
@@ -964,10 +999,10 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
             if Token.Type == "Identifier" then
                 Declaration = self:Reference(Identifier)
                 local Reference = (Declaration :: ReferenceDeclaration).Value.Declaration
-                if Reference.Type ~= Type then
-                    Error.new(Error.AnalyzeReferenceInvalidType, self.Source, `Cannot cast "{Declaration.Type}" to "{Type}"`)
-                        :Primary(Token, `Expected a reference to "{Type}", got "{Declaration.Type}" instead`)
-                        :Emit()
+                if not IsDeclarationTypeSimiliar(Reference.Type, Type) then
+                    Error.new(Error.AnalyzeReferenceInvalidType, self.Source, `Cannot cast "{Reference.Type}" to "{Type}"`)
+                        :Primary(Token, `Expected a reference to "{Type}", got "{Reference.Type}" instead`)
+                    :Emit()
                 end
             end
         end
@@ -991,33 +1026,38 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
         local Peek = self:Peek()
         local Type: Lexer.Types = Peek.Type :: Lexer.Types
         
-        if Type == "OpenBraces" then
-            local FarPeek = self.Lexer:GetNextToken(true)
-            if FarPeek.Type == "OpenBrackets" then
+        if Type == "Keyword" then
+            local Value = Peek.Value
+            self:Consume("Keyword")
+
+            if Value == "map" then
                 Declaration = self:Map(Identifier)
-            elseif FarPeek.Type == "CloseBraces" then
-                Declaration = self:Struct(Identifier) 
-            else
-                local FurtherPeek = self.Lexer:GetNextToken(true, FarPeek.End)
-                if FurtherPeek.Type == "FieldAssign" then 
-                    Declaration = self:Struct(Identifier) 
-                else 
-                    Declaration = self:Enum(Identifier) 
-                end
+            elseif Value == "enum" then
+                Declaration = self:Enum(Identifier)
+            elseif Value == "struct" then
+                Declaration = self:Struct(Identifier)
             end
         elseif Type == "Primitive" then
             Declaration = self:Primitive(Identifier)
         elseif Type == "Identifier" then
             Declaration = self:Reference(Identifier)
-            if Declaration.Type == "Reference" then
-                local Value = Declaration.Value
-                local Referencing = Value.Declaration
-                if Referencing.Value.Generics then
-                    Value.Declaration, Value.Parameters = self:SolveGenerics(Identifier, Referencing :: StructDeclaration)
-                end
-            end
         elseif Type == "OpenParentheses" and IsDataField then
             Declaration = self:Tuple(Identifier)
+        end
+
+        if not Declaration then
+            Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`)
+                :Primary(Peek, `Expected one of "Identifier" or "Primitive" or "Keyword", got "{Type}" instead`)
+            :Emit()
+        end
+    end
+
+    --> Solve generics
+    if Declaration.Type == "Reference" then
+        local Value = Declaration.Value
+        local Referencing = Value.Declaration
+        if Referencing.Value.Generics then
+            Value.Declaration, Value.Parameters = self:SolveGenerics(Identifier, Referencing :: StructDeclaration)
         end
     end
 
@@ -1086,8 +1126,7 @@ function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
         Type = "Map",
         Value = {
             Identifier = Identifier.Value,
-            Key = Key,
-            Value = Value
+            Values = {Key, Value}
         },
         Tokens = {}
     }
@@ -1130,7 +1169,7 @@ function Parser.Enum(self: Parser, Identifier: Token): EnumDeclaration | TagEnum
 end
 
 function Parser.TagEnum(self: Parser, Tag: Token, Identifier: Token): TagEnumDeclaration
-    local Values: {{Name: string, Value: StructDeclaration}} = {}
+    local Values: {StructDeclaration} = {}
     self:Consume("OpenBraces")
 
     while true do
@@ -1152,10 +1191,7 @@ function Parser.TagEnum(self: Parser, Tag: Token, Identifier: Token): TagEnumDec
             end
         end
 
-        table.insert(Values, {
-            Name = Token.Value,
-            Value = Struct
-        })
+        table.insert(Values, Struct)
 
         if self:TryConsume("CloseBraces") then
             break
@@ -1281,7 +1317,7 @@ function Parser.Reference(self: Parser, Identifier: Token): (ReferenceDeclaratio
     if not Reference then
         error(Error.new(Error.AnalyzeUnknownReference, self.Source, `Unknown reference`)
             :Primary(Token, "Unknown reference")
-            :Emit())
+        :Emit())
     end
 
     return {
