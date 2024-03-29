@@ -389,9 +389,9 @@ function Parser.GetReference(self: Parser, Bucket: Bucket, Identifier: string): 
 
         local Symbols = Scope.Symbols
         local Symbol = 
-            (Offset == Length) 
-            and Symbols[Bucket][Index] 
-            or Symbols.Scopes[Index]
+            if (Offset == Length) 
+            then Symbols[Bucket][Index] 
+            else Symbols.Scopes[Index]
 
         --> Nothing found in the current scope search upwards
         if Symbol == nil then
