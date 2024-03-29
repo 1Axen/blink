@@ -108,7 +108,7 @@ local ClientGenerateTime = (os.clock() - ClientGenerateStart)
 local TypesSource: string?;
 if Options.TypesOutput then
 	TypesOutput = `{SourceDirectory}/{Options.TypesOutput}`
-	TypesSource = Generator.GenerateTypeDefinitions("Server", AbstractSyntaxTree)
+	TypesSource = Generator.GenerateShared(AbstractSyntaxTree)
 end
 
 local FilesTime = (os.clock() - FilesStart)

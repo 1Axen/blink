@@ -13,6 +13,7 @@ local Settings = require("../Settings")
 
 local Sources = {
 	Base = require("../Templates/Base"),
+	Shared = {"", ""},
 	Client = string.split(require("../Templates/Client"), "-- SPLIT --"),
 	Server = string.split(require("../Templates/Server"), "-- SPLIT --"),
 }
@@ -56,11 +57,17 @@ local DEBUG_GLOBALS = {
 	"local game = _G.%s.game\n",
 }
 
+local IGNORED_TYPES_IN_SHARED = {
+	Event = true,
+	Function = true
+}
+
 type Type = Parser.TypeDeclaration
 type Scope = Parser.Scope
+type Context = "Client" | "Server" | "Shared"
 
 local Scope: Scope;
-local Context: string;
+local Context: Context;
 local Casing: Settings.Cases;
 local Events: Builder.Builder;
 local UserTypes: Builder.Builder;
@@ -992,6 +999,10 @@ end
 
 function Generators.AbstractSyntaxTree(Tree: {Parser.Declaration})
 	for Index, Declaration in Tree do
+		if Context == "Shared" and IGNORED_TYPES_IN_SHARED[Declaration.Type] then
+			continue
+		end
+
 		if Declaration.Type == "Scope" then
 			Generators.Scope(Declaration :: Parser.ScopeDeclaration)
 		elseif Declaration.Type == "Event" then
@@ -1024,7 +1035,7 @@ function Generator.Reset()
 	Channels.Unreliable.Listening = false
 end
 
-function Generator.Generate(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Body): string
+function Generator.Generate(FileContext: Context, AbstractSyntaxTree: Parser.Body): string
     local Imports = Builder.new()
 	
 	Generator.Reset()
@@ -1125,16 +1136,33 @@ function Generator.Generate(FileContext: "Client" | "Server", AbstractSyntaxTree
 	return table.concat(MergedOutput)
 end
 
-function Generator.GenerateTypeDefinitions(FileContext: "Client" | "Server", AbstractSyntaxTree: Parser.Body): string
-	local Value = AbstractSyntaxTree.Value
-
+function Generator.GenerateShared(AbstractSyntaxTree: Parser.Body): string
 	Generator.Reset()
-	Context = FileContext
-	Options = Value.Options
-	Generators.AbstractSyntaxTree(Value.Declarations)
+	Context = "Shared"
+	Options = AbstractSyntaxTree.Value.Options
+	Casing = Settings.GetCasing((Options.Casing :: Settings.Case) or "Pascal")
 
-	return LuauTypes.Dump() 
-		.. `\nreturn true`
+	--> Parse declarations
+	Generators.AbstractSyntaxTree(AbstractSyntaxTree.Value.Declarations)
+
+	--> Generate context source
+	local Source = Sources[Context]
+	local MergedOutput = Table.Merge(
+		DIRECTIVES,
+		VERSION_HEADER,
+		string.split(Source[1], "\r"),
+		string.split(Sources.Base, "\r"),
+		LuauTypes.DumpLines(),
+		{"\n"},
+		UserTypes.DumpLines(),
+		string.split(Source[2], "\r"),
+		{"\n"},
+		{`\nreturn \{\n`},
+		Return.DumpLines(),
+		{"\n}"}
+	)
+
+	return table.concat(MergedOutput)
 end
 
 return Generator
