@@ -376,26 +376,26 @@ do
 	Types.buffer = {
 		Read = function(Variable: string, Block: Block, Range: NumberRange?)
 			if Range and Range.Min == Range.Max then
-				Block:Line(`local Length = {Range.Min}`)
-			else
-				local Upper = Range and Range.Max or (2^16 - 1)
-				local LengthType = GetTypeToUse(Upper)
-				LengthType.Read("local Length", Block)
+				Block:Line(`buffer.copy({Variable}, 0, {RECIEVE_BUFFER}, {Block:Read(Range.Max)}, {Range.Max})`)
+				return
 			end
 			
+			local Upper = Range and Range.Max or (2^16 - 1)
+			local LengthType = GetTypeToUse(Upper)
+			LengthType.Read("local Length", Block)
 			Block:Line(`{Variable} = buffer.create(Length)`)
-			Block:Line(`buffer.copy({Variable}, 0, {RECIEVE_BUFFER}, Read(Length))`)
+			Block:Line(`buffer.copy({Variable}, 0, {RECIEVE_BUFFER}, Read(Length), Length)`)
 		end,
 		Write = function(Value: string, Block: Block, Range: NumberRange?)
 			if Range and Range.Min == Range.Max then
-				Block:Line(`local Length = {Range.Max}`)
-			else
-				local Upper = Range and Range.Max or (2^16 - 1)
-				local LengthType = GetTypeToUse(Upper)
-				Block:Line(`local Length = buffer.len({Value})`)
-				LengthType.Write("Length", Block)
+				Block:Line(`buffer.copy({SEND_BUFFER}, {Block:Allocate(Range.Max)}, {Value}, 0, {Range.Max})`)
+				return
 			end
 			
+			local Upper = Range and Range.Max or (2^16 - 1)
+			local LengthType = GetTypeToUse(Upper)
+			Block:Line(`local Length = buffer.len({Value})`)
+			LengthType.Write("Length", Block)
 			Block:Line(`Allocate(Length)`)
 			Block:Line(`buffer.copy({SEND_BUFFER}, {SEND_POSITION}, {Value}, 0, Length)`)
 		end
