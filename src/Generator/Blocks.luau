@@ -56,7 +56,8 @@ end
 
 function Block._operation(self: Block, Method: Method, Bytes: number): string
     if self.Unsafe then
-        return `{Method}({Bytes})`
+        self:Line(`local OFFSET = {Method}({Bytes})`)
+        return `OFFSET`
     end
 
     local Operation = self.Operation

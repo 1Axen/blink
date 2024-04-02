@@ -521,7 +521,7 @@ end)
 local Element = {Static = 0, Dynamic = buffer.create(64)}
 
 FireAndExpect("Dynamic Array Data Integrity", Server.DynamicArray, Client.DynamicArray, table.create(12, Element))
-FireAndExpect("Dynamic Map Data Integrity", Server.DynamicMap, Client.DynamicMap, table.create(12, Element))
+FireAndExpect("Dynamic Map Data Integrity", Server.DynamicMap, Client.DynamicMap, table.create(64, Element))
 
 PrettyPrint("green", `All tests passed successfully!`)
 
