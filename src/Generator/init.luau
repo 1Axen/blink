@@ -183,6 +183,10 @@ function Declarations.Map(Declaration: Parser.MapDeclaration, Read: Blocks.Block
 	local ReadLoop = Read:Loop("_ = 1", "Elements")
 	local WriteLoop = Write:Iterator("Key", "Element", Variable)
 
+	--> Maps are unsafe
+	ReadLoop:DisableOperationOptimisations()
+	WriteLoop:DisableOperationOptimisations()
+
 	ReadLoop:Line(`local Key: {KeyType}, Element: {ValueType};`)
 	WriteLoop:Line("Elements += 1")
 	Generators.UserType(Key :: Type, ReadLoop, WriteLoop, "Key")

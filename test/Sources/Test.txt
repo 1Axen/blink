@@ -75,6 +75,20 @@ struct MapStruct {
     Map: map {[string]: u8}
 }
 
+event DynamicMap {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+    Data: map {[u8]: struct {Static: u8, Dynamic: buffer}}
+}
+
+event DynamicArray {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+    Data: struct {Static: u8, Dynamic: buffer}[12]
+}
+
 event PlayerEvent {
     From: Server,
     Type: Reliable,

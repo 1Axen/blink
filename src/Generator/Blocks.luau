@@ -28,6 +28,7 @@ export type Block = typeof(setmetatable({} :: {
     Parent: Block?,
     Indent: number,
     Cursor: number,
+    Unsafe: boolean,
     Content: {string},
     Operation: Operation
 }, Block))
@@ -39,6 +40,7 @@ function Block.new<Parent>(Parent: Block?, Unique: string?): Block
         Parent = Parent,
         Indent = Indent,
         Cursor = 1,
+        Unsafe = false,
         Content = table.create(64),
         Operation = {
             Method = "None",
@@ -47,7 +49,16 @@ function Block.new<Parent>(Parent: Block?, Unique: string?): Block
     }, Block)
 end
 
+function Block.DisableOperationOptimisations(self: Block): Block
+    self.Unsafe = true
+    return self
+end
+
 function Block._operation(self: Block, Method: Method, Bytes: number): string
+    if self.Unsafe then
+        return `{Method}({Bytes})`
+    end
+
     local Operation = self.Operation
     if Operation.Method ~= "None" and Operation.Method ~= Method then
         error(`Block can't both Allocate and Read`)

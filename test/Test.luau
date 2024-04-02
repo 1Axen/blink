@@ -70,6 +70,10 @@ function CompareTables(a, b)
         return true 
     end
 
+    if type(a) == "buffer" and type(b) == "buffer" then
+        return buffer.tostring(a) == buffer.tostring(b)
+    end
+
     if type(a) ~= type(b) then 
         return false 
     end
@@ -78,17 +82,14 @@ function CompareTables(a, b)
         return false 
     end
 
-    local Keys = {}
     for Key, Value in a do
-        local SecondaryValue = b[Key]
-        if SecondaryValue == nil or not CompareTables(Value, SecondaryValue) then
+        if not CompareTables(Value, b[Key]) then
             return false
         end
-        Keys[Key] = true
     end
 
-    for Key, _ in b do
-        if not Keys[Key] then 
+    for Key, Value in b do
+        if not CompareTables(Value, a[Key]) then 
             return false 
         end
     end
@@ -516,6 +517,11 @@ RunClosure("Standalone", function()
 
     assert(CompareTables(Original, Deserialized), "Deserialized doesn't match original")
 end)
+
+local Element = {Static = 0, Dynamic = buffer.create(64)}
+
+FireAndExpect("Dynamic Array Data Integrity", Server.DynamicArray, Client.DynamicArray, table.create(12, Element))
+FireAndExpect("Dynamic Map Data Integrity", Server.DynamicMap, Client.DynamicMap, table.create(12, Element))
 
 PrettyPrint("green", `All tests passed successfully!`)
 
