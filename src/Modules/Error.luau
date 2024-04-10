@@ -72,7 +72,9 @@ local Error = {
     AnalyzeDuplicateDeclaration = 3010,
     AnalyzeDuplicateTypeGeneric = 3011,
     AnalyzeInvalidGenerics = 3012,
-    AnalyzeInvalidExport = 3013
+    AnalyzeInvalidExport = 3013,
+    AnalyzeUnknownImport = 3014,
+    AnalyzeErrorWhileImporting = 3015
 }
 
 Error.__index = Error

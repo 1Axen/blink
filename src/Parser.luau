@@ -38,7 +38,7 @@ type Generics = {
 }
 
 export type Scope = {
-    Identifier: string,
+    Identifier: Token,
     Parent: Scope?,
     Symbols: {
         Types: {[string]: Reference},
@@ -275,7 +275,7 @@ function Parser.new(): Parser
     return setmetatable({
         Source = "",
         Lexer = Lexer.new("Parsing"),
-        Scope = {Identifier = "", Symbols = {Types = {}, Scopes = {}}},
+        Scope = nil :: any,
     }, Parser)
 end
 
@@ -710,9 +710,9 @@ end
 
 ---- Top-Level Parsing Functions ----
 
-function Parser.Parse(self: Parser, Source: string): Body
+function Parser.Parse(self: Parser, Source: string, Scope: Token?): Body
     --> Set state
-    self.Scope = {Identifier = "", Symbols = {Types = {}, Scopes = {}}}
+    self.Scope = {Identifier = Scope or {Value = "", Start = 0, End = 0} :: any, Symbols = {Types = {}, Scopes = {}}}
     self.Source = Source
     
     --> Start the lexer
@@ -724,6 +724,86 @@ function Parser.Parse(self: Parser, Source: string): Body
         Value = {
             Options = self:Options(),
             Declarations = self:Declarations()
+        },
+        Tokens = {}
+    }
+end
+
+function Parser.Import(self: Parser): ScopeDeclaration
+    self:Consume("Import")
+
+    local fs = require("@lune/fs")
+    local Path = self:Consume("String")
+    local StringPath = Path.Value
+
+    print(StringPath)
+
+    if not fs.isFile(StringPath) then
+        print(require("@lune/process").cwd)
+        Error.new(Error.AnalyzeUnknownImport, self.Source, `Unknown require`)
+            :Primary(Path, `Unknown require: "{StringPath}"`)
+        :Emit()
+    end
+
+    --> Import namespace
+    local Token = Path
+    local Identifier: string;
+
+    if self:TryConsume("As") then
+        --> Use user provided namespace identifier
+        Token = self:Consume("Identifier")
+        Identifier = Token.Value 
+    else
+        --> Use file name as namespace identifier
+        local Directory, Filename, Extension = string.match(StringPath, "^([%.%w_/]*)/([%w_]+)%.(%w+)")
+        assert(Filename, "Unable to parse file path for filename!")
+        Identifier = Filename
+    end
+
+    local Reference = self:GetReference("Scopes", Identifier)
+    print(Reference)
+
+    if Reference then
+        Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration: "{Identifier}"`)
+            :Secondary(Reference.Identifier, "Previously declared here")
+            :Primary(Token, "Duplicate declared here")
+        :Emit()
+    end
+
+    --> Parse import into AST
+    local ImportSource = fs.readFile(StringPath)
+    local ImportParser = Parser.new()
+
+    local AST: Body;
+    local Success, ErrorText = pcall(function()
+        AST = ImportParser:Parse(ImportSource, Token)
+    end)
+
+    if not Success then
+        error(`Error while parsing "{StringPath}":\n{ErrorText}`)
+    end
+
+    --> Import
+    print(`Importing {StringPath} as {Identifier}`)
+
+    local Parent = self.Scope
+    local Scope: Scope = {
+        Identifier = Token,
+        Parent = Parent,
+        Symbols = {
+            Types = {},
+            Scopes = {}
+        }
+    }
+
+    Parent.Symbols.Scopes[Identifier] = Scope
+    
+    return {
+        Type = "Scope",
+        Value = {
+            Scope = Scope,
+            Identifier = Identifier,
+            Values = AST.Value.Declarations
         },
         Tokens = {}
     }
@@ -771,9 +851,15 @@ function Parser.Declarations(self: Parser): {Declaration}
             break
         end
 
+        --> Is an import?
+        local LookAhead = self:Peek()
+        if LookAhead.Type == "Import" then
+            table.insert(Declarations, self:Import())
+            continue
+        end
+
         --> Is standalone/exported?
         local Export: Token?
-        local LookAhead = self:Peek()
         if LookAhead.Type == "Keyword" and LookAhead.Value == "export" then
             Export = self:Consume("Keyword")
         end
@@ -815,7 +901,7 @@ function Parser.Declarations(self: Parser): {Declaration}
         end
 
         --> Update declarations
-        table.insert(Declarations, Declaration)
+        table.insert(Declarations, Declaration :: any)
 
         if Export then
             --> Prevent non exportable types from being exported
@@ -953,7 +1039,7 @@ function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
     --> Open scope
     local Parent = self.Scope
     local Scope: Scope = {
-        Identifier = Identifier.Value,
+        Identifier = Identifier,
         Parent = Parent,
         Symbols = {
             Types = {},

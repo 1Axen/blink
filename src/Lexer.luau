@@ -9,6 +9,7 @@ export type Types =
     | "String" | "Boolean" | "Number"   --> Literals
     | "Array" | "Range" | "Optional" | "Class" | "Component" | "OpenChevrons" | "CloseChevrons"  --> Attributes
     | "Assign" | "FieldAssign" | "Keyword" | "Primitive" | "Identifier" --> Reserved
+    | "Import" | "As" --> Imports
     | "Whitespace" | "Comment" | "Unknown" | "EndOfFile"
 
 export type Keywords = "type" | "enum" | "struct" | "event" | "function"
@@ -43,6 +44,9 @@ local Matches = {
     {"^<", "OpenChevrons"},
     {"^>", "CloseChevrons"},
     {"^,", "Comma"},
+
+    {"^import", "Import"},
+    {"^as", "As"},
 
     --> Comments
     {"^%-%-.-\n", "Comment"},
