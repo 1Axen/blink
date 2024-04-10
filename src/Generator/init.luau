@@ -94,8 +94,8 @@ local Structures = Prefabs.Structures
 local function GetScopePrefix(ReferenceScope: Scope?, Dots: boolean?): string
 	local Prefix = ""
 	local WorkingScope: Scope? = ReferenceScope or Scope
-	while (WorkingScope and WorkingScope.Identifier ~= "") do
-		Prefix = `{WorkingScope.Identifier}{Dots and "." or "_"}` .. Prefix
+	while (WorkingScope and WorkingScope.Identifier.Value ~= "") do
+		Prefix = `{WorkingScope.Identifier.Value}{Dots and "." or "_"}` .. Prefix
 		WorkingScope = WorkingScope.Parent
 	end
 

@@ -281,6 +281,29 @@ end
 
 ---- Utility Functions ----
 
+local function GetFileSource(Path: string): string?
+    local IsROBLOX = (task ~= nil)
+    if IsROBLOX then
+        local Parent = game:GetService("ServerStorage")["BLINK_DEFINITION_FILES"]
+        local Indices = string.split(Path, ".")
+        for _, Index in Indices do
+            Parent = Parent:FindFirstChild(Index)
+        end
+
+        return (Parent ~= nil and Parent:IsA("StringValue")) and Parent.Value or nil
+    end
+
+    local fs = require("@lune/fs")
+    local process = require("@lune/process")
+    local cwd = process.env.cwd
+
+    if not fs.isFile(`{cwd}/{Path}`) then
+        return
+    end
+
+    return fs.readFile(`{cwd}/{Path}`)
+end
+
 local function IsDeclarationTypeSimiliar(A: Declarations, B: Declarations): boolean
     if A == B then
         return true
@@ -732,17 +755,14 @@ end
 function Parser.Import(self: Parser): ScopeDeclaration
     self:Consume("Import")
 
-    local fs = require("@lune/fs")
     local Path = self:Consume("String")
-    local StringPath = Path.Value
+    local ImportPath = Path.Value
+    local ImportSource = GetFileSource(ImportPath)
 
-    print(StringPath)
-
-    if not fs.isFile(StringPath) then
-        print(require("@lune/process").cwd)
-        Error.new(Error.AnalyzeUnknownImport, self.Source, `Unknown require`)
-            :Primary(Path, `Unknown require: "{StringPath}"`)
-        :Emit()
+    if not ImportSource then
+        error(Error.new(Error.AnalyzeUnknownImport, self.Source, `Unknown require`)
+            :Primary(Path, `Unknown require: "{ImportPath}"`)
+        :Emit())
     end
 
     --> Import namespace
@@ -753,16 +773,19 @@ function Parser.Import(self: Parser): ScopeDeclaration
         --> Use user provided namespace identifier
         Token = self:Consume("Identifier")
         Identifier = Token.Value 
+    elseif (task ~= nil) then
+        --> ROBLOX
+        local Indices = string.split(ImportPath, ".")
+        Identifier = Indices[#Indices]
     else
         --> Use file name as namespace identifier
-        local Directory, Filename, Extension = string.match(StringPath, "^([%.%w_/]*)/([%w_]+)%.(%w+)")
+        local Directory, Filename, Extension = string.match(ImportPath, "^([%.%w_/]*)/([%w_]+)%.(%w+)")
         assert(Filename, "Unable to parse file path for filename!")
         Identifier = Filename
+        Token.Value = Filename
     end
 
     local Reference = self:GetReference("Scopes", Identifier)
-    print(Reference)
-
     if Reference then
         Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration: "{Identifier}"`)
             :Secondary(Reference.Identifier, "Previously declared here")
@@ -771,20 +794,18 @@ function Parser.Import(self: Parser): ScopeDeclaration
     end
 
     --> Parse import into AST
-    local ImportSource = fs.readFile(StringPath)
-    local ImportParser = Parser.new()
-
     local AST: Body;
+    local ImportParser = Parser.new()
     local Success, ErrorText = pcall(function()
         AST = ImportParser:Parse(ImportSource, Token)
     end)
 
     if not Success then
-        error(`Error while parsing "{StringPath}":\n{ErrorText}`)
+        error(`Error while parsing "{ImportPath}":\n{ErrorText}`)
     end
 
     --> Import
-    print(`Importing {StringPath} as {Identifier}`)
+    print(`Importing {ImportPath} as {Identifier}`)
 
     local Parent = self.Scope
     local Scope: Scope = {

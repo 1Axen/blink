@@ -73,6 +73,9 @@ print(`Reading source from {SourcePath}...`)
 local Source = fs.readFile(SourcePath)
 stdio.write(stdio.color("blue"))
 print("Parsing source into AST...")
+
+process.env.cwd = SourceDirectory
+
 local ParseStart = os.clock()
 local AbstractSyntaxTree = SourceParser:Parse(Source)
 local ParseTime = (os.clock() - ParseStart)

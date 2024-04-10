@@ -1,5 +1,5 @@
 option ClientOutput = "../../Network/ClientImports.luau"
 option ServerOutput = "../../Network/ServerImports.luau"
 
-import "./test/Sources/Generics.txt"
-import "./test/Sources/Generics.txt" as Example
+import "./Generics.txt"
+import "./Generics.txt" as Example
