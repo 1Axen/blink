@@ -83,6 +83,7 @@ export type Class = typeof(setmetatable({} :: {
     Labels: {Label},
     Source: {string},
     Message: string,
+    RawMessage: string,
 }, Error))
 
 local function Fix(Text: string): string
@@ -107,7 +108,8 @@ function Error.new(Code: number, Source: string, Message: string): Class
     return setmetatable({
         Labels = {},
         Source = string.split(Source, "\n"),
-        Message = Content
+        Message = Content,
+        RawMessage = Message
     }, Error)
 end
 
@@ -175,9 +177,9 @@ function Error.Secondary(self: Class, Span: Span, Text: string): Class
 end
 
 function Error.Emit(self: Class): never
-    local OnEmit: (({Label}) -> ())? = Error.OnEmit
+    local OnEmit: ((Class) -> ())? = Error.OnEmit
     if OnEmit then
-        OnEmit(self.Labels)
+        OnEmit(self)
     end
 
     error(self.Message, 2)

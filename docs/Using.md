@@ -304,6 +304,24 @@ Blink.ExampleScope.InScopeEvent.FireAll(0)
 
 local Number: Blink.ExampleScope_InScopeEvent = 0
 ```
+# Imports
+Blink allows you to use multiple definition files through importing.  
+Imports will pull all declarations (events, functions, scopes and types) from the target file and load them into the importing scope as a new scope using either the file name or a user provided name through the `as` keyword.  
+```
+import "../path/File.blink" --> Imports as a new scope "File"
+type a = File.b
+```
+```
+import "../path/File.blink" as Something --> Imports as a new scope "Something"
+type a = Something.b
+```
+```
+scope MyScope {
+    --> Imports a new scope "Something" into "MyScope"
+    import "../path/File.blink" as Something
+}
+type a = MyScope.Something.b
+```
 # Limitations
 ## Referencing types
 A type must be defined earlier in the source for it to be referenceable, you cannot reference a type before it has been defined.

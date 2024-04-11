@@ -77,8 +77,8 @@ function Utility.GetWordRangeAtPosition(Source: string, Cursor: number): Range?
 end
 
 function Utility.GetWordRangeBeforePosition(Source: string, Position: number): Range
-    local Text = Utility.GetLineRangeAtPosition(Source, Position).Text
-    local Word = Utility.GetWordRangeAtPosition(Text, Position)
+    local Line = Utility.GetLineRangeAtPosition(Source, Position)
+    local Word = Utility.GetWordRangeAtPosition(Line.Text, Position - Line.Start)
 
     if not Word then
         return {
@@ -93,7 +93,7 @@ function Utility.GetWordRangeBeforePosition(Source: string, Position: number): R
     end
 
     local WordStart = math.max(Word.Start - 1, 0)
-    local WordBefore = Utility.GetWordRangeAtPosition(Text, WordStart)
+    local WordBefore = Utility.GetWordRangeAtPosition(Line.Text, WordStart)
     return WordBefore or Word
 end
 

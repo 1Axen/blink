@@ -130,7 +130,7 @@ stdio.write(stdio.color("reset"))
 if not _G.BUNDLED or table.find(Arguments, "--stats") then
 	print(`[DEBUG]: Parsed source in {FormatTime(ParseTime)}.`)
 	print(`[DEBUG]: Generated server luau in {FormatTime(ServerGenerateTime)}.`)
-	print(`[DEBUG]: Generated client luau in {FormatTime(ServerGenerateTime)}.`)
+	print(`[DEBUG]: Generated client luau in {FormatTime(ClientGenerateTime)}.`)
 	print(`[DEBUG]: Generated files in {FormatTime(FilesTime)}.`)
 	print(`[DEBUG]: Completed everything in {FormatTime(ParseTime + FilesTime)}.`)
 end

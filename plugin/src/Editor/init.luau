@@ -135,6 +135,8 @@ local CursorTimer = 0
 local PreviousText = Input.Text
 local PreviousLine: TextLabel?;
 
+local AbstractSyntaxTree: Parser.Body?;
+
 ---- Private Functions ----
 
 local function ScrollTowards(Direction: number)
@@ -159,6 +161,16 @@ local function ClearChildrenWhichAre(Parent: Instance, Class: string)
             Child:Destroy()
         end
     end
+end
+
+local function GetPrediction(): CompletionItem?
+    local Items = Predictions:Get()
+    local Item = Items.Items[Items.Index]
+    if not Item then
+        return
+    end
+
+    return Item
 end
 
 local function GetNextToken(DontAdvanceCursor: boolean?): Lexer.Token?
@@ -198,7 +210,7 @@ local function UpdateColors()
             break
         end
 
-        if Type == "Keyword" then
+        if Type == "Keyword" or Type == "Import" or Type == "As" then
             Keyword = Value
             RichText ..= WrapColor(Value, THEME.Keyword)
         elseif Type == "Primitive" then
@@ -245,15 +257,27 @@ local function UpdateColors()
     Display.Text = RichText
 end
 
+local function UpdateAnalysis()
+    local Success, Result = pcall(function()
+        return SourceParser:Parse(Editor.GetSource())
+    end)
+
+    if Success then
+        AbstractSyntaxTree = Result
+    end
+end
+
 local function UpdateCompletion()
     local Word = Utility.GetWordRangeBeforePosition(Input.Text, Input.CursorPosition)
     local Items: {CompletionItem} = {}
 
     --> Match Keywords
+    local Text = Word.Text
+
     if Word.Start == 1 then
-        local Text = Word.Text
         for _, Label in SYMBOLS.Keyword do
-            if string.sub(Label, 1, #Text) ~= Text then
+            local Stub = string.sub(Label, 1, #Text)
+            if Stub ~= Text or Stub == Label then
                 continue
             end
 
@@ -265,13 +289,28 @@ local function UpdateCompletion()
 
             break
         end
+    elseif Word.Start >= 1 and AbstractSyntaxTree then
+        for Symbol in AbstractSyntaxTree.Value.Symbols do
+            local Stub = string.sub(Symbol, 1, #Text)
+            if Stub ~= Text or Stub == Symbol then
+                continue
+            end
+
+            table.insert(Items, {
+                Icon = ICONS.Variable,
+                Label = Symbol,
+                Insert = Symbol
+            })
+
+            break
+        end
     end
 
     --> Update predictions
-    --[[Predictions:Set({
+    Predictions:Set({
         Index = 1,
         Items = Items
-    })]]
+    })
 end
 
 local function UpdateHighlightedLine()
@@ -368,8 +407,9 @@ end]]
 
 ---- Event Functions -----
 
-local function OnErrorEmitted(Labels)
-    Errors:Set(Labels)
+local function OnErrorEmitted(Object: Error.Class)
+    Errors:Set(Object.Labels)
+    warn(Object.RawMessage)
 end
 
 local function OnPreRender(DeltaTime: number)
@@ -460,16 +500,16 @@ local function OnCursorPositionChanged()
     UpdateHighlightedLine()
 
     --> Perform auto completion pass
-    --[[DoCompletionPass()
+    --DoCompletionPass()
 
     --> Update completion position
-    local AbsoluteSize = EditorInterface.AbsoluteSize
-    local AbsolutePosition = TextCursor.AbsolutePosition
+    local AbsoluteSize = EditorContainer.AbsoluteSize
+    local AbsolutePosition = Cursor.AbsolutePosition
 
-    Completion.Position = UDim2.fromOffset(
-        math.clamp(AbsolutePosition.X, 0, (AbsoluteSize.X - Completion.Size.X.Offset) - 10), 
+    CompletionContainer.Position = UDim2.fromOffset(
+        math.clamp(AbsolutePosition.X, 0, (AbsoluteSize.X - CompletionContainer.Size.X.Offset) - 10), 
         AbsolutePosition.Y + TextSize
-    )]]
+    )
 end
 
 local function OnSelectionChanged()
@@ -553,6 +593,27 @@ local function OnSourceChanged()
         return
     end
 
+    --> Auto complete
+    if Gain == 1 then
+        local Item = GetPrediction()
+        local Character = string.sub(Text, #Text)
+        if Item and Character == "\t" then
+            local Insert = Item.Insert
+            local Cursor = (Input.CursorPosition - 1)
+
+            local Word = Utility.GetWordRangeBeforePosition(Text, Cursor)
+            local Length = (Word.End - Word.Start)
+
+            local Start = (Cursor - Length)
+            local Offset = (Item.Icon == ICONS.Keyword and 1 or 0)
+            local Padding = string.rep(" ", Offset)
+
+            Input.Text = (string.sub(Text, 1, Start - 1) .. Insert .. Padding)
+            Input.CursorPosition = (Start + #Insert + Offset)
+
+            return
+        end
+    end
 
     --> Run styling hooks
     local FinalText, FinalCursor = Text, Input.CursorPosition
@@ -579,6 +640,7 @@ local function OnSourceChanged()
 
     --> Perform lexer pass
     UpdateColors()
+    UpdateAnalysis()
     UpdateCompletion()
 end
 

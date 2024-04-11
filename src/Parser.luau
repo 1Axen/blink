@@ -93,6 +93,7 @@ export type Options = {
 
 export type Body = Node<"Body", {
     Options: Options,
+    Symbols: {[string]: true},
     Declarations: {Declaration}
 }, {}>
 
@@ -268,6 +269,7 @@ export type Parser = typeof(setmetatable({} :: {
     LookAhead: Token?,
 
     Scope: Scope,
+    Symbols: {[string]: true},
     Generics: Generics?,
 }, Parser))
 
@@ -275,6 +277,7 @@ function Parser.new(): Parser
     return setmetatable({
         Source = "",
         Lexer = Lexer.new("Parsing"),
+        Symbols = {},
         Scope = nil :: any,
     }, Parser)
 end
@@ -284,7 +287,7 @@ end
 local function GetFileSource(Path: string): string?
     local IsROBLOX = (task ~= nil)
     if IsROBLOX then
-        local Parent = game:GetService("ServerStorage")["BLINK_DEFINITION_FILES"]
+        local Parent = game:GetService("ServerStorage")["BLINK_CONFIGURATION_FILES"]
         local Indices = string.split(Path, ".")
         for _, Index in Indices do
             Parent = Parent:FindFirstChild(Index)
@@ -445,6 +448,7 @@ function Parser.SetReference(self: Parser, Bucket: Bucket, Identifier: Token, De
             :Emit()
     end
 
+    self.Symbols[Name] = true
     self.Scope.Symbols[Bucket][Name] = {
         Identifier = Identifier,
         Declaration = Declaration
@@ -737,16 +741,22 @@ function Parser.Parse(self: Parser, Source: string, Scope: Token?): Body
     --> Set state
     self.Scope = {Identifier = Scope or {Value = "", Start = 0, End = 0} :: any, Symbols = {Types = {}, Scopes = {}}}
     self.Source = Source
+    table.clear(self.Symbols)
     
     --> Start the lexer
     self.Lexer:Initialize(Source)
     self.LookAhead = self.Lexer:GetNextToken()
 
+    --> Parse
+    local Options = self:Options()
+    local Declarations = self:Declarations()
+
     return {
         Type = "Body",
         Value = {
-            Options = self:Options(),
-            Declarations = self:Declarations()
+            Symbols = table.clone(self.Symbols),
+            Options = Options,
+            Declarations = Declarations
         },
         Tokens = {}
     }
@@ -817,6 +827,7 @@ function Parser.Import(self: Parser): ScopeDeclaration
         }
     }
 
+    self.Symbols[Identifier] = true
     Parent.Symbols.Scopes[Identifier] = Scope
     
     return {
@@ -1069,6 +1080,7 @@ function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
     }
 
     self.Scope = Scope
+    self.Symbols[Identifier.Value] = true
     Parent.Symbols.Scopes[Identifier.Value] = Scope
 
     --> Gather declarations
