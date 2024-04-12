@@ -61,11 +61,24 @@ local THEME = {
     }
 }
 -- This is a comment
-local SYMBOLS: {[string]: {string}} = {
+local PRIMITIVES = {}
+for Primitive in Settings.Primtives do
+    PRIMITIVES[Primitive] = {Label = Primitive, Insert = Primitive}
+end
+
+local SYMBOLS: {[string]: {{Label: string, Insert: string}}} = {
     Event = {},
     Field = {},
     Snippet = {},
-    Keyword = Table.GetDictionaryKeys(Settings.Keywords),
+    Keyword = {
+        {Label = "map", Insert = "map %s = {[]: }"},
+        {Label = "type", Insert = "type %s = "},
+        {Label = "enum", Insert = "enum %s = {}"},
+        {Label = "struct", Insert = "struct %s {}"},
+        {Label = "event", Insert = "event %s {}"},
+        {Label = "function", Insert = "function %s {}"},
+        {Label = "import", Insert = "import %s as "},
+    },
     Variable = {},
     Primitive = Table.GetDictionaryKeys(Settings.Primtives)
 }
@@ -275,7 +288,8 @@ local function UpdateCompletion()
     local Text = Word.Text
 
     if Word.Start == 1 then
-        for _, Label in SYMBOLS.Keyword do
+        for _, Symbol in SYMBOLS.Keyword do
+            local Label = Symbol.Label
             local Stub = string.sub(Label, 1, #Text)
             if Stub ~= Text or Stub == Label then
                 continue
@@ -284,7 +298,7 @@ local function UpdateCompletion()
             table.insert(Items, {
                 Icon = ICONS.Keyword,
                 Label = Label,
-                Insert = Label
+                Insert = Symbol.Insert
             })
 
             break
@@ -327,83 +341,6 @@ local function UpdateHighlightedLine()
     PreviousLine = Label
     Label.TextColor3 = THEME.Line.Active
 end
-
---[[local function DoCompletionPass()
-    local Text = TextInput.ContentText
-    local Lines = string.split(Text, "\n")
-    local CursorPosition = TextInput.CursorPosition
-
-    if CursorPosition == -1 then
-        return
-    end
-
-    local Offset = 0
-    for _, Line in Lines do
-        local Start = Offset
-        Offset += (#Line + 1)
-        if Offset < CursorPosition then
-            continue
-        end
-        
-        local Substring = string.sub(Line, 1, math.max(1, CursorPosition - Start))
-        local Words = string.split(Substring, " ")
-
-        local Size = #Words
-        local Token = Words[Size]
-        local Previous = Words[Size - 1]
-
-        print(`Token: {Token}`)
-
-        --> Match categories
-        local Items: {Prediction} = {}
-        for Category, Symbols in EDITOR_AUTOCOMPLETE do
-            if Token == "" then
-                break
-            end
-
-            local Result: string?;
-            for _, Symbol in Symbols do
-                if Token == Symbol then
-                    break
-                end
-
-                if string.find(Symbol, Token, 1, true) then
-                    Result = Symbol
-                    break
-                end
-            end
-
-            --> Keywords should not follow assignment
-            if Category == "Keyword" and Previous == "=" then
-                continue
-            end
-
-            --> Primitives should only follow assignment
-            if Category == "Primitive" and Previous ~= "=" then
-                continue
-            end
-
-            if Result then
-                table.insert(Items, {
-                    Icon = EDITOR_ICONS[Category],
-                    Prediction = Result
-                })
-            end
-
-            print(`{Category}: {Result}`)
-        end
-
-        Predictions:Set({
-            Item = math.min(
-                Predictions:Get().Item, 
-                math.max(1, #Items)
-            ),
-            Predictions = Items
-        })
-
-        break
-    end
-end]]
 
 ---- Event Functions -----
 
@@ -601,15 +538,21 @@ local function OnSourceChanged()
             local Insert = Item.Insert
             local Cursor = (Input.CursorPosition - 1)
 
+            local First, Last = string.find(Insert, "%s", 1, true)
+            if First and Last then
+                First -= 1
+                Insert = string.sub(Insert, 1, First) .. string.sub(Insert, Last + 1, #Insert)
+            end
+
             local Word = Utility.GetWordRangeBeforePosition(Text, Cursor)
             local Length = (Word.End - Word.Start)
 
-            local Start = (Cursor - Length)
-            local Offset = (Item.Icon == ICONS.Keyword and 1 or 0)
-            local Padding = string.rep(" ", Offset)
+            Cursor -= Length
+            Text = (string.sub(Text, 1, Cursor - 1) .. Insert)
 
-            Input.Text = (string.sub(Text, 1, Start - 1) .. Insert .. Padding)
-            Input.CursorPosition = (Start + #Insert + Offset)
+            Input.Text = Text
+            Input.CursorPosition = (Cursor + First)
+            PreviousText = Input.Text
 
             return
         end
