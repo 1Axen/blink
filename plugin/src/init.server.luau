@@ -231,7 +231,7 @@ local function GenerateFile(File: StringValue, Directory: Instance)
 
     local ServerSource = Generator.Generate("Server", AbstractSyntaxTree)
     local ClientSource = Generator.Generate("Client", AbstractSyntaxTree)   
-    local TypesSource = Generator.GenerateTypeDefinitions("Server", AbstractSyntaxTree)
+    local TypesSource = Generator.GenerateShared(AbstractSyntaxTree)
 
     local BlinkFolder: Folder = Directory:FindFirstChild("Blink") :: Folder
     if not BlinkFolder then

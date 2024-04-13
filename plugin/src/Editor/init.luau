@@ -79,7 +79,8 @@ local SYMBOLS: {[string]: {{Label: string, Insert: string}}} = {
         {Label = "event", Insert = "event %s {}"},
         {Label = "function", Insert = "function %s {}"},
         {Label = "import", Insert = "import %s as "},
-        {Label = "scope", Insert = "scope %s {}"}
+        {Label = "scope", Insert = "scope %s {}"},
+        {Label = "export", Insert = "export "}
     },
     Variable = {},
     Primitive = PRIMITIVES
