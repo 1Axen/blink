@@ -53,8 +53,12 @@ function Hook.OnSourceChanged(Text: string, PreviousText: string, Cursor: number
 
 	--> Update text and cursor
 	local NextCharacter = string.sub(Text, Cursor, Cursor)
+	if string.gsub(NextCharacter, "%c", "") == "" then
+		NextCharacter = nil
+	end
+
 	local Indentation = GetLineIndentation(Previous) + AdditionalIndent
-	Text = string.sub(Text, 1, Cursor - 1) .. string.rep("\t", Indentation) .. (NextCharacter and "\n" or "")  .. string.sub(Text, Cursor)
+	Text = string.sub(Text, 1, Cursor - 1) .. string.rep("\t", Indentation) .. (NextCharacter and `\n{string.rep("\t", Indentation - 1)}` or "")  .. string.sub(Text, Cursor)
 
 	return Text, Cursor + Indentation
 end

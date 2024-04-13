@@ -6,6 +6,7 @@
 
 ---- Services ----
 
+local UserInputService = game:GetService("UserInputService")
 local TextService = game:GetService("TextService")
 local RunService = game:GetService("RunService")
 
@@ -63,7 +64,7 @@ local THEME = {
 -- This is a comment
 local PRIMITIVES = {}
 for Primitive in Settings.Primtives do
-    PRIMITIVES[Primitive] = {Label = Primitive, Insert = Primitive}
+    table.insert(PRIMITIVES, {Label = Primitive, Insert = Primitive})
 end
 
 local SYMBOLS: {[string]: {{Label: string, Insert: string}}} = {
@@ -78,9 +79,10 @@ local SYMBOLS: {[string]: {{Label: string, Insert: string}}} = {
         {Label = "event", Insert = "event %s {}"},
         {Label = "function", Insert = "function %s {}"},
         {Label = "import", Insert = "import %s as "},
+        {Label = "scope", Insert = "scope %s {}"}
     },
     Variable = {},
-    Primitive = Table.GetDictionaryKeys(Settings.Primtives)
+    Primitive = PRIMITIVES
 }
 
 local BRACKETS = {
@@ -125,8 +127,13 @@ local Input = TextContainer.Input
 local Cursor = TextContainer.Cursor
 local Display = TextContainer.Display
 local Selection = TextContainer.Selection
+local ErrorSelection = TextContainer.Error
+
+local ErrorContainer = Container.Error
+local ErrorText = ErrorContainer.Text
 
 local LineTemplate = LinesContainer.Line:Clone()
+local ErrorTemplate = ErrorSelection.Line:Clone()
 local SelectionTemplate = Selection.Line:Clone()
 local CompletionTemplate = CompletionContainer.Option:Clone()
 
@@ -142,12 +149,12 @@ local SourceParser = Parser.new()
 local Lines = State.new(0)
 local Scroll = State.new(0)
 local Predictions: State.Class<{Index: number, Items: {CompletionItem}}> = State.new({Index = 1, Items = {}})
-local Errors: State.Class<{Error.Label}> = State.new({})
 
 local CursorTimer = 0
 local PreviousText = Input.Text
 local PreviousLine: TextLabel?;
 
+local AnalysisError: State.Class<Error.Class?> = State.new(nil :: any)
 local AbstractSyntaxTree: Parser.Body?;
 
 ---- Private Functions ----
@@ -206,7 +213,7 @@ end
 
 local function UpdateColors()
     local Source = Input.Text
-    local RichText = ""
+    local RichText = {}
 
     --> Initiialize lexer
     SourceLexer:Initialize(Source)
@@ -223,15 +230,16 @@ local function UpdateColors()
             break
         end
 
+        local String = WrapColor(Value, THEME.Text)
         if Type == "Keyword" or Type == "Import" or Type == "As" then
             Keyword = Value
-            RichText ..= WrapColor(Value, THEME.Keyword)
+            String = WrapColor(Value, THEME.Keyword)
         elseif Type == "Primitive" then
-            RichText ..= WrapColor(Value, THEME.Primitive)
+            String = WrapColor(Value, THEME.Primitive)
         elseif Type == "Identifier" then
             local LookAhead = GetNextToken(true)
             local IsField = (LookAhead and LookAhead.Type == "FieldAssign" and Keyword ~= "map")
-            RichText ..= WrapColor(Value, IsField and THEME.Text or THEME.Identifier)
+            String = WrapColor(Value, IsField and THEME.Text or THEME.Identifier)
         elseif Type == "Array" or Type == "Range" then
             --> Exact size array/range
             local Single = string.match(Value, "%[(%d+)%]") or string.match(Value, "%((%d+)%)")
@@ -239,35 +247,32 @@ local function UpdateColors()
             local Upper = string.match(Value, "(%d+)%]") or string.match(Value, "(%d+)%)")
 
             if Single then
-                RichText ..= string.gsub(Value, Single, WrapColor(Single, THEME.Number))
+                String = string.gsub(Value, Single, WrapColor(Single, THEME.Number))
             elseif Lower and Upper then
-                RichText ..= `{string.sub(Value, 1, 1)}{WrapColor(Lower, THEME.Number)}..{WrapColor(Upper, THEME.Number)}{string.sub(Value, #Value, #Value)}`
-            else
-                RichText ..= Value
+                String = `{string.sub(Value, 1, 1)}{WrapColor(Lower, THEME.Number)}..{WrapColor(Upper, THEME.Number)}{string.sub(Value, #Value, #Value)}`
             end
         elseif Type == "Component" then
             local Primitive = string.match(Value, "(%w+)") or ""
-            RichText ..= `{WrapColor("<", THEME.Bracket)}{WrapColor(Primitive, THEME.Primitive)}{WrapColor(">", THEME.Bracket)}`
+            String = `{WrapColor("<", THEME.Bracket)}{WrapColor(Primitive, THEME.Primitive)}{WrapColor(">", THEME.Bracket)}`
         elseif BRACKETS[Type] then
-            RichText ..= WrapColor(Value, THEME.Bracket)
+            String = WrapColor(Value, THEME.Bracket)
         elseif Type == "Class" then
-            RichText ..= `({WrapColor(string.sub(Value, 2, #Value - 1), THEME.Class)})`
+            String = `({WrapColor(string.sub(Value, 2, #Value - 1), THEME.Class)})`
         elseif Type == "String" then
-            RichText ..= WrapColor(Value, THEME.String)
+            String = WrapColor(Value, THEME.String)
         elseif Type == "Boolean" then
-            RichText ..= WrapColor(Value, THEME.Boolean)
+            String = WrapColor(Value, THEME.Boolean)
         elseif Type == "Comment" then
-            RichText ..= WrapColor(Value, THEME.Comment)
+            String = WrapColor(Value, THEME.Comment)
         elseif Type == "Unknown" then
-            RichText ..= WrapColor(Value, THEME.Error)
-        else
-            RichText ..= WrapColor(Value, THEME.Text)
+            String = WrapColor(Value, THEME.Error)
         end
 
+        table.insert(RichText, String)
         Token = GetNextToken()
     end
 
-    Display.Text = RichText
+    Display.Text = table.concat(RichText)
 end
 
 local function UpdateAnalysis()
@@ -276,49 +281,79 @@ local function UpdateAnalysis()
     end)
 
     if Success then
+        AnalysisError:Set(nil)
         AbstractSyntaxTree = Result
     end
 end
 
 local function UpdateCompletion()
-    local Word = Utility.GetWordRangeBeforePosition(Input.Text, Input.CursorPosition)
+    local Line = Utility.GetLineRangeAtPosition(Input.Text, Input.CursorPosition)
     local Items: {CompletionItem} = {}
 
     --> Match Keywords
-    local Text = Word.Text
-
-    if Word.Start == 1 then
-        for _, Symbol in SYMBOLS.Keyword do
-            local Label = Symbol.Label
-            local Stub = string.sub(Label, 1, #Text)
-            if Stub ~= Text or Stub == Label then
-                continue
-            end
-
-            table.insert(Items, {
-                Icon = ICONS.Keyword,
-                Label = Label,
-                Insert = Symbol.Insert
-            })
-
-            break
+    local function MatchSymbols()
+        local Word = Utility.GetWordRangeAtPosition(Line.Text, Input.CursorPosition - Line.Start)
+        local Text = Word.Text
+        if #Text == 0 then
+            return
         end
-    elseif Word.Start >= 1 and AbstractSyntaxTree then
-        for Symbol in AbstractSyntaxTree.Value.Symbols do
-            local Stub = string.sub(Symbol, 1, #Text)
-            if Stub ~= Text or Stub == Symbol then
-                continue
+
+        --> Match keywords
+        if Word.Index == 1 then
+            for _, Symbol in SYMBOLS.Keyword do
+                local Label = Symbol.Label
+                local Stub = string.sub(Label, 1, #Text)
+                if Stub ~= Text or Stub == Label then
+                    continue
+                end
+    
+                table.insert(Items, {
+                    Icon = ICONS.Keyword,
+                    Label = Label,
+                    Insert = Symbol.Insert
+                })
+            end
+        end
+
+        --> Match symbols
+        local Previous = Utility.GetWordRangeBeforePosition(Line.Text, Word.Start - 1)
+        if Previous.Text == "" then
+            return
+        end
+
+        if string.match(Previous.Text, ":$") or Previous.Text == "=" then
+            for _, Symbol in SYMBOLS.Primitive do
+                local Label = Symbol.Label
+                local Stub = string.sub(Label, 1, #Text)
+                if Stub ~= Text or Stub == Label then
+                    continue
+                end
+    
+                table.insert(Items, {
+                    Icon = ICONS.Primitive,
+                    Label = Label,
+                    Insert = Label
+                })
             end
 
-            table.insert(Items, {
-                Icon = ICONS.Variable,
-                Label = Symbol,
-                Insert = Symbol
-            })
-
-            break
+            if AbstractSyntaxTree then
+                for Symbol in AbstractSyntaxTree.Value.Symbols do
+                    local Stub = string.sub(Symbol, 1, #Text)
+                    if Stub ~= Text or Stub == Symbol then
+                        continue
+                    end
+            
+                    table.insert(Items, {
+                        Icon = ICONS.Variable,
+                        Label = Symbol,
+                        Insert = Symbol
+                    })
+                end
+            end
         end
     end
+
+    MatchSymbols()
 
     --> Update predictions
     Predictions:Set({
@@ -345,8 +380,7 @@ end
 ---- Event Functions -----
 
 local function OnErrorEmitted(Object: Error.Class)
-    Errors:Set(Object.Labels)
-    warn(Object.RawMessage)
+    AnalysisError:Set(Object)
 end
 
 local function OnPreRender(DeltaTime: number)
@@ -410,7 +444,108 @@ local function OnPredictionsChanged()
     end
 end
 
+local function OnAnalysisErrorChanged()
+    local Error = AnalysisError:Get()
+
+    --> Clear previous error
+    ErrorContainer.Visible = false
+    ClearChildrenWhichAre(ErrorSelection, "Frame")
+    
+    --> No errors
+    if not Error then
+        return
+    end
+
+    local Labels = Error.Labels
+    if #Labels == 0 then
+        return
+    end
+
+    --> Error message
+    local Message = `{Error.GetNameFromCode(Error.Code)}: {Error.RawMessage} <font transparency="0.5"><i>Blink({Error.Code})</i></font>`
+    for _, Label in Labels do
+        local Line = Utility.GetCurrentLine(Input.Text, Label.Span.Start)
+        Message ..= `\n{Label.Text} [L{Line}]`
+    end
+
+    ErrorText.Text = Message
+
+    --> Highlight error
+    local Primary = Labels[#Labels]
+
+    local Span = Primary.Span
+    local Start = Span.Start
+    local Finish = Span.End
+
+    local Text = string.sub(Input.ContentText, 1, Finish)
+    local Slices = string.split(Text, "\n")
+
+    local Offset = 0
+    for Index, Slice in Slices do
+        local First = Offset
+        Offset += (#Slice + 1)
+        
+        local Line = ErrorTemplate:Clone()
+        local Fill = Line.Fill
+
+        if Offset < Start then
+            Line.Fill.MaxVisibleGraphemes = 0
+            Line.Parent = ErrorSelection
+            continue
+        end
+
+        --> Calculate selection bounds
+        local Substring = Slice
+        if First < Start then
+            Substring = string.sub(Slice, (Start - First), #Slice)
+        elseif Index == #Slices then
+            Substring = string.sub(Slice, 1, math.max(1, Finish - First))
+        end
+
+        --> Empty lines should appear as one space thick selections
+        if Substring == "" then
+            Substring = " "
+        end
+            
+        local SelectionBoundsParams = Instance.new("GetTextBoundsParams")
+        SelectionBoundsParams.Text = Substring
+        SelectionBoundsParams.Size = TextSize
+        SelectionBoundsParams.Font = Input.FontFace
+        
+        local SelectionBounds = TextService:GetTextBoundsAsync(SelectionBoundsParams)
+        Fill.Size = UDim2.new(0, SelectionBounds.X, 1, 0)
+
+        --> Calculate selection offset
+        if Start > First then
+            local Prefix = string.sub(Slice, 1, (Start - First) - 1)
+            if Prefix ~= "" then
+                local OffsetBoundsParams = Instance.new("GetTextBoundsParams")
+                OffsetBoundsParams.Text = Prefix
+                OffsetBoundsParams.Size = TextSize
+                OffsetBoundsParams.Font = Input.FontFace
+
+                local OffsetBounds = TextService:GetTextBoundsAsync(OffsetBoundsParams)
+                Fill.Position = UDim2.new(0, OffsetBounds.X, 0, 10)
+            end
+        end
+
+        Line.MouseEnter:Connect(function()
+            ErrorContainer.Visible = true
+        end)
+
+        Line.MouseLeave:Connect(function()
+            ErrorContainer.Visible = false
+        end)
+
+        Line.Fill.MaxVisibleGraphemes = #Substring
+        Line.Parent = ErrorSelection
+
+        break
+    end
+end
+
 --> RBXScriptSignal functions
+
 local function OnCursorPositionChanged()
     local CursorPosition = Input.CursorPosition
     if CursorPosition == -1 then
@@ -533,26 +668,38 @@ local function OnSourceChanged()
     --> Auto complete
     if Gain == 1 then
         local Item = GetPrediction()
-        local Character = string.sub(Text, #Text)
+        local Cursor = (Input.CursorPosition - 1)
+        local Character = string.sub(Text, Cursor, Cursor)
+
         if Item and Character == "\t" then
             local Insert = Item.Insert
-            local Cursor = (Input.CursorPosition - 1)
+            local Offset = (#Insert + 1)
 
-            local First, Last = string.find(Insert, "%s", 1, true)
-            if First and Last then
-                First -= 1
-                Insert = string.sub(Insert, 1, First) .. string.sub(Insert, Last + 1, #Insert)
+            local Start, End = string.find(Insert, "%s", 1, true)
+            if Start and End then
+                Offset = Start
+                Insert = string.sub(Insert, 1, Start - 1) .. string.sub(Insert, End + 1)
             end
+            
+            --> Move cursor behind tab character
+            Cursor -= 1
 
-            local Word = Utility.GetWordRangeBeforePosition(Text, Cursor)
-            local Length = (Word.End - Word.Start)
+            local Line = Utility.GetLineRangeAtPosition(Text, Cursor)
+            local Position = (Cursor - Line.Start + 1)
+
+            local Word = Utility.GetWordRangeAtPosition(Line.Text, Position)
+            local Length = #Word.Text
 
             Cursor -= Length
-            Text = (string.sub(Text, 1, Cursor - 1) .. Insert)
+            
+            --> Match characters before replacement and after tab (2)
+            Text = (string.sub(Text, 1, Cursor) .. Insert .. string.sub(Text, Cursor + Length + 2))
 
+            PreviousText = Text
             Input.Text = Text
-            Input.CursorPosition = (Cursor + First)
-            PreviousText = Input.Text
+
+            Input.CursorPosition = -1
+            Input.CursorPosition = (Cursor + Offset)
 
             return
         end
@@ -582,9 +729,9 @@ local function OnSourceChanged()
     end
 
     --> Perform lexer pass
-    UpdateColors()
     UpdateAnalysis()
     UpdateCompletion()
+    UpdateColors()
 end
 
 ---- Public Functions ----
@@ -603,13 +750,14 @@ end
 function Editor.Initialize()
     --> Remove templates
     Selection.Line:Destroy()
+    ErrorSelection.Line:Destroy()
     LinesContainer.Line:Destroy()
     CompletionContainer.Option:Destroy()
 
     --> Sort auto complete symbols
     for _, Symbols in SYMBOLS do
         table.sort(Symbols, function(a, b)
-            return #a < #b
+            return #a.Label < #b.Label
         end)
     end
 
@@ -619,6 +767,7 @@ function Editor.Initialize()
     Lines:OnChange(OnLinesChanged)
     Scroll:OnChange(OnScrollChanged)
     Predictions:OnChange(OnPredictionsChanged)
+    AnalysisError:OnChange(OnAnalysisErrorChanged)
 
     Input:GetPropertyChangedSignal("Text"):Connect(OnSourceChanged)
     Input:GetPropertyChangedSignal("SelectionStart"):Connect(OnSelectionChanged)

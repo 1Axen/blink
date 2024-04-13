@@ -83,6 +83,8 @@ export type Class = typeof(setmetatable({} :: {
     Labels: {Label},
     Source: {string},
     Message: string,
+    
+    Code: number,
     RawMessage: string,
 }, Error))
 
@@ -101,6 +103,16 @@ local function Color(Text: string, Color: Color): string
     return `{stdio.color(Color)}{Text}{stdio.color("reset")}`
 end
 
+function Error.GetNameFromCode(From: number): string
+    for Name, Code in Error do
+        if Code == From then
+            return Name
+        end
+    end
+
+    error(`Unknown error code: {From}`)
+end
+
 function Error.new(Code: number, Source: string, Message: string): Class
     local Content = `{Color(`error[{Code}]`, "red")}:{SPACE}{Fix(Message)}`
     Content ..= `\n{INDENT}┌─{SPACE}input.blink`
@@ -109,6 +121,9 @@ function Error.new(Code: number, Source: string, Message: string): Class
         Labels = {},
         Source = string.split(Source, "\n"),
         Message = Content,
+
+        Code = Code,
+        RawLabels = {},
         RawMessage = Message
     }, Error)
 end
