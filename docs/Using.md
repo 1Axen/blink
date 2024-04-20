@@ -298,6 +298,7 @@ scope ExampleScope {
 }
 ---
 Using scopes in code:  
+```
 ```lua
 local Blink = require(PATH_TO_BLINK)
 Blink.ExampleScope.InScopeEvent.FireAll(0)
