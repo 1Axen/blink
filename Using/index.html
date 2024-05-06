@@ -1,0 +1,1397 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://1axen.github.io/blink/Using/">
+      
+      
+        <link rel="prev" href="../Getting-Started/">
+      
+      
+        <link rel="next" href="../Plugin/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.21">
+    
+    
+      
+        <title>Using Blink - Blink</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.66ac8b77.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#using" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Blink" class="md-header__button md-logo" aria-label="Blink" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Blink
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Using Blink
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/1Axen/blink" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    1Axen/blink
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Blink" class="md-nav__button md-logo" aria-label="Blink" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Blink
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/1Axen/blink" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    1Axen/blink
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Introduction
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Installation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Getting-Started/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Using Blink
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Using Blink
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Options
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#casing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Casing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serveroutput-clientoutput-typesoutput" class="md-nav__link">
+    <span class="md-ellipsis">
+      ServerOutput, ClientOutput, TypesOutput
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#futurelibrary-and-promiselibrary" class="md-nav__link">
+    <span class="md-ellipsis">
+      FutureLibrary and PromiseLibrary
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#writevalidations" class="md-nav__link">
+    <span class="md-ellipsis">
+      WriteValidations
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manualreplication" class="md-nav__link">
+    <span class="md-ellipsis">
+      ManualReplication
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#primitives" class="md-nav__link">
+    <span class="md-ellipsis">
+      Primitives
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Attributes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enums" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enums
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enums">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-enums" class="md-nav__link">
+    <span class="md-ellipsis">
+      Unit Enums
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tagged-enums" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tagged Enums
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#structs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Structs
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Structs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#generics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Generics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Maps
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      Instances
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tuples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tuples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#events" class="md-nav__link">
+    <span class="md-ellipsis">
+      Events
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Functions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scopes-namespaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scopes (Namespaces)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#imports" class="md-nav__link">
+    <span class="md-ellipsis">
+      Imports
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Limitations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Limitations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#referencing-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Referencing types
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keywords" class="md-nav__link">
+    <span class="md-ellipsis">
+      Keywords
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Plugin/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Studio Plugin
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Benchmarks/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Benchmarks
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Options
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#casing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Casing
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serveroutput-clientoutput-typesoutput" class="md-nav__link">
+    <span class="md-ellipsis">
+      ServerOutput, ClientOutput, TypesOutput
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#futurelibrary-and-promiselibrary" class="md-nav__link">
+    <span class="md-ellipsis">
+      FutureLibrary and PromiseLibrary
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#writevalidations" class="md-nav__link">
+    <span class="md-ellipsis">
+      WriteValidations
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manualreplication" class="md-nav__link">
+    <span class="md-ellipsis">
+      ManualReplication
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#primitives" class="md-nav__link">
+    <span class="md-ellipsis">
+      Primitives
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Attributes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enums" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enums
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Enums">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#unit-enums" class="md-nav__link">
+    <span class="md-ellipsis">
+      Unit Enums
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tagged-enums" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tagged Enums
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#structs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Structs
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Structs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#generics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Generics
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#maps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Maps
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      Instances
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tuples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tuples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#events" class="md-nav__link">
+    <span class="md-ellipsis">
+      Events
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Functions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scopes-namespaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scopes (Namespaces)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#imports" class="md-nav__link">
+    <span class="md-ellipsis">
+      Imports
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Limitations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Limitations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#referencing-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Referencing types
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keywords" class="md-nav__link">
+    <span class="md-ellipsis">
+      Keywords
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="using">Using</h1>
+<h2 id="options">Options</h2>
+<p>Options go at the top of a source file and are used to configure the output of Blink.
+<div class="highlight"><pre><span></span><code>option [OPTION] = [VALUE]
+</code></pre></div></p>
+<h3 id="casing"><code>Casing</code></h3>
+<p>Default: <code>Pascal</code><br />
+Options: <code>Pascal</code>, <code>Camel</code>, <code>Snake</code><br />
+Controls the casing with which event/function methods generate.
+<div class="highlight"><pre><span></span><code>option Casing = Camel
+</code></pre></div></p>
+<h3 id="serveroutput-clientoutput-typesoutput"><code>ServerOutput</code>, <code>ClientOutput</code>, <code>TypesOutput</code></h3>
+<p>These options allow you to specify where Blink will generate files.
+<div class="highlight"><pre><span></span><code>option TypesOutput = &quot;../Network/Types.luau&quot;
+option ServerOutput = &quot;../Network/Server.luau&quot;
+option ClientOutput = &quot;../Network/Client.luau&quot;
+</code></pre></div></p>
+<h3 id="futurelibrary-and-promiselibrary"><code>FutureLibrary</code> and <code>PromiseLibrary</code></h3>
+<p>In order to use future and promise yield types with functions a path to each library used must be specified<br />
+<div class="highlight"><pre><span></span><code>option FutureLibrary = &quot;ReplicatedStorage.Packages.Future&quot;
+option PromiseLibrary = &quot;ReplicatedStorage.Packages.Promise&quot;
+</code></pre></div></p>
+<h3 id="writevalidations"><code>WriteValidations</code></h3>
+<p>Default: <code>false</code>
+Controls if Blink will check types when writing them (firing an event/invoking a function). Helpful for debugging and during development, but it might result in degraded performance. It is encouraged you disable this option in production.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Blink only checks for builtin primitives. For example if a number was passed. More complicated types like structs, maps and enums cannot be validated.</p>
+</div>
+<h3 id="manualreplication"><code>ManualReplication</code></h3>
+<p>Default: <code>false</code><br />
+Controls if Blink will replicate events and functions automatically at the end of every frame.<br />
+When set to <code>true</code> automatic replication will be disabled and a <code>StepReplication</code> function will be exposed instead.</p>
+<h2 id="primitives">Primitives</h2>
+<p>You can define a primitive using the <code>type</code> keyword<br />
+Blink supports the following primitives:  </p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Size (Bytes)</th>
+<th>Supports ranges</th>
+<th>Minimum</th>
+<th>Maximum</th>
+<th>Components</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>u8</td>
+<td>1 Byte</td>
+<td>Yes</td>
+<td>0</td>
+<td>255</td>
+<td>No</td>
+</tr>
+<tr>
+<td>u16</td>
+<td>2 Bytes</td>
+<td>Yes</td>
+<td>0</td>
+<td>65,535</td>
+<td>No</td>
+</tr>
+<tr>
+<td>u32</td>
+<td>4 Bytes</td>
+<td>Yes</td>
+<td>0</td>
+<td>4,294,967,295</td>
+<td>No</td>
+</tr>
+<tr>
+<td>i8</td>
+<td>1 Byte</td>
+<td>Yes</td>
+<td>-128</td>
+<td>127</td>
+<td>No</td>
+</tr>
+<tr>
+<td>i16</td>
+<td>2 Bytes</td>
+<td>Yes</td>
+<td>-32,768</td>
+<td>32,767</td>
+<td>No</td>
+</tr>
+<tr>
+<td>i32</td>
+<td>4 Bytes</td>
+<td>Yes</td>
+<td>-2,147,483,648</td>
+<td>2,147,483,647</td>
+<td>No</td>
+</tr>
+<tr>
+<td>f16</td>
+<td>2 Bytes</td>
+<td>Yes</td>
+<td>-65504</td>
+<td>65504</td>
+<td>No</td>
+</tr>
+<tr>
+<td>f32</td>
+<td>4 Bytes</td>
+<td>Yes</td>
+<td>−16777216</td>
+<td>16777216</td>
+<td>No</td>
+</tr>
+<tr>
+<td>f64</td>
+<td>8 Bytes</td>
+<td>Yes</td>
+<td>-2^53</td>
+<td>2^53</td>
+<td>No</td>
+</tr>
+<tr>
+<td>vector</td>
+<td>12 Bytes</td>
+<td>Yes (Magnitude)</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>Yes (1)</td>
+</tr>
+<tr>
+<td>buffer</td>
+<td>N/A</td>
+<td>Yes (buffer.len)</td>
+<td>N/A</td>
+<td>65,535 Bytes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>string</td>
+<td>N/A</td>
+<td>Yes (string.len)</td>
+<td>N/A</td>
+<td>65,535 Bytes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>boolean</td>
+<td>1 Byte</td>
+<td>No</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>No</td>
+</tr>
+<tr>
+<td>CFrame</td>
+<td>24 Bytes</td>
+<td>No</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>Yes (2)</td>
+</tr>
+<tr>
+<td>Color3</td>
+<td>12 Bytes</td>
+<td>No</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Instance</td>
+<td>4 Bytes</td>
+<td>No</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>No</td>
+</tr>
+<tr>
+<td>unknown</td>
+<td>N/A</td>
+<td>No</td>
+<td>N/A</td>
+<td>N/A</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<h2 id="attributes">Attributes</h2>
+<p>A type can be marked optional by appending <code>?</code> at the end.</p>
+<p>Arrays can be defined by appending <code>[SIZE]</code> or <code>[[MIN]..[MAX]]</code> after the type declaration.  </p>
+<p>Primitives can be constrained to ranges by writing <code>([MIN]..[MAX])</code> after the primitive type. Ranges are inclusive.  </p>
+<p>Components can be specified using the angled brackets <code>&lt;&gt;</code>, they allow you to specify what numerical type (<code>u8</code>, <code>u16</code>, <code>u32</code>, <code>i8</code>, <code>i16</code>, <code>i32</code>, <code>f16</code>, <code>f32</code>, <code>f64</code>) to use for <code>vector</code> and <code>CFrame</code> axes.<br />
+For example <code>vector&lt;i16&gt;</code> will define a vector that represents its axes using <code>i16</code>.<br />
+CFrames take two components <code>CFrame&lt;f32, f32&gt;</code>, one representing position and one representing rotation in order.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Using non float types for CFrame will result in the rotation being reset to 0.</p>
+</div>
+<div class="highlight"><pre><span></span><code>type Simple = u8
+type Optional = u8?
+type Array = u8[1]
+type Range = u8[0..100]
+type VectorInt16 = vector&lt;int16&gt;
+type Orientation = CFrame&lt;int16, f16&gt;
+map Players = {[u8]: Instance(Player)}[0..255]
+enum States = (A, B, C, D)[0..255]
+struct Dictionary {
+    Field: u8
+}[0..255]
+</code></pre></div>
+<h2 id="enums">Enums</h2>
+<p>You can define enums using the <code>enum</code> keyword.<br />
+Blink has two type of enums, unit and tagged enums.</p>
+<h3 id="unit-enums">Unit Enums</h3>
+<p>Unit enums represent a set of possible values.<br />
+For example, a unit enum representing the state of a car engine:
+<div class="highlight"><pre><span></span><code>enum State = { Starting, Started, Stopping, Stopped }
+</code></pre></div></p>
+<h3 id="tagged-enums">Tagged Enums</h3>
+<p>Tagged enums represent a set of possible variants with some data attached to each.<br />
+They are defined using a string which represents the tag field name.<br />
+Each variant is defined by a tag, followed by a struct.<br />
+<div class="highlight"><pre><span></span><code>struct Vector2 {
+    X: u16,
+    Y: u16
+}
+
+enum Buttons = {Left, Right, Middle}
+enum MouseEvent = &quot;Type&quot; {
+    Move {
+        Delta: Vector2,
+        Position: Vector2,
+    },
+    Drag {
+        Delta: Vector2,
+        Position: Vector2
+    },
+    Click {
+        Button: Buttons,
+        Position: Vector2
+    },
+}
+</code></pre></div></p>
+<h2 id="structs">Structs</h2>
+<p>You can define structs using the <code>struct</code> keyword<br />
+Structs can also hold structs within:
+<div class="highlight"><pre><span></span><code>struct Entity {
+    Identifier: u8,
+    Health: u8(0..100),
+    State: ( Dead, Alive )?,
+    Direction: vector(0..1),
+    Substruct: struct {
+        Empty: u8[0],
+        Complex: u8[1..12],
+        Vector: UnitVector,
+    }?
+}
+</code></pre></div></p>
+<h3 id="generics">Generics</h3>
+<hr />
+<p>Structs, tagged enums and maps support the use of generic type parameters, a generic is simply a type which allows you to slot in any other type, generics can be very handy in reducing repetition.
+<div class="highlight"><pre><span></span><code>struct Packet&lt;T&gt; {
+    Sequence: u16,
+    Ack: u16,
+    Data: T
+}
+
+struct Entity {
+    Identifier: u8,
+    Health: u8(0..100),
+    Angle: u16,
+    Position: vector
+}
+
+struct Command {
+    X: u8,
+    Y: u8,
+    Z: u8,
+    -- ...
+}
+
+event Snapshot {
+    From: Server,
+    Type: Unreliable,
+    Call: SingleSync,
+    Data: Packet&lt;Entity[]&gt;
+}
+
+event Command {
+    From: Server,
+    Type: Unreliable,
+    Call: SingleSync,
+    Data: Packet&lt;Command&gt;
+}
+</code></pre></div>
+In the code above we have a simple packet transmission protocol which contains the current packets identifier (Sequence), the last recieved packet (Ack) and a generic data field. Instead of repeating the contents of <code>Packet</code> everytime we need to send something over the wire we can take advantage of generics to automatically fill the <code>Data</code> field with whatever we need to transmit.</p>
+<h2 id="maps">Maps</h2>
+<p>You can define maps using the <code>map</code> keyword   </p>
+<blockquote>
+<p>[!NOTE]
+Maps cannot currently have maps as keys or values.<br />
+You also cannot have optional keys or values as there is no way to represent those in Luau.
+<div class="highlight"><pre><span></span><code>map Example = {[string]: u8}
+</code></pre></div></p>
+</blockquote>
+<h2 id="instances">Instances</h2>
+<p>Instances are another type of Primitive and as such they can be defined using the <code>type</code> keyword<br />
+<div class="highlight"><pre><span></span><code>type Example = Instance
+type Example = Instance(ClassName) -- You can also specify instance class
+</code></pre></div></p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>If a non optional instance results in nil on the recieving side it will result in an error, this may be caused by various things like streaming, players leaving etc.<br />
+In order to get around this you must mark instances as <strong>optional</strong>.</p>
+</div>
+<h2 id="tuples">Tuples</h2>
+<p>Tuples can be defined using brackets <code>()</code>.<br />
+<strong>Tuples can only be defined within the data field of an event/function.</strong><br />
+<div class="highlight"><pre><span></span><code>event Example {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+    Data: (u8, u16?, Instance, Instance?, u8[8])
+}
+</code></pre></div></p>
+<h2 id="events">Events</h2>
+<p>You can define events using the <code>event</code> keyword<br />
+Events have 4 fields:<br />
+<code>From</code> - <code>Client</code> or <code>Server</code><br />
+<code>Type</code> - <code>Reliable</code> or <code>Unreliable</code><br />
+<code>Call</code> - <code>SingleSync</code> or <code>SingleAsync</code><br />
+<code>Data</code> - Can hold either a type definition or a reference to an already defined type<br />
+<div class="highlight"><pre><span></span><code>event Simple {
+    From: Client,
+    Type: Unreliable,
+    Call: SingleSync,
+    Data: u8
+}
+
+event Reference {
+    From: Client,
+    Type: Unreliable,
+    Call: SingleSync,
+    Data: Entity
+}
+
+event Complex {
+    From: Client,
+    Type: Unreliable,
+    Call: SingleSync,
+    Data: struct {
+        Field = u8
+    }
+}
+</code></pre></div></p>
+<h2 id="functions">Functions</h2>
+<p>You can define functions using the <code>function</code> keyword<br />
+Functions have 3 fields:<br />
+<code>Yield</code> - <code>Coroutine</code> or <code>Future</code> or <code>Promise</code>  <br />
+Deifnes what library will be used to handle invocations<br />
+<code>Data</code> - Can hold either a type definition or a reference to an already defined type<br />
+<code>Return</code> - Can hold either a type definition or a reference to an already defined type 
+<div class="highlight"><pre><span></span><code>function Example {
+    Yield: Coroutine,
+    Data: u8,
+    Return: u8
+}
+
+function ExampleFuture {
+    Yield: Future,
+    Data: u8,
+    Return: u8
+}
+
+function ExamplePromise {
+    Yield: Promise,
+    Data: u8,
+    Return: u8
+}
+</code></pre></div></p>
+<h2 id="scopes-namespaces">Scopes (Namespaces)</h2>
+<p>You can define a scope (namespace) using the <code>scope</code> keyword<br />
+Scopes allow you to group similiar types together for further organization  </p>
+<p>Defining scopes:<br />
+<div class="highlight"><pre><span></span><code>scope ExampleScope {
+    type InScopeType = u8
+    event InScopeEvent {
+        From: Server,
+        Type: Reliable,
+        Call: SingleSync,
+        Data: u8
+    }
+}
+
+struct Example {
+    Reference = ExampleScope.InScopeType
+}
+</code></pre></div></p>
+<hr />
+<p>Scopes automatically inherit any declarations made within their parent scopes (including main)<br />
+<div class="highlight"><pre><span></span><code>type Example = u8
+scope ExampleScope {
+    type TypeInScope = u8
+    scope ExampleNestedScope {
+        -- Example is taken from the main (global) scope
+        -- TypeInScope is taken from the parent scope (ExampleScope)
+        map ExampleMap = {[Example]: TypeInScope}
+    }
+}
+</code></pre></div></p>
+<hr />
+<p>Using scopes in code:<br />
+<div class="highlight"><pre><span></span><code><span class="kd">local</span> <span class="n">Blink</span> <span class="o">=</span> <span class="nb">require</span><span class="p">(</span><span class="n">PATH_TO_BLINK</span><span class="p">)</span>
+<span class="n">Blink</span><span class="p">.</span><span class="n">ExampleScope</span><span class="p">.</span><span class="n">InScopeEvent</span><span class="p">.</span><span class="n">FireAll</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="kd">local</span> <span class="n">Number</span><span class="p">:</span> <span class="n">Blink</span><span class="p">.</span><span class="n">ExampleScope_InScopeEvent</span> <span class="o">=</span> <span class="mi">0</span>
+</code></pre></div></p>
+<h2 id="imports">Imports</h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Imports are not currently supported when compiling using the Studio Plugin.</p>
+</div>
+<p>Blink allows you to use multiple definition files through importing.<br />
+Imports will pull all declarations (events, functions, scopes and types) from the target file and load them into the importing scope as a new scope using either the file name or a user provided name through the <code>as</code> keyword.<br />
+<div class="highlight"><pre><span></span><code>import &quot;../path/File.blink&quot; --&gt; Imports as a new scope &quot;File&quot;
+type a = File.b
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>import &quot;../path/File.blink&quot; as Something --&gt; Imports as a new scope &quot;Something&quot;
+type a = Something.b
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>scope MyScope {
+    --&gt; Imports a new scope &quot;Something&quot; into &quot;MyScope&quot;
+    import &quot;../path/File.blink&quot; as Something
+}
+type a = MyScope.Something.b
+</code></pre></div></p>
+<h2 id="limitations">Limitations</h2>
+<h3 id="referencing-types">Referencing types</h3>
+<p>A type must be defined earlier in the source for it to be referenceable, you cannot reference a type before it has been defined.
+<div class="highlight"><pre><span></span><code>struct Invalid {
+    Field: Number
+}
+type Number = u8
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>[ERROR]
+    |
+002 |     Field = Number
+    |             ^^^^^^ Unknown type referenced.
+</code></pre></div></p>
+<h3 id="keywords">Keywords</h3>
+<p>You cannot use any keywords as "Identifiers".
+<div class="highlight"><pre><span></span><code>type struct = {}
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>[ERROR]
+    |
+001 | type struct = {
+    |      ^^^^^^ Unexpected token: &quot;Keyword&quot;, expected: &quot;Identifier&quot;.
+</code></pre></div></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.a7c05c9e.min.js"></script>
+      
+    
+  </body>
+</html>
