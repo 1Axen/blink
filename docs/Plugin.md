@@ -1,19 +1,14 @@
-# Navigation
-[Home](../README.md)  
-[Installation](./Installation.md)  
-[Getting Started](./Getting-Started.md)  
-[Using Blink](./Using.md)  
-[Studio Plugin](./Plugin.md)
-# Navigating
+# Studio Plugin
+#$ Navigating
 After installing the plugin locate it within your plugin tab in Studio.
-> [!NOTE]
-> After opening the plugin you will be prompted to give it access to inject scripts, the plugin needs this in order to generate the output files.  
+!!! note
+    After opening the plugin you will be prompted to give it access to inject scripts, the plugin needs this in order to generate the output files.  
 
 <img src="../assets/plugin/Locate.png">
 
 ## Menu
-> [!TIP]
-> You can open the side menu using the sandwich button on the left hand side.
+!!! tip
+    You can open the side menu using the sandwich button on the left hand side.
 <img src="../assets/plugin/Menu.png">  
 
 Within the menu you can manage your network description files.
@@ -22,8 +17,8 @@ Within the menu you can manage your network description files.
 ## Saving
 To save a network description simply press the save button at the bottom of the side menu.   
 This will prompt you to save whatever is currently in the editor.
-> [!TIP]  
-> You can save to already existing files by simply inputting their name
+!!! tip
+    You can save to already existing files by simply inputting their name
 
 <img src="../assets/plugin/Save.png">  
 
@@ -42,16 +37,11 @@ If no issues arise Blink will generate the following Folder containing your netw
 <img src="../assets/plugin/Output.png"> 
 
 ## Editor
-> [!NOTE]
-> The editor does not currently offer auto completion or error checking.
-> This is planned to be fixed within the next release.
-
 <img src="../assets/plugin/Editor.png">  
    
-    
-> [!TIP]
-> Although it lacks proper error checking while writing it can still detect certain bad syntax, highlighting it in red.  
-> <img src="../assets/plugin/Invalid.png">
+!!! tip
+    Invalid syntax will be highlighted in red or underlined.  
+    <img src="../assets/plugin/Invalid.png">
 
 ## Errors
 Upon generating output files, Blink will parse the source contents and inform you of any errors within your files that are blocking generation.  

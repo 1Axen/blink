@@ -1,12 +1,6 @@
-# Navigation
-[Home](../README.md)  
-[Installation](./Installation.md)  
-[Getting Started](./Getting-Started.md)  
-[Writing network descriptions](./Using.md)  
-[Studio Plugin](./Plugin.md)
 # Getting Started
 ## Write your first network description
-If you're looking for an example you can check out the [source file](../test/Sources/Test.txt) used for testing.  
+If you're looking for an example you can check out the [source file](https://github.com/1Axen/blink/blob/main/test/Sources/Test.txt) used for testing.  
 For a guide on the syntax of Blink head over to [Writing network descriptions](./Using.md).
 ## Generating code
 Blink currently only supports code generation through CLI.  

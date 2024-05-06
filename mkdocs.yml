@@ -1,0 +1,22 @@
+site_name: Blink
+site_url: https://1axen.github.io/blink/
+repo_url: https://github.com/1Axen/blink
+repo_name: 1Axen/blink
+theme:
+  name: material
+  palette:
+    primary: indigo
+    scheme: slate
+nav:
+  - Introduction: 'index.md'
+  - Installation: 'Installation.md'
+  - "Getting Started": 'Getting-Started.md'
+  - "Using Blink": 'Using.md'
+  - "Studio Plugin": "Plugin.md"
+  - Benchmarks: "Benchmarks.md"
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences

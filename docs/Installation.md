@@ -1,13 +1,7 @@
-# Navigation
-[Home](../README.md)  
-[Installation](./Installation.md)  
-[Getting Started](./Getting-Started.md)  
-[Using Blink](./Using.md)  
-[Studio Plugin](./Plugin.md)
 # Installation
 ## From Aftman
-> [!NOTE]  
-> The aftman version of Blink currently only supports windows x86 and x64.
+!!! note 
+    The aftman version of Blink currently only supports windows x86 and x64.
 ```bash
 aftman add 1Axen/Blink
 ```

@@ -1,45 +1,38 @@
-# Navigation
-[Home](../README.md)  
-[Installation](./Installation.md)  
-[Getting Started](./Getting-Started.md)  
-[Using Blink](./Using.md)  
-[Studio Plugin](./Plugin.md)
-# Options
+# Using
+## Options
 Options go at the top of a source file and are used to configure the output of Blink.
 ```
 option [OPTION] = [VALUE]
 ```
-## `Casing`
+### `Casing`
 Default: `Pascal`  
 Options: `Pascal`, `Camel`, `Snake`  
 Controls the casing with which event/function methods generate.
 ```
 option Casing = Camel
 ```
-## `ServerOutput`, `ClientOutput`, `TypesOutput`
+### `ServerOutput`, `ClientOutput`, `TypesOutput`
 These options allow you to specify where Blink will generate files.
 ```
 option TypesOutput = "../Network/Types.luau"
 option ServerOutput = "../Network/Server.luau"
 option ClientOutput = "../Network/Client.luau"
 ```
-## `FutureLibrary` and `PromiseLibrary`
+### `FutureLibrary` and `PromiseLibrary`
 In order to use future and promise yield types with functions a path to each library used must be specified  
 ```
 option FutureLibrary = "ReplicatedStorage.Packages.Future"
 option PromiseLibrary = "ReplicatedStorage.Packages.Promise"
 ```
-## `WriteValidations`
+### `WriteValidations`
 Default: `false`
 Controls if Blink will check types when writing them (firing an event/invoking a function). Helpful for debugging and during development, but it might result in degraded performance. It is encouraged you disable this option in production.
-> [!TIP]
-> Blink only checks for builtin primitives. For example if a number was passed. More complicated types like structs, maps and enums cannot be validated.
-## `ManualReplication`
+!!! tip
+    Blink only checks for builtin primitives. For example if a number was passed. More complicated types like structs, maps and enums cannot be validated.
+### `ManualReplication`
 Default: `false`  
 Controls if Blink will replicate events and functions automatically at the end of every frame.  
 When set to `true` automatic replication will be disabled and a `StepReplication` function will be exposed instead.
-# Basic syntax and supported types
-You can mark any type as optional by appending `?` after it
 ## Primitives
 You can define a primitive using the `type` keyword  
 Blink supports the following primitives:  
@@ -64,7 +57,7 @@ Blink supports the following primitives:
 |Instance|4 Bytes     |No               |N/A            |N/A          |No        |
 |unknown |N/A         |No               |N/A            |N/A          |No        |
 
-### Attributes
+## Attributes
 A type can be marked optional by appending `?` at the end.
 
 Arrays can be defined by appending `[SIZE]` or `[[MIN]..[MAX]]` after the type declaration.  
@@ -74,8 +67,8 @@ Primitives can be constrained to ranges by writing `([MIN]..[MAX])` after the pr
 Components can be specified using the angled brackets `<>`, they allow you to specify what numerical type (`u8`, `u16`, `u32`, `i8`, `i16`, `i32`, `f16`, `f32`, `f64`) to use for `vector` and `CFrame` axes.  
 For example `vector<i16>` will define a vector that represents its axes using `i16`.  
 CFrames take two components `CFrame<f32, f32>`, one representing position and one representing rotation in order.
-> [!WARNING]
-> Using non float types for CFrame will result in the rotation being reset to 0.
+!!! warning
+    Using non float types for CFrame will result in the rotation being reset to 0.
 ```
 type Simple = u8
 type Optional = u8?
@@ -193,9 +186,9 @@ Instances are another type of Primitive and as such they can be defined using th
 type Example = Instance
 type Example = Instance(ClassName) -- You can also specify instance class
 ```
-> [!WARNING]
-> If a non optional instance results in nil on the recieving side it will result in an error, this may be caused by various things like streaming, players leaving etc.  
-> In order to get around this you must mark instances as **optional**.
+!!! warning
+    If a non optional instance results in nil on the recieving side it will result in an error, this may be caused by various things like streaming, players leaving etc.  
+    In order to get around this you must mark instances as **optional**.
 ## Tuples
 Tuples can be defined using brackets `()`.  
 **Tuples can only be defined within the data field of an event/function.**  
@@ -264,7 +257,7 @@ function ExamplePromise {
     Return: u8
 }
 ```
-# Scopes (Namespaces)
+## Scopes (Namespaces)
 You can define a scope (namespace) using the `scope` keyword  
 Scopes allow you to group similiar types together for further organization  
 
@@ -296,16 +289,18 @@ scope ExampleScope {
         map ExampleMap = {[Example]: TypeInScope}
     }
 }
+```  
 ---
 Using scopes in code:  
-```
 ```lua
 local Blink = require(PATH_TO_BLINK)
 Blink.ExampleScope.InScopeEvent.FireAll(0)
 
 local Number: Blink.ExampleScope_InScopeEvent = 0
 ```
-# Imports
+## Imports
+!!! Warning
+    Imports are not currently supported when compiling using the Studio Plugin.
 Blink allows you to use multiple definition files through importing.  
 Imports will pull all declarations (events, functions, scopes and types) from the target file and load them into the importing scope as a new scope using either the file name or a user provided name through the `as` keyword.  
 ```
@@ -323,8 +318,8 @@ scope MyScope {
 }
 type a = MyScope.Something.b
 ```
-# Limitations
-## Referencing types
+## Limitations
+### Referencing types
 A type must be defined earlier in the source for it to be referenceable, you cannot reference a type before it has been defined.
 ```
 struct Invalid {
@@ -338,7 +333,7 @@ type Number = u8
 002 |     Field = Number
     |             ^^^^^^ Unknown type referenced.
 ```
-## Keywords
+### Keywords
 You cannot use any keywords as "Identifiers".
 ```
 type struct = {}

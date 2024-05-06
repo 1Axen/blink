@@ -19,5 +19,7 @@ sourcemap.json
 /benchmark/src/shared/zap
 /benchmark/roblox
 
+/site
+
 *.rbxl
 *.rbxl.lock
