@@ -1,13 +1,13 @@
 # Navigation
-[Home](https://github.com/1Axen/Blink/blob/main/README.md)  
-[Installation](https://github.com/1Axen/Blink/blob/main/docs/Installation.md)  
-[Getting Started](https://github.com/1Axen/Blink/blob/main/docs/Getting-Started.md)  
-[Writing network descriptions](https://github.com/1Axen/Blink/blob/main/docs/Using.md)  
-[Studio Plugin](https://github.com/1Axen/Blink/blob/main/docs/Plugin.md)
+[Home](../README.md)  
+[Installation](./Installation.md)  
+[Getting Started](./Getting-Started.md)  
+[Writing network descriptions](./Using.md)  
+[Studio Plugin](./Plugin.md)
 # Getting Started
 ## Write your first network description
-If you're looking for an example you can check out the [source file](https://github.com/1Axen/Blink/blob/main/test/Source.txt) used for testing.  
-For a guide on the syntax of Blink head over to [Writing network descriptions](https://github.com/1Axen/Blink/blob/main/docs/Using.md).
+If you're looking for an example you can check out the [source file](../test/Sources/Test.txt) used for testing.  
+For a guide on the syntax of Blink head over to [Writing network descriptions](./Using.md).
 ## Generating code
 Blink currently only supports code generation through CLI.  
 To generate output code run the following command in the directory in which you installed Blink:

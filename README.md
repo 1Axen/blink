@@ -11,7 +11,7 @@ It means lower bandwidth usage directly resulting in **lower ping\*** experience
 
 *\* In comparasion to standard ROBLOX networking, this may not always be the case but should never result in increased ping times.*
 
-Benchmarks are available here [here](https://github.com/1Axen/Blink/blob/main/docs/Benchmarks.md).
+Benchmarks are available here [here](./docs/Benchmarks.md).
 
 # Security
 Blink does two things to combat bad actors:
@@ -19,7 +19,7 @@ Blink does two things to combat bad actors:
 2. As a result of the compression done by Blink it becomes **significantly harder** to snoop on your game's network traffic. Long gone are the days of skids using RemoteSpy to snoop on your game's traffic.
 
 # Get Started
-Head over to the [installation](https://github.com/1Axen/Blink/blob/main/docs/Installation.md) page to get started with Blink.
+Head over to the [installation](./docs/Installation) page to get started with Blink.
 
 # Credits
 Credits to [Zap](https://zap.redblox.dev/) for the range and array syntax  

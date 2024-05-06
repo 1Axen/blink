@@ -1,9 +1,9 @@
 # Navigation
-[Home](https://github.com/1Axen/Blink/blob/main/README.md)  
-[Installation](https://github.com/1Axen/Blink/blob/main/docs/Installation.md)  
-[Getting Started](https://github.com/1Axen/Blink/blob/main/docs/Getting-Started.md)  
-[Using Blink](https://github.com/1Axen/Blink/blob/main/docs/Using.md)  
-[Studio Plugin](https://github.com/1Axen/Blink/blob/main/docs/Plugin.md)
+[Home](../README.md)  
+[Installation](./Installation.md)  
+[Getting Started](./Getting-Started.md)  
+[Using Blink](./Using.md)  
+[Studio Plugin](./Plugin.md)
 # Options
 Options go at the top of a source file and are used to configure the output of Blink.
 ```
