@@ -606,7 +606,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 			:End()
 			:Wrap("return Future.Try(", ")")
 
-			Invoke = Blocks.Function(Casing.Invoke, DataValues, `Future.Future<{ReturnTypes}>`, true)
+			Invoke = Blocks.Function(Casing.Invoke, DataValues, `Future.Future<boolean, {ReturnTypes}>`, true)
 			Invoke:Lines(Wrapper.Content, 1)
 		elseif IsPromise then
 			local OnCancel = Blocks.Function("", "")
