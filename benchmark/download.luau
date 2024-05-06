@@ -13,10 +13,11 @@ local Tools = {
 }
 
 local Packages: {[string]: {GitHub: string, Wally: string}} = {
-    warp = {
+    -- FIXME: Doesn't download correctly
+    --[[warp = {
         GitHub = "https://api.github.com/repos/imezx/Warp/releases", 
         Wally = "https://api.wally.run/v1/package-contents/imezx/warp/"
-    },
+    },]]
 
     bytenet = {
         GitHub = "https://api.github.com/repos/ffrostflame/ByteNet/releases", 
