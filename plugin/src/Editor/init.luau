@@ -572,9 +572,6 @@ local function OnCursorPositionChanged()
     --> Update highlighted line
     UpdateHighlightedLine()
 
-    --> Perform auto completion pass
-    --DoCompletionPass()
-
     --> Update completion position
     local AbsoluteSize = EditorContainer.AbsoluteSize
     local AbsolutePosition = Cursor.AbsolutePosition
