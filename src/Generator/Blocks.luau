@@ -30,7 +30,8 @@ export type Block = typeof(setmetatable({} :: {
     Cursor: number,
     Unsafe: boolean,
     Content: {string},
-    Operation: Operation
+    Operation: Operation,
+    Variables: {[string]: boolean},
 }, Block))
 
 function Block.new<Parent>(Parent: Block?, Unique: string?): Block
@@ -45,7 +46,8 @@ function Block.new<Parent>(Parent: Block?, Unique: string?): Block
         Operation = {
             Method = "None",
             Bytes = 0
-        }
+        },
+        Variables = {}
     }, Block)
 end
 
@@ -105,6 +107,36 @@ function Block._appendOperations(self: Block): Block
     self:_lineFront(`-- {Operation.Method} BLOCK: {Operation.Bytes} bytes`)
 
     return self
+end
+
+function Block.Declare(self: Block, Variable: string): string
+    local Block = self
+    local Declared = false
+    local IsFieldAccess = (string.find(Variable, ".", 1, true) ~= nil)
+
+    --> Ignore field acceses
+    if IsFieldAccess then
+        return Variable
+    end
+
+    --> Search for variable declaration in block hierarchy
+    while (Block) do
+        if Block.Variables[Variable] then
+            Declared = true
+            break
+        end
+
+        Block = Block.Parent
+    end
+
+    if Declared then
+        return Variable
+    end
+
+    --> Declare variable within current block
+    self.Variables[Variable] = true
+
+    return `local {Variable}`
 end
 
 function Block.Advance(self: Block, Offset: number): Block

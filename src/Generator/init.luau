@@ -139,7 +139,8 @@ function Declarations.Enum(Declaration: Parser.EnumDeclaration, Read: Blocks.Blo
 	Literal = string.gsub(Literal, "|", "or")
 
 	--> Read body
-	Types.u8.Read(`local Index`, Read)
+	Read:Line(`{Read:Declare(Variable)} = true :: any`)
+	Types.u8.Read(`Index`, Read)
 	Read = Read:Compare("Index", "0", "Equals")
 		for Index, EnumItem in Enums do
 			if Index > 1 then
@@ -176,9 +177,9 @@ function Declarations.Map(Declaration: Parser.MapDeclaration, Read: Blocks.Block
 	local KeyType = Generators.LuauType(Key :: Type)
 	local ValueType = Generators.LuauType(Value :: Type)
 
-	Read:Line(`{Variable} = \{\}`)
+	Read:Line(`{Read:Declare(Variable)} = \{\}`)
 	Write:Line("local Elements = 0")
-	Types.u16.Read(`local Elements`, Read)
+	Types.u16.Read(`Elements`, Read)
 
 	local ReadLoop = Read:Loop("_ = 1", "Elements")
 	local WriteLoop = Write:Iterator("Key", "Element", Variable)
@@ -187,7 +188,7 @@ function Declarations.Map(Declaration: Parser.MapDeclaration, Read: Blocks.Block
 	ReadLoop:DisableOperationOptimisations()
 	WriteLoop:DisableOperationOptimisations()
 
-	ReadLoop:Line(`local Key: {KeyType}, Element: {ValueType};`)
+	--ReadLoop:Line(`local Key: {KeyType}, Element: {ValueType};`)
 	WriteLoop:Line("Elements += 1")
 	Generators.UserType(Key :: Type, ReadLoop, WriteLoop, "Key")
 	Generators.UserType(Value :: Type, ReadLoop, WriteLoop, "Element")
@@ -201,7 +202,7 @@ end
 
 function Declarations.Struct(Declaration: Parser.StructDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local Value = Declaration.Value
-	Read:Line(`{Variable} = \{\} :: any`)
+	Read:Line(`{Read:Declare(Variable)} = \{\} :: any`)
 
 	for _, Field in Value.Values do
 		local FieldValue = Field.Value
@@ -235,7 +236,9 @@ function Declarations.TagEnum(Declaration: Parser.TagEnumDeclaration, Read: Bloc
 	local Header = `"{Values[1].Value.Identifier}"`
 	local TagIndex = `{Variable}.{Tag}`
 
-	Types.u8.Read(`local Tag`, Read)
+	Types.u8.Read(`Tag`, Read)
+	Read:Line(`{Read:Declare(Variable)} = true :: any`)
+
 	local Allocation = Write:Allocate(1)
 
 	Read = Read:Compare("Tag", "0", "Equals")
@@ -523,7 +526,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 
 	if Context == "Server" then
 		--> Data recieve body
-		Types.u8.Read("local InvocationIdentifier", Block)
+		Types.u8.Read("InvocationIdentifier", Block)
 		Block:Line(`local {DataValues} = {GetTypesPath(DataIdentifier, false)}()`)
 		:Compare(Connection, "nil", "Not")
 			:Line(`{Connection}(Player, {DataArguments}, InvocationIdentifier)`)
@@ -581,7 +584,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 		:End()
 		:Wrap(`local Success, {ReturnArguments} = pcall(`, ")")
 
-		Types.u8.Read("local InvocationIdentifier", Block)
+		Types.u8.Read("InvocationIdentifier", Block)
 		Block:Compare("Calls[InvocationIdentifier]", "nil", "Not")
 			:Lines(Deserialize.Content, Block.Indent + 1)
 			:Line(`task.spawn(Calls[InvocationIdentifier], Success, {ReturnArguments})`)
@@ -693,6 +696,7 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 	--> Array
 	if Array then
 		if Array.Optional then
+			Read:Line(`{Read:Declare(Variable)} = nil`)
 			Read, Write = Generators.Optional(Declaration, Read, Write, Variable, true)
 		end
 
@@ -707,6 +711,7 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 
 	--> Optional
 	if Optional then
+		Read:Line(Read:Declare(ActualVariable))
 		Read, Write = Generators.Optional(Declaration, Read, Write, ActualVariable)
 	end
 
@@ -872,7 +877,7 @@ function Generators.Type(Declaration: Type)
 
 		Generics = `<{table.concat(Types, ",")}>`
 	else
-		Read:Line(`local {Values};`)
+		--Read:Line(`local {Values};`)
 		Generators.UserType(Declaration, Read, Write)
 		Read:Return(Returns)
 
@@ -969,14 +974,14 @@ function Generators.Event(Data: Type, Index: number, Identifier: string, Functio
 		Types.u8.Write("InvocationIdentifier", Write)
 		if Function == "Return" then
 			Types.u8.Write("1", Write)
-			Types.u8.Read("local Success", Read)
+			Types.u8.Read("Success", Read)
 			Read:Compare("Success", "1", "Not")
 				:Line("error(\"Server encountered an error.\")")
 			:End()
 		end
 	end
 
-	Read:Line(`local {Values};`)
+	--Read:Line(`local {Values};`)
 	Generators.UserType(Data, Read, Write)
 
 	return Read:Return(Returns):End().Content, Write:End().Content
@@ -1059,8 +1064,8 @@ function Generator.Generate(FileContext: Context, AbstractSyntaxTree: Parser.Bod
 
 	Reliables = Reliables:While("RecieveCursor < Size")
 	Unreliables = Unreliables:While("RecieveCursor < Size")
-	Types.u8.Read("local Index", Reliables)
-	Types.u8.Read("local Index", Unreliables)
+	Types.u8.Read("Index", Reliables)
+	Types.u8.Read("Index", Unreliables)
 
 	--> Import async libraries
 	if Options.FutureLibrary then

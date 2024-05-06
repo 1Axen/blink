@@ -156,7 +156,7 @@ end
 local function GenerateNumberGenerator(Type: string, Size: number): (TypePrefab, {Type: string, Generate: Generate})
 	local Prefab = {
 		Read = function(Variable: string, Block: Block)
-			Block:Line(`{Variable} = buffer.read{Type}({RECIEVE_BUFFER}, {Block:Read(Size)})`)
+			Block:Line(`{Block:Declare(Variable)} = buffer.read{Type}({RECIEVE_BUFFER}, {Block:Read(Size)})`)
 		end,
 		Write = function(Value: string, Block: Block)
 			Block:Line(`buffer.write{Type}({SEND_BUFFER}, {Block:Allocate(Size)}, {Value})`)
@@ -185,7 +185,8 @@ Types.f64, Primitives.f64 = GenerateNumberGenerator("f64", DOUBLE)
 
 Types.f16 = {
 	Read = function(Variable: string, Block: Block)
-		Types.u16.Read("local Encoded", Block)
+		Types.u16.Read("Encoded", Block)
+		Block:Line(Block:Declare(Variable))
 		Block:Line(`local MantissaExponent = Encoded % 0x8000`)
 		Block:Compare("MantissaExponent", "0b0_11111_0000000000 ", "Equals")
 			:Compare("Encoded // 0x8000", "1", "Equals")
@@ -259,7 +260,7 @@ Structures.Array = function(Variable: string, Read: Block, Write: Block, Bounds:
 	--> Length
 	if IsVariableSize then
 		local LengthType = GetTypeToUse(Upper)
-		LengthType.Read("local Length", Read)
+		LengthType.Read("Length", Read)
 		local Assert = Asserts.number("Length", Lower, Upper)
 
 		Read:Line(Assert.Lower)
@@ -270,13 +271,13 @@ Structures.Array = function(Variable: string, Read: Block, Write: Block, Bounds:
 	end
 
 	--> Array
-	Read:Line(`{Variable} = table.create(Length)`)
+	Read:Line(`{Read:Declare(Variable)} = table.create(Length)`)
 
 	--> Body
 	ReadArray = Read:Loop("Index = 1", "Length")
 	WriteArray = Write:Loop("Index = 1", IsVariableSize and `#{Variable}` or Upper)
 
-	ReadArray:Line(`local {Iterator};`)
+	--ReadArray:Line(Read:Declare(Iterator))
 	WriteArray:Line(`local {Iterator} = {Variable}[Index]`)
 
 	return ReadArray, WriteArray
@@ -286,7 +287,7 @@ end
 do
 	Types.boolean = {
 		Read = function(Variable: string, Block: Block)
-			Block:Line(`{Variable} = (buffer.readu8({RECIEVE_BUFFER}, {Block:Read(BYTE)}) == 1)`)
+			Block:Line(`{Block:Declare(Variable)} = (buffer.readu8({RECIEVE_BUFFER}, {Block:Read(BYTE)}) == 1)`)
 		end,
 		Write = function(Value: string, Block: Block)
 			Block:Line(`buffer.writeu8({SEND_BUFFER}, {Block:Allocate(BYTE)}, {Value} and 1 or 0)`)
@@ -305,15 +306,15 @@ do
 		Read = function(Variable: string, Block: Block, Range: NumberRange?)
 			--> Fixed size string
 			if Range and Range.Min == Range.Max then
-				Block:Line(`{Variable} = buffer.readstring({RECIEVE_BUFFER}, {Block:Read(Range.Min)}, {Range.Min})`)
+				Block:Line(`{Block:Declare(Variable)} = buffer.readstring({RECIEVE_BUFFER}, {Block:Read(Range.Min)}, {Range.Min})`)
 				return
 			end
 	
 			local Upper = Range and Range.Max or (2^16 - 1)
 			local LengthType = GetTypeToUse(Upper)
 
-			LengthType.Read("local Length", Block)
-			Block:Line(`{Variable} = buffer.readstring({RECIEVE_BUFFER}, Read(Length), Length)`)
+			LengthType.Read("Length", Block)
+			Block:Line(`{Block:Declare(Variable)} = buffer.readstring({RECIEVE_BUFFER}, Read(Length), Length)`)
 		end,
 		Write = function(Value: string, Block: Block, Range: NumberRange?)
 			if Range and Range.Min == Range.Max then
@@ -350,7 +351,7 @@ do
 			Prefab.Read("X", Block)
 			Prefab.Read("Y", Block)
 			Prefab.Read("Z", Block)
-			Block:Line(`{Variable} = Vector3.new(X, Y, Z)`)
+			Block:Line(`{Block:Declare(Variable)} = Vector3.new(X, Y, Z)`)
 		end,
 		Write = function(Value: string, Block: Block, _, Components: {string}?)
 			local Prefab: TypePrefab = Types.f32
@@ -382,8 +383,8 @@ do
 			
 			local Upper = Range and Range.Max or (2^16 - 1)
 			local LengthType = GetTypeToUse(Upper)
-			LengthType.Read("local Length", Block)
-			Block:Line(`{Variable} = buffer.create(Length)`)
+			LengthType.Read("Length", Block)
+			Block:Line(`{Block:Declare(Variable)} = buffer.create(Length)`)
 			Block:Line(`buffer.copy({Variable}, 0, {RECIEVE_BUFFER}, Read(Length), Length)`)
 		end,
 		Write = function(Value: string, Block: Block, Range: NumberRange?)
@@ -416,11 +417,11 @@ do
 				Prefab = Types[Components[1]]
 			end
 
-			Types.vector.Read("local Position", Block, nil, Components)
-			Prefab.Read("local rX", Block)
-			Prefab.Read("local rY", Block)
-			Prefab.Read("local rZ", Block)
-			Block:Line(`{Variable} = CFrame.new(Position) * CFrame.fromOrientation(rX, rY, rZ)`)
+			Types.vector.Read("Position", Block, nil, Components)
+			Prefab.Read("rX", Block)
+			Prefab.Read("rY", Block)
+			Prefab.Read("rZ", Block)
+			Block:Line(`{Block:Declare(Variable)} = CFrame.new(Position) * CFrame.fromOrientation(rX, rY, rZ)`)
 		end,
 		Write = function(Value: string, Block: Block, _, Components: {string}?)
 			local Prefab: TypePrefab = Types.f32
@@ -449,7 +450,7 @@ do
 			local R = Block:Read(BYTE)
 			local G = Block:Read(BYTE)
 			local B = Block:Read(BYTE)
-			Block:Line(`{Variable} = Color3.new(buffer.readu8({RECIEVE_BUFFER}, {R}), buffer.readu8({RECIEVE_BUFFER}, {G}), buffer.readu8({RECIEVE_BUFFER}, {B}))`)
+			Block:Line(`{Block:Declare(Variable)} = Color3.new(buffer.readu8({RECIEVE_BUFFER}, {R}), buffer.readu8({RECIEVE_BUFFER}, {G}), buffer.readu8({RECIEVE_BUFFER}, {B}))`)
 		end,
 		Write = function(Value: string, Block: Block)
 			Block:Line(`local Color = {Value}`)
@@ -470,7 +471,7 @@ do
 	Types.Instance = {
 		Read = function(Variable: string, Block: Block)
 			--Block:Line("RecieveInstanceCursor += 1")
-			Block:Line(`{Variable} = RecieveInstances[RecieveInstanceCursor]`)
+			Block:Line(`{Block:Declare(Variable)} = RecieveInstances[RecieveInstanceCursor]`)
 		end,
 		Write = function(Value: string, Block: Block)
 			Block:Line(`table.insert(SendInstances, {Value} or false :: any)`)
@@ -490,7 +491,7 @@ do
 	Types.unknown = {
 		Read = function(Variable: string, Block: Block)
 			Block:Line("RecieveInstanceCursor += 1")
-			Block:Line(`{Variable} = RecieveInstances[RecieveInstanceCursor]`)
+			Block:Line(`{Block:Declare(Variable)} = RecieveInstances[RecieveInstanceCursor]`)
 		end,
 		Write = function(Value: string, Block: Block)
 			Block:Line(`table.insert(SendInstances, {Value})`)
