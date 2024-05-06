@@ -49,6 +49,15 @@ local function Percentile(Samples: {number}, Percentile: number)
     return Samples[Index]
 end
 
+local function WaitForPacketsToProcess()
+    print("Waiting for packets to be processed.")
+    while (Stats.DataSendKbps > 0.5) do
+        RunService.Heartbeat:Wait()
+    end
+
+    task.wait(5)
+end
+
 local function RunBenchmark(Tool: string, Bench: string): Benchmark
     local Total = 0
     local Frames = 0
@@ -129,11 +138,11 @@ local function RunBenchmarks()
             Results[Bench][Tool] = RunBenchmark(Tool, Bench)
     
             --> Give ROBLOX some time to rest in-between tools
-            task.wait(5)
+            WaitForPacketsToProcess()
         end
 
         --> Give ROBLOX some time to rest in-between benchmarks
-        task.wait(5)
+        WaitForPacketsToProcess()
     end
     
     local Recieved = ReplicatedStorage.Shared.GetRecieved:InvokeServer()
