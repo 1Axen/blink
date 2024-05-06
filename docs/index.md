@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./assets/deadline_128.png" class="center">
+  <img src="./assets/Logo.png" class="center">
 </div>
 <h1>Blink</h1>
 An IDL compiler written in Luau for ROBLOX buffer networking
