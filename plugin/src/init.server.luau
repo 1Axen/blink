@@ -133,14 +133,14 @@ local Tweens = {
     Editor = {
         Expand = {
             Side = TweenService:Create(Side, EXPAND_TWEEN, {Position = UDim2.new()}),
-            Content = TweenService:Create(Content, EXPAND_TWEEN, {GroupTransparency = 0}),
+            --Content = TweenService:Create(Content, EXPAND_TWEEN, {GroupTransparency = 0}),
             Overlay = TweenService:Create(Overlay, EXPAND_TWEEN, {BackgroundTransparency = 0.5}),
             Settings = TweenService:Create(Settings, EXPAND_TWEEN, {ImageTransparency = 1})
         },
 
         Retract = {
             Side = TweenService:Create(Side, EXPAND_TWEEN, {Position = Side.Position}),
-            Content = TweenService:Create(Content, EXPAND_TWEEN, {GroupTransparency = 1}),
+            --Content = TweenService:Create(Content, EXPAND_TWEEN, {GroupTransparency = 1}),
             Overlay = TweenService:Create(Overlay, EXPAND_TWEEN, {BackgroundTransparency = 1}),
             Settings = TweenService:Create(Settings, EXPAND_TWEEN, {ImageTransparency = 0})
         }
@@ -419,6 +419,7 @@ LoadFiles()
 ---- Connections ----
 
 Expanded:OnChange(function(Value)
+    Content.Visible = Value
     PlayTweens(Value and Tweens.Editor.Expand or Tweens.Editor.Retract)
 end)
 
