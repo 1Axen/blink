@@ -32,11 +32,15 @@ end
 
 local function BenchmarkClosure(Title: string, Closure: () -> ())
     print(`Benchmarking: {Title}`)
+    stdio.write("Running")
 
     local Times = {}
     for Index = 1, 10_000 do
+        stdio.write(`\rRunning [{stdio.color("green")}{Index}{stdio.color("reset")}/10000]`)
+
         local Start = os.clock()
         Closure()
+
         local Elapsed = (os.clock() - Start)
         table.insert(Times, Elapsed)
     end
@@ -45,7 +49,7 @@ local function BenchmarkClosure(Title: string, Closure: () -> ())
         return a < b
     end)
     
-    print(`---- {stdio.color("yellow")}{Title}{stdio.color("reset")} ----`)
+    stdio.write(`\r-------- {stdio.color("yellow")}{Title}{stdio.color("reset")} --------\n`)
     print(`Median: {Format(Percentile(Times, 0.5))}`)
     print(`0th Percentile: {Format(Times[1])}`)
     print(`90th Percentile: {Format(Percentile(Times, 0.9))}`)
