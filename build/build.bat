@@ -16,7 +16,7 @@ darklua process ../src/init.luau ./Bundled.luau
 echo Building standalone executable
 
 lune build ./Bundled.luau --output blink --target windows-x86_64
-%ZIP% a "../release/blink-%VERSION%-windows-x86_64.zip" "blink" > nul
+%ZIP% a "../release/blink-%VERSION%-windows-x86_64.zip" "blink.*" > nul
 del "./blink.*"
 
 lune build ./Bundled.luau --output blink --target macos-x86_64
