@@ -1,9 +1,9 @@
 # Studio Plugin
 !!! warning
     The studio plugin requires you to have the UIListLayout Flex Features beta enabled to function properly, please make sure you have it turned on (as shown below) before using the plugin.
-    
+
     <img src="../assets/BetaExample.png"> 
-#$ Navigating
+## Navigating
 After installing the plugin locate it within your plugin tab in Studio.
 !!! note
     After opening the plugin you will be prompted to give it access to inject scripts, the plugin needs this in order to generate the output files.  
