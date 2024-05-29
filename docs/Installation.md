@@ -1,7 +1,6 @@
 # Installation
 ## From Aftman
-!!! note 
-    The aftman version of Blink currently only supports windows x86 and x64.
+You can install blink using aftman:
 ```bash
 aftman add 1Axen/Blink
 ```
@@ -10,10 +9,6 @@ Download the standalone executable from [Github Releases](https://github.com/1Ax
 ## From Bytecode
 Alternative you can run blink from bytecode using line.
 You can download the packaged bytecode from [Github Releases](https://github.com/1Axen/Blink/releases).
-## Studio Plugin
-Blink offers a companion studio plugin which allows you to write and generate files within Studio without the need for external tooling.
-You can download the latest plugin from [Github Releases](https://github.com/1Axen/Blink/releases).
-For more information on how to use it head over to [Studio Plugin](https://github.com/1Axen/Blink/blob/main/docs/Plugin.md).
 ### Installing lune
 Blink uses lune as it's runtime enviornment, you can install lune using aftman:
 ``` 
@@ -24,5 +19,10 @@ Open the directory in which you unzipped the bytecode and run the following comm
 ```
 lune init [INPUT]
 ```
-## Plugin Marketplace
+## Studio Plugin
+Blink offers a companion studio plugin which allows you to write and generate files within Studio without the need for external tooling.  
+For more information on how to use it head over to [Studio Plugin](https://github.com/1Axen/Blink/blob/main/docs/Plugin.md).
+### From GitHub
+You can download the latest plugin from [Github Releases](https://github.com/1Axen/Blink/releases).
+### Plugin Marketplace
 Coming soon!
