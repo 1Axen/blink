@@ -409,6 +409,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#sets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sets
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#enums" class="md-nav__link">
     <span class="md-ellipsis">
       Enums
@@ -714,6 +723,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#sets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sets
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#enums" class="md-nav__link">
     <span class="md-ellipsis">
       Enums
@@ -887,25 +905,25 @@
 <h1 id="using">Using</h1>
 <h2 id="options">Options</h2>
 <p>Options go at the top of a source file and are used to configure the output of Blink.
-<div class="highlight"><pre><span></span><code>option [OPTION] = [VALUE]
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>option [OPTION] = [VALUE]
+</span></code></pre></div></p>
 <h3 id="casing"><code>Casing</code></h3>
 <p>Default: <code>Pascal</code><br />
 Options: <code>Pascal</code>, <code>Camel</code>, <code>Snake</code><br />
 Controls the casing with which event/function methods generate.
-<div class="highlight"><pre><span></span><code>option Casing = Camel
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>option Casing = Camel
+</span></code></pre></div></p>
 <h3 id="serveroutput-clientoutput-typesoutput"><code>ServerOutput</code>, <code>ClientOutput</code>, <code>TypesOutput</code></h3>
 <p>These options allow you to specify where Blink will generate files.
-<div class="highlight"><pre><span></span><code>option TypesOutput = &quot;../Network/Types.luau&quot;
-option ServerOutput = &quot;../Network/Server.luau&quot;
-option ClientOutput = &quot;../Network/Client.luau&quot;
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>option TypesOutput = &quot;../Network/Types.luau&quot;
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>option ServerOutput = &quot;../Network/Server.luau&quot;
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>option ClientOutput = &quot;../Network/Client.luau&quot;
+</span></code></pre></div></p>
 <h3 id="futurelibrary-and-promiselibrary"><code>FutureLibrary</code> and <code>PromiseLibrary</code></h3>
 <p>In order to use future and promise yield types with functions a path to each library used must be specified<br />
-<div class="highlight"><pre><span></span><code>option FutureLibrary = &quot;ReplicatedStorage.Packages.Future&quot;
-option PromiseLibrary = &quot;ReplicatedStorage.Packages.Promise&quot;
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>option FutureLibrary = &quot;ReplicatedStorage.Packages.Future&quot;
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>option PromiseLibrary = &quot;ReplicatedStorage.Packages.Promise&quot;
+</span></code></pre></div></p>
 <h3 id="writevalidations"><code>WriteValidations</code></h3>
 <p>Default: <code>false</code>
 Controls if Blink will check types when writing them (firing an event/invoking a function). Helpful for debugging and during development, but it might result in degraded performance. It is encouraged you disable this option in production.</p>
@@ -1081,103 +1099,134 @@ CFrames take two components <code>CFrame&lt;f32, f32&gt;</code>, one representin
 <p class="admonition-title">Warning</p>
 <p>Using non float types for CFrame will result in the rotation being reset to 0.</p>
 </div>
-<div class="highlight"><pre><span></span><code>type Simple = u8
-type Optional = u8?
-type Array = u8[1]
-type Range = u8[0..100]
-type VectorInt16 = vector&lt;int16&gt;
-type Orientation = CFrame&lt;int16, f16&gt;
-map Players = {[u8]: Instance(Player)}[0..255]
-enum States = (A, B, C, D)[0..255]
-struct Dictionary {
-    Field: u8
-}[0..255]
-</code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>type Simple = u8
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>type Optional = u8?
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>type Array = u8[1]
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>type Range = u8[0..100]
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>type VectorInt16 = vector&lt;int16&gt;
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>type Orientation = CFrame&lt;int16, f16&gt;
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>map Players = {[u8]: Instance(Player)}[0..255]
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>enum States = (A, B, C, D)[0..255]
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>struct Dictionary {
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    Field: u8
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>}[0..255]
+</span></code></pre></div>
+<h2 id="sets">Sets</h2>
+<p>You can define a set using the <code>set</code> keyword.<br />
+Sets are a string and boolean key value pair dictionary, they can be used to send a set of flags over the network more efficiently than can be done with other data types like structs.  </p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Sets with up to 32 flags are bit-packed to reduce bandwidth usage.<br />
+Going over the limit will cause flags to be encoded using 1 byte per flag.<br />
+It is recommended to split sets containing over 32 flags into multiple sets instead of using one.  </p>
+</div>
+<p><div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>set GameFlags = {
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    EntitiesSpawn,
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    PlayersCanOpenChests,
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    PlayersCanDamagePlayers,
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>}
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>event SetGameFlags {
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    From: Server,
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    Type: Reliable,
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    Call: SingleSync,
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    Data: GameFlags
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>}
+</span></code></pre></div>
+<div class="language-lua highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kd">local</span> <span class="n">GameFlags</span><span class="p">:</span> <span class="n">Blink</span><span class="p">.</span><span class="n">GameFlags</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="n">EntitiesSpawn</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="n">PlayersCanOpenChests</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">PlayersCanDamagePlayers</span> <span class="o">=</span> <span class="kc">false</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="p">}</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">Blink</span><span class="p">.</span><span class="n">SetGameFlags</span><span class="p">.</span><span class="n">FireAll</span><span class="p">(</span><span class="n">GameFlags</span><span class="p">)</span>
+</span></code></pre></div></p>
 <h2 id="enums">Enums</h2>
 <p>You can define enums using the <code>enum</code> keyword.<br />
 Blink has two type of enums, unit and tagged enums.</p>
 <h3 id="unit-enums">Unit Enums</h3>
 <p>Unit enums represent a set of possible values.<br />
 For example, a unit enum representing the state of a car engine:
-<div class="highlight"><pre><span></span><code>enum State = { Starting, Started, Stopping, Stopped }
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>enum State = { Starting, Started, Stopping, Stopped }
+</span></code></pre></div></p>
 <h3 id="tagged-enums">Tagged Enums</h3>
 <p>Tagged enums represent a set of possible variants with some data attached to each.<br />
 They are defined using a string which represents the tag field name.<br />
 Each variant is defined by a tag, followed by a struct.<br />
-<div class="highlight"><pre><span></span><code>struct Vector2 {
-    X: u16,
-    Y: u16
-}
-
-enum Buttons = {Left, Right, Middle}
-enum MouseEvent = &quot;Type&quot; {
-    Move {
-        Delta: Vector2,
-        Position: Vector2,
-    },
-    Drag {
-        Delta: Vector2,
-        Position: Vector2
-    },
-    Click {
-        Button: Buttons,
-        Position: Vector2
-    },
-}
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>struct Vector2 {
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    X: u16,
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    Y: u16
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>}
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>enum Buttons = {Left, Right, Middle}
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>enum MouseEvent = &quot;Type&quot; {
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    Move {
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>        Delta: Vector2,
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>        Position: Vector2,
+</span><span id="__span-8-11"><a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    },
+</span><span id="__span-8-12"><a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    Drag {
+</span><span id="__span-8-13"><a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>        Delta: Vector2,
+</span><span id="__span-8-14"><a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>        Position: Vector2
+</span><span id="__span-8-15"><a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>    },
+</span><span id="__span-8-16"><a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>    Click {
+</span><span id="__span-8-17"><a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>        Button: Buttons,
+</span><span id="__span-8-18"><a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>        Position: Vector2
+</span><span id="__span-8-19"><a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>    },
+</span><span id="__span-8-20"><a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>}
+</span></code></pre></div></p>
 <h2 id="structs">Structs</h2>
 <p>You can define structs using the <code>struct</code> keyword<br />
 Structs can also hold structs within:
-<div class="highlight"><pre><span></span><code>struct Entity {
-    Identifier: u8,
-    Health: u8(0..100),
-    State: ( Dead, Alive )?,
-    Direction: vector(0..1),
-    Substruct: struct {
-        Empty: u8[0],
-        Complex: u8[1..12],
-        Vector: UnitVector,
-    }?
-}
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>struct Entity {
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    Identifier: u8,
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    Health: u8(0..100),
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    State: ( Dead, Alive )?,
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    Direction: vector(0..1),
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    Substruct: struct {
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>        Empty: u8[0],
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>        Complex: u8[1..12],
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>        Vector: UnitVector,
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>    }?
+</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>}
+</span></code></pre></div></p>
 <h3 id="generics">Generics</h3>
 <hr />
 <p>Structs, tagged enums and maps support the use of generic type parameters, a generic is simply a type which allows you to slot in any other type, generics can be very handy in reducing repetition.
-<div class="highlight"><pre><span></span><code>struct Packet&lt;T&gt; {
-    Sequence: u16,
-    Ack: u16,
-    Data: T
-}
-
-struct Entity {
-    Identifier: u8,
-    Health: u8(0..100),
-    Angle: u16,
-    Position: vector
-}
-
-struct Command {
-    X: u8,
-    Y: u8,
-    Z: u8,
-    -- ...
-}
-
-event Snapshot {
-    From: Server,
-    Type: Unreliable,
-    Call: SingleSync,
-    Data: Packet&lt;Entity[]&gt;
-}
-
-event Command {
-    From: Server,
-    Type: Unreliable,
-    Call: SingleSync,
-    Data: Packet&lt;Command&gt;
-}
-</code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>struct Packet&lt;T&gt; {
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    Sequence: u16,
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>    Ack: u16,
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    Data: T
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>}
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>struct Entity {
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    Identifier: u8,
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    Health: u8(0..100),
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    Angle: u16,
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    Position: vector
+</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>}
+</span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>
+</span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>struct Command {
+</span><span id="__span-10-15"><a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>    X: u8,
+</span><span id="__span-10-16"><a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>    Y: u8,
+</span><span id="__span-10-17"><a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>    Z: u8,
+</span><span id="__span-10-18"><a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>    -- ...
+</span><span id="__span-10-19"><a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>}
+</span><span id="__span-10-20"><a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>
+</span><span id="__span-10-21"><a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>event Snapshot {
+</span><span id="__span-10-22"><a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>    From: Server,
+</span><span id="__span-10-23"><a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>    Type: Unreliable,
+</span><span id="__span-10-24"><a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>    Call: SingleSync,
+</span><span id="__span-10-25"><a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>    Data: Packet&lt;Entity[]&gt;
+</span><span id="__span-10-26"><a id="__codelineno-10-26" name="__codelineno-10-26" href="#__codelineno-10-26"></a>}
+</span><span id="__span-10-27"><a id="__codelineno-10-27" name="__codelineno-10-27" href="#__codelineno-10-27"></a>
+</span><span id="__span-10-28"><a id="__codelineno-10-28" name="__codelineno-10-28" href="#__codelineno-10-28"></a>event Command {
+</span><span id="__span-10-29"><a id="__codelineno-10-29" name="__codelineno-10-29" href="#__codelineno-10-29"></a>    From: Server,
+</span><span id="__span-10-30"><a id="__codelineno-10-30" name="__codelineno-10-30" href="#__codelineno-10-30"></a>    Type: Unreliable,
+</span><span id="__span-10-31"><a id="__codelineno-10-31" name="__codelineno-10-31" href="#__codelineno-10-31"></a>    Call: SingleSync,
+</span><span id="__span-10-32"><a id="__codelineno-10-32" name="__codelineno-10-32" href="#__codelineno-10-32"></a>    Data: Packet&lt;Command&gt;
+</span><span id="__span-10-33"><a id="__codelineno-10-33" name="__codelineno-10-33" href="#__codelineno-10-33"></a>}
+</span></code></pre></div>
 In the code above we have a simple packet transmission protocol which contains the current packets identifier (Sequence), the last recieved packet (Ack) and a generic data field. Instead of repeating the contents of <code>Packet</code> everytime we need to send something over the wire we can take advantage of generics to automatically fill the <code>Data</code> field with whatever we need to transmit.</p>
 <h2 id="maps">Maps</h2>
 <p>You can define maps using the <code>map</code> keyword   </p>
@@ -1185,14 +1234,14 @@ In the code above we have a simple packet transmission protocol which contains t
 <p>[!NOTE]
 Maps cannot currently have maps as keys or values.<br />
 You also cannot have optional keys or values as there is no way to represent those in Luau.
-<div class="highlight"><pre><span></span><code>map Example = {[string]: u8}
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>map Example = {[string]: u8}
+</span></code></pre></div></p>
 </blockquote>
 <h2 id="instances">Instances</h2>
 <p>Instances are another type of Primitive and as such they can be defined using the <code>type</code> keyword<br />
-<div class="highlight"><pre><span></span><code>type Example = Instance
-type Example = Instance(ClassName) -- You can also specify instance class
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>type Example = Instance
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>type Example = Instance(ClassName) -- You can also specify instance class
+</span></code></pre></div></p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>If a non optional instance results in nil on the recieving side it will result in an error, this may be caused by various things like streaming, players leaving etc.<br />
@@ -1201,13 +1250,13 @@ In order to get around this you must mark instances as <strong>optional</strong>
 <h2 id="tuples">Tuples</h2>
 <p>Tuples can be defined using brackets <code>()</code>.<br />
 <strong>Tuples can only be defined within the data field of an event/function.</strong><br />
-<div class="highlight"><pre><span></span><code>event Example {
-    From: Server,
-    Type: Reliable,
-    Call: SingleSync,
-    Data: (u8, u16?, Instance, Instance?, u8[8])
-}
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>event Example {
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    From: Server,
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    Type: Reliable,
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    Call: SingleSync,
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    Data: (u8, u16?, Instance, Instance?, u8[8])
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>}
+</span></code></pre></div></p>
 <h2 id="events">Events</h2>
 <p>You can define events using the <code>event</code> keyword<br />
 Events have 4 fields:<br />
@@ -1215,29 +1264,29 @@ Events have 4 fields:<br />
 <code>Type</code> - <code>Reliable</code> or <code>Unreliable</code><br />
 <code>Call</code> - <code>SingleSync</code> or <code>SingleAsync</code><br />
 <code>Data</code> - Can hold either a type definition or a reference to an already defined type<br />
-<div class="highlight"><pre><span></span><code>event Simple {
-    From: Client,
-    Type: Unreliable,
-    Call: SingleSync,
-    Data: u8
-}
-
-event Reference {
-    From: Client,
-    Type: Unreliable,
-    Call: SingleSync,
-    Data: Entity
-}
-
-event Complex {
-    From: Client,
-    Type: Unreliable,
-    Call: SingleSync,
-    Data: struct {
-        Field = u8
-    }
-}
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>event Simple {
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    From: Client,
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    Type: Unreliable,
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    Call: SingleSync,
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    Data: u8
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>}
+</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>
+</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>event Reference {
+</span><span id="__span-14-9"><a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>    From: Client,
+</span><span id="__span-14-10"><a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>    Type: Unreliable,
+</span><span id="__span-14-11"><a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>    Call: SingleSync,
+</span><span id="__span-14-12"><a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>    Data: Entity
+</span><span id="__span-14-13"><a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>}
+</span><span id="__span-14-14"><a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>
+</span><span id="__span-14-15"><a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>event Complex {
+</span><span id="__span-14-16"><a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>    From: Client,
+</span><span id="__span-14-17"><a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>    Type: Unreliable,
+</span><span id="__span-14-18"><a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>    Call: SingleSync,
+</span><span id="__span-14-19"><a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>    Data: struct {
+</span><span id="__span-14-20"><a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a>        Field = u8
+</span><span id="__span-14-21"><a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a>    }
+</span><span id="__span-14-22"><a id="__codelineno-14-22" name="__codelineno-14-22" href="#__codelineno-14-22"></a>}
+</span></code></pre></div></p>
 <h2 id="functions">Functions</h2>
 <p>You can define functions using the <code>function</code> keyword<br />
 Functions have 3 fields:<br />
@@ -1245,61 +1294,61 @@ Functions have 3 fields:<br />
 Deifnes what library will be used to handle invocations<br />
 <code>Data</code> - Can hold either a type definition or a reference to an already defined type<br />
 <code>Return</code> - Can hold either a type definition or a reference to an already defined type 
-<div class="highlight"><pre><span></span><code>function Example {
-    Yield: Coroutine,
-    Data: u8,
-    Return: u8
-}
-
-function ExampleFuture {
-    Yield: Future,
-    Data: u8,
-    Return: u8
-}
-
-function ExamplePromise {
-    Yield: Promise,
-    Data: u8,
-    Return: u8
-}
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>function Example {
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    Yield: Coroutine,
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    Data: u8,
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    Return: u8
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>}
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>function ExampleFuture {
+</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    Yield: Future,
+</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    Data: u8,
+</span><span id="__span-15-10"><a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>    Return: u8
+</span><span id="__span-15-11"><a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>}
+</span><span id="__span-15-12"><a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>
+</span><span id="__span-15-13"><a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>function ExamplePromise {
+</span><span id="__span-15-14"><a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>    Yield: Promise,
+</span><span id="__span-15-15"><a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>    Data: u8,
+</span><span id="__span-15-16"><a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>    Return: u8
+</span><span id="__span-15-17"><a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>}
+</span></code></pre></div></p>
 <h2 id="scopes-namespaces">Scopes (Namespaces)</h2>
 <p>You can define a scope (namespace) using the <code>scope</code> keyword<br />
 Scopes allow you to group similiar types together for further organization  </p>
 <p>Defining scopes:<br />
-<div class="highlight"><pre><span></span><code>scope ExampleScope {
-    type InScopeType = u8
-    event InScopeEvent {
-        From: Server,
-        Type: Reliable,
-        Call: SingleSync,
-        Data: u8
-    }
-}
-
-struct Example {
-    Reference = ExampleScope.InScopeType
-}
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>scope ExampleScope {
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>    type InScopeType = u8
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    event InScopeEvent {
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>        From: Server,
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>        Type: Reliable,
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>        Call: SingleSync,
+</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>        Data: u8
+</span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>    }
+</span><span id="__span-16-9"><a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>}
+</span><span id="__span-16-10"><a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>
+</span><span id="__span-16-11"><a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>struct Example {
+</span><span id="__span-16-12"><a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>    Reference = ExampleScope.InScopeType
+</span><span id="__span-16-13"><a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>}
+</span></code></pre></div></p>
 <hr />
 <p>Scopes automatically inherit any declarations made within their parent scopes (including main)<br />
-<div class="highlight"><pre><span></span><code>type Example = u8
-scope ExampleScope {
-    type TypeInScope = u8
-    scope ExampleNestedScope {
-        -- Example is taken from the main (global) scope
-        -- TypeInScope is taken from the parent scope (ExampleScope)
-        map ExampleMap = {[Example]: TypeInScope}
-    }
-}
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>type Example = u8
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>scope ExampleScope {
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    type TypeInScope = u8
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>    scope ExampleNestedScope {
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>        -- Example is taken from the main (global) scope
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>        -- TypeInScope is taken from the parent scope (ExampleScope)
+</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>        map ExampleMap = {[Example]: TypeInScope}
+</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>    }
+</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>}
+</span></code></pre></div></p>
 <hr />
 <p>Using scopes in code:<br />
-<div class="highlight"><pre><span></span><code><span class="kd">local</span> <span class="n">Blink</span> <span class="o">=</span> <span class="nb">require</span><span class="p">(</span><span class="n">PATH_TO_BLINK</span><span class="p">)</span>
-<span class="n">Blink</span><span class="p">.</span><span class="n">ExampleScope</span><span class="p">.</span><span class="n">InScopeEvent</span><span class="p">.</span><span class="n">FireAll</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-
-<span class="kd">local</span> <span class="n">Number</span><span class="p">:</span> <span class="n">Blink</span><span class="p">.</span><span class="n">ExampleScope_InScopeEvent</span> <span class="o">=</span> <span class="mi">0</span>
-</code></pre></div></p>
+<div class="language-lua highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kd">local</span> <span class="n">Blink</span> <span class="o">=</span> <span class="nb">require</span><span class="p">(</span><span class="n">PATH_TO_BLINK</span><span class="p">)</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="n">Blink</span><span class="p">.</span><span class="n">ExampleScope</span><span class="p">.</span><span class="n">InScopeEvent</span><span class="p">.</span><span class="n">FireAll</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="kd">local</span> <span class="n">Number</span><span class="p">:</span> <span class="n">Blink</span><span class="p">.</span><span class="n">ExampleScope_InScopeEvent</span> <span class="o">=</span> <span class="mi">0</span>
+</span></code></pre></div></p>
 <h2 id="imports">Imports</h2>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
@@ -1307,40 +1356,40 @@ scope ExampleScope {
 </div>
 <p>Blink allows you to use multiple definition files through importing.<br />
 Imports will pull all declarations (events, functions, scopes and types) from the target file and load them into the importing scope as a new scope using either the file name or a user provided name through the <code>as</code> keyword.<br />
-<div class="highlight"><pre><span></span><code>import &quot;../path/File.blink&quot; --&gt; Imports as a new scope &quot;File&quot;
-type a = File.b
-</code></pre></div>
-<div class="highlight"><pre><span></span><code>import &quot;../path/File.blink&quot; as Something --&gt; Imports as a new scope &quot;Something&quot;
-type a = Something.b
-</code></pre></div>
-<div class="highlight"><pre><span></span><code>scope MyScope {
-    --&gt; Imports a new scope &quot;Something&quot; into &quot;MyScope&quot;
-    import &quot;../path/File.blink&quot; as Something
-}
-type a = MyScope.Something.b
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>import &quot;../path/File.blink&quot; --&gt; Imports as a new scope &quot;File&quot;
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>type a = File.b
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>import &quot;../path/File.blink&quot; as Something --&gt; Imports as a new scope &quot;Something&quot;
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>type a = Something.b
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>scope MyScope {
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>    --&gt; Imports a new scope &quot;Something&quot; into &quot;MyScope&quot;
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>    import &quot;../path/File.blink&quot; as Something
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>}
+</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>type a = MyScope.Something.b
+</span></code></pre></div></p>
 <h2 id="limitations">Limitations</h2>
 <h3 id="referencing-types">Referencing types</h3>
 <p>A type must be defined earlier in the source for it to be referenceable, you cannot reference a type before it has been defined.
-<div class="highlight"><pre><span></span><code>struct Invalid {
-    Field: Number
-}
-type Number = u8
-</code></pre></div>
-<div class="highlight"><pre><span></span><code>[ERROR]
-    |
-002 |     Field = Number
-    |             ^^^^^^ Unknown type referenced.
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>struct Invalid {
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>    Field: Number
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>}
+</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>type Number = u8
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>[ERROR]
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>    |
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>002 |     Field = Number
+</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>    |             ^^^^^^ Unknown type referenced.
+</span></code></pre></div></p>
 <h3 id="keywords">Keywords</h3>
 <p>You cannot use any keywords as "Identifiers".
-<div class="highlight"><pre><span></span><code>type struct = {}
-</code></pre></div>
-<div class="highlight"><pre><span></span><code>[ERROR]
-    |
-001 | type struct = {
-    |      ^^^^^^ Unexpected token: &quot;Keyword&quot;, expected: &quot;Identifier&quot;.
-</code></pre></div></p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>type struct = {}
+</span></code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>[ERROR]
+</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>    |
+</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>001 | type struct = {
+</span><span id="__span-25-4"><a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>    |      ^^^^^^ Unexpected token: &quot;Keyword&quot;, expected: &quot;Identifier&quot;.
+</span></code></pre></div></p>
 
 
 
@@ -1387,7 +1436,7 @@ type Number = u8
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "..", "features": ["content.code.copy"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
       <script src="../assets/javascripts/bundle.a7c05c9e.min.js"></script>
