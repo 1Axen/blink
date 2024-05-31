@@ -26,6 +26,7 @@ set Flags33 = {F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15,
 map Map = {[string]: u8}
 map MapComplex = {[string(0..20)]: u8(0..100)[8]}
 map MapReference = {[States]: States}?
+export map MapNested = {[Map]: Map}
 
 map ArrayMap = {[u8]: u8}[0..20]
 enum ArrayEnum = {A, B, C}[0..20]
@@ -67,7 +68,7 @@ export struct Standalone {
 
 type Number = u8
 struct Example {
-    Field: u8,
+    Field: u8?,
     Enum: States,
     Nested: struct {
         Guh: u8,

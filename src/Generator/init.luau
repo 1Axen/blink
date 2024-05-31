@@ -219,30 +219,32 @@ function Declarations.Map(Declaration: Parser.MapDeclaration, Read: Blocks.Block
 	local Key = MapValue.Values[1]
 	local Value = MapValue.Values[2]
 
-	local KeyType = Generators.LuauType(Key :: Type)
-	local ValueType = Generators.LuauType(Value :: Type)
+	local KeyVariable = `Key_{Read.Indent}`
+	local ElementVariable = `Element_{Write.Indent}`
+	local ElementsVariable = `Elements_{Write.Indent}`
+	local ElementsAllocation = Write:Allocate(2)
 
 	Read:Line(`{Read:Declare(Variable)} = \{\}`)
-	Write:Line("local Elements = 0")
-	Types.u16.Read(`Elements`, Read)
+	Write:Line(`local {ElementsVariable} = 0`)
+	Types.u16.Read(ElementsVariable, Read)
 
-	local ReadLoop = Read:Loop("_ = 1", "Elements")
-	local WriteLoop = Write:Iterator("Key", "Element", Variable)
+	local ReadLoop = Read:Loop("_ = 1", ElementsVariable)
+	local WriteLoop = Write:Iterator(KeyVariable, ElementVariable, Variable)
 
 	--> Maps are unsafe
 	ReadLoop:DisableOperationOptimisations()
 	WriteLoop:DisableOperationOptimisations()
 
 	--ReadLoop:Line(`local Key: {KeyType}, Element: {ValueType};`)
-	WriteLoop:Line("Elements += 1")
-	Generators.UserType(Key :: Type, ReadLoop, WriteLoop, "Key")
-	Generators.UserType(Value :: Type, ReadLoop, WriteLoop, "Element")
-	ReadLoop:Line(`{Variable}[Key] = Element`)
+	WriteLoop:Line(`{ElementsVariable} += 1`)
+	Generators.UserType(Key :: Type, ReadLoop, WriteLoop, KeyVariable)
+	Generators.UserType(Value :: Type, ReadLoop, WriteLoop, ElementVariable)
+	ReadLoop:Line(`{Variable}[{KeyVariable}] = {ElementVariable}`)
 
 	WriteLoop:End()
 	ReadLoop:End()
 
-	Write:Line(`buffer.writeu16(SendBuffer, {Write:Allocate(2)}, Elements)`)
+	Write:Line(`buffer.writeu16(SendBuffer, {ElementsAllocation}, {ElementsVariable})`)
 end
 
 function Declarations.Struct(Declaration: Parser.StructDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
@@ -741,7 +743,9 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 	--> Array
 	if Array then
 		if Array.Optional then
-			Read:Line(`{Read:Declare(Variable)} = nil`)
+			if not string.find(Variable, ".", 1, true) then
+				Read:Line(`{Read:Declare(Variable)} = nil`)
+			end
 			Read, Write = Generators.Optional(Declaration, Read, Write, Variable, true)
 		end
 
@@ -756,7 +760,9 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 
 	--> Optional
 	if Optional then
-		Read:Line(Read:Declare(ActualVariable))
+		if not string.find(ActualVariable, ".", 1, true) then
+			Read:Line(Read:Declare(ActualVariable))
+		end
 		Read, Write = Generators.Optional(Declaration, Read, Write, ActualVariable)
 	end
 

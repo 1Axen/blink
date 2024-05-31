@@ -357,7 +357,6 @@ do
 				Prefab = Types[Components[#Components]] or Prefab
 			end
 
-			Block:Line(`local X, Y, Z;`)
 			Prefab.Read("X", Block)
 			Prefab.Read("Y", Block)
 			Prefab.Read("Z", Block)

@@ -1,4 +1,5 @@
 local fs = require("@lune/fs")
+local net = require("@lune/net")
 local task = require("@lune/task")
 local stdio = require("@lune/stdio")
 local process = require("@lune/process")
@@ -73,7 +74,7 @@ local function GetFlags(Amount: number): {[string]: boolean}
     return Flags
 end
 
-local function CompareTables(a, b)
+function CompareTables(a, b)
     if a == b then 
         return true 
     end
@@ -105,7 +106,7 @@ local function CompareTables(a, b)
     return true
 end
 
-local function CompareValues(a, b): boolean
+function CompareValues(a, b): boolean
     if type(a) == "table" or type(b) == "table" then
         return CompareTables(a, b)
     end
@@ -512,6 +513,25 @@ FireAllAndExpectAll("Many events", 32, {
 FireAndExpect("TagEnum Join", Server.PlayerEvent, Client.PlayerEvent, {Type = "Join", Name = "Player", UserId = 5})
 FireAndExpect("TagEnum Chat", Server.PlayerEvent, Client.PlayerEvent, {Type = "Chat", UserId = 5, Message = "Hello"})
 FireAndExpect("TagEnum Leave", Server.PlayerEvent, Client.PlayerEvent, {Type = "Leave", UserId = 5})
+
+RunClosure("Nested Map", function()
+    local Map = {string = 1}
+    local Serialized = Server.MapNested.Write({[Map] = Map})
+    local Deserialized = Server.MapNested.Read(Serialized)
+
+    local Elements = 0
+    for KeyMap, ValueMap in Deserialized do
+        if Elements >= 1 then
+            error("Deserialized doesn't match original")
+        end
+
+        Elements += 1
+        assert(type(KeyMap) == "table", "Deserialized doesn't match original")
+        assert(type(ValueMap) == "table", "Deserialized doesn't match original")
+        assert(type(KeyMap.string) == "number", "Deserialized doesn't match original")
+        assert(type(ValueMap.string) == "number", "Deserialized doesn't match original")
+    end
+end)
 
 RunClosure("Standalone", function()
     local Original = {
