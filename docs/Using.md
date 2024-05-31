@@ -206,8 +206,7 @@ In the code above we have a simple packet transmission protocol which contains t
 ## Maps
 You can define maps using the `map` keyword   
 > [!NOTE]
-> Maps cannot currently have maps as keys or values.  
-> You also cannot have optional keys or values as there is no way to represent those in Luau.
+> Maps cannot have optional keys or values as there is no way to represent those in Luau.
 ```
 map Example = {[string]: u8}
 ```
