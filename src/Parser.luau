@@ -97,8 +97,8 @@ export type Body = Node<"Body", {
     Declarations: {Declaration}
 }, {}>
 
-type Declarations = "Map" | "Enum" | "TagEnum" | "Tuple" | "Struct" | "Primitive" | "Generic" | "Reference" | "Event" | "Function" | "Scope" 
-export type TypeDeclaration = MapDeclaration | EnumDeclaration | TagEnumDeclaration | TupleDeclaration | StructDeclaration | PrimitiveDeclaration | GenericDeclaration | ReferenceDeclaration
+type Declarations = "Map" | "Set" | "Enum" | "TagEnum" | "Tuple" | "Struct" | "Primitive" | "Generic" | "Reference" | "Event" | "Function" | "Scope" 
+export type TypeDeclaration = MapDeclaration | SetDeclaration | EnumDeclaration | TagEnumDeclaration | TupleDeclaration | StructDeclaration | PrimitiveDeclaration | GenericDeclaration | ReferenceDeclaration
 
 export type Declaration = Node<Declarations, {
     Identifier: string,
@@ -106,6 +106,11 @@ export type Declaration = Node<Declarations, {
 }, {
     [any]: any
 }>
+
+export type SetDeclaration = Node<"Set", {
+    Identifier: string,
+    Values: {string}
+} & Attributes, AttributesTokens>
 
 export type MapDeclaration = Node<"Map", {
     Identifier: string,
@@ -208,20 +213,62 @@ local BUCKETS: {[string]: Bucket} = {
     Scope = "Scopes"
 }
 
-local KEYWORDS = {
-    map = "Type",
-    enum = "Type",
-    type = "Type",
-    struct = "Type",
-    event = "Event",
-    ["function"] = "Function",
-    scope = "Scope",
+type Keyword = {
+    Class: string,
+    Type: Declarations,
+    Generics: boolean,
+    Exportable: boolean,
 }
 
-local TYPE_KEYWORDS = {
-    map = "Map",
-    enum = "Enum",
-    type = "Primitive"
+local KEYWORDS: {[string]: Keyword} = {
+    map = {
+        Type = "Map",
+        Class = "Type",
+        Generics = true,
+        Exportable = true,
+    },
+    set = {
+        Type = "Set",
+        Class = "Type",
+        Generics = true,
+        Exportable = true,
+    },
+    enum = {
+        Type = "Enum",
+        Class = "Type",
+        Generics = true,
+        Exportable = true,
+    },
+    type = {
+        Type = "Primitive",
+        Class = "Type",
+        Generics = false,
+        Exportable = true,
+    },
+    struct = {
+        Type = "Struct",
+        Class = "Type",
+        Generics = true,
+        Exportable = true,
+    },
+    event = {
+        Type = "Event",
+        Class = "Event",
+        Generics = false,
+        Exportable = false,
+    },
+    ["function"] = {
+        Type = "Function",
+        Class = "Function",
+        Generics = false,
+        Exportable = false,
+    },
+    scope = {
+        Type = "Scope",
+        Class = "Scope",
+        Generics = false,
+        Exportable = false,
+    },
 }
 
 local GENERICS_TYPES = {
@@ -230,21 +277,8 @@ local GENERICS_TYPES = {
     TagEnum = true
 }
 
-local EXPORTABLE_TYPES = {
-    map = true,
-    type = true,
-    enum = true,
-    struct = true
-}
-
 local RESERVED = {
     StepReplication = true
-}
-
-local SUPPORTS_GENERICS = {
-    map = true,
-    enum = true,
-    struct = true,
 }
 
 local PRIMITIVES = Settings.Primtives
@@ -901,7 +935,9 @@ function Parser.Declarations(self: Parser): {Declaration}
         local Declaration: Declaration;
 
         --> Prevent duplicates
-        local Type = KEYWORDS[Keyword.Value]
+        local KeywordSettings = KEYWORDS[Keyword.Value]
+        local Type = KeywordSettings.Class
+
         local Bucket: Bucket = BUCKETS[Type]
         local Reference = self:GetReference(Bucket, Identifier.Value)
 
@@ -914,7 +950,7 @@ function Parser.Declarations(self: Parser): {Declaration}
 
         --> Generics
         local Generics: Generics?;
-        if SUPPORTS_GENERICS[Keyword.Value] then
+        if KeywordSettings.Generics then
             Generics = self:GetGenerics()
         end
 
@@ -937,7 +973,7 @@ function Parser.Declarations(self: Parser): {Declaration}
 
         if Export then
             --> Prevent non exportable types from being exported
-            if not EXPORTABLE_TYPES[Keyword.Value] then
+            if not KeywordSettings.Exportable then
                 Error.new(Error.AnalyzeInvalidExport, self.Source, `Declaration of type "{Keyword.Value}" is not exportable`)
                     :Primary(Export, `Remove export here`)
                 :Emit()
@@ -1112,13 +1148,13 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
             self:Consume("Assign")
 
             --> Handle reference declarations
-            local Type = TYPE_KEYWORDS[Value]
+            local Type = KEYWORDS[Value].Type
             local Token = self:Peek()
             
             if Token.Type == "Identifier" then
                 Declaration = self:Reference(Identifier)
                 local Reference = (Declaration :: ReferenceDeclaration).Value.Declaration
-                if not IsDeclarationTypeSimiliar(Reference.Type, Type) then
+                if not IsDeclarationTypeSimiliar(Reference.Type, Type :: Declarations) then
                     Error.new(Error.AnalyzeReferenceInvalidType, self.Source, `Cannot cast "{Reference.Type}" to "{Type}"`)
                         :Primary(Token, `Expected a reference to "{Type}", got "{Reference.Type}" instead`)
                     :Emit()
@@ -1130,6 +1166,8 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
         if not Declaration then
             if Value == "map" then
                 Declaration = self:Map(Identifier)
+            elseif Value == "set" then
+                Declaration = self:Set(Identifier)
             elseif Value == "enum" then
                 Declaration = self:Enum(Identifier)
             elseif Value == "type" then
@@ -1196,22 +1234,39 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
     return Declaration
 end
 
+function Parser.Set(self: Parser, Identifier: Token): SetDeclaration
+    self:Consume("OpenBraces")
+
+    local Values: {string} = {}
+    while true do
+        if self:TryConsume("CloseBraces") then
+            break
+        end
+
+        local Token = self:Consume("Identifier")
+        table.insert(Values, Token.Value)
+
+        if self:TryConsume("CloseBraces") then
+            break
+        end
+
+        self:Consume("Comma")
+    end
+
+    return {
+        Type = "Set",
+        Value = {
+            Identifier = Identifier.Value,
+            Values = Values,
+        },
+        Tokens = {}
+    } :: SetDeclaration
+end
+
 function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
     self:ConsumeAll("OpenBraces", "OpenBrackets")
 
     --> Errors
-    local function ThrowOptional(Token: Error.Span, IsReference: boolean?): never
-        error(Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type")
-            :Primary(Token, `{IsReference and "Declaration is a reference to an optional. " or ""}Maps cannot have maps as keys or values`)
-        :Emit())
-    end
-
-    local function ThrowNestedMap(Token: Error.Span): never
-        error(Error.new(Error.AnalyzeNestedMap, self.Source, "Nested map")
-            :Primary(Token, `Maps cannot have maps as keys or values`)
-        :Emit())
-    end
-
     local function ParseElement(): TypeDeclaration
         local Token = self:Peek()
         local Declaration = self:Type(Identifier)
@@ -1219,14 +1274,12 @@ function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
         local Type = Declaration.Type
         local Value = Declaration.Value
 
-        if Type == "Map" then
-            ThrowNestedMap(Token)
-        elseif Type == "Reference" then
+        if Type == "Reference" then
             local Reference: TypeDeclaration = (Value :: any).Declaration
-            if Reference.Type == "Map" then
-                ThrowNestedMap(Token)
-            elseif Reference.Value.Optional then
-                ThrowOptional(Token)
+            if Reference.Value.Optional then
+                Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type")
+                    :Primary(Token, `Maps cannot have optionals as keys or values`)
+                :Emit()
             end
         end
 

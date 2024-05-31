@@ -139,6 +139,10 @@ function Block.Declare(self: Block, Variable: string): string
     return `local {Variable}`
 end
 
+function Block.EmptyDeclare(self: Block, Variable: string)
+    self.Variables[Variable] = true
+end
+
 function Block.Advance(self: Block, Offset: number): Block
     self.Cursor += Offset
     return self

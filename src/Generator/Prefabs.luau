@@ -84,14 +84,24 @@ local Primitives: {[string]: {
 }} = {}
 
 local NumberTypeBounds = {
-	{Maximum = 255, Type = "u8"},
-	{Maximum = 65535, Type = "u16"},
-	{Maximum = 4294967295, Type = "u32"},
+	{Bits = 8, Maximum = 255, Type = "u8"},
+	{Bits = 16, Maximum = 65535, Type = "u16"},
+	{Bits = 32, Maximum = 4294967295, Type = "u32"},
 }
 
 local function GetTypeToUse(UpperSize: number): TypePrefab
 	for _, NumberType in NumberTypeBounds do
 		if NumberType.Maximum >= UpperSize then
+			return Types[NumberType.Type]
+		end
+	end
+
+	error("Value is too large to be written to a buffer.")
+end
+
+local function GetTypeToUseByBits(UpperBits: number): TypePrefab
+	for _, NumberType in NumberTypeBounds do
+		if NumberType.Bits >= UpperBits then
 			return Types[NumberType.Type]
 		end
 	end
@@ -508,5 +518,7 @@ return {
 	Types = Types,
 	Asserts = Asserts,
 	Primitives = Primitives,
-	Structures = Structures
+	Structures = Structures,
+	GetTypeToUse = GetTypeToUse,
+	GetTypeToUseByBits = GetTypeToUseByBits
 }

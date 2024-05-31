@@ -10,7 +10,7 @@ blink [INPUT]
 ``` 
 ## Using the generated code
 When requiring the code generated it will return a table which contains all defined events & functions, you can use this table to fire/invoke and listen to events/functions.
-```lua
+``` lua linenums="1"
 local Blink = require(PATH_TO_MODULE)
 
 --> Firing events
@@ -20,7 +20,7 @@ Blink.Example.FireList(List, 1)
 Blink.Example.FireExcept(Player, 1)
 
 --> Listening to events
-Blink.AnotherExample.Listen(function(...)
+Blink.AnotherExample.On(function(...)
     print(...)
 end)
 ```

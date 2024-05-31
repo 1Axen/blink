@@ -160,6 +160,7 @@ local Primitives: {[string]: Primitive} = {
 return {
     Keywords = {
         map = true,
+        set = true,
         type = true,
         enum = true,
         struct = true,

@@ -7,6 +7,8 @@ theme:
   palette:
     primary: indigo
     scheme: slate
+  features:
+    - content.code.copy
 nav:
   - Introduction: 'index.md'
   - Installation: 'Installation.md'
@@ -19,4 +21,11 @@ plugins:
 markdown_extensions:
   - admonition
   - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
   - pymdownx.superfences

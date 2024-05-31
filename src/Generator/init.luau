@@ -132,6 +132,51 @@ function Declarations.Primitive(Declaration: Parser.PrimitiveDeclaration, Read: 
     Generator.Generate(Declaration, Variable, Read, Write, Options.WriteValidations)
 end
 
+function Declarations.Set(Declaration: Parser.SetDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
+	local Value = Declaration.Value
+	local Flags = Value.Values
+
+	local BitsType = Prefabs.GetTypeToUseByBits(math.min(#Flags, 32))
+	local IsOverBit32Limit = #Flags > 32
+
+	--> Read body
+	if not IsOverBit32Limit then
+		BitsType.Read("SET_BITS", Read)
+	end
+
+	Read:Line(`{Read:Declare(Variable)} = \{`)
+
+	for Index, Flag in Flags do
+		Read:EmptyDeclare(Flag)
+
+		if IsOverBit32Limit then
+			Prefabs.Types.boolean.Read(Flag, Read)
+			Read:Character(",")
+		else
+			Read:Line(`{Flag} = (bit32.extract(SET_BITS, {Index - 1}) == 1),`, Read.Indent + 1)
+		end
+	end
+
+	Read:Line("}")
+
+	--> Write body
+	if not IsOverBit32Limit then
+		Write:Line("local SET_BITS = 0")
+	end
+
+	for Index, Flag in Flags do
+		if IsOverBit32Limit then
+			Prefabs.Types.boolean.Write(`{Variable}.{Flag}`, Write)
+		else
+			Write:Line(`SET_BITS = bit32.bor(SET_BITS, bit32.lshift(({Variable}.{Flag}) and 1 or 0, {Index - 1}))`)
+		end
+	end
+
+	if not IsOverBit32Limit then
+		BitsType.Write("SET_BITS", Write)
+	end
+end
+
 function Declarations.Enum(Declaration: Parser.EnumDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local Value = Declaration.Value
 	local Enums = Value.Values
@@ -165,7 +210,7 @@ function Declarations.Enum(Declaration: Parser.EnumDeclaration, Read: Blocks.Blo
 			Write:Line(`buffer.writeu8(SendBuffer, {Allocation}, {Index - 1})`)
 		end
 	Write:Branch("Default")
-		:Line(`error(\`Unexpected enum: \{{Variable}\}, expectd one of {Literal}.\`)`)
+		:Line(`error(\`Unexpected enum: \{{Variable}\}, expected one of {Literal}.\`)`)
 	:End()
 end
 
@@ -717,10 +762,12 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 
 	if Declaration.Type == "Primitive" then
         Declarations.Primitive(Declaration, Read, Write, ActualVariable)
-	elseif Declaration.Type == "Enum" then
-		Declarations.Enum(Declaration, Read, Write, ActualVariable)
+	elseif Declaration.Type == "Set" then
+		Declarations.Set(Declaration, Read, Write, ActualVariable)
 	elseif Declaration.Type == "Map" then
 		Declarations.Map(Declaration, Read, Write, ActualVariable)
+	elseif Declaration.Type == "Enum" then
+		Declarations.Enum(Declaration, Read, Write, ActualVariable)
 	elseif Declaration.Type == "Struct" then
 		Declarations.Struct(Declaration, Read, Write, ActualVariable)
 	elseif Declaration.Type == "Tuple" then
@@ -766,6 +813,15 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 		else
 			Type = Primitive.Type
 		end
+	elseif Declaration.Type == "Set" then
+		local Value = (Declaration :: Parser.SetDeclaration).Value
+		local Entries: {string} = {}
+
+		for _, Flag in Value.Values do
+			table.insert(Entries, `{Flag}: boolean,`)
+		end
+
+		Type = `\{{table.concat(Entries)}\}`
 	elseif Declaration.Type == "Enum" then
 		local Value = (Declaration :: Parser.EnumDeclaration).Value
 		Type = GenerateEnumLiterals(Value.Values)
