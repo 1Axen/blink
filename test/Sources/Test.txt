@@ -18,6 +18,11 @@ type ConstrainedArray = u8(0..10)[10]
 
 enum States = { A, B, C, D }
 
+set Flags8 = {F1, F2, F3, F4, F5, F6, F7, F8}
+set Flags16 = {F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16}
+set Flags32 = {F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24, F25, F26, F27, F28, F29, F30, F31, F32}
+set Flags33 = {F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24, F25, F26, F27, F28, F29, F30, F31, F32, F33}
+
 map Map = {[string]: u8}
 map MapComplex = {[string(0..20)]: u8(0..100)[8]}
 map MapReference = {[States]: States}?
@@ -73,6 +78,33 @@ struct Example {
 
 struct MapStruct {
     Map: map {[string]: u8}
+}
+
+event Flags8 {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+    Data: Flags8
+}
+
+event Flags16 {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+    Data: Flags16
+}
+
+event Flags32 {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+    Data: Flags32
+}
+event Flags33 {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+    Data: Flags33
 }
 
 event DynamicMap {

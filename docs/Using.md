@@ -82,6 +82,37 @@ struct Dictionary {
     Field: u8
 }[0..255]
 ```
+## Sets
+You can define a set using the `set` keyword.  
+Sets are a string and boolean key value pair dictionary, they can be used to send a set of flags over the network more efficiently than can be done with other data types like structs.  
+!!! tip
+    Sets with up to 32 flags are bit-packed to reduce bandwidth usage.  
+    Going over the limit will cause flags to be encoded using 1 byte per flag.  
+    It is recommended to split sets containing over 32 flags into multiple sets instead of using one.  
+```
+set GameFlags = {
+    EntitiesSpawn,
+    PlayersCanOpenChests,
+    PlayersCanDamagePlayers,
+}
+
+event SetGameFlags {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+    Data: GameFlags
+
+}
+```
+``` lua
+local GameFlags: Blink.GameFlags = {
+    EntitiesSpawn = true,
+    PlayersCanOpenChests = true,
+    PlayersCanDamagePlayers = false
+}
+
+Blink.SetGameFlags.FireAll(GameFlags)
+```
 ## Enums
 You can define enums using the `enum` keyword.  
 Blink has two type of enums, unit and tagged enums.

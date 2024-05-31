@@ -65,7 +65,15 @@ local Client = require("../Network/Client")
 local Server = require("../Network/Server")
 
 --> Helper functions
-function CompareTables(a, b)
+local function GetFlags(Amount: number): {[string]: boolean}
+    local Flags = {}
+    for Index = 1, Amount do
+        Flags[`F{Index}`] = (math.random(1, 2) == 2)
+    end
+    return Flags
+end
+
+local function CompareTables(a, b)
     if a == b then 
         return true 
     end
@@ -427,6 +435,11 @@ FireAndExpect("Unreliable Client", Client.UnreliableClient, Server.UnreliableCli
 FireAndExpect("Unknown", Server.Unknown, Client.Unknown, newproxy())
 
 FireAndExpect("Generic", Server.Generic, Client.Generic, {Data = 0, Nested = {Value = 0}})
+
+FireAndExpect("Set 8", Server.Flags8, Client.Flags8, GetFlags(8))
+FireAndExpect("Set 16", Server.Flags16, Client.Flags16, GetFlags(16))
+FireAndExpect("Set 32", Server.Flags32, Client.Flags32, GetFlags(32))
+FireAndExpect("Set >32", Server.Flags33, Client.Flags33, GetFlags(33))
 
 FireAndExpect("Map", Server.MapEvent, Client.MapEvent, {["string"] = 1})
 FireAndExpect("Map Struct", Server.MapStructEvent, Client.MapStructEvent, {Map = {string = 1}})
