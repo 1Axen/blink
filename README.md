@@ -9,7 +9,7 @@ Blink aims to generate the most performant and bandwidth-efficient code for your
 
 It means lower bandwidth usage directly resulting in **lower ping\*** experienced by players and secondly, it means **lower CPU usage** compared to more generalized networking solutions.
 
-*\* In comparasion to standard ROBLOX networking, this may not always be the case but should never result in increased ping times.*
+*\* In comparison to standard ROBLOX networking, this may not always be the case but should never result in increased ping times.*
 
 Benchmarks are available here [here](https://1axen.github.io/blink/Benchmarks).
 
