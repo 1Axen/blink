@@ -9,7 +9,26 @@ local process = require("@lune/process")
 local Parser = require("./Parser")
 local Generator = require("./Generator/init.luau")
 
+---- Arguments ----
+
+local Arguments = process.args
+if #Arguments < 1 then
+    error(`Expected at least 1 argument.`)
+end
+
+local WatchChanges = (table.find(Arguments, "--watch") or table.find(Arguments, "--w")) ~= nil
+local YesToEverything = (table.find(Arguments, "--yes") or table.find(Arguments, "--y")) ~= nil
+local OutputAbstractSyntaxTree = (table.find(Arguments, "--ast") ~= nil)
+
 ---- Functions -----
+
+local function Prompt(Message: string): boolean
+	if YesToEverything then
+		return true
+	end
+
+	return stdio.prompt("confirm", Message)
+end
 
 local function FormatTime(Time: number): string
 	if Time < 1E-6 then
@@ -45,7 +64,7 @@ local function CreateDirectoryIfNotFound(Path: string)
        return   
     end
 
-	local Result = stdio.prompt("confirm", `Directory {Directory} doesn't exist, create directory?`)
+	local Result = Prompt(`Directory {Directory} doesn't exist, create directory?`)
 	if Result then
 		fs.writeDir(Directory)
 		return
@@ -54,18 +73,11 @@ local function CreateDirectoryIfNotFound(Path: string)
 	error("User refused prompt to create directory")
 end
 
----- Constants ----
-
-local Arguments = process.args
-if #Arguments < 1 then
-    error(`Expected at least 1 argument.`)
-end
+---- Main ----
 
 local SourcePath = TryLocateSourceFile(Arguments[1])
 local SourceParser = Parser.new()
 local SourceDirectory = ExtractDirectory(SourcePath)
-
----- Main ----
 
 print(`Blink {_G.VERSION or "DEBUG"}`)
 stdio.write(stdio.color("cyan"))
@@ -80,7 +92,7 @@ local ParseStart = os.clock()
 local AbstractSyntaxTree = SourceParser:Parse(Source)
 local ParseTime = (os.clock() - ParseStart)
 
-if table.find(Arguments, "--ast") then
+if OutputAbstractSyntaxTree then
 	print(AbstractSyntaxTree.Value.Options)
 	print(AbstractSyntaxTree.Value.Declarations)
 	return
