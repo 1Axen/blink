@@ -72,6 +72,7 @@ local SYMBOLS: {[string]: {{Label: string, Insert: string}}} = {
     Field = {},
     Snippet = {},
     Keyword = {
+        {Label = "set", Insert = "set %s = {}"},
         {Label = "map", Insert = "map %s = {[]: }"},
         {Label = "type", Insert = "type %s = "},
         {Label = "enum", Insert = "enum %s = {}"},
@@ -144,6 +145,8 @@ local TextHeight = (Input.TextSize + 3)
 --> Objects
 local SourceLexer = Lexer.new("Highlighting")
 local SourceParser = Parser.new()
+
+local EditorWidget: DockWidgetPluginGui;
 
 ---- Variables ----
 
@@ -531,7 +534,9 @@ local function OnAnalysisErrorChanged()
         end
 
         Line.MouseEnter:Connect(function()
+            local Position = EditorWidget:GetRelativeMousePosition()
             ErrorContainer.Visible = true
+            ErrorContainer.Position = UDim2.fromOffset(Position.X + 4, Position.Y)
         end)
 
         Line.MouseLeave:Connect(function()
@@ -745,7 +750,9 @@ end
 
 ---- Initialization ----
 
-function Editor.Initialize()
+function Editor.Initialize(Widget: DockWidgetPluginGui)
+    EditorWidget = Widget
+
     --> Remove templates
     Selection.Line:Destroy()
     ErrorSelection.Line:Destroy()

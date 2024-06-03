@@ -412,7 +412,7 @@ end
 
 ---- Initialization ----
 
-Editor.Initialize()
+Editor.Initialize(EditorWidget)
 CreateTemplateFile()
 LoadFiles()
 

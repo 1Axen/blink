@@ -75,6 +75,10 @@ end
 
 ---- Main ----
 
+if WatchChanges then
+	warn("Watch is not currently enabled!")
+end
+
 local SourcePath = TryLocateSourceFile(Arguments[1])
 local SourceParser = Parser.new()
 local SourceDirectory = ExtractDirectory(SourcePath)
