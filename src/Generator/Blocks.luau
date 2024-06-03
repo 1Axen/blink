@@ -109,7 +109,7 @@ function Block._appendOperations(self: Block): Block
     return self
 end
 
-function Block.Declare(self: Block, Variable: string): string
+function Block.Declare(self: Block, Variable: string, Initialize: boolean?): (string)
     local Block = self
     local Declared = false
     local IsFieldAccess = (string.find(Variable, ".", 1, true) ~= nil)
@@ -135,6 +135,10 @@ function Block.Declare(self: Block, Variable: string): string
 
     --> Declare variable within current block
     self.Variables[Variable] = true
+
+    if Initialize then
+        self:Line(`local {Variable}`)
+    end
 
     return `local {Variable}`
 end

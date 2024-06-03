@@ -196,7 +196,7 @@ Types.f64, Primitives.f64 = GenerateNumberGenerator("f64", DOUBLE)
 Types.f16 = {
 	Read = function(Variable: string, Block: Block)
 		Types.u16.Read("Encoded", Block)
-		Block:Line(Block:Declare(Variable))
+		Block:Declare(Variable, true)
 		Block:Line(`local MantissaExponent = Encoded % 0x8000`)
 		Block:Compare("MantissaExponent", "0b0_11111_0000000000 ", "Equals")
 			:Compare("Encoded // 0x8000", "1", "Equals")

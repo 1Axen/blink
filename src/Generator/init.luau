@@ -743,9 +743,7 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 	--> Array
 	if Array then
 		if Array.Optional then
-			if not string.find(Variable, ".", 1, true) then
-				Read:Line(`{Read:Declare(Variable)} = nil`)
-			end
+			Read:Declare(Variable, true)
 			Read, Write = Generators.Optional(Declaration, Read, Write, Variable, true)
 		end
 
@@ -760,9 +758,7 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 
 	--> Optional
 	if Optional then
-		if not string.find(ActualVariable, ".", 1, true) then
-			Read:Line(Read:Declare(ActualVariable))
-		end
+		Read:Declare(ActualVariable, true)
 		Read, Write = Generators.Optional(Declaration, Read, Write, ActualVariable)
 	end
 

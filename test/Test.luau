@@ -418,6 +418,7 @@ local InstanceNeverIsA = setmetatable({
 
 local Example: Client.Example = {
     Field = 0,
+    Float16Field = 0,
     Enum = "A",
     Nested = {
         Guh = 1,
