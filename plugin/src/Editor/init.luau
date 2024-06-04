@@ -7,6 +7,7 @@
 ---- Services ----
 
 local UserInputService = game:GetService("UserInputService")
+local ContentProvider = game:GetService("ContentProvider")
 local TextService = game:GetService("TextService")
 local RunService = game:GetService("RunService")
 
@@ -514,7 +515,7 @@ local function OnAnalysisErrorChanged()
         local SelectionBoundsParams = Instance.new("GetTextBoundsParams")
         SelectionBoundsParams.Text = Substring
         SelectionBoundsParams.Size = TextSize
-        SelectionBoundsParams.Font = Input.FontFace
+        SelectionBoundsParams.Font = Display.FontFace
         
         local SelectionBounds = TextService:GetTextBoundsAsync(SelectionBoundsParams)
         Fill.Size = UDim2.new(0, SelectionBounds.X, 1, 0)
@@ -567,7 +568,8 @@ local function OnCursorPositionChanged()
     local GetTextBoundsParams = Instance.new("GetTextBoundsParams")
     GetTextBoundsParams.Text = Line
     GetTextBoundsParams.Size = TextSize
-    GetTextBoundsParams.Font = Input.FontFace
+    GetTextBoundsParams.Font = Display.FontFace
+
     local TextBounds = TextService:GetTextBoundsAsync(GetTextBoundsParams)
 
     --> Update cursor size and position
@@ -580,9 +582,10 @@ local function OnCursorPositionChanged()
     --> Update completion position
     local AbsoluteSize = EditorContainer.AbsoluteSize
     local AbsolutePosition = Cursor.AbsolutePosition
+    local HorisontalWidth = math.max(0, (AbsoluteSize.X - CompletionContainer.Size.X.Offset) - 10)
 
     CompletionContainer.Position = UDim2.fromOffset(
-        math.clamp(AbsolutePosition.X, 0, (AbsoluteSize.X - CompletionContainer.Size.X.Offset) - 10), 
+        math.clamp(AbsolutePosition.X, 0, HorisontalWidth), 
         AbsolutePosition.Y + TextSize
     )
 end
@@ -634,7 +637,7 @@ local function OnSelectionChanged()
         local SelectionBoundsParams = Instance.new("GetTextBoundsParams")
         SelectionBoundsParams.Text = Substring
         SelectionBoundsParams.Size = TextSize
-        SelectionBoundsParams.Font = Input.FontFace
+        SelectionBoundsParams.Font = Display.FontFace
         
         local SelectionBounds = TextService:GetTextBoundsAsync(SelectionBoundsParams)
         Fill.Size = UDim2.new(0, SelectionBounds.X, 1, 0)
@@ -646,7 +649,7 @@ local function OnSelectionChanged()
                 local OffsetBoundsParams = Instance.new("GetTextBoundsParams")
                 OffsetBoundsParams.Text = Prefix
                 OffsetBoundsParams.Size = TextSize
-                OffsetBoundsParams.Font = Input.FontFace
+                OffsetBoundsParams.Font = Display.FontFace
 
                 local OffsetBounds = TextService:GetTextBoundsAsync(OffsetBoundsParams)
                 Fill.Position = UDim2.new(0, OffsetBounds.X, 0, 0)
@@ -752,6 +755,13 @@ end
 
 function Editor.Initialize(Widget: DockWidgetPluginGui)
     EditorWidget = Widget
+
+    --> Preload fira sans
+    ContentProvider:PreloadAsync({Display}, function(AssetId: string, AssetFetchStatus: Enum.AssetFetchStatus) 
+        if AssetId ~= "" and AssetFetchStatus ~= Enum.AssetFetchStatus.Success then
+            warn("[BLINK] There was an issue preloading the editors font.")
+        end
+    end)
 
     --> Remove templates
     Selection.Line:Destroy()
