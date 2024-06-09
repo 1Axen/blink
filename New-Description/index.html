@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://1axen.github.io/blink/Getting-Started/">
+        <link rel="canonical" href="https://1axen.github.io/blink/New-Description/">
       
       
         <link rel="prev" href="../Installation/">
       
       
-        <link rel="next" href="../Using/">
+        <link rel="next" href="../Syntax/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Getting Started - Blink</title>
+        <title>Creating a New Project - Blink</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#getting-started" class="md-skip">
+        <a href="#creating-a-new-project" class="md-skip">
           Skip to content
         </a>
       
@@ -108,7 +108,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Getting Started
+              Creating a New Project
             
           </span>
         </div>
@@ -242,6 +242,43 @@
       
   
   
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
   
   
     <li class="md-nav__item">
@@ -257,9 +294,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
     
@@ -278,7 +316,7 @@
           
   
   <span class="md-ellipsis">
-    Getting Started
+    Creating a New Project
   </span>
   
 
@@ -289,7 +327,7 @@
         
   
   <span class="md-ellipsis">
-    Getting Started
+    Creating a New Project
   </span>
   
 
@@ -344,6 +382,14 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
     
       
       
@@ -352,11 +398,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../Using/" class="md-nav__link">
+      <a href="../Syntax/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Using Blink
+    Language Syntax
   </span>
   
 
@@ -476,15 +522,19 @@
   
 
 
-<h1 id="getting-started">Getting Started</h1>
+<h1 id="creating-a-new-project">Creating a New Project</h1>
 <h2 id="write-your-first-network-description">Write your first network description</h2>
 <p>If you're looking for an example you can check out the <a href="https://github.com/1Axen/blink/blob/main/test/Sources/Test.txt">source file</a> used for testing.<br />
-For a guide on the syntax of Blink head over to <a href="../Using/">Writing network descriptions</a>.</p>
+For a guide on the syntax of Blink head over to <a href="../Syntax/">Writing network descriptions</a>.</p>
 <h2 id="generating-code">Generating code</h2>
 <p>Blink currently only supports code generation through CLI.<br />
 To generate output code run the following command in the directory in which you installed Blink:
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>blink [INPUT]
 </span></code></pre></div></p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>You can add the <code>--watch</code> option to have blink automatically recompile your description when you make any changes.</p>
+</div>
 <h2 id="using-the-generated-code">Using the generated code</h2>
 <p>When requiring the code generated it will return a table which contains all defined events &amp; functions, you can use this table to fire/invoke and listen to events/functions.
 <div class="language-lua highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-1-1"> 1</a></span>

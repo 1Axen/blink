@@ -8,10 +8,10 @@
       
       
       
-        <link rel="canonical" href="https://1axen.github.io/blink/Using/">
+        <link rel="canonical" href="https://1axen.github.io/blink/Syntax/">
       
       
-        <link rel="prev" href="../Getting-Started/">
+        <link rel="prev" href="../New-Description/">
       
       
         <link rel="next" href="../Plugin/">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Using Blink - Blink</title>
+        <title>Language Syntax - Blink</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#using" class="md-skip">
+        <a href="#syntax" class="md-skip">
           Skip to content
         </a>
       
@@ -108,7 +108,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Using Blink
+              Language Syntax
             
           </span>
         </div>
@@ -244,6 +244,41 @@
   
   
   
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../Installation/" class="md-nav__link">
         
@@ -257,23 +292,32 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
   
     <li class="md-nav__item">
-      <a href="../Getting-Started/" class="md-nav__link">
+      <a href="../New-Description/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Getting Started
+    Creating a New Project
   </span>
   
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -298,7 +342,7 @@
           
   
   <span class="md-ellipsis">
-    Using Blink
+    Language Syntax
   </span>
   
 
@@ -309,7 +353,7 @@
         
   
   <span class="md-ellipsis">
-    Using Blink
+    Language Syntax
   </span>
   
 
@@ -902,7 +946,7 @@
   
 
 
-<h1 id="using">Using</h1>
+<h1 id="syntax">Syntax</h1>
 <h2 id="options">Options</h2>
 <p>Options go at the top of a source file and are used to configure the output of Blink.
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>option [OPTION] = [VALUE]
@@ -1261,7 +1305,7 @@ In order to get around this you must mark instances as <strong>optional</strong>
 Events have 4 fields:<br />
 <code>From</code> - <code>Client</code> or <code>Server</code><br />
 <code>Type</code> - <code>Reliable</code> or <code>Unreliable</code><br />
-<code>Call</code> - <code>SingleSync</code> or <code>SingleAsync</code><br />
+<code>Call</code> - <code>SingleSync</code>, <code>SingleAsync</code>, <code>ManySync</code>, <code>ManyAsync</code> - <code>Many</code> refers to multiple connections 
 <code>Data</code> - Can hold either a type definition or a reference to an already defined type<br />
 <div class="language-text highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>event Simple {
 </span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    From: Client,
