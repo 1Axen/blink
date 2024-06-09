@@ -54,6 +54,8 @@ local function CreateDirectoryIfNotFound(Path: string, Options: CompileOptions)
         return   
     end
 
+    error(Path)
+
     local Result = Options.YesToEverything 
         or stdio.prompt("confirm", `Directory {Directory} doesn't exist, create directory?`)
 

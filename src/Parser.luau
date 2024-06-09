@@ -160,7 +160,7 @@ export type EventDeclaration = Node<"Event", {
     Identifier: string,
     From: "Client" | "Server",
     Type: "Reliable" | "Unreliable",
-    Call: "SingleSync" | "SingleAsync",
+    Call: "SingleSync" | "SingleAsync" | "ManySync" | "ManyAsync",
     Data: TypeDeclaration | TupleDeclaration 
 }, {}>
 
@@ -194,7 +194,7 @@ local OPTIONS: {[string]: Lexer.Types} = {
 local EVENT: {EventOption} = {
     {Key = "From", Type = "Identifier", Values = {"Client", "Server"}},
     {Key = "Type", Type = "Identifier", Values = {"Reliable", "Unreliable"}},
-    {Key = "Call", Type = "Identifier", Values = {"SingleSync", "SingleAsync"}},
+    {Key = "Call", Type = "Identifier", Values = {"SingleSync", "SingleAsync", "ManySync", "ManyAsync"}},
     {Key = "Data", Type = "Identifier", Values = {}}
 }
 

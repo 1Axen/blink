@@ -346,7 +346,14 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 	Body.Push(`{Value.Identifier} = \{`, 0, Indent)
 
 	if Value.From ~= Context then
+		local IsSync = (Value.Call == "SingleSync" or Value.Call == "ManySync")
+		local IsSingle = (Value.Call == "SingleSync" or Value.Call == "SingleAsync")
+
 		--> Create queue and event branch
+		if not IsSingle then
+			Events.Push(`{Connection} = \{}`)
+		end
+
 		Events.Push(`{Queue} = table.create(256)`)
 		Block = (Channel.Listening == false)
 			and Block:Compare("Index", Index, "Equals")
@@ -366,52 +373,59 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 		local Listener: Blocks.Block;
 		local ContextArguments = `Listener: ({Context == "Server" and "Player: Player, " or ""}{Values}) -> ()`
 		local ListenerArguments = `{Context == "Server" and "Player, " or ""}{Arguments}`
-		local CallListenerFunction = Value.Call == "SingleSync" and `{Connection}({ListenerArguments})` or `task.spawn({Connection}, {ListenerArguments})`
+		
+		local CallManyListenerFunction = IsSingle and `Listener({ListenerArguments})` or `task.spawn(Listener, {ListenerArguments})`
+		local CallSingleListenerFunction = IsSync and `{Connection}({ListenerArguments})` or `task.spawn({Connection}, {ListenerArguments})`
 
 		Block:Line(`local {Values} = {GetTypesPath(Identifier, false)}()`)
 
+		local Disconnect = Blocks.Function("", "", "()")
+			:Line(IsSingle and `{Connection} = nil` or `table.remove({Connection}, table.find({Connection}, Listener))`)
+			:End()
+		:Wrap("return ", "")
+
 		if IsReliable then
-			Block:Compare(Connection, "nil", "Not")
-				:Line(CallListenerFunction)
-			:Branch("Default")
+			local ListenerBound: Blocks.Block;
+			if IsSingle then
+				ListenerBound = Block:Compare(Connection, "nil", "Not")
+					:Line(CallSingleListenerFunction)
+			else
+				ListenerBound = Block:Compare(`#{Connection}`, "0", "Greater")
+					:Iterator("_", "Listener", Connection)
+						:Line(CallManyListenerFunction)
+					:End()
+			end
+				
+			ListenerBound:Branch("Default")
 				:Compare(`#{Queue}`, "256", "Greater")
 					:Line(`warn("[Blink]: Event queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement a listener?")`)
 				:End()
 				:Line(`table.insert({Queue}, \{{ListenerArguments}\} :: \{any\})`)
 			:End()
 
-			local Disconnect = Blocks.Function("", "", "()")
-				:Line(`{Queue} = \{\}`)
-				:Line(`{Connection} = nil`)
-			:End()
-			:Wrap("return ", "")
-
-			local FlushQueue = Blocks.Function("", "", "()")
-				:Line(`local EventQueue = {Queue} or \{\}`)
-				:Line(`{Queue} = nil`)
-				:Iterator("Index", "Arguments", "EventQueue")
-					:Line(Value.Call == "SingleSync" and `Listener(table.unpack(Arguments))` or `task.spawn(Listener, table.unpack(Arguments))`)
-				:End()
-			:End()
-			:Wrap("task.spawn(", ")")
-
 			Listener = Blocks.Function(Casing.On, ContextArguments, `() -> ()`, true)
-				:Line(`{Connection} = Listener`)
-				:Lines(FlushQueue.Content, 1)
+				:Line(IsSingle and `{Connection} = Listener` or `table.insert({Connection}, Listener)`)
+				:Iterator("Index", "Arguments", Queue)
+					:Line(IsSync and `Listener(table.unpack(Arguments))` or `task.spawn(Listener, table.unpack(Arguments))`)
+				:End()
+				:Line(`{Queue} = \{}`)
 				:Lines(Disconnect.Content, 1)
 			:End()
 		else
-			Block:Compare(Connection, "nil", "Not")
-				:Line(CallListenerFunction)
-			:End()
-
-			local Disconnect = Blocks.Function("", "", "()")
-				:Line(`{Connection} = nil`)
-			:End()
-			:Wrap("return ", "")
+			if IsSingle then
+				Block:Compare(Connection, "nil", "Not")
+					:Line(CallSingleListenerFunction)
+				:End()
+			else
+				Block:Compare(Connection, "nil", "Not")
+					:Iterator("_", "Listener", Connection)
+						:Line(CallManyListenerFunction)
+					:End()
+				:End()
+			end
 
 			Listener = Blocks.Function(Casing.On, ContextArguments, `() -> ()`, true)
-				:Line(`{Connection} = Listener`)
+				:Line(IsSingle and `{Connection} = Listener` or `table.insert({Connection}, Listener)`)
 				:Lines(Disconnect.Content, 1)
 			:End()
 		end

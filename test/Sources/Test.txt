@@ -195,10 +195,45 @@ event OptionalPrimitive {
     Data: u8?
 }
 
+event ManyReliableSync {
+    From: Server,
+    Type: Reliable,
+    Call: ManySync,
+    Data: u8
+}
+
+event ManyReliableAsync {
+    From: Server,
+    Type: Reliable,
+    Call: ManyAsync,
+    Data: u8
+}
+
+event ManyUnreliableSync {
+    From: Server,
+    Type: Unreliable,
+    Call: ManySync,
+    Data: u8
+}
+
+event ManyUnreliableAsync {
+    From: Server,
+    Type: Unreliable,
+    Call: ManyAsync,
+    Data: u8
+}
+
 event ReliableServer {
     From: Server,
     Type: Reliable,
     Call: SingleSync,
+    Data: u8
+}
+
+event ReliableServerAsync {
+    From: Server,
+    Type: Reliable,
+    Call: SingleAsync,
     Data: u8
 }
 
@@ -213,6 +248,13 @@ event UnreliableServer {
     From: Server,
     Type: Unreliable,
     Call: SingleSync,
+    Data: u8
+}
+
+event UnreliableServerAsync {
+    From: Server,
+    Type: Unreliable,
+    Call: SingleAsync,
     Data: u8
 }
 

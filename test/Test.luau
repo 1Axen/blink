@@ -6,7 +6,6 @@ local process = require("@lune/process")
 
 local Compiler = "init"
 local Sources = fs.readDir("./Sources")
-local Arguments = process.args
 
 local function OkPrint(Message: string)
     stdio.write(`\r[{stdio.color("green")}OK{stdio.color("reset")}] {Message}\n`)
@@ -31,14 +30,15 @@ if stdio.prompt("confirm", "Compile files?") then
 
     PrettyPrint("blue", "Compiling source files...")
     for _, File in Sources do
-        if table.find(Arguments, "nocompile") then
-            PrettyPrint("yellow", "nocompile flag was passed, skipping compilation.")
-            break
+        
+        local Metadata = fs.metadata(`./Sources/{File}`)
+        if Metadata.kind ~= "file" then
+            continue
         end
 
-        local AbsolutePath = `../test/Sources/{File}`
+        local Path = `../../test/Sources/{File}`
         PrettyPrint("cyan", `Compiling: {File}...`, true)
-        local Result = process.spawn("lune", {"run", Compiler, AbsolutePath}, {cwd = "../src"})
+        local Result = process.spawn("lune", {"run", Compiler, Path}, {cwd = "../src/CLI"})
         if not Result.ok then
             ErrorPrint(`{File} failed to compile!\n{Result.stderr}`)
         else
@@ -381,6 +381,58 @@ local function InvokeAndExpectTuple(Name: string, ClientFunction: any, ServerFun
     OkPrint(`Test "{Name}" passed!`)
 end
 
+local function FireManyAndExpectMany(Name: string, Count: number, OutgoingEvent: any, IncomingEvent: any, Expect: any)
+    PrettyPrint("cyan", `Testing: {Name}...`, true)
+
+    local Results: {unknown} = {}
+    local Disconnects: {() -> ()} = {}
+
+    local IsServerSending = (OutgoingEvent.FireAll ~= nil)
+    local IsServerRecieving = (OutgoingEvent.FireAll == nil)
+
+    for _ = 1, Count do
+        table.insert(Disconnects, IncomingEvent.On(function(First, Second)
+            local Value: unknown;
+            if IsServerRecieving then
+                if tostring(First) ~= "Player" then
+                    ErrorPrint(`Expected argument #1 to {Name} to be Player, got {First} instead.`)
+                end
+    
+                Value = Second
+            else
+                Value = First
+            end
+    
+            table.insert(Results, Value)
+        end))
+    end
+
+    if IsServerSending then
+        OutgoingEvent.FireAll(Expect)
+    else
+        OutgoingEvent.Fire(Expect)
+    end
+
+    --> Wait for replication
+    task.wait(1 / 30)
+
+    if #Results ~= Count then
+        ErrorPrint(`Failed "{Name}", expected to recieve {Count} events, got {#Results} instead.`)
+    end
+
+    for _, Result in Results do
+        if not CompareValues(Result, Expect) then
+            ErrorPrint(`Failed "{Name}", expected to recieve: {Expect}, got "{Result}" instead.`)
+        end
+    end
+
+    for _, Disconnect in Disconnects do
+        Disconnect()
+    end
+
+    OkPrint(`Test "{Name}" passed!`)
+end
+
 local function RunClosure(Name: string, Closure: () -> ())
     PrettyPrint("cyan", `Testing: {Name}...`, true)
 
@@ -434,6 +486,11 @@ FireAndExpect("Unreliable Server", Server.UnreliableServer, Client.UnreliableSer
 FireAndExpect("Reliable Client", Client.ReliableClient, Server.ReliableClient, 1)
 FireAndExpect("Unreliable Client", Client.UnreliableClient, Server.UnreliableClient, 1)
 
+FireManyAndExpectMany("Many Reliable Sync Server", 8, Server.ManyReliableSync, Client.ManyReliableSync, 1)
+FireManyAndExpectMany("Many Reliable Async Server", 8, Server.ManyReliableAsync, Client.ManyReliableAsync, 1)
+FireManyAndExpectMany("Many Unreliable Sync Server", 8, Server.ManyUnreliableSync, Client.ManyUnreliableSync, 1)
+FireManyAndExpectMany("Many Unreliable Async Server", 8, Server.ManyUnreliableAsync, Client.ManyUnreliableAsync, 1)
+
 FireAndExpect("Unknown", Server.Unknown, Client.Unknown, newproxy())
 
 FireAndExpect("Generic", Server.Generic, Client.Generic, {Data = 0, Nested = {Value = 0}})
@@ -468,6 +525,8 @@ InvokeAndExpect("Remote Function", Client.RemoteFunction, Server.RemoteFunction,
 InvokeAndExpect("Remote Function (error)", Client.RemoteFunction, Server.RemoteFunction, 1, false)
 
 QueueAndExpect("Reliable Queue", Server.ReliableServer, Client.ReliableServer, 1)
+QueueAndExpect("Many Reliable Sync Queue", Server.ManyReliableSync, Client.ManyReliableSync, 1)
+QueueAndExpect("Many Reliable Async Queue", Server.ManyReliableAsync, Client.ManyReliableAsync, 1)
 --QueueAndExpect("Unreliable Queue", Server.UnreliableServer, Client.UnreliableServer, 1)
 
 FireAndFail("Invalid Instance Any", Server.InstanceAny, Client.InstanceAny, true)
@@ -550,6 +609,40 @@ RunClosure("Standalone", function()
     local Deserialized = Server.Standalone.Read(Serialized)
 
     assert(CompareTables(Original, Deserialized), "Deserialized doesn't match original")
+end)
+
+RunClosure("Disconnect & Queue", function()
+    local Expect = 1
+    local Events = {"ReliableServer", "UnreliableServer", "ManyReliableSync", "ManyReliableAsync", "ManyUnreliableSync", "ManyUnreliableAsync"}
+
+    for _, Event in Events do
+        local Outgoing = Server[Event]
+        local Incoming = Client[Event]
+        
+        local NeverRecieve: never;
+        Incoming.On(function(Value: never)
+            NeverRecieve = Value
+        end)()
+
+        local Recieve: typeof(Expect);
+        local RecieveDisconnect = Incoming.On(function(Value: typeof(Expect))
+            Recieve = Value
+        end)
+
+        Outgoing.FireAll(Expect)
+
+        task.wait(0.5)
+
+        if Recieve ~= Expect then
+            error(`Failed queue test on {Event}, expected "{Expect}", got "{Recieve}"`)
+        end
+
+        if NeverRecieve ~= nil then
+            error(`Failed disconnect test on {Event}, disconnected listener still recieving.`)
+        end
+
+        RecieveDisconnect()
+    end
 end)
 
 local Element = {Static = 0, Dynamic = buffer.create(64)}
