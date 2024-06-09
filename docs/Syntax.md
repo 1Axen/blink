@@ -1,4 +1,4 @@
-# Using
+# Syntax
 ## Options
 Options go at the top of a source file and are used to configure the output of Blink.
 ```
@@ -235,7 +235,7 @@ You can define events using the `event` keyword
 Events have 4 fields:  
 `From` - `Client` or `Server`  
 `Type` - `Reliable` or `Unreliable`  
-`Call` - `SingleSync` or `SingleAsync`  
+`Call` - `SingleSync`, `SingleAsync`, `ManySync`, `ManyAsync` - `Many` refers to multiple connections 
 `Data` - Can hold either a type definition or a reference to an already defined type  
 ```
 event Simple {

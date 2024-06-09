@@ -11,9 +11,10 @@ theme:
     - content.code.copy
 nav:
   - Introduction: 'index.md'
-  - Installation: 'Installation.md'
-  - "Getting Started": 'Getting-Started.md'
-  - "Using Blink": 'Using.md'
+  - "Getting Started":
+    - Installation: 'Installation.md'
+    - "Creating a New Project": 'New-Description.md'
+  - "Language Syntax": "Syntax.md"
   - "Studio Plugin": "Plugin.md"
   - Benchmarks: "Benchmarks.md"
 plugins:
