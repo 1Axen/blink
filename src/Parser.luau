@@ -298,6 +298,7 @@ Parser.__index = Parser
 
 export type Parser = typeof(setmetatable({} :: {
     Source: string,
+    Directory: string,
 
     Lexer: Lexer.Lexer,
     LookAhead: Token?,
@@ -307,9 +308,11 @@ export type Parser = typeof(setmetatable({} :: {
     Generics: Generics?,
 }, Parser))
 
-function Parser.new(): Parser
+function Parser.new(Directory: string?): Parser
     return setmetatable({
         Source = "",
+        Directory = Directory or "./",
+
         Lexer = Lexer.new("Parsing"),
         Symbols = {},
         Scope = nil :: any,
@@ -318,7 +321,7 @@ end
 
 ---- Utility Functions ----
 
-local function GetFileSource(Path: string): string?
+local function GetFileSource(Path: string, Directory: string): (string?, string?)
     local IsROBLOX = (task ~= nil)
     if IsROBLOX then
         local Parent = game:GetService("ServerStorage")["BLINK_CONFIGURATION_FILES"]
@@ -327,18 +330,21 @@ local function GetFileSource(Path: string): string?
             Parent = Parent:FindFirstChild(Index)
         end
 
-        return (Parent ~= nil and Parent:IsA("StringValue")) and Parent.Value or nil
+        return (Parent ~= nil and Parent:IsA("StringValue")) and Parent.Value or nil, ""
     end
 
     local fs = require("@lune/fs")
-    local process = require("@lune/process")
-    local cwd = process.env.cwd
+    local PathUtility = require("./CLI/Utility/Path.luau")
 
-    if not fs.isFile(`{cwd}/{Path}`) then
+    Path = `{Directory}{Path}`
+    Path = PathUtility.GetDefinitionFilePath(Path)
+
+    if not fs.isFile(Path) then
         return
     end
 
-    return fs.readFile(`{cwd}/{Path}`)
+    local FileDirectory = PathUtility.ExtractDirectoryFromPath(Path)
+    return fs.readFile(Path), FileDirectory
 end
 
 local function IsDeclarationTypeSimiliar(A: Declarations, B: Declarations): boolean
@@ -801,7 +807,7 @@ function Parser.Import(self: Parser): ScopeDeclaration
 
     local Path = self:Consume("String")
     local ImportPath = Path.Value
-    local ImportSource = GetFileSource(ImportPath)
+    local ImportSource, ImportDirectory = GetFileSource(ImportPath, self.Directory)
 
     if not ImportSource then
         error(Error.new(Error.AnalyzeUnknownImport, self.Source, `Unknown require`)
@@ -823,8 +829,9 @@ function Parser.Import(self: Parser): ScopeDeclaration
         Identifier = Indices[#Indices]
     else
         --> Use file name as namespace identifier
-        local Directory, Filename, Extension = string.match(ImportPath, "^([%.%w_/]*)/([%w_]+)%.(%w+)")
+        local _, Filename = string.match(ImportPath, "(.+/)([%w_-]+)[%.]?(%w*)")
         assert(Filename, "Unable to parse file path for filename!")
+        
         Identifier = Filename
         Token.Value = Filename
     end
@@ -839,7 +846,7 @@ function Parser.Import(self: Parser): ScopeDeclaration
 
     --> Parse import into AST
     local AST: Body;
-    local ImportParser = Parser.new()
+    local ImportParser = Parser.new(ImportDirectory)
     local Success, ErrorText = pcall(function()
         AST = ImportParser:Parse(ImportSource, Token)
     end)
@@ -849,7 +856,7 @@ function Parser.Import(self: Parser): ScopeDeclaration
     end
 
     --> Import
-    print(`Importing {ImportPath} as {Identifier}`)
+    --print(`Importing {ImportPath} as {Identifier}`)
 
     local Parent = self.Scope
     local Scope: Scope = {

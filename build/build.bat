@@ -11,7 +11,7 @@ mkdir "../Blink"
 lune run version.luau %VERSION%
 
 echo Bundling source code
-darklua process ../src/init.luau ./Bundled.luau
+darklua process ../src/CLI/init.luau ./Bundled.luau
 
 echo Building standalone executable
 
