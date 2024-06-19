@@ -7,6 +7,8 @@ local process = require("@lune/process")
 local Compiler = "init"
 local Sources = fs.readDir("./Sources")
 
+local COMPILE_TEST_FILE = "../../test/Sources/Test.txt"
+
 local function OkPrint(Message: string)
     stdio.write(`\r[{stdio.color("green")}OK{stdio.color("reset")}] {Message}\n`)
 end
@@ -30,7 +32,6 @@ if stdio.prompt("confirm", "Compile files?") then
 
     PrettyPrint("blue", "Compiling source files...")
     for _, File in Sources do
-        
         local Metadata = fs.metadata(`./Sources/{File}`)
         if Metadata.kind ~= "file" then
             continue
@@ -38,7 +39,7 @@ if stdio.prompt("confirm", "Compile files?") then
 
         local Path = `../../test/Sources/{File}`
         PrettyPrint("cyan", `Compiling: {File}...`, true)
-        local Result = process.spawn("lune", {"run", Compiler, Path}, {cwd = "../src/CLI"})
+        local Result = process.spawn("lune", {"run", Compiler, Path, "--", "--yes"}, {cwd = "../src/CLI"})
         if not Result.ok then
             ErrorPrint(`{File} failed to compile!\n{Result.stderr}`)
         else
@@ -649,6 +650,24 @@ local Element = {Static = 0, Dynamic = buffer.create(64)}
 
 FireAndExpect("Dynamic Array Data Integrity", Server.DynamicArray, Client.DynamicArray, table.create(12, Element))
 FireAndExpect("Dynamic Map Data Integrity", Server.DynamicMap, Client.DynamicMap, table.create(64, Element))
+
+RunClosure("CLI compile --yes", function()
+    local Result = process.spawn("lune", {"run", Compiler, COMPILE_TEST_FILE, "--", "--yes"}, {cwd = "../src/CLI"})
+    assert(Result.ok, Result.stderr)
+end)
+
+RunClosure("CLI compile prompt", function()
+    pcall(function()
+        fs.removeDir("../Network")
+    end)
+
+    local Result: process.SpawnResult;
+    local Thread = task.spawn(function()
+        Result = process.spawn("lune", {"run", Compiler, COMPILE_TEST_FILE}, {cwd = "../src/CLI"})
+    end)
+    
+    assert(coroutine.status(Thread) == "suspended", Result.stderr)
+end)
 
 PrettyPrint("green", `All tests passed successfully!`)
 
