@@ -8,15 +8,7 @@ if not IS_ROBLOX then
     stdio = require("@lune/stdio")
 end
 
-local SPACE = " "
-local INDENT = "    "
 local INVISIBLE_SPACE = `<font transparency="1">0</font>`
-
---> ROBLOX is ROBLOX and renders spaces at half width
-if IS_ROBLOX then
-    SPACE = INVISIBLE_SPACE
-    INDENT = string.rep(INVISIBLE_SPACE, #INDENT)
-end
 
 type Slice = {
     Line: number,
@@ -28,7 +20,6 @@ type Slice = {
 export type Label = {
     Span: Span,
     Text: string,
-    Type: "Primary" | "Secondary"
 }
 
 type Color = "red" | "green" | "blue" | "black" | "white" | "cyan" | "purple" | "yellow" | "reset"
@@ -113,23 +104,26 @@ function Error.GetNameFromCode(From: number): string
     error(`Unknown error code: {From}`)
 end
 
-function Error.new(Code: number, Source: string, Message: string): Class
-    local Content = `{Color(`error[{Code}]`, "red")}:{SPACE}{Fix(Message)}`
-    Content ..= `\n{INDENT}┌─{SPACE}input.blink`
+function Error.new(Code: number, Source: string, Message: string, File: string?): Class
+    local Lines = string.split(Source, "\n")
+    local Content = `\n{Color(`[E{string.format("%04i", Code)}] Error:`, "red")}: {Message}`
+    Content ..= `\n    ╭─[{File or "input.blink"}:1:{#Lines}]`
+    Content ..= "\n    │"
 
     return setmetatable({
         Labels = {},
-        Source = string.split(Source, "\n"),
+        Source = Lines,
         Message = Content,
 
         Code = Code,
-        RawLabels = {},
         RawMessage = Message
     }, Error)
 end
 
-function Error.Slice(self: Class, Span: Span): Slice
+function Error.Slice(self: Class, Span: Span): {Slice}
+    local Slices = {}
     local Cursor = 1
+
     for Line, Text in self.Source do
         local Start = Cursor
         local Length = #Text
@@ -139,59 +133,69 @@ function Error.Slice(self: Class, Span: Span): Slice
         Cursor += (Length + 1)
 
         --> Span end is past cursor
-        if Span.End >= Cursor then
+        if Span.Start > Cursor then
             continue
         end
 
         local Spaces = (Span.Start - Start)
         local Underlines = math.clamp(Span.End - Span.Start, 1, Length)
 
-        return {
+        table.insert(Slices, {
             Line = Line,
             Text = Fix(Text),
             Spaces = Spaces,
             Underlines = Underlines
-        }
+        })
+
+        if Span.End <= Cursor then
+            break
+        end
     end
 
-    error("Unable to find span bounds.")
+    return Slices
+end
+
+function Error.Label(self: Class, Span: Span, Text: string, TextColor: Color): Class
+    local Slices = self:Slice(Span)
+
+    --> Analyze hook
+    table.insert(self.Labels, {
+        Span = Span,
+        Text = Fix(Text),
+    })
+
+    --> Construct message
+    for Index, Slice in Slices do
+        self.Message ..= `\n{Color(string.format("%03i", Slice.Line), "black")} │ {Slice.Text}`
+        if Index == #Slices then
+            local Length =  (Slice.Underlines // 2) 
+            local Indent = `    ┆ {string.rep(" ", Slice.Spaces)}`
+            local Underlines = Color(string.rep("─", Length), TextColor)
+            local ExtraIndent = string.rep(" ", Length)
+
+            self.Message ..= `\n{Indent}{Underlines}{Color("┬", TextColor)}{Underlines}`
+            self.Message ..= `\n{Indent}{ExtraIndent}{Color("│", TextColor)}`
+            self.Message ..= `\n{Indent}{ExtraIndent}{Color("╰──", TextColor)} {Color(Text, TextColor)}`
+        end
+    end
+    
+    return self
 end
 
 function Error.Primary(self: Class, Span: Span, Text: string): Class
-    local Slice = self:Slice(Span)
-
-    --> Analyze hook
-    table.insert(self.Labels, {
-        Span = Span,
-        Text = Text,
-        Type = "Primary"
-    })
-
-    --> Construct message
-    self.Message ..= `\n{Color(string.format("%03i", Slice.Line), "blue")}{SPACE}│{SPACE}{Slice.Text}`
-    self.Message ..= `\n{INDENT}│{SPACE}{string.rep(SPACE, Slice.Spaces)}{Color(`{string.rep("^", Slice.Underlines)}{SPACE}{Fix(Text)}`, "red")}`
-
-    return self
+    return self:Label(Span, Text, "red")
 end
 
 function Error.Secondary(self: Class, Span: Span, Text: string): Class
-    local Slice = self:Slice(Span)
-
-    --> Analyze hook
-    table.insert(self.Labels, {
-        Span = Span,
-        Text = Text,
-        Type = "Secondary"
-    })
-
-    --> Construct message
-    self.Message ..= `\n{Color(string.format("%03i", Slice.Line), "blue")}{SPACE}│{SPACE}{Slice.Text}`
-    self.Message ..= `\n{INDENT}│{SPACE}{string.rep(SPACE, Slice.Spaces)}{Color(`{string.rep("^", Slice.Underlines)}{SPACE}{Fix(Text)}`, "blue")}`
-
-    return self
+    return self:Label(Span, Text, "blue")
 end
 
 function Error.Emit(self: Class): never
+    self.Message ..= "\n────╯"
+
+    --> Fix message rendering in ROBLOX
+    self.Message = Fix(self.Message)
+
     local OnEmit: ((Class) -> ())? = Error.OnEmit
     if OnEmit then
         OnEmit(self)
