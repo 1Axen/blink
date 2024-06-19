@@ -236,7 +236,7 @@ Events have 4 fields:
 `From` - `Client` or `Server`  
 `Type` - `Reliable` or `Unreliable`  
 `Call` - `SingleSync`, `SingleAsync`, `ManySync`, `ManyAsync` - `Many` refers to multiple connections 
-`Data` - Can hold either a type definition or a reference to an already defined type  
+`Data` - Can hold either a type definition or a reference to an already defined type, omit for events with no data.
 ```
 event Simple {
     From: Client,
@@ -266,8 +266,8 @@ You can define functions using the `function` keyword
 Functions have 3 fields:  
 `Yield` - `Coroutine` or `Future` or `Promise`    
 Deifnes what library will be used to handle invocations  
-`Data` - Can hold either a type definition or a reference to an already defined type  
-`Return` - Can hold either a type definition or a reference to an already defined type 
+`Data` - Can hold either a type definition or a reference to an already defined type, omit for functions with no data. 
+`Return` - Can hold either a type definition or a reference to an already defined type, omit for functions with no return. 
 ```
 function Example {
     Yield: Coroutine,
@@ -362,15 +362,4 @@ type Number = u8
     |
 002 |     Field = Number
     |             ^^^^^^ Unknown type referenced.
-```
-### Keywords
-You cannot use any keywords as "Identifiers".
-```
-type struct = {}
-```
-```
-[ERROR]
-    |
-001 | type struct = {
-    |      ^^^^^^ Unexpected token: "Keyword", expected: "Identifier".
 ```
