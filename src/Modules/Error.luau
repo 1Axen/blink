@@ -94,6 +94,13 @@ local function Color(Text: string, Color: Color): string
     return `{stdio.color(Color)}{Text}{stdio.color("reset")}`
 end
 
+local function Style(Text: string, Style: "bold" | "dim"): string
+    if IS_ROBLOX then
+        return Text
+    end
+    return `{stdio.style(Style)}{Text}{stdio.style("reset")}`
+end
+
 function Error.GetNameFromCode(From: number): string
     for Name, Code in Error do
         if Code == From then
@@ -166,7 +173,7 @@ function Error.Label(self: Class, Span: Span, Text: string, TextColor: Color): C
 
     --> Construct message
     for Index, Slice in Slices do
-        self.Message ..= `\n{Color(string.format("%03i", Slice.Line), "black")} │ {Slice.Text}`
+        self.Message ..= `\n{Style(string.format("%03i", Slice.Line), "dim")} │ {Slice.Text}`
         if Index == #Slices then
             local Length =  (Slice.Underlines // 2) 
             local Indent = `    ┆ {string.rep(" ", Slice.Spaces)}`
@@ -191,6 +198,7 @@ function Error.Secondary(self: Class, Span: Span, Text: string): Class
 end
 
 function Error.Emit(self: Class): never
+    self.Message ..= "\n    │"
     self.Message ..= "\n────╯"
 
     --> Fix message rendering in ROBLOX
