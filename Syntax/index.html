@@ -600,15 +600,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#keywords" class="md-nav__link">
-    <span class="md-ellipsis">
-      Keywords
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -909,15 +900,6 @@
   <a href="#referencing-types" class="md-nav__link">
     <span class="md-ellipsis">
       Referencing types
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#keywords" class="md-nav__link">
-    <span class="md-ellipsis">
-      Keywords
     </span>
   </a>
   
@@ -1306,7 +1288,7 @@ Events have 4 fields:<br />
 <code>From</code> - <code>Client</code> or <code>Server</code><br />
 <code>Type</code> - <code>Reliable</code> or <code>Unreliable</code><br />
 <code>Call</code> - <code>SingleSync</code>, <code>SingleAsync</code>, <code>ManySync</code>, <code>ManyAsync</code> - <code>Many</code> refers to multiple connections 
-<code>Data</code> - Can hold either a type definition or a reference to an already defined type<br />
+<code>Data</code> - Can hold either a type definition or a reference to an already defined type, omit for events with no data.
 <div class="language-text highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>event Simple {
 </span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    From: Client,
 </span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    Type: Unreliable,
@@ -1335,8 +1317,8 @@ Events have 4 fields:<br />
 Functions have 3 fields:<br />
 <code>Yield</code> - <code>Coroutine</code> or <code>Future</code> or <code>Promise</code>  <br />
 Deifnes what library will be used to handle invocations<br />
-<code>Data</code> - Can hold either a type definition or a reference to an already defined type<br />
-<code>Return</code> - Can hold either a type definition or a reference to an already defined type 
+<code>Data</code> - Can hold either a type definition or a reference to an already defined type, omit for functions with no data. 
+<code>Return</code> - Can hold either a type definition or a reference to an already defined type, omit for functions with no return. 
 <div class="language-text highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>function Example {
 </span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    Yield: Coroutine,
 </span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    Data: u8,
@@ -1423,15 +1405,6 @@ Imports will pull all declarations (events, functions, scopes and types) from th
 </span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>    |
 </span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>002 |     Field = Number
 </span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>    |             ^^^^^^ Unknown type referenced.
-</span></code></pre></div></p>
-<h3 id="keywords">Keywords</h3>
-<p>You cannot use any keywords as "Identifiers".
-<div class="language-text highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>type struct = {}
-</span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>[ERROR]
-</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>    |
-</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>001 | type struct = {
-</span><span id="__span-25-4"><a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>    |      ^^^^^^ Unexpected token: &quot;Keyword&quot;, expected: &quot;Identifier&quot;.
 </span></code></pre></div></p>
 
 
