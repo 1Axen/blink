@@ -41,6 +41,11 @@ struct Generic<A, B> {
     }
 }
 
+type import = u8
+struct Conflict {
+    type: u8
+}
+
 enum Event = "Type" {
     Join {
         Name: string,
@@ -82,6 +87,22 @@ struct Example {
 
 struct MapStruct {
     Map: map {[string]: u8}
+}
+
+event EmptyEvent {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+}
+
+event EmptyUnreliableEvent {
+    From: Server,
+    Type: Unreliable,
+    Call: SingleSync,
+}
+
+function EmptyFunction {
+    Yield: Coroutine
 }
 
 event Flags8 {

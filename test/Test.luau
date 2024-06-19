@@ -483,6 +483,8 @@ PrettyPrint("blue", "Running output tests...")
 
 FireAndExpect("Reliable Server", Server.ReliableServer, Client.ReliableServer, 1)
 FireAndExpect("Unreliable Server", Server.UnreliableServer, Client.UnreliableServer, 1)
+FireAndExpect("Empty Reliable Server", Server.EmptyEvent, Client.EmptyEvent, nil)
+FireAndExpect("Empty Unreliable Server", Server.EmptyUnreliableEvent, Client.EmptyUnreliableEvent, nil)
 
 FireAndExpect("Reliable Client", Client.ReliableClient, Server.ReliableClient, 1)
 FireAndExpect("Unreliable Client", Client.UnreliableClient, Server.UnreliableClient, 1)
@@ -524,6 +526,7 @@ FireAndExpect("Referency Optional (nil)", Server.ReferenceOptional, Client.Refer
 
 InvokeAndExpect("Remote Function", Client.RemoteFunction, Server.RemoteFunction, 1, true)
 InvokeAndExpect("Remote Function (error)", Client.RemoteFunction, Server.RemoteFunction, 1, false)
+InvokeAndExpect("Empty Remote Function", Client.EmptyFunction, Server.EmptyFunction, nil, true)
 
 QueueAndExpect("Reliable Queue", Server.ReliableServer, Client.ReliableServer, 1)
 QueueAndExpect("Many Reliable Sync Queue", Server.ManyReliableSync, Client.ManyReliableSync, 1)
@@ -651,11 +654,6 @@ local Element = {Static = 0, Dynamic = buffer.create(64)}
 FireAndExpect("Dynamic Array Data Integrity", Server.DynamicArray, Client.DynamicArray, table.create(12, Element))
 FireAndExpect("Dynamic Map Data Integrity", Server.DynamicMap, Client.DynamicMap, table.create(64, Element))
 
-RunClosure("CLI compile --yes", function()
-    local Result = process.spawn("lune", {"run", Compiler, COMPILE_TEST_FILE, "--", "--yes"}, {cwd = "../src/CLI"})
-    assert(Result.ok, Result.stderr)
-end)
-
 RunClosure("CLI compile prompt", function()
     pcall(function()
         fs.removeDir("../Network")
@@ -666,7 +664,16 @@ RunClosure("CLI compile prompt", function()
         Result = process.spawn("lune", {"run", Compiler, COMPILE_TEST_FILE}, {cwd = "../src/CLI"})
     end)
     
-    assert(coroutine.status(Thread) == "suspended", Result.stderr)
+    if coroutine.status(Thread) ~= "suspended" then
+        error(Result and Result.stderr or "CLI didn't prompt")
+    end
+
+    task.cancel(Thread)
+end)
+
+RunClosure("CLI compile --yes", function()
+    local Result = process.spawn("lune", {"run", Compiler, COMPILE_TEST_FILE, "--", "--yes"}, {cwd = "../src/CLI"})
+    assert(Result.ok, Result.stderr)
 end)
 
 PrettyPrint("green", `All tests passed successfully!`)

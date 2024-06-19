@@ -334,8 +334,13 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 	local Connection = `Events.{Reliability}[{Index}]`
 
 	--> Data body
-	local _, Values, _, Arguments = Generators.LuauType(Value.Data :: Type, true)
-	local Read, Write = Generators.Event(Value.Data :: Type, Index, Identifier)
+	local Values, Arguments, _ = "Value: nil", "", nil
+	local Read, Write = Generators.Event(Value.Data, Index, Identifier)
+
+	if Value.Data then
+		_, Values, _, Arguments = Generators.LuauType(Value.Data :: Type, true)
+	end
+
 	UserTypes.PushLines(Read, 1, 0)
 	UserTypes.PushLines(Write, 1, 0)
 
@@ -556,8 +561,16 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 	local Connection = `Events.Reliable[{Index}]`
 
 	--> Data and return body
-	local DataTypes, DataValues, _, DataArguments = Generators.LuauType(Value.Data :: Type, true)
-	local ReturnTypes, ReturnValues, _, ReturnArguments = Generators.LuauType(Value.Return :: Type, true)
+	local DataTypes, DataValues, _, DataArguments = "nil", "Value: nil", nil, "Value"
+	local ReturnTypes, ReturnValues, _, ReturnArguments = "nil", "Value: nil", nil, "Value"
+
+	if Value.Data then
+		DataTypes, DataValues, _, DataArguments = Generators.LuauType(Value.Data :: Type, true)
+	end
+
+	if Value.Return then
+		ReturnTypes, ReturnValues, _, ReturnArguments = Generators.LuauType(Value.Return :: Type, true)
+	end
 
 	do
 		local Read, Write = Generators.Event(Value.Data :: Type, Index, DataIdentifier, "Data")
@@ -1030,8 +1043,11 @@ function Generators.Export(Declaration: Type)
 	Return.PushLines(Body.DumpLines(), 0)
 end
 
-function Generators.Event(Data: Type, Index: number, Identifier: string, Function: ("Data" | "Return")?): ({string}, {string})
-	local Type, Values, _, Returns = Generators.LuauType(Data, true)
+function Generators.Event(Data: Type?, Index: number, Identifier: string, Function: ("Data" | "Return")?): ({string}, {string})
+	local Type, Values, _, Returns = "nil", "Value: nil", nil, "nil"
+	if Data then
+		Type, Values, _, Returns = Generators.LuauType(Data, true)
+	end
 
 	local Arguments = `{Values}{Function and ", InvocationIdentifier: number" or ""}`
 	local Read = Blocks.Function(GetTypesPath(Identifier, false), "", `({Type})`)
@@ -1054,7 +1070,9 @@ function Generators.Event(Data: Type, Index: number, Identifier: string, Functio
 	end
 
 	--Read:Line(`local {Values};`)
-	Generators.UserType(Data, Read, Write)
+	if Data then
+		Generators.UserType(Data, Read, Write)
+	end
 
 	return Read:Return(Returns):End().Content, Write:End().Content
 end

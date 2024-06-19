@@ -54,7 +54,8 @@ type Array = {
 type EventOption = {
     Key: string, 
     Type: Lexer.Types, 
-    Values: {string}
+    Values: {string},
+    Optional: true?,
 }
 
 type Attributes = {
@@ -161,14 +162,14 @@ export type EventDeclaration = Node<"Event", {
     From: "Client" | "Server",
     Type: "Reliable" | "Unreliable",
     Call: "SingleSync" | "SingleAsync" | "ManySync" | "ManyAsync",
-    Data: TypeDeclaration | TupleDeclaration 
+    Data: (TypeDeclaration | TupleDeclaration)? 
 }, {}>
 
 export type FunctionDeclaration = Node<"Function", {
     Identifier: string,
     Yield: "Future" | "Promise" | "Coroutine",
-    Data: TypeDeclaration | TupleDeclaration,
-    Return: TypeDeclaration | TupleDeclaration
+    Data: (TypeDeclaration | TupleDeclaration)?,
+    Return: (TypeDeclaration | TupleDeclaration)?
 }, {}>
 
 export type ScopeDeclaration = Node<"Scope", {
@@ -195,13 +196,13 @@ local EVENT: {EventOption} = {
     {Key = "From", Type = "Identifier", Values = {"Client", "Server"}},
     {Key = "Type", Type = "Identifier", Values = {"Reliable", "Unreliable"}},
     {Key = "Call", Type = "Identifier", Values = {"SingleSync", "SingleAsync", "ManySync", "ManyAsync"}},
-    {Key = "Data", Type = "Identifier", Values = {}}
+    {Key = "Data", Type = "Identifier", Values = {}, Optional = true}
 }
 
 local FUNCTION: {EventOption} = {
     {Key = "Yield", Type = "Identifier", Values = {"Future", "Promise", "Coroutine"}},
-    {Key = "Data", Type = "Identifier", Values = {}},
-    {Key = "Return", Type = "Identifier", Values = {}}
+    {Key = "Data", Type = "Identifier", Values = {}, Optional = true},
+    {Key = "Return", Type = "Identifier", Values = {}, Optional = true}
 }
 
 type Bucket = "Types" | "Scopes"
@@ -298,6 +299,8 @@ Parser.__index = Parser
 
 export type Parser = typeof(setmetatable({} :: {
     Source: string,
+
+    File: string?,
     Directory: string,
 
     Lexer: Lexer.Lexer,
@@ -308,9 +311,10 @@ export type Parser = typeof(setmetatable({} :: {
     Generics: Generics?,
 }, Parser))
 
-function Parser.new(Directory: string?): Parser
+function Parser.new(Directory: string?, File: string?): Parser
     return setmetatable({
         Source = "",
+        File = File,
         Directory = Directory or "./",
 
         Lexer = Lexer.new("Parsing"),
@@ -438,6 +442,24 @@ function Parser.ConsumeAll(self: Parser, ...: Lexer.Types): (...Token)
     return table.unpack(Tokens)
 end
 
+--> Used to consume identifiers without getting "Expected Identifier, got Keyword" errors
+--> Does not accept primitives in order to prevent developers from shooting themselves in the foot ex:
+--> type u8 = u32
+--> type a = u8 -- A developer might expect this to reference u8 but it won't
+
+function Parser.ConsumeText(self: Parser): Token
+    --> Get text token
+    local Token = self:ConsumeAny("As", "Import", "Boolean", "Keyword", "Identifier")
+
+    --> Convert token to identifier token
+    return {
+        End = Token.End,
+        Start = Token.Start,
+        Type = "Identifier",
+        Value = Token.Value
+    }
+end
+
 ---- Utility Parsing Functions ----
 
 function Parser.GetReference(self: Parser, Bucket: Bucket, Identifier: string): Reference?
@@ -522,7 +544,7 @@ function Parser.GetGenerics(self: Parser): Generics?
         end
 
         local Index = (Generics.Total + 1)
-        local Token = self:Consume("Identifier")
+        local Token = self:ConsumeText()
         local Identifier = Token.Value
         
         Generics.Total = Index
@@ -821,7 +843,7 @@ function Parser.Import(self: Parser): ScopeDeclaration
 
     if self:TryConsume("As") then
         --> Use user provided namespace identifier
-        Token = self:Consume("Identifier")
+        Token = self:ConsumeText()
         Identifier = Token.Value 
     elseif (task ~= nil) then
         --> ROBLOX
@@ -938,7 +960,7 @@ function Parser.Declarations(self: Parser): {Declaration}
         end
 
         local Keyword = self:Consume("Keyword")
-        local Identifier = self:Consume("Identifier")
+        local Identifier = self:ConsumeText()
         local Declaration: Declaration;
 
         --> Prevent duplicates
@@ -1036,15 +1058,27 @@ end
 
 function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOption}): {[string]: any}
     local Fields: {[string]: any} = {}
-    for Index = 1, #Structure do
-        --> Identifier or Keyword ("type" might be used as a field which will be lexed as "Keyword")
-        local Field = self:ConsumeAny("Identifier", "Keyword")
+    local Open, Close: Lexer.Token? = self:Consume("OpenBraces"), nil
+
+    while true do
+        Close = self:TryConsume("CloseBraces")
+        if Close then
+            break
+        end
+
+        local Value: any;
+        local Field = self:ConsumeText()
+        local Option = self:GetOptionFromToken(Field, Structure)
         self:Consume("FieldAssign")
 
-        --> Parse non data field
-        local Value: any;
-        local Option = self:GetOptionFromToken(Field, Structure)
+        --> Prevent duplicate fields
+        if Fields[Option.Key] then
+            Error.new(Error.AnalyzeDuplicateField, self.Source, `Field "{Option.Key}" was already specified`)
+                :Primary(Field, `Already specified earlier in the structure`)
+            :Emit()
+        end
 
+        --> Parse non data/return field
         if Option.Key ~= "Data" and Option.Key ~= "Return" then
             local Token = self:Consume(Option.Type)
             Value = Token.Value
@@ -1058,19 +1092,41 @@ function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOpti
             Value = self:Type(Identifier, nil, true)
         end
 
-        Fields[Option.Key] = Value
-        if self:Peek().Type ~= "CloseBraces" then
-            self:Consume("Comma")
+        Fields[Option.Key] = Value  
+        Close = self:TryConsume("CloseBraces")
+        
+        if Close then
+            break
         end
+
+        self:Consume("Comma")
+    end
+
+    --> Check if all required fields where supplied
+    for _, Option in Structure do
+        if Option.Optional then
+            continue
+        end
+
+        if Fields[Option.Key] ~= nil then
+            continue
+        end
+
+        local Span: Error.Span = {
+            End = math.max((Close :: Lexer.Token).End - 2, Open.Start),
+            Start = Open.Start
+        }
+
+        Error.new(Error.ParserExpectedExtraToken, self.Source, `Field "{Option.Key}" is missing`)
+            :Primary(Span, `Add missing field "{Option.Key}"`)
+        :Emit()
     end
 
     return Fields
 end
 
 function Parser.Event(self: Parser, Identifier: Token): EventDeclaration
-    self:Consume("OpenBraces")
     local Structure = self:Structure(Identifier, EVENT)
-    self:Consume("CloseBraces")
 
     return {
         Type = "Event",
@@ -1086,9 +1142,7 @@ function Parser.Event(self: Parser, Identifier: Token): EventDeclaration
 end
 
 function Parser.Function(self: Parser, Identifier: Token): FunctionDeclaration
-    self:Consume("OpenBraces")
     local Structure = self:Structure(Identifier, FUNCTION)
-    self:Consume("CloseBraces")
 
     return {
         Type = "Function",
@@ -1250,7 +1304,7 @@ function Parser.Set(self: Parser, Identifier: Token): SetDeclaration
             break
         end
 
-        local Token = self:Consume("Identifier")
+        local Token = self:ConsumeText()
         table.insert(Values, Token.Value)
 
         if self:TryConsume("CloseBraces") then
@@ -1327,7 +1381,7 @@ function Parser.Enum(self: Parser, Identifier: Token): EnumDeclaration | TagEnum
             break
         end
 
-        local Token = self:Consume("Identifier")
+        local Token = self:ConsumeText()
         table.insert(Values, Token.Value)
 
         if self:TryConsume("CloseBraces") then
@@ -1356,7 +1410,7 @@ function Parser.TagEnum(self: Parser, Tag: Token, Identifier: Token): TagEnumDec
             break
         end
 
-        local Token = self:Consume("Identifier")
+        local Token = self:ConsumeText()
         local Struct = self:Struct(Token)
         local Fields = Struct.Value.Values
 
@@ -1428,7 +1482,9 @@ function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
             break
         end
 
-        local Field = self:ConsumeAll("Identifier", "FieldAssign")
+        local Field = self:ConsumeText()
+        self:Consume("FieldAssign")
+
         table.insert(Values, self:Type(Field))
 
         if self:TryConsume("CloseBraces") then
@@ -1474,7 +1530,7 @@ function Parser.Primitive(self: Parser, Identifier: Token): PrimitiveDeclaration
 end
 
 function Parser.Reference(self: Parser, Identifier: Token): (ReferenceDeclaration | GenericDeclaration)
-    local Token = self:Consume("Identifier")
+    local Token = self:ConsumeText()
 
     --> Generics reference resolution
     local Generics = self.Generics
