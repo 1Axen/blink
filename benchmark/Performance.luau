@@ -35,8 +35,8 @@ local function BenchmarkClosure(Title: string, Closure: () -> ())
     stdio.write("Running")
 
     local Times = {}
-    for Index = 1, 10_000 do
-        stdio.write(`\rRunning [{stdio.color("green")}{Index}{stdio.color("reset")}/10000]`)
+    for Index = 1, 1_000 do
+        stdio.write(`\rRunning [{stdio.color("green")}{Index}{stdio.color("reset")}/1000]`)
 
         local Start = os.clock()
         Closure()
