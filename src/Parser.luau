@@ -5,6 +5,8 @@
 local Lexer = require("./Lexer")
 local Table = require("./Modules/Table")
 local Error = require("./Modules/Error")
+local PathParser = require("./Modules/Path")
+
 local Settings = require("./Settings")
 
 ---- Globals ----
@@ -338,16 +340,16 @@ local function GetFileSource(Path: string, Directory: string): (string?, string?
     end
 
     local fs = require("@lune/fs")
-    local PathUtility = require("./CLI/Utility/Path.luau")
+    local GetDefinitionFilePath = require("./CLI/Utility/GetDefinitionFilePath.luau")
 
     Path = `{Directory}{Path}`
-    Path = PathUtility.GetDefinitionFilePath(Path)
+    Path = GetDefinitionFilePath(Path)
 
     if not fs.isFile(Path) then
         return
     end
 
-    local FileDirectory = PathUtility.ExtractDirectoryFromPath(Path)
+    local FileDirectory = PathParser.Directory(Path) or "./"
     return fs.readFile(Path), FileDirectory
 end
 
@@ -851,7 +853,7 @@ function Parser.Import(self: Parser): ScopeDeclaration
         Identifier = Indices[#Indices]
     else
         --> Use file name as namespace identifier
-        local _, Filename = string.match(ImportPath, "(.+/)([%w_-]+)[%.]?(%w*)")
+        local Filename = PathParser.Filename(ImportPath)
         assert(Filename, "Unable to parse file path for filename!")
         
         Identifier = Filename

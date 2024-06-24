@@ -7,7 +7,8 @@ local stdio = require("@lune/stdio")
 
 local Parser = require("../../Parser")
 local Generator = require("../../Generator/init.luau")
-local PathUtility = require("./Path")
+local PathParser = require("../../Modules/Path")
+local GetDefinitionFilePath = require("GetDefinitionFilePath")
 
 ---- Settings ----
 
@@ -49,7 +50,7 @@ local function FormatTime(Time: number): string
 end
 
 local function CreateDirectoryIfNotFound(Path: string, Options: CompileOptions)
-    local Directory = PathUtility.ExtractDirectoryFromPath(Path)
+    local Directory = PathParser.Directory(Path) or "./"
     if fs.isDir(Directory) then
         return   
     end
@@ -68,8 +69,8 @@ end
 ---- Public Functions ----
 
 function Utility.Compile(Path: string, Options: CompileOptions)
-    local FilePath = PathUtility.GetDefinitionFilePath(Path)
-    local FileDirectory = PathUtility.ExtractDirectoryFromPath(FilePath)
+    local FilePath = GetDefinitionFilePath(Path)
+    local FileDirectory = PathParser.Directory(FilePath) or "./"
 
     Message("cyan", Options, `Reading source from {FilePath}...`)
     local Source = fs.readFile(FilePath)

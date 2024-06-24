@@ -8,7 +8,8 @@ local stdio = require("@lune/stdio")
 local dateTime = require("@lune/datetime")
 
 local Compile = require("./Compile")
-local PathUtility = require("./Path")
+local PathParser = require("../../Modules/Path")
+local GetDefinitionFilePath = require("./GetDefinitionFilePath")
 
 ---- Settings ----
 
@@ -39,7 +40,7 @@ local function BuildImportsArray(Entry: string, PreviousArray: {string}?): {stri
     table.insert(Array, Entry)
 
     local Source = fs.readFile(Entry)
-    local Directory = PathUtility.ExtractDirectoryFromPath(Entry)
+    local Directory = PathParser.Directory(Entry)
     local Iterator = string.gmatch(Source, IMPORT_PATTERN)
 
     while (true) do
@@ -49,10 +50,10 @@ local function BuildImportsArray(Entry: string, PreviousArray: {string}?): {stri
         end
 
         Path = `{Directory}{Path}`
-        Path = PathUtility.GetDefinitionFilePath(Path)
+        Path = GetDefinitionFilePath(Path)
 
         if not fs.isFile(Path) then
-            error(`Invalid import path "{Path}"`)
+            error(`No file to import at "{Path}"`)
         end
 
         --> Prevent repeats
@@ -69,24 +70,38 @@ end
 ---- Public Functions ----
 
 function Utility.Watch(Path: string)
-    local FilePath = PathUtility.GetDefinitionFilePath(Path)
+    local FilePath = GetDefinitionFilePath(Path)
 
     local Imports: {string};
+    local ShouldUpdateStatus = true
+
     local function Recompile()
         --> Resolve imports
+        local OldImports = Imports and #Imports or 0
         Imports = BuildImportsArray(FilePath)
+
+        if OldImports ~= #Imports then
+            ShouldUpdateStatus = true
+        end
 
         --> Compile
         Compile.Compile(Path, WATCH_OPTIONS)
 
         --> Status
-        print(`Blink is watching for changes:\n\tEntry: {Color("yellow", FilePath)}\n\tImports: {Color("yellow", tostring(#Imports - 1))}`)
+        if ShouldUpdateStatus then
+            ShouldUpdateStatus = false
+            print(`Blink is watching for changes:\n\tEntry: {Color("yellow", FilePath)}\n\tImports: {Color("yellow", tostring(#Imports - 1))}`)
+        end
 
         return true
     end
 
     --> Initial compilation
-    Recompile()
+    local InitialSuccess, Why = pcall(Recompile)
+    if not InitialSuccess then
+        warn(`There was an error while trying to start the watcher thread:\n{Why}`)
+        return
+    end
 
     --> Watch loop
     local LastModification: {[string]: number} = {}
@@ -110,10 +125,10 @@ function Utility.Watch(Path: string)
                 local Success, Error = pcall(Recompile)
                 if not Success then
                     warn(Error)
-                else
-                    table.clear(LastModification)
                 end
 
+                --> Prevent spam errors
+                table.clear(LastModification)
                 break
             end
         end
