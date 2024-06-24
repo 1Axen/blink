@@ -4,6 +4,14 @@ option ClientOutput = "../../Network/Client.luau"
 option ServerOutput = "../../Network/Server.luau"
 option ManualReplication = false
 
+import "./Sub-Sources/Source"
+import "./Sub-Sources/Source" as ImportA
+
+struct ImportReference {
+    A: ImportA.a,
+    B: Source.a
+}
+
 type A = CFrame
 type B = CFrame[10]
 type C = CFrame?

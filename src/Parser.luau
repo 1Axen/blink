@@ -801,9 +801,9 @@ end
 
 ---- Top-Level Parsing Functions ----
 
-function Parser.Parse(self: Parser, Source: string, Scope: Token?): Body
+function Parser.Parse(self: Parser, Source: string, Scope: Scope?): Body
     --> Set state
-    self.Scope = {Identifier = Scope or {Value = "", Start = 0, End = 0} :: any, Symbols = {Types = {}, Scopes = {}}}
+    self.Scope = Scope or {Identifier = {Value = "", Start = 0, End = 0} :: any, Symbols = {Types = {}, Scopes = {}}}
     self.Source = Source
     table.clear(self.Symbols)
     
@@ -868,30 +868,28 @@ function Parser.Import(self: Parser): ScopeDeclaration
         :Emit()
     end
 
-    --> Parse import into AST
-    local AST: Body;
-    local ImportParser = Parser.new(ImportDirectory)
-    local Success, ErrorText = pcall(function()
-        AST = ImportParser:Parse(ImportSource, Token)
-    end)
-
-    if not Success then
-        error(`Error while parsing "{ImportPath}":\n{ErrorText}`)
-    end
-
     --> Import
-    --print(`Importing {ImportPath} as {Identifier}`)
-
     local Parent = self.Scope
     local Scope: Scope = {
         Identifier = Token,
-        Parent = Parent,
         Symbols = {
             Types = {},
             Scopes = {}
         }
     }
 
+    local AST: Body;
+    local ImportParser = Parser.new(ImportDirectory)
+    local Success, ErrorText = pcall(function()
+        --> Parse declarations into import scope
+        AST = ImportParser:Parse(ImportSource, Scope)
+    end)
+
+    if not Success then
+        error(`Error while parsing "{ImportPath}":\n{ErrorText}`)
+    end
+
+    Scope.Parent = Parent
     self.Symbols[Identifier] = true
     Parent.Symbols.Scopes[Identifier] = Scope
     
