@@ -1250,6 +1250,8 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
 
             if Value == "map" then
                 Declaration = self:Map(Identifier)
+            elseif Value == "set" then
+                Declaration = self:Set(Identifier)
             elseif Value == "enum" then
                 Declaration = self:Enum(Identifier)
             elseif Value == "struct" then

@@ -23,6 +23,12 @@ set Flags16 = {F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15,
 set Flags32 = {F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24, F25, F26, F27, F28, F29, F30, F31, F32}
 set Flags33 = {F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24, F25, F26, F27, F28, F29, F30, F31, F32, F33}
 
+struct StructOfFlags {
+    A: set {Flag, Flag1},
+    B: set {Flag, Flag1},
+    C: set {Flag, Flag1},
+}
+
 map Map = {[string]: u8}
 map MapComplex = {[string(0..20)]: u8(0..100)[8]}
 map MapReference = {[States]: States}?
