@@ -103,6 +103,18 @@ struct MapStruct {
     Map: map {[string]: u8}
 }
 
+event ClientEmptyEvent {
+    From: Client,
+    Type: Reliable,
+    Call: SingleSync
+}
+
+event ClientEmptyUnreliableEvent {
+    From: Client,
+    Type: Unreliable,
+    Call: SingleSync
+}
+
 event EmptyEvent {
     From: Server,
     Type: Reliable,

@@ -334,7 +334,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 	local Connection = `Events.{Reliability}[{Index}]`
 
 	--> Data body
-	local Values, Arguments, _ = "Value: nil", "", nil
+	local Values, Arguments, _ = "Value: nil", "Value", nil
 	local Read, Write = Generators.Event(Value.Data, Index, Identifier)
 
 	if Value.Data then
