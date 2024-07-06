@@ -161,7 +161,7 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, StartAt: n
         end
 
         if (not DontAdvanceCursor or (SKIPPED_TOKENS[Type] and not IsHighlighting)) then
-            Position = End
+            Position += #Text
             self.Cursor = Position
         end
 
