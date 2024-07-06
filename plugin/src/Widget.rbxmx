@@ -3091,28 +3091,6 @@ ReplicatedStroage.bla.bla.bla]]></string>
 						<BinaryString name="Tags"></BinaryString>
 					</Properties>
 				</Item>
-				<Item class="UIListLayout" referent="RBXA07986F7D1424E95AFF9E070E9A15C19">
-					<Properties>
-						<BinaryString name="AttributesSerialize"></BinaryString>
-						<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
-						<bool name="DefinesCapabilities">false</bool>
-						<token name="FillDirection">1</token>
-						<token name="HorizontalAlignment">1</token>
-						<token name="HorizontalFlex">0</token>
-						<token name="ItemLineAlignment">0</token>
-						<string name="Name">UIListLayout</string>
-						<UDim name="Padding">
-							<S>0</S>
-							<O>3</O>
-						</UDim>
-						<token name="SortOrder">2</token>
-						<int64 name="SourceAssetId">-1</int64>
-						<BinaryString name="Tags"></BinaryString>
-						<token name="VerticalAlignment">1</token>
-						<token name="VerticalFlex">0</token>
-						<bool name="Wraps">false</bool>
-					</Properties>
-				</Item>
 				<Item class="TextLabel" referent="RBX4CAF9DA73643428C94682F56F9FF28DE">
 					<Properties>
 						<bool name="Active">false</bool>

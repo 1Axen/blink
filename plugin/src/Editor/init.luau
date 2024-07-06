@@ -175,14 +175,16 @@ local function ScrollTowards(Direction: number)
     Scroll:Set(math.clamp(Value + (Direction * SCROLL_LINES), 0, Maximum))
 end
 
-local function WrapColor(Text: string, Color: Color3): string
-    --> Escape rich text
+local function Color(Text: string, Color: Color3): string
+    return `<font color="#{Color:ToHex()}">{Text}</font>`
+end
+
+local function Escape(Text: string)
     for Symbol, Escape in RICH_TEXT_ESCAPES do
         Text = string.gsub(Text, Symbol, Escape)
     end
 
-    --> Append color tags
-    return `<font color="#{Color:ToHex()}">{Text}</font>`
+    return Text
 end
 
 local function ClearChildrenWhichAre(Parent: Instance, Class: string)
@@ -203,24 +205,6 @@ local function GetPrediction(): CompletionItem?
     return Item
 end
 
-local function GetNextToken(DontAdvanceCursor: boolean?): Lexer.Token?
-    local Success, Error, Token = pcall(function()
-        return nil, SourceLexer:GetNextToken(DontAdvanceCursor)
-    end)
-
-    if Success then
-        return Token
-    else
-        warn(`[BLINK]: Lexer encountered an exception, {Error}.`)
-        return {
-            Type = "Unknown",
-            Value = "\0",
-            Start = 1,
-            End = 1,
-        }
-    end
-end
-
 local function UpdateColors()
     local Source = Input.Text
     local RichText = {}
@@ -230,26 +214,22 @@ local function UpdateColors()
 
     --> Highlight state
     local Keyword = "none"
-    local Token = GetNextToken()
+    local Token = SourceLexer:GetNextToken()
     
-    while Token do
+    while Token and (Token.Type ~= "EndOfFile") do
         local Type: Lexer.Types = Token.Type
         local Value = Token.Value
 
-        if Type == "EndOfFile" then
-            break
-        end
-
-        local String = WrapColor(Value, THEME.Text)
+        local String = Escape(Value)
         if Type == "Keyword" or Type == "Import" or Type == "As" then
             Keyword = Value
-            String = WrapColor(Value, THEME.Keyword)
+            String = Color(Value, THEME.Keyword)
         elseif Type == "Primitive" then
-            String = WrapColor(Value, THEME.Primitive)
+            String = Color(Value, THEME.Primitive)
         elseif Type == "Identifier" then
-            local LookAhead = GetNextToken(true)
+            local LookAhead = SourceLexer:GetNextToken(true)
             local IsField = (LookAhead and LookAhead.Type == "FieldAssign" and Keyword ~= "map")
-            String = WrapColor(Value, IsField and THEME.Text or THEME.Identifier)
+            String = Color(Value, IsField and THEME.Text or THEME.Identifier)
         elseif Type == "Array" or Type == "Range" then
             --> Exact size array/range
             local Single = string.match(Value, "%[(%d+)%]") or string.match(Value, "%((%d+)%)")
@@ -257,34 +237,33 @@ local function UpdateColors()
             local Upper = string.match(Value, "(%d+)%]") or string.match(Value, "(%d+)%)")
 
             if Single then
-                String = string.gsub(Value, Single, WrapColor(Single, THEME.Number))
+                String = string.gsub(Value, Single, Color(Single, THEME.Number))
             elseif Lower and Upper then
-                String = `{string.sub(Value, 1, 1)}{WrapColor(Lower, THEME.Number)}..{WrapColor(Upper, THEME.Number)}{string.sub(Value, #Value, #Value)}`
+                String = `{string.sub(Value, 1, 1)}{Color(Lower, THEME.Number)}..{Color(Upper, THEME.Number)}{string.sub(Value, #Value, #Value)}`
             end
         elseif Type == "Component" then
             local Primitive = string.match(Value, "(%w+)") or ""
-            String = `{WrapColor("<", THEME.Bracket)}{WrapColor(Primitive, THEME.Primitive)}{WrapColor(">", THEME.Bracket)}`
+            String = `{Color("<", THEME.Bracket)}{Color(Primitive, THEME.Primitive)}{Color(">", THEME.Bracket)}`
         elseif BRACKETS[Type] then
-            String = WrapColor(Value, THEME.Bracket)
+            String = Color(Value, THEME.Bracket)
         elseif Type == "Class" then
-            String = `({WrapColor(string.sub(Value, 2, #Value - 1), THEME.Class)})`
+            String = `({Color(string.sub(Value, 2, #Value - 1), THEME.Class)})`
         elseif Type == "String" then
-            String = WrapColor(Value, THEME.String)
+            String = Color(Value, THEME.String)
         elseif Type == "Boolean" then
-            String = WrapColor(Value, THEME.Boolean)
+            String = Color(Value, THEME.Boolean)
         elseif Type == "Comment" then
-            String = WrapColor(Value, THEME.Comment)
+            String = Color(Value, THEME.Comment)
         elseif Type == "Unknown" then
-            String = WrapColor(Value, THEME.Error)
+            String = Color(Value, THEME.Error)
         end
 
         table.insert(RichText, String)
-        Token = GetNextToken()
+        Token = SourceLexer:GetNextToken()
     end
 
-    Profiler.profileBegin("Concat")
     Display.Text = table.concat(RichText)
-    Profiler.profileEnd()
+    Display.TextColor3 = THEME.Text
 end
 
 local function UpdateAnalysis()
@@ -376,10 +355,7 @@ end
 
 local function UpdateHighlightedLine()
     local Line = Utility.GetCurrentLine(Input.Text, Input.CursorPosition)
-    local Label: TextLabel = LinesContainer:FindFirstChild(tostring(Line))
-    if not Label or Label == PreviousLine then
-        return
-    end
+    local Label: TextLabel = LinesContainer[tostring(Line)]
 
     if PreviousLine then
         PreviousLine.TextColor3 = THEME.Line.Inactive
@@ -411,9 +387,6 @@ end
 
 --> State functions
 local function OnLinesChanged(Value: number)
-    --> Remove previous line
-    PreviousLine = nil
-
     --> Insert new or delete lines
     local Difference = (Value - Lines)
 
@@ -421,13 +394,13 @@ local function OnLinesChanged(Value: number)
         for Index = (Lines + 1), Value do
             local Name = tostring(Index)
             local Line = LinesContainer[Name]
-            Line.Visible = true
+            Line.TextTransparency = 0
         end
     elseif Difference < 0 then
         for Index = Lines, (Value + 1), - 1 do
             local Name = tostring(Index)
             local Line = LinesContainer[Name]
-            Line.Visible = false
+            Line.TextTransparency = 1
         end
     end
 
@@ -579,7 +552,6 @@ local function OnCursorPositionChanged()
     Profiler.profileBegin("Cursor")
     Profiler.profileBegin("Slice")
 
-    local Start2 = os.clock()
     local Text = string.sub(Input.Text, 1, CursorPosition - 1)
     local Slices = string.split(Text, "\n")
 
@@ -792,6 +764,26 @@ local function OnSourceChanged()
     Profiler.profileEnd()
 end
 
+--> Create lines in the background
+local function GenerateLinesAsync()
+    local Tick = os.clock()
+    for Index = 1, 2_000 do
+        local Elapsed = (os.clock() - Tick)
+        if Elapsed > (1 / 120) then
+            task.wait()
+            Tick = os.clock()
+        end
+
+        local Line = LineTemplate:Clone()
+        Line.Name = tostring(Index)
+        Line.Text = tostring(Index)
+        Line.TextColor3 = THEME.Line.Inactive
+        Line.TextTransparency = 1
+        Line.Position = UDim2.fromOffset(0, 19 * (Index - 1))
+        Line.Parent = LinesContainer
+    end
+end
+
 ---- Public Functions ----
 
 function Editor.GetSource(): string
@@ -807,6 +799,7 @@ end
 
 function Editor.Initialize(Widget: DockWidgetPluginGui)
     EditorWidget = Widget
+    task.spawn(GenerateLinesAsync)
 
     --> Preload fira sans
     ContentProvider:PreloadAsync({Display}, function(AssetId: string, AssetFetchStatus: Enum.AssetFetchStatus) 
