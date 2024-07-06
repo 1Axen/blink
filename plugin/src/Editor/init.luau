@@ -815,6 +815,15 @@ function Editor.Initialize(Widget: DockWidgetPluginGui)
     Predictions:OnChange(OnPredictionsChanged)
     AnalysisError:OnChange(OnAnalysisErrorChanged)
 
+    --> Fixes a weird bug with the cursor being moved to character 6000
+    Input.Focused:Once(function()
+        Input:ReleaseFocus(true)
+        RunService.PreRender:Wait()
+
+        Input:CaptureFocus()
+        Input.CursorPosition = 1
+    end)
+
     Input:GetPropertyChangedSignal("Text"):Connect(function()
         Profiler.profileBegin("Total")
         OnSourceChanged()
