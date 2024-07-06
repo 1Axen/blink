@@ -164,9 +164,6 @@ local PreviousLine: TextLabel?;
 local AnalysisError: State.Class<Error.Class?> = State.new(nil :: any)
 local AbstractSyntaxTree: Parser.Body?;
 
-local EditorAbsoluteSize = EditorContainer.AbsoluteSize
-local CursorAbsolutePosition = Cursor.AbsolutePosition
-
 ---- Private Functions ----
 
 local function ScrollTowards(Direction: number)
@@ -422,6 +419,15 @@ local function OnPredictionsChanged()
         return
     end
 
+    --> Update completion position
+    local AbsoluteSize = EditorContainer.AbsoluteSize
+    local AbsolutePosition = Cursor.AbsolutePosition
+    local HorisontalWidth = math.max(0, (AbsoluteSize.X - CompletionContainer.Size.X.Offset) - 10)
+    CompletionContainer.Position = UDim2.fromOffset(
+        math.clamp(AbsolutePosition.X, 0, HorisontalWidth), 
+        AbsolutePosition.Y + TextSize
+    )
+
     CompletionContainer.Visible = true
     ClearChildrenWhichAre(CompletionContainer, "Frame")
 
@@ -568,17 +574,9 @@ local function OnCursorPositionChanged()
     Cursor.Position = UDim2.fromOffset(TextBounds.X - 1, TextHeight * (#Slices - 1))
 
     --> Update highlighted line
-    Profiler.profileBegin("Highlight line")
+    Profiler.profileBegin("Highlight LN")
     UpdateHighlightedLine()
     Profiler.profileEnd()
-
-    --> Update completion position
-    local HorisontalWidth = math.max(0, (EditorAbsoluteSize.X - CompletionContainer.Size.X.Offset) - 10)
-    CompletionContainer.Position = UDim2.fromOffset(
-        math.clamp(CursorAbsolutePosition.X, 0, HorisontalWidth), 
-        CursorAbsolutePosition.Y + TextSize
-    )
-
     Profiler.profileEnd()
 end
 
@@ -821,14 +819,6 @@ function Editor.Initialize(Widget: DockWidgetPluginGui)
         Profiler.profileBegin("Total")
         OnSourceChanged()
         Profiler.profileEnd()
-    end)
-
-    Cursor:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
-        CursorAbsolutePosition = Cursor.AbsolutePosition
-    end)
-
-    EditorContainer:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-        EditorAbsoluteSize = EditorContainer.AbsoluteSize
     end)
 
     Input:GetPropertyChangedSignal("SelectionStart"):Connect(OnSelectionChanged)
