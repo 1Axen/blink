@@ -429,7 +429,6 @@ local function OnExpandRightClicked()
     ProfilerTick = 0
     ProfilerClicks = 0
     Profiler.toggle()
-    print("Toggled!")
 end
 
 ---- Initialization ----
