@@ -550,16 +550,11 @@ local function OnCursorPositionChanged()
     end
 
     Profiler.profileBegin("Cursor")
-    Profiler.profileBegin("Slice")
 
     local Text = string.sub(Input.Text, 1, CursorPosition - 1)
     local Slices = string.split(Text, "\n")
 
-    Profiler.profileEnd()
-
     --> Calculate current end line position
-    Profiler.profileBegin("BoundsParams")
-
     local Line = Slices[#Slices] or ""
     local GetTextBoundsParams = Instance.new("GetTextBoundsParams")
     GetTextBoundsParams.Text = Line
@@ -567,8 +562,6 @@ local function OnCursorPositionChanged()
     GetTextBoundsParams.Font = Display.FontFace
 
     local TextBounds = TextService:GetTextBoundsAsync(GetTextBoundsParams)
-
-    Profiler.profileEnd()
 
     --> Update cursor size and position
     Cursor.Size = UDim2.fromOffset(2, TextSize)
@@ -580,15 +573,11 @@ local function OnCursorPositionChanged()
     Profiler.profileEnd()
 
     --> Update completion position
-    Profiler.profileBegin("Position")
-
     local HorisontalWidth = math.max(0, (EditorAbsoluteSize.X - CompletionContainer.Size.X.Offset) - 10)
     CompletionContainer.Position = UDim2.fromOffset(
         math.clamp(CursorAbsolutePosition.X, 0, HorisontalWidth), 
         CursorAbsolutePosition.Y + TextSize
     )
-
-    Profiler.profileEnd()
 
     Profiler.profileEnd()
 end

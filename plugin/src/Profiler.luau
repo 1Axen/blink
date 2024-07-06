@@ -32,6 +32,10 @@ local ActiveProfile: Profile?
 
 ---- Private Functions ----
 
+local function isActive()
+    return DebugContainer.Visible
+end
+
 local function formatPercentage(Percentage: number): string
     return `{math.floor(Percentage * 100)} %`
 end
@@ -50,6 +54,10 @@ end
 ---- Public Functions ----
 
 function Profiler.profileBegin(Label: string)
+    if not isActive() then
+        return
+    end
+
     local Metric = DebugContainer:FindFirstChild(Label)
     if not Metric then
         local New = MetricTemplate:Clone()
@@ -79,11 +87,19 @@ function Profiler.profileBegin(Label: string)
 end
 
 function Profiler.profileDiscard()
+    if not isActive() then
+        return
+    end
+
     assert(ActiveProfile ~= nil, "No active profile.")
     ActiveProfile = ActiveProfile.Previous
 end
 
 function Profiler.profileEnd()
+    if not isActive() then
+        return
+    end
+
     assert(ActiveProfile ~= nil, "No active profile.")
     local Elapsed = (os.clock() - ActiveProfile.Tick)
 
@@ -97,11 +113,14 @@ function Profiler.profileEnd()
     ActiveProfile = ActiveProfile.Previous
 end
 
+function Profiler.toggle()
+    DebugContainer.Visible = not DebugContainer.Visible
+end
+
 ---- Initialization ----
 
 function Profiler.Initialize()
     DebugContainer.Metric:Destroy()
-    DebugContainer.Visible = true
 end
 
 ---- Connections ----

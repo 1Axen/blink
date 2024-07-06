@@ -156,8 +156,10 @@ local Expanded = State.new(false)
 local Selected: State.Class<Instance?> = State.new(nil :: any)
 local Generating: State.Class<StringValue?> = State.new(nil :: any)
 
-local WasOpened = false
 local Editing: string?;
+
+local ProfilerTick = 0
+local ProfilerClicks = 0
 
 ---- Private Functions ----
 
@@ -411,6 +413,25 @@ local function OnImport()
     Editor.SetSource(File:GetBinaryContents())
 end
 
+local function OnExpandRightClicked()
+    if ProfilerClicks == 0 then
+        ProfilerTick = os.clock()
+        ProfilerClicks += 1
+        return
+    end
+
+    local Elapsed = (os.clock() - ProfilerTick)
+    if Elapsed > 1 then
+        ProfilerTick = os.clock()
+        return
+    end
+
+    ProfilerTick = 0
+    ProfilerClicks = 0
+    Profiler.toggle()
+    print("Toggled!")
+end
+
 ---- Initialization ----
 
 Editor.Initialize(EditorWidget)
@@ -466,6 +487,7 @@ Search.FocusLost:Connect(OnSearch)
 Save.Activated:Connect(OnSaveActivated)
 Cancel.Activated:Connect(OnSaveCompleted)
 Expand.Activated:Connect(OnExpandActivated)
+Expand.MouseButton2Click:Connect(OnExpandRightClicked)
 QuickSave.Activated:Connect(OnQuickSave)
 QuickClear.Activated:Connect(OnQuickClear)
 EditorButton.Click:Connect(OnEditorButtonClicked)
