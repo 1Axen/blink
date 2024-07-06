@@ -32,9 +32,7 @@ local Booleans = {
     ["false"] = true
 }
 
-local Number = "[%+%-]?%d+"
-
-local Matches = {
+local TOKENS = {
     --> Simple patterns
     {"^%s+", "Whitespace"},     
     {"^=", "Assign"},
@@ -58,10 +56,10 @@ local Matches = {
     {"^?", "Optional"},
     {`^%(%a+%)`, "Class"},
     {`^%[]`, "Array"},
-    {`^%({Number}%)`, "Range"},
-    {`^%({Number}..{Number}%)`, "Range"},
-    {`^%[{Number}]`, "Array"},
-    {`^%[{Number}..{Number}]`, "Array"},
+    {`^%([%+%-]?%d+%)`, "Range"},
+    {`^%([%+%-]?%d+..[%+%-]?%d+%)`, "Range"},
+    {`^%[[%+%-]?%d+]`, "Array"},
+    {`^%[[%+%-]?%d+..[%+%-]?%d+]`, "Array"},
     --{`^%b<>`, "Component"},
 
     {"^%(", "OpenParentheses"},
@@ -97,7 +95,7 @@ local Matches = {
     end},   
 }
 
-local SKIPPED_PATTERNS = {
+local SKIPPED_TOKENS = {
     Comment = true,
     Whitespace = true
 }
@@ -127,7 +125,7 @@ function Lexer.Initialize(self: Lexer, Source: string)
     self.Cursor = 1
 end
 
-function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: number?): Token
+function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, StartAt: number?): Token
     if self.Cursor > self.Size then
         return {
             Type = "EndOfFile",
@@ -138,52 +136,52 @@ function Lexer.GetNextToken(self: Lexer, DontAdvanceCursor: boolean?, Position: 
     end
 
     local Source = self.Source
-    local Position = Position or self.Cursor
+    local Position = StartAt or self.Cursor
     local IsHighlighting = (self.Mode == "Highlighting")
 
     local function Match(Pattern: string): (string?, number, number)
         local Start, End = string.find(Source, Pattern, Position)
         if not Start or not End then
-            return nil, 0, 0
+            return nil, Position, Position
         end
 
-        local Matched = string.sub(Source, Start, End)
-        return Matched, Position, math.min(Position + #Matched, self.Size)
+        local Text = string.sub(Source, Start, End)
+        return Text, Position, math.min(Position + #Text, self.Size)
     end
 
-    for Index, Token in Matches do
+    for Index, Token in TOKENS do
         local Pattern = Token[1]
-        local Type: (Types | (Token: string) -> Types)? = Token[2]
+        local Type: (Types | (Text: string) -> Types)? = Token[2]
 
-        local Matched, Start, End = Match(Pattern)
+        local Text, Start, End = Match(Pattern)
 
         --> Couldn't match this pattern, continue.
-        if not Matched then
+        if not Text then
             continue
         end
 
-        if (DontAdvanceCursor ~= true or (SKIPPED_PATTERNS[Type] and IsHighlighting ~= true)) then
-            Position += #Matched
+        if (not DontAdvanceCursor or (SKIPPED_TOKENS[Type] and not IsHighlighting)) then
+            Position = End
             self.Cursor = Position
         end
 
         --> Whitespace matched, skip token.
         --> We don't want to skip whitespaces in highlighting mode.
-        if SKIPPED_PATTERNS[Type] and not IsHighlighting then
+        if SKIPPED_TOKENS[Type] and not IsHighlighting then
             return self:GetNextToken(DontAdvanceCursor)
         end
 
         if type(Type) == "function" then
             --> Only overwrite the type when highlighting
-            local TrueType, TrueMatched = Type(Matched)
+            local TrueType, TrueText = Type(Text)
+
             Type = TrueType
-            Matched = if (IsHighlighting ~= true) then TrueMatched else Matched
+            Text = IsHighlighting and Text or TrueText
         end
 
         return {
             Type = Type,
-            Value = Matched,
-
+            Value = Text,
             Start = Start,
             End = End,
         }
