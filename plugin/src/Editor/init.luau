@@ -17,6 +17,8 @@ local Table = require("../Table")
 local State = require("../State")
 local Utility = require("./Utility")
 
+local Profiler = require("../Profiler")
+
 local Lexer = require("../../../src/Lexer")
 local Parser = require("../../../src/Parser")
 local Settings = require("../../../src/Settings")
@@ -151,7 +153,7 @@ local EditorWidget: DockWidgetPluginGui;
 
 ---- Variables ----
 
-local Lines = State.new(0)
+local Lines = 0
 local Scroll = State.new(0)
 local Predictions: State.Class<{Index: number, Items: {CompletionItem}}> = State.new({Index = 1, Items = {}})
 
@@ -170,14 +172,16 @@ local function ScrollTowards(Direction: number)
     Scroll:Set(math.clamp(Value + (Direction * SCROLL_LINES), 0, Maximum))
 end
 
-local function WrapColor(Text: string, Color: Color3): string
-    --> Escape rich text
+local function Color(Text: string, Color: Color3): string
+    return `<font color="#{Color:ToHex()}">{Text}</font>`
+end
+
+local function Escape(Text: string)
     for Symbol, Escape in RICH_TEXT_ESCAPES do
         Text = string.gsub(Text, Symbol, Escape)
     end
 
-    --> Append color tags
-    return `<font color="#{Color:ToHex()}">{Text}</font>`
+    return Text
 end
 
 local function ClearChildrenWhichAre(Parent: Instance, Class: string)
@@ -198,24 +202,6 @@ local function GetPrediction(): CompletionItem?
     return Item
 end
 
-local function GetNextToken(DontAdvanceCursor: boolean?): Lexer.Token?
-    local Success, Error, Token = pcall(function()
-        return nil, SourceLexer:GetNextToken(DontAdvanceCursor)
-    end)
-
-    if Success then
-        return Token
-    else
-        warn(`[BLINK]: Lexer encountered an exception, {Error}.`)
-        return {
-            Type = "Unknown",
-            Value = "\0",
-            Start = 1,
-            End = 1,
-        }
-    end
-end
-
 local function UpdateColors()
     local Source = Input.Text
     local RichText = {}
@@ -225,26 +211,22 @@ local function UpdateColors()
 
     --> Highlight state
     local Keyword = "none"
-    local Token = GetNextToken()
+    local Token = SourceLexer:GetNextToken()
     
-    while Token do
+    while Token and (Token.Type ~= "EndOfFile") do
         local Type: Lexer.Types = Token.Type
         local Value = Token.Value
 
-        if Type == "EndOfFile" then
-            break
-        end
-
-        local String = WrapColor(Value, THEME.Text)
+        local String = Escape(Value)
         if Type == "Keyword" or Type == "Import" or Type == "As" then
             Keyword = Value
-            String = WrapColor(Value, THEME.Keyword)
+            String = Color(Value, THEME.Keyword)
         elseif Type == "Primitive" then
-            String = WrapColor(Value, THEME.Primitive)
+            String = Color(Value, THEME.Primitive)
         elseif Type == "Identifier" then
-            local LookAhead = GetNextToken(true)
+            local LookAhead = SourceLexer:GetNextToken(true)
             local IsField = (LookAhead and LookAhead.Type == "FieldAssign" and Keyword ~= "map")
-            String = WrapColor(Value, IsField and THEME.Text or THEME.Identifier)
+            String = Color(Value, IsField and THEME.Text or THEME.Identifier)
         elseif Type == "Array" or Type == "Range" then
             --> Exact size array/range
             local Single = string.match(Value, "%[(%d+)%]") or string.match(Value, "%((%d+)%)")
@@ -252,32 +234,33 @@ local function UpdateColors()
             local Upper = string.match(Value, "(%d+)%]") or string.match(Value, "(%d+)%)")
 
             if Single then
-                String = string.gsub(Value, Single, WrapColor(Single, THEME.Number))
+                String = string.gsub(Value, Single, Color(Single, THEME.Number))
             elseif Lower and Upper then
-                String = `{string.sub(Value, 1, 1)}{WrapColor(Lower, THEME.Number)}..{WrapColor(Upper, THEME.Number)}{string.sub(Value, #Value, #Value)}`
+                String = `{string.sub(Value, 1, 1)}{Color(Lower, THEME.Number)}..{Color(Upper, THEME.Number)}{string.sub(Value, #Value, #Value)}`
             end
         elseif Type == "Component" then
             local Primitive = string.match(Value, "(%w+)") or ""
-            String = `{WrapColor("<", THEME.Bracket)}{WrapColor(Primitive, THEME.Primitive)}{WrapColor(">", THEME.Bracket)}`
+            String = `{Color("<", THEME.Bracket)}{Color(Primitive, THEME.Primitive)}{Color(">", THEME.Bracket)}`
         elseif BRACKETS[Type] then
-            String = WrapColor(Value, THEME.Bracket)
+            String = Color(Value, THEME.Bracket)
         elseif Type == "Class" then
-            String = `({WrapColor(string.sub(Value, 2, #Value - 1), THEME.Class)})`
+            String = `({Color(string.sub(Value, 2, #Value - 1), THEME.Class)})`
         elseif Type == "String" then
-            String = WrapColor(Value, THEME.String)
+            String = Color(Value, THEME.String)
         elseif Type == "Boolean" then
-            String = WrapColor(Value, THEME.Boolean)
+            String = Color(Value, THEME.Boolean)
         elseif Type == "Comment" then
-            String = WrapColor(Value, THEME.Comment)
+            String = Color(Value, THEME.Comment)
         elseif Type == "Unknown" then
-            String = WrapColor(Value, THEME.Error)
+            String = Color(Value, THEME.Error)
         end
 
         table.insert(RichText, String)
-        Token = GetNextToken()
+        Token = SourceLexer:GetNextToken()
     end
 
     Display.Text = table.concat(RichText)
+    Display.TextColor3 = THEME.Text
 end
 
 local function UpdateAnalysis()
@@ -369,10 +352,7 @@ end
 
 local function UpdateHighlightedLine()
     local Line = Utility.GetCurrentLine(Input.Text, Input.CursorPosition)
-    local Label: TextLabel = LinesContainer:FindFirstChild(tostring(Line))
-    if not Label or Label == PreviousLine then
-        return
-    end
+    local Label: TextLabel = LinesContainer[tostring(Line)]
 
     if PreviousLine then
         PreviousLine.TextColor3 = THEME.Line.Inactive
@@ -404,18 +384,24 @@ end
 
 --> State functions
 local function OnLinesChanged(Value: number)
-    --> Remove previous lines
-    PreviousLine = nil
-    ClearChildrenWhichAre(LinesContainer, "TextLabel")
+    --> Insert new or delete lines
+    local Difference = (Value - Lines)
 
-    --> Insert new lines
-    for Index = 1, Value do
-        local Line = LineTemplate:Clone()
-        Line.Name = tostring(Index)
-        Line.Text = tostring(Index)
-        Line.TextColor3 = THEME.Line.Inactive
-        Line.Parent = LinesContainer
+    if Difference > 0 then
+        for Index = (Lines + 1), Value do
+            local Name = tostring(Index)
+            local Line = LinesContainer[Name]
+            Line.TextTransparency = 0
+        end
+    elseif Difference < 0 then
+        for Index = Lines, (Value + 1), - 1 do
+            local Name = tostring(Index)
+            local Line = LinesContainer[Name]
+            Line.TextTransparency = 1
+        end
     end
+
+    Lines = Value
 
     --> Update highlighted line
     UpdateHighlightedLine()
@@ -432,6 +418,15 @@ local function OnPredictionsChanged()
         CompletionContainer.Visible = false
         return
     end
+
+    --> Update completion position
+    local AbsoluteSize = EditorContainer.AbsoluteSize
+    local AbsolutePosition = Cursor.AbsolutePosition
+    local HorisontalWidth = math.max(0, (AbsoluteSize.X - CompletionContainer.Size.X.Offset) - 10)
+    CompletionContainer.Position = UDim2.fromOffset(
+        math.clamp(AbsolutePosition.X, 0, HorisontalWidth), 
+        AbsolutePosition.Y + TextSize
+    )
 
     CompletionContainer.Visible = true
     ClearChildrenWhichAre(CompletionContainer, "Frame")
@@ -560,6 +555,8 @@ local function OnCursorPositionChanged()
         return
     end
 
+    Profiler.profileBegin("Cursor")
+
     local Text = string.sub(Input.Text, 1, CursorPosition - 1)
     local Slices = string.split(Text, "\n")
 
@@ -577,17 +574,10 @@ local function OnCursorPositionChanged()
     Cursor.Position = UDim2.fromOffset(TextBounds.X - 1, TextHeight * (#Slices - 1))
 
     --> Update highlighted line
+    Profiler.profileBegin("Highlight LN")
     UpdateHighlightedLine()
-
-    --> Update completion position
-    local AbsoluteSize = EditorContainer.AbsoluteSize
-    local AbsolutePosition = Cursor.AbsolutePosition
-    local HorisontalWidth = math.max(0, (AbsoluteSize.X - CompletionContainer.Size.X.Offset) - 10)
-
-    CompletionContainer.Position = UDim2.fromOffset(
-        math.clamp(AbsolutePosition.X, 0, HorisontalWidth), 
-        AbsolutePosition.Y + TextSize
-    )
+    Profiler.profileEnd()
+    Profiler.profileEnd()
 end
 
 local function OnSelectionChanged()
@@ -673,6 +663,8 @@ local function OnSourceChanged()
 
     --> Auto complete
     if Gain == 1 then
+        Profiler.profileBegin("Insertion")
+
         local Item = GetPrediction()
         local Cursor = (Input.CursorPosition - 1)
         local Character = string.sub(Text, Cursor, Cursor)
@@ -707,15 +699,22 @@ local function OnSourceChanged()
             Input.CursorPosition = -1
             Input.CursorPosition = (Cursor + Offset)
 
+            Profiler.profileEnd()
             return
         end
+
+        Profiler.profileEnd()
     end
 
     --> Run styling hooks
+    Profiler.profileBegin("Styling")
+
     local FinalText, FinalCursor = Text, Input.CursorPosition
     for Index, Hook in StylingHooks do
         FinalText, FinalCursor = Hook.OnSourceChanged(FinalText, PreviousText, FinalCursor, Gain)
     end
+
+    Profiler.profileEnd()
 
     --> Update previous text
     PreviousText = FinalText
@@ -729,15 +728,47 @@ local function OnSourceChanged()
     end
 
     --> Update line counter
+    Profiler.profileBegin("Line counter")
+
     local Slices = string.split(Text, "\n")
-    if #Slices ~= Lines:Get() then
-        Lines:Set(#Slices)
+    if #Slices ~= Lines then
+        OnLinesChanged(#Slices)
     end
 
+    Profiler.profileEnd()
+
     --> Perform lexer pass
+    Profiler.profileBegin("Analysis")
     UpdateAnalysis()
+    Profiler.profileEnd()
+
+    Profiler.profileBegin("Completion")
     UpdateCompletion()
+    Profiler.profileEnd()
+
+    Profiler.profileBegin("Highlighting")
     UpdateColors()
+    Profiler.profileEnd()
+end
+
+--> Create lines in the background
+local function GenerateLinesAsync()
+    local Tick = os.clock()
+    for Index = 1, 2_000 do
+        local Elapsed = (os.clock() - Tick)
+        if Elapsed > (1 / 120) then
+            task.wait()
+            Tick = os.clock()
+        end
+
+        local Line = LineTemplate:Clone()
+        Line.Name = tostring(Index)
+        Line.Text = tostring(Index)
+        Line.TextColor3 = THEME.Line.Inactive
+        Line.TextTransparency = 1
+        Line.Position = UDim2.fromOffset(0, 19 * (Index - 1))
+        Line.Parent = LinesContainer
+    end
 end
 
 ---- Public Functions ----
@@ -755,6 +786,7 @@ end
 
 function Editor.Initialize(Widget: DockWidgetPluginGui)
     EditorWidget = Widget
+    task.spawn(GenerateLinesAsync)
 
     --> Preload fira sans
     ContentProvider:PreloadAsync({Display}, function(AssetId: string, AssetFetchStatus: Enum.AssetFetchStatus) 
@@ -779,12 +811,25 @@ function Editor.Initialize(Widget: DockWidgetPluginGui)
     --> Connections
     Error.OnEmit = OnErrorEmitted
 
-    Lines:OnChange(OnLinesChanged)
     Scroll:OnChange(OnScrollChanged)
     Predictions:OnChange(OnPredictionsChanged)
     AnalysisError:OnChange(OnAnalysisErrorChanged)
 
-    Input:GetPropertyChangedSignal("Text"):Connect(OnSourceChanged)
+    --> Fixes a weird bug with the cursor being moved to character 6000
+    Input.Focused:Once(function()
+        Input:ReleaseFocus(true)
+        RunService.PreRender:Wait()
+
+        Input:CaptureFocus()
+        Input.CursorPosition = 1
+    end)
+
+    Input:GetPropertyChangedSignal("Text"):Connect(function()
+        Profiler.profileBegin("Total")
+        OnSourceChanged()
+        Profiler.profileEnd()
+    end)
+
     Input:GetPropertyChangedSignal("SelectionStart"):Connect(OnSelectionChanged)
     Input:GetPropertyChangedSignal("CursorPosition"):Connect(OnSelectionChanged)
     Input:GetPropertyChangedSignal("CursorPosition"):Connect(OnCursorPositionChanged)

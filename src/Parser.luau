@@ -333,6 +333,10 @@ local function GetFileSource(Path: string, Directory: string): (string?, string?
         local Parent = game:GetService("ServerStorage")["BLINK_CONFIGURATION_FILES"]
         local Indices = string.split(Path, ".")
         for _, Index in Indices do
+            if not Parent then
+                break
+            end
+
             Parent = Parent:FindFirstChild(Index)
         end
 
