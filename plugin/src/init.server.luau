@@ -20,6 +20,7 @@ end
 
 local State = require("./State")
 local Editor = require("./Editor")
+local Profiler = require("./Profiler")
 
 local Parser = require("../../src/Parser")
 local Generator = require("../../src/Generator")
@@ -413,6 +414,8 @@ end
 ---- Initialization ----
 
 Editor.Initialize(EditorWidget)
+Profiler.Initialize()
+
 CreateTemplateFile()
 LoadFiles()
 

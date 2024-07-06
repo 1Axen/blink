@@ -17,6 +17,8 @@ local Table = require("../Table")
 local State = require("../State")
 local Utility = require("./Utility")
 
+local Profiler = require("../Profiler")
+
 local Lexer = require("../../../src/Lexer")
 local Parser = require("../../../src/Parser")
 local Settings = require("../../../src/Settings")
@@ -151,7 +153,7 @@ local EditorWidget: DockWidgetPluginGui;
 
 ---- Variables ----
 
-local Lines = State.new(0)
+local Lines = 0
 local Scroll = State.new(0)
 local Predictions: State.Class<{Index: number, Items: {CompletionItem}}> = State.new({Index = 1, Items = {}})
 
@@ -161,6 +163,9 @@ local PreviousLine: TextLabel?;
 
 local AnalysisError: State.Class<Error.Class?> = State.new(nil :: any)
 local AbstractSyntaxTree: Parser.Body?;
+
+local EditorAbsoluteSize = EditorContainer.AbsoluteSize
+local CursorAbsolutePosition = Cursor.AbsolutePosition
 
 ---- Private Functions ----
 
@@ -277,7 +282,9 @@ local function UpdateColors()
         Token = GetNextToken()
     end
 
+    Profiler.profileBegin("Concat")
     Display.Text = table.concat(RichText)
+    Profiler.profileEnd()
 end
 
 local function UpdateAnalysis()
@@ -404,18 +411,27 @@ end
 
 --> State functions
 local function OnLinesChanged(Value: number)
-    --> Remove previous lines
+    --> Remove previous line
     PreviousLine = nil
-    ClearChildrenWhichAre(LinesContainer, "TextLabel")
 
-    --> Insert new lines
-    for Index = 1, Value do
-        local Line = LineTemplate:Clone()
-        Line.Name = tostring(Index)
-        Line.Text = tostring(Index)
-        Line.TextColor3 = THEME.Line.Inactive
-        Line.Parent = LinesContainer
+    --> Insert new or delete lines
+    local Difference = (Value - Lines)
+
+    if Difference > 0 then
+        for Index = (Lines + 1), Value do
+            local Name = tostring(Index)
+            local Line = LinesContainer[Name]
+            Line.Visible = true
+        end
+    elseif Difference < 0 then
+        for Index = Lines, (Value + 1), - 1 do
+            local Name = tostring(Index)
+            local Line = LinesContainer[Name]
+            Line.Visible = false
+        end
     end
+
+    Lines = Value
 
     --> Update highlighted line
     UpdateHighlightedLine()
@@ -560,10 +576,18 @@ local function OnCursorPositionChanged()
         return
     end
 
+    Profiler.profileBegin("Cursor")
+    Profiler.profileBegin("Slice")
+
+    local Start2 = os.clock()
     local Text = string.sub(Input.Text, 1, CursorPosition - 1)
     local Slices = string.split(Text, "\n")
 
+    Profiler.profileEnd()
+
     --> Calculate current end line position
+    Profiler.profileBegin("BoundsParams")
+
     local Line = Slices[#Slices] or ""
     local GetTextBoundsParams = Instance.new("GetTextBoundsParams")
     GetTextBoundsParams.Text = Line
@@ -572,22 +596,29 @@ local function OnCursorPositionChanged()
 
     local TextBounds = TextService:GetTextBoundsAsync(GetTextBoundsParams)
 
+    Profiler.profileEnd()
+
     --> Update cursor size and position
     Cursor.Size = UDim2.fromOffset(2, TextSize)
     Cursor.Position = UDim2.fromOffset(TextBounds.X - 1, TextHeight * (#Slices - 1))
 
     --> Update highlighted line
+    Profiler.profileBegin("Highlight line")
     UpdateHighlightedLine()
+    Profiler.profileEnd()
 
     --> Update completion position
-    local AbsoluteSize = EditorContainer.AbsoluteSize
-    local AbsolutePosition = Cursor.AbsolutePosition
-    local HorisontalWidth = math.max(0, (AbsoluteSize.X - CompletionContainer.Size.X.Offset) - 10)
+    Profiler.profileBegin("Position")
 
+    local HorisontalWidth = math.max(0, (EditorAbsoluteSize.X - CompletionContainer.Size.X.Offset) - 10)
     CompletionContainer.Position = UDim2.fromOffset(
-        math.clamp(AbsolutePosition.X, 0, HorisontalWidth), 
-        AbsolutePosition.Y + TextSize
+        math.clamp(CursorAbsolutePosition.X, 0, HorisontalWidth), 
+        CursorAbsolutePosition.Y + TextSize
     )
+
+    Profiler.profileEnd()
+
+    Profiler.profileEnd()
 end
 
 local function OnSelectionChanged()
@@ -673,6 +704,8 @@ local function OnSourceChanged()
 
     --> Auto complete
     if Gain == 1 then
+        Profiler.profileBegin("Insertion")
+
         local Item = GetPrediction()
         local Cursor = (Input.CursorPosition - 1)
         local Character = string.sub(Text, Cursor, Cursor)
@@ -707,15 +740,22 @@ local function OnSourceChanged()
             Input.CursorPosition = -1
             Input.CursorPosition = (Cursor + Offset)
 
+            Profiler.profileEnd()
             return
         end
+
+        Profiler.profileEnd()
     end
 
     --> Run styling hooks
+    Profiler.profileBegin("Styling")
+
     local FinalText, FinalCursor = Text, Input.CursorPosition
     for Index, Hook in StylingHooks do
         FinalText, FinalCursor = Hook.OnSourceChanged(FinalText, PreviousText, FinalCursor, Gain)
     end
+
+    Profiler.profileEnd()
 
     --> Update previous text
     PreviousText = FinalText
@@ -729,15 +769,27 @@ local function OnSourceChanged()
     end
 
     --> Update line counter
+    Profiler.profileBegin("Line counter")
+
     local Slices = string.split(Text, "\n")
-    if #Slices ~= Lines:Get() then
-        Lines:Set(#Slices)
+    if #Slices ~= Lines then
+        OnLinesChanged(#Slices)
     end
 
+    Profiler.profileEnd()
+
     --> Perform lexer pass
+    Profiler.profileBegin("Analysis")
     UpdateAnalysis()
+    Profiler.profileEnd()
+
+    Profiler.profileBegin("Completion")
     UpdateCompletion()
+    Profiler.profileEnd()
+
+    Profiler.profileBegin("Highlighting")
     UpdateColors()
+    Profiler.profileEnd()
 end
 
 ---- Public Functions ----
@@ -779,12 +831,24 @@ function Editor.Initialize(Widget: DockWidgetPluginGui)
     --> Connections
     Error.OnEmit = OnErrorEmitted
 
-    Lines:OnChange(OnLinesChanged)
     Scroll:OnChange(OnScrollChanged)
     Predictions:OnChange(OnPredictionsChanged)
     AnalysisError:OnChange(OnAnalysisErrorChanged)
 
-    Input:GetPropertyChangedSignal("Text"):Connect(OnSourceChanged)
+    Input:GetPropertyChangedSignal("Text"):Connect(function()
+        Profiler.profileBegin("Total")
+        OnSourceChanged()
+        Profiler.profileEnd()
+    end)
+
+    Cursor:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
+        CursorAbsolutePosition = Cursor.AbsolutePosition
+    end)
+
+    EditorContainer:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+        EditorAbsoluteSize = EditorContainer.AbsoluteSize
+    end)
+
     Input:GetPropertyChangedSignal("SelectionStart"):Connect(OnSelectionChanged)
     Input:GetPropertyChangedSignal("CursorPosition"):Connect(OnSelectionChanged)
     Input:GetPropertyChangedSignal("CursorPosition"):Connect(OnCursorPositionChanged)
