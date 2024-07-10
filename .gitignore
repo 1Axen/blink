@@ -23,3 +23,6 @@ sourcemap.json
 
 *.rbxl
 *.rbxl.lock
+
+# TODO: Remove after rewrite is complete
+/old-src

@@ -1,8 +1,8 @@
 {
-  "luau-lsp.plugin.enabled": true,
+  "luau-lsp.plugin.enabled": false,
   "luau-lsp.require.mode": "relativeToFile",
   "luau-lsp.require.directoryAliases": {
-    "@lune/": "~/.lune/.typedefs/0.7.11/"
+    "@lune/": "~/.lune/.typedefs/0.8.6/"
   },
   "luau-lsp.sourcemap.rojoProjectFile": "default.project.json"
 }
