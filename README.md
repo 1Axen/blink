@@ -11,12 +11,12 @@ It means lower bandwidth usage directly resulting in **lower ping\*** experience
 
 *\* In comparison to standard ROBLOX networking, this may not always be the case but should never result in increased ping times.*
 
-Benchmarks are available here [here](https://1axen.github.io/blink/Benchmarks).
+Benchmarks are available [here](https://1axen.github.io/blink/Benchmarks).
 
 # Security
 Blink does two things to combat bad actors:
 1. Data sent by clients will be **validated** on the receiving side before  reaching any critical game code.
-2. As a result of the compression done by Blink it becomes **significantly harder** to snoop on your game's network traffic. Long gone are the days of skids using RemoteSpy to snoop on your game's traffic.
+2. As a result of the compression done by Blink it becomes **harder** to snoop on your game's network traffic. .
 
 # Get Started
 Head over to the [installation](https://1axen.github.io/blink/Installation) page to get started with Blink.

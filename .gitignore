@@ -20,6 +20,9 @@ sourcemap.json
 /benchmark/roblox
 
 /site
+docs/.vitepress/dist
+docs/.vitepress/cache
+
 
 *.rbxl
 *.rbxl.lock
