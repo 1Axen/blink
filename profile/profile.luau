@@ -26,13 +26,21 @@ local function format_seconds(seconds: number): string
 end
 
 local function benchmark_closure(name: string, closure: () -> ())
-    local start = os.clock()
-    closure()
+    local time_sum = 0
+    for _ = 1, 1_000 do
+        local start = os.clock()
 
-    local elapsed = (os.clock() - start)
-    local date_time_now = date_time.now()
+        closure()
 
-    fs_append("performance.txt", `\n{date_time_now:toIsoDate()} - {name} - {format_seconds(elapsed)}`)
+        local elapsed = (os.clock() - start)
+        time_sum += elapsed
+    end
+
+    local average_time = time_sum / 1_000
+    local text_result = `{date_time.now():formatLocalTime("")} - {name} - {format_seconds(average_time)}`
+    
+    print(text_result)
+    fs_append("performance.txt", `\n{text_result}`)
 end
 
 local code = fs.readFile("../test/Sources/Test.txt")

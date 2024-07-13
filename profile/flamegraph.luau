@@ -11,3 +11,8 @@ fs.writeFile("luau/profile.svg", PythonResult.stdout)
 fs.removeFile("profile.out")
 
 print("Flamegraph generated!")
+
+local OpenResult = process.spawn("cmd", {"/C", "start", "luau/profile.svg"}, {shell = true})
+assert(OpenResult.ok, OpenResult.stderr)
+
+print("Flamegraph opened!")
