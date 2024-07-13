@@ -27,18 +27,28 @@ export type Span = {
 local span = {}
 
 function span.create(code: string, start: number, finish: number): Span
-    return table.freeze({
+    return ({
         text = string.sub(code, start, finish),
         start = start,
         finish = finish,
     })
 end
 
-function span.combine(code: string, a: Span, b: Span): Span
+--> Returns a span such that it occupies the space from a to b
+function span.union(code: string, a: Span, b: Span): Span
     return span.create(
         code,
         math.min(a.start, b.start), 
         math.max(a.finish, b.finish)
+    )
+end
+
+--> Returns a span such that it occupies the space between a and b
+function span.negate(code: string, a: Span, b: Span): Span
+    return span.create(
+        code, 
+        math.min(a.finish, b.finish) + 1, 
+        math.max(a.start, b.start) - 1
     )
 end
 
