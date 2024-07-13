@@ -4,5 +4,8 @@
   "luau-lsp.require.directoryAliases": {
     "@lune/": "~/.lune/.typedefs/0.8.6/"
   },
-  "luau-lsp.sourcemap.rojoProjectFile": "default.project.json"
+  "luau-lsp.sourcemap.rojoProjectFile": "default.project.json",
+  "luau-lsp.fflags.override": {
+    "LuauTinyControlFlowAnalysis": "true"
+  }
 }
