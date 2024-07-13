@@ -3,7 +3,7 @@
 
 --> Temporary file used for running profiling
 
-local lexer = require("compiler/lexer")
+local lexer = require("../src/compiler/lexer")
 local code = [[option Casing = Pascal
 option TypesOutput = "../../Network/Types.luau"
 option ClientOutput = "../../Network/Client.luau"

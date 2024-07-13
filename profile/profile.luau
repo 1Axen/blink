@@ -2,7 +2,7 @@
 
 local fs = require("@lune/fs")
 local date_time = require("@lune/datetime")
-local lexer = require("compiler/lexer")
+local lexer = require("../src/compiler/lexer")
 
 local function fs_append(path: string, text: string)
     local contents = fs.readFile(path)
