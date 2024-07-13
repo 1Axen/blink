@@ -23,6 +23,7 @@ sourcemap.json
 docs/.vitepress/dist
 docs/.vitepress/cache
 
+/profile/luau
 
 *.rbxl
 *.rbxl.lock
