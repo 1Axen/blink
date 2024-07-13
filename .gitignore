@@ -24,6 +24,7 @@ docs/.vitepress/dist
 docs/.vitepress/cache
 
 /profile/luau
+/profile/performance.txt
 
 *.rbxl
 *.rbxl.lock
