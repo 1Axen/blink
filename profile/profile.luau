@@ -43,7 +43,7 @@ local function benchmark_closure(name: string, closure: () -> ())
     fs_append("performance.txt", `\n{text_result}`)
 end
 
-local code = fs.readFile("../test/Sources/Test.txt")
+local code = fs.readFile("test.blink")
 benchmark_closure("lexer", function()
     lexer.tokenize(code)
 end)
