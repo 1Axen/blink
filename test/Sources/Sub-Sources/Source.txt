@@ -1,3 +1,0 @@
-import "./Source2.txt"
-
-type a = u8
