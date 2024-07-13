@@ -137,9 +137,11 @@ function lexer.tokenize(code: string): {Token}
             end
 
             local token_span = span.create(code, start, finish)
-
+        
             local text = token_span.text
-            local data = if matcher.transformer then matcher.transformer(text) else text
+            local transformer = matcher.transformer
+            
+            local data = if transformer then transformer(text) else text
 
             index += #text
             table.insert(tokens, {
@@ -154,7 +156,7 @@ function lexer.tokenize(code: string): {Token}
 
     table.insert(tokens, {
         type = "EndOfFile",
-        span = span.create(code, length + 1, length + 1)
+        span = span.create(code, index, index)
     })
 
     return tokens
