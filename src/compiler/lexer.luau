@@ -1,3 +1,5 @@
+--!strict
+
 -- Copyright (c) 2024 Axen
 
 -- Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,19 +25,28 @@ local span = require("../util/span")
 export type Types = 
     "Word" | "Number" | "String"
     | "Open" | "Close" | "Symbol"
-    | "Unknown" | "EndOfFile"
+    | "Error" | "EndOfFile"
 
 export type Delimiter = 
-    "Brace" | "Arrow" | "Round" | "Square"
+    "Brace" | "Arrow" | "Round"
 
-export type Symbol = 
-    "Equal" | "Colon" | "Comma" | "DotDot" | "Question"
+export type Symbols = 
+    "Equal" | "Colon" | "Comma" | "DotDot" | "Question" | "Ampersand"
 
-export type Token = {
+export type Token<T = unknown> = {
     type: Types,
-    data: any,
+    data: T,
     span: span.Span
 }
+
+export type Word = Token<string>
+export type Number = Token<number>
+export type String = Token<string>
+export type Open = Token<Delimiter>
+export type Close = Token<Delimiter>
+export type Symbol = Token<Symbols>
+export type Error = Token<string>
+export type EndOfFile = Token<nil>
 
 type Matcher = {
     type: Types,
@@ -43,11 +54,12 @@ type Matcher = {
     transformer: ((text: string) -> any)?,
 }
 
-local SYMBOLS: {[string]: Symbol} = {
+local SYMBOLS: {[string]: Symbols} = {
     ["="] = "Equal",
     [":"] = "Colon",
     [","] = "Comma",
     ["?"] = "Question",
+    ["&"] = "Ampersand"
 }
 
 local DELIMITERS: {[string]: Delimiter} = {
@@ -57,13 +69,11 @@ local DELIMITERS: {[string]: Delimiter} = {
     [">"] = "Arrow",
     ["("] = "Round",
     [")"] = "Round",
-    ["["] = "Square",
-    ["]"] = "Square",
 }
 
 local WHITESPACE = "^%s+"
 
-local TOKEN_MATCHERS: {Matcher} = {
+local LEXEMES: {Matcher} = {
     {
         type = "Word",
         pattern = "^[_%a][_%w]*"
@@ -83,14 +93,14 @@ local TOKEN_MATCHERS: {Matcher} = {
 
     {
         type = "Open",
-        pattern = "^[{%[%(<]",
+        pattern = "^[{%(<]",
         transformer = function(text: string): Delimiter
             return DELIMITERS[text]
         end
     },
     {
         type = "Close",
-        pattern = "^[}%]%)>]",
+        pattern = "^[}%)>]",
         transformer = function(text: string): Delimiter
             return DELIMITERS[text]
         end
@@ -98,20 +108,20 @@ local TOKEN_MATCHERS: {Matcher} = {
     {
         type = "Symbol",
         pattern = "^%.%.",
-        transformer = function(text: string): Symbol
+        transformer = function(text: string): Symbols
             return "DotDot"
         end
     },
     {
         type = "Symbol",
-        pattern = "^[?:=,]",
-        transformer = function(text: string): Symbol
+        pattern = "^[?:=,&]",
+        transformer = function(text: string): Symbols
             return SYMBOLS[text]
         end
     },
 
     {
-        type = "Unknown",
+        type = "Error",
         pattern = "^.",
     }   
 }
@@ -130,8 +140,8 @@ function lexer.tokenize(code: string): {Token}
             continue
         end
 
-        for _, matcher in TOKEN_MATCHERS do
-            local start, finish = string.find(code, matcher.pattern, index)
+        for _, lexeme in LEXEMES do
+            local start, finish = string.find(code, lexeme.pattern, index)
             if not start or not finish then
                 continue
             end
@@ -139,13 +149,13 @@ function lexer.tokenize(code: string): {Token}
             local token_span = span.create(code, start, finish)
         
             local text = token_span.text
-            local transformer = matcher.transformer
+            local transformer = lexeme.transformer
             
             local data = if transformer then transformer(text) else text
 
             index += #text
             table.insert(tokens, {
-                type = matcher.type,
+                type = lexeme.type,
                 data = data,
                 span = token_span
             })
