@@ -1,11 +1,13 @@
 local fs = require("@lune/fs")
 local stdio = require("@lune/stdio")
 
+local Lexer = require("../src/Lexer")
 local Parser = require("../src/Parser")
 local Generator = require("../src/Generator")
 
 local Source = fs.readFile("../test/Sources/Test.txt")
-local SourceParser = Parser.new()
+local SourceLexer = Lexer.new()
+local SourceParser = Parser.new("../test/Sources/")
 local AbstractSyntaxTree = SourceParser:Parse(Source)
 
 local function Format(Time: number): string
@@ -58,6 +60,17 @@ end
 
 _G.BUNDLED = true
 _G.VERSION = "PERFROMANCE"
+
+BenchmarkClosure("Lex", function()
+    SourceLexer:Initialize(Source)
+
+    while true do
+        local Token = SourceLexer:GetNextToken()
+        if Token.Type == "EndOfFile" then
+            break
+        end
+    end
+end)
 
 BenchmarkClosure("Parse", function()
     SourceParser:Parse(Source)
