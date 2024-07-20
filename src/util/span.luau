@@ -54,4 +54,16 @@ function span.negate(code: string, a: Span, b: Span): Span
     )
 end
 
+function span.length(span: Span): number
+    return (span.finish - span.start) + 1
+end
+
+function span.contains(span: Span, offset: number): boolean
+    return span.start <= offset and span.finish >= offset
+end
+
+function span.intersects(span: Span, second_span: Span): boolean
+    return (span.finish >= second_span.start) or (second_span.finish >= span.start)
+end
+
 return span

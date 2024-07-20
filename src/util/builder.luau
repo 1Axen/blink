@@ -27,13 +27,23 @@ local string_builder = {}
 function string_builder.create(allocate: number?)
     local stack = table.create(allocate or BASE_ALLOCATION)
     return {
+        get = function(): {string}
+            return stack
+        end,
+
         append = function(string: string)
             table.insert(stack, string)
         end,
+
         append_line = function(string: string)
             table.insert(stack, string)
             table.insert(stack, "\n")
         end,
+
+        append_lines = function(lines: {string})
+            table.move(lines, 1, #lines, #stack + 1, stack)
+        end,
+
         finish = function()
             return table.concat(stack)
         end
