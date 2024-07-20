@@ -1,0 +1,33 @@
+type a = array<u8>
+type b = map<string, u8>
+
+type c = interface {
+    field: u8
+}
+
+type d = enum {
+    option
+}
+
+type d_tagged<T> = enum "Type" {
+    Some {
+        Value: T
+    },
+    None {}
+}
+
+type e<K, V> = interface {
+    key: K,
+    value: V
+}
+
+type f = interface {
+    some_field: u8
+} & c
+
+event g {
+    from: Server,
+    type: Reliable,
+    call: SingleSync,
+    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+}

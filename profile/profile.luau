@@ -37,13 +37,19 @@ local function benchmark_closure(name: string, closure: () -> ())
     end
 
     local average_time = time_sum / 1_000
-    local text_result = `{date_time.now():formatLocalTime("")} - {name} - {format_seconds(average_time)}`
+    local text_result = `{date_time.now():formatLocalTime()} - {name} - {format_seconds(average_time)}`
     
     print(text_result)
     fs_append("performance.txt", `\n{text_result}`)
 end
 
-local code = fs.readFile("test.blink")
-benchmark_closure("lexer", function()
-    lexer.tokenize(code)
+local small_code = fs.readFile("blink/small.blink")
+local large_code = fs.readFile("blink/large.blink")
+
+benchmark_closure("lexer small.blink", function()
+    lexer.tokenize(small_code)
+end)
+
+benchmark_closure("lexer large.blink", function()
+    lexer.tokenize(large_code)
 end)
