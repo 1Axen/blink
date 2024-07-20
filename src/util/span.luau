@@ -1,3 +1,5 @@
+--!strict
+
 -- Copyright (c) 2024 Axen
 
 -- Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,7 +21,7 @@
 -- SOFTWARE.
 
 export type Span = {
-    text: (code: string) -> string,
+    text: string,
     start: number,
     finish: number,
 }
