@@ -5,7 +5,7 @@ local date_time = require("@lune/datetime")
 local lexer = require("../src/compiler/lexer")
 
 local function fs_append(path: string, text: string)
-    local contents = fs.readFile(path)
+    local contents = fs.isFile(path) and fs.readFile(path) or ""
     fs.writeFile(path, contents .. text)
 end
 
@@ -45,6 +45,7 @@ end
 
 local small_code = fs.readFile("blink/small.blink")
 local large_code = fs.readFile("blink/large.blink")
+local outdated_large_code = fs.readFile("blink/outdated_large.blink")
 
 benchmark_closure("lexer small.blink", function()
     lexer.tokenize(small_code)
@@ -52,4 +53,8 @@ end)
 
 benchmark_closure("lexer large.blink", function()
     lexer.tokenize(large_code)
+end)
+
+benchmark_closure("lexer outdated_large.blink", function()
+    lexer.tokenize(outdated_large_code)
 end)
