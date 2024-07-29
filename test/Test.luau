@@ -434,6 +434,42 @@ local function FireManyAndExpectMany(Name: string, Count: number, OutgoingEvent:
     OkPrint(`Test "{Name}" passed!`)
 end
 
+local function FireAndPollExpect(Name: string, OutgoingEvent: any, IncomingEvent: any, Expect: any)
+    PrettyPrint("cyan", `Testing: {Name}...`, true)
+
+    local Result: unknown;
+    local IsServerSending = (OutgoingEvent.FireAll ~= nil)
+    local IsServerRecieving = (OutgoingEvent.FireAll == nil)
+
+    if IsServerSending then
+        OutgoingEvent.FireAll(Expect)
+    else
+        OutgoingEvent.Fire(Expect)
+    end
+
+    --> Wait for replication
+    task.wait(1 / 30)
+    
+    do
+        local _, First, Second = IncomingEvent.Next()()
+        if IsServerRecieving then
+            if tostring(First) ~= "Player" then
+                ErrorPrint(`Expected argument #1 to {Name} to be Player, got {First} instead.`)
+            end
+
+            Result = Second
+        else
+            Result = First
+        end
+    end
+
+    if not CompareValues(Result, Expect) then
+        ErrorPrint(`Failed "{Name}", expected to recieve: {Expect}, got "{Result}" instead.`)
+    end
+
+    OkPrint(`Test "{Name}" passed!`)
+end
+
 local function RunClosure(Name: string, Closure: () -> ())
     PrettyPrint("cyan", `Testing: {Name}...`, true)
 
@@ -488,6 +524,8 @@ FireAndExpect("Empty Unreliable Server", Server.EmptyUnreliableEvent, Client.Emp
 
 FireAndExpect("Reliable Client", Client.ReliableClient, Server.ReliableClient, 1)
 FireAndExpect("Unreliable Client", Client.UnreliableClient, Server.UnreliableClient, 1)
+FireAndExpect("Empty Reliable Client", Client.ClientEmptyEvent, Server.ClientEmptyEvent, nil)
+FireAndExpect("Empty Unreliable Client", Client.ClientEmptyUnreliableEvent, Server.ClientEmptyUnreliableEvent, nil)
 
 FireManyAndExpectMany("Many Reliable Sync Server", 8, Server.ManyReliableSync, Client.ManyReliableSync, 1)
 FireManyAndExpectMany("Many Reliable Async Server", 8, Server.ManyReliableAsync, Client.ManyReliableAsync, 1)
@@ -675,6 +713,29 @@ RunClosure("CLI compile --yes", function()
     local Result = process.spawn("lune", {"run", Compiler, COMPILE_TEST_FILE, "--", "--yes"}, {cwd = "../src/CLI"})
     assert(Result.ok, Result.stderr)
 end)
+
+local MergeStruct: Server.MergeStruct = {
+    Data = 1,
+    Field = 0,
+    Float16Field = 0,
+    Enum = "A",
+    Nested = {
+        Guh = 1,
+        Array = table.create(10, 0)
+    },
+    AnotherNested = {
+        Value = 1
+    },
+}
+
+FireAndPollExpect("Poll Reliable Client", Client.ClientPollEvent, Server.ClientPollEvent, MergeStruct)
+FireAndPollExpect("Poll Reliable Server", Server.ServerPollEvent, Client.ServerPollEvent, MergeStruct)
+FireAndPollExpect("Poll Unreliable Client", Client.ClientUnreliablePollEvent, Server.ClientUnreliablePollEvent, MergeStruct)
+FireAndPollExpect("Poll Unreliable Server", Server.ServerUnreliablePollEvent, Client.ServerUnreliablePollEvent, MergeStruct)
+FireAndPollExpect("Poll Empty Reliable Client", Client.ClientEmptyPollEvent, Server.ClientEmptyPollEvent, nil)
+FireAndPollExpect("Poll Empty Reliable Server", Server.ServerEmptyPollEvent, Client.ServerEmptyPollEvent, nil)
+FireAndPollExpect("Poll Empty Unreliable Client", Client.ClientEmptyUnreliablePollEvent, Server.ClientEmptyUnreliablePollEvent, nil)
+FireAndPollExpect("Poll Empty Unreliable Server", Server.ServerEmptyUnreliablePollEvent, Client.ServerEmptyUnreliablePollEvent, nil)
 
 PrettyPrint("green", `All tests passed successfully!`)
 

@@ -5,7 +5,7 @@ local Error = require("./Modules/Error")
 local Settings = require("./Settings")
 
 export type Types = 
-    "Comma" | "OpenParentheses" | "CloseParentheses" | "OpenBraces" | "CloseBraces" | "OpenBrackets" | "CloseBrackets" --> Structs & enums
+    "Comma" | "OpenParentheses" | "CloseParentheses" | "OpenBraces" | "CloseBraces" | "OpenBrackets" | "CloseBrackets" | "Merge" --> Structs & enums
     | "String" | "Boolean" | "Number"   --> Literals
     | "Array" | "Range" | "Optional" | "Class" | "Component" | "OpenChevrons" | "CloseChevrons"  --> Attributes
     | "Assign" | "FieldAssign" | "Keyword" | "Primitive" | "Identifier" --> Reserved
@@ -42,6 +42,7 @@ local TOKENS = {
     {"^<", "OpenChevrons"},
     {"^>", "CloseChevrons"},
     {"^,", "Comma"},
+    {"^%.%.", "Merge"},
 
     {"^import", "Import"},
     {"^as", "As"},

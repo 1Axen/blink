@@ -16,6 +16,8 @@ export type Cases = {
     FireExcept: string,
     On: string,
     Invoke: string,
+    StepReplication: string,
+    Next: string,
 }
 
 export type Primitive = {
@@ -39,6 +41,8 @@ local Cases = {
     FireAll = {"FireAll", "fireAll", "fire_all"},
     FireList = {"FireList", "fireList", "fire_list"},
     FireExcept = {"FireExcept", "fireExcept", "fire_except"},
+    StepReplication = {"StepReplication", "stepReplication", "step_replication"},
+    Next = {"Next", "next", "next"},
 }
 
 local Primitives: {[string]: Primitive} = {

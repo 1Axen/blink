@@ -325,6 +325,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 
 	local IsReliable = (Reliability == "Reliable")
 	local IsUnreliable = (Reliability == "Unreliable")
+	local IsPolling = if Value.Poll ~= nil then Value.Poll else Options.UsePolling
 
 	local Block = IsUnreliable and Unreliables or Reliables
 	local Channel = IsUnreliable and Channels.Unreliable or Channels.Reliable
@@ -334,11 +335,11 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 	local Connection = `Events.{Reliability}[{Index}]`
 
 	--> Data body
-	local Values, Arguments, _ = "Value: nil", "Value", nil
+	local Types, Values, Arguments, _ = "nil", "Value: nil", "Value", nil
 	local Read, Write = Generators.Event(Value.Data, Index, Identifier)
 
 	if Value.Data then
-		_, Values, _, Arguments = Generators.LuauType(Value.Data :: Type, true)
+		Types, Values, _, Arguments = Generators.LuauType(Value.Data :: Type, true)
 	end
 
 	UserTypes.PushLines(Read, 1, 0)
@@ -350,7 +351,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 	local WriteEvent = `{GetTypesPath(Identifier, true)}({Arguments})`
 	Body.Push(`{Value.Identifier} = \{`, 0, Indent)
 
-	if Value.From ~= Context then
+	if Value.From ~= Context and IsPolling ~= true then
 		local IsSync = (Value.Call == "SingleSync" or Value.Call == "ManySync")
 		local IsSingle = (Value.Call == "SingleSync" or Value.Call == "SingleAsync")
 
@@ -434,6 +435,40 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 				:Lines(Disconnect.Content, 1)
 			:End()
 		end
+
+		Body.PushLines(Listener.Content, 0, Indent + 1)
+	elseif Value.From ~= Context and IsPolling then
+		Events.Push(`{Queue} = CreateQueue()`)
+		Block = (Channel.Listening == false)
+			and Block:Compare("Index", Index, "Equals")
+			or Block:Branch("Conditional", "Index", Index, "Equals")
+
+		if IsUnreliable then
+			Unreliables = Block
+		else
+			Reliables = Block
+		end
+
+		Channel.Listening = true
+		Block:Line(`Push({Queue}, table.pack({Context == "Server" and "Player, " or ""}{GetTypesPath(Identifier, false)}()))`)
+
+		local IterTypes = `number, {Context == "Server" and "Player, " or ""}{Types}`
+		
+		local Next = Blocks.Function("", "", `({IterTypes})`)
+			:Line("index += 1")
+			:Line("local arguments = Pop(queue)")
+			:Compare("arguments", "nil", "Not")
+				:Return("index, unpack(arguments, 1, arguments.n)")
+			:End()
+			:Return("")
+			:End()
+		:Wrap("return ", "")
+
+		local Listener = Blocks.Function(Casing.Next, "", `() -> ({IterTypes})`, true)
+			:Line(`local index = 0`)
+			:Line(`local queue = {Queue}`)
+			:Lines(Next.Content, 1)
+		:End()
 
 		Body.PushLines(Listener.Content, 0, Indent + 1)
 	elseif Context == "Client" then
@@ -1168,7 +1203,7 @@ function Generator.Generate(FileContext: Context, AbstractSyntaxTree: Parser.Bod
 
 	--> Replication
 	local Replication = Builder.new()
-	Return.Push("StepReplication = StepReplication,", 1, 1)
+	Return.Push(`{Casing.StepReplication} = StepReplication,`, 1, 1)
 
 	if not Options.ManualReplication then
 		if Context == "Server" then

@@ -12,7 +12,22 @@ local RecieveBuffer = buffer.create(64)
 local RecieveInstances = {}
 local RecieveInstanceCursor = 0
 
-type BufferSave = {Size: number, Cursor: number, Buffer: buffer, Instances: {Instance}}
+type Entry = {
+    value: any,
+    next: Entry?
+}
+
+type Queue = {
+    head: Entry?,
+    tail: Entry?
+}
+
+type BufferSave = {
+    Size: number, 
+    Cursor: number, 
+    Buffer: buffer, 
+    Instances: {Instance}
+}
 
 local function Read(Bytes: number)
     local Offset = RecieveCursor
@@ -73,6 +88,40 @@ local function Allocate(Bytes: number)
     SendCursor += Bytes
     
     return SendOffset
+end
+
+local function CreateQueue(): Queue
+    return {
+        head = nil,
+        tail = nil
+    }
+end
+
+local function Pop(queue: Queue): any
+    local head = queue.head
+    if head == nil then
+        return
+    end
+
+    queue.head = head.next
+    return head.value
+end
+
+local function Push(queue: Queue, value: any)
+    local entry: Entry = {
+        value = value,
+        next = nil
+    }
+
+    if queue.tail ~= nil then
+        queue.tail.next = entry
+    end
+
+    queue.tail = entry
+
+    if queue.head == nil then
+        queue.head = entry
+    end
 end
 
 local Types = {}

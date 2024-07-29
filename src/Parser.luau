@@ -56,7 +56,7 @@ type Array = {
 type EventOption = {
     Key: string, 
     Type: Lexer.Types, 
-    Values: {string},
+    Values: {any},
     Optional: true?,
 }
 
@@ -85,6 +85,7 @@ type Reference = {
 export type Options = {
     Casing: string?,
     UseColon: boolean?,
+    UsePolling: boolean?,
     TypesOutput: string?,
     ClientOutput: string?,
     ServerOutput: string?,
@@ -164,6 +165,7 @@ export type EventDeclaration = Node<"Event", {
     From: "Client" | "Server",
     Type: "Reliable" | "Unreliable",
     Call: "SingleSync" | "SingleAsync" | "ManySync" | "ManyAsync",
+    Poll: boolean?,
     Data: (TypeDeclaration | TupleDeclaration)? 
 }, {}>
 
@@ -185,6 +187,7 @@ export type ScopeDeclaration = Node<"Scope", {
 local OPTIONS: {[string]: Lexer.Types} = {
     Casing = "Identifier",
     UseColon = "Boolean",
+    UsePolling = "String",
     TypesOutput = "String",
     ClientOutput = "String",
     ServerOutput = "String",
@@ -198,7 +201,8 @@ local EVENT: {EventOption} = {
     {Key = "From", Type = "Identifier", Values = {"Client", "Server"}},
     {Key = "Type", Type = "Identifier", Values = {"Reliable", "Unreliable"}},
     {Key = "Call", Type = "Identifier", Values = {"SingleSync", "SingleAsync", "ManySync", "ManyAsync"}},
-    {Key = "Data", Type = "Identifier", Values = {}, Optional = true}
+    {Key = "Poll", Type = "Boolean", Values = {true, false}, Optional = true},
+    {Key = "Data", Type = "Identifier", Values = {}, Optional = true},
 }
 
 local FUNCTION: {EventOption} = {
@@ -1139,6 +1143,7 @@ function Parser.Event(self: Parser, Identifier: Token): EventDeclaration
             From = Structure.From,
             Type = Structure.Type,
             Call = Structure.Call,
+            Poll = Structure.Poll,
             Data = Structure.Data
         },
         Tokens = {}
@@ -1480,6 +1485,7 @@ function Parser.Tuple(self: Parser, Identifier: Token): TupleDeclaration
 end
 
 function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
+    local Fields: {[string]: true} = {}
     local Values: {TypeDeclaration} = {}
     self:Consume("OpenBraces")
 
@@ -1488,10 +1494,53 @@ function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
             break
         end
 
-        local Field = self:ConsumeText()
-        self:Consume("FieldAssign")
+        --> struct merging
+        if self:TryConsume("Merge") then
+            local Text = self:ConsumeText()
+            local Reference = self:GetReference("Types", Text.Value)
+            if not Reference then
+                error(Error.new(Error.AnalyzeUnknownReference, self.Source, `Unknown reference`)
+                    :Primary(Text, "Unknown reference")
+                :Emit())
+            end
 
-        table.insert(Values, self:Type(Field))
+            local Declaration = Reference.Declaration
+            if Declaration.Type ~= "Struct" then
+                error(Error.new(Error.AnalyzeReferenceInvalidType, self.Source, `Expected a struct to merge, got "{Declaration.Type}" instead`)
+                    :Primary(Text, `Expected a "Struct", got "{Declaration.Type}" instead`)
+                :Emit())
+            end
+
+            local Struct: StructDeclaration = Declaration :: StructDeclaration
+            if Struct.Value.Generics then
+                Struct = self:SolveGenerics(Identifier, Struct)
+            end
+        
+            local StructValues = Struct.Value.Values
+            for _, Field in StructValues do
+                local FieldIdentifier = Field.Value.Identifier
+                if Fields[FieldIdentifier] then
+                    error(Error.new(Error.AnalyzeDuplicateField, self.Source, `Merged struct contains a duplicate field`)
+                        :Primary(Text, `Field "{FieldIdentifier}" already exists in struct`)
+                    :Emit())
+                end
+
+                table.insert(Values, Field)
+                Fields[FieldIdentifier] = true
+            end
+        else --> fields
+            local Text = self:ConsumeText()
+            if Fields[Text.Value] then
+                error(Error.new(Error.AnalyzeDuplicateField, self.Source, `Duplicate field "{Text.Value}"`)
+                    :Primary(Text, `Duplicate field`)
+                :Emit())
+            end
+            
+            self:Consume("FieldAssign")
+
+            Fields[Text.Value] = true
+            table.insert(Values, self:Type(Text))
+        end
 
         if self:TryConsume("CloseBraces") then
             break

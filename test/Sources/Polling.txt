@@ -1,0 +1,32 @@
+option Casing = Snake
+option ClientOutput = "../../Network/PollingClient.luau"
+option ServerOutput = "../../Network/PollingServer.luau"
+
+type number = u8
+
+struct a {
+    foo: u8
+}
+
+struct b {
+    bar: u8,
+}
+
+struct c<A, B, C> {
+    a: A,
+    B: b,
+    C: C
+} 
+
+struct d {
+    ..a,
+    ..b,
+    ..c<u8, u8, u8>,
+}
+
+event PollingEvent {
+    From: Client,
+    Type: Reliable,
+    Call: SingleSync,
+    Poll: true
+}
