@@ -737,6 +737,45 @@ FireAndPollExpect("Poll Empty Reliable Server", Server.ServerEmptyPollEvent, Cli
 FireAndPollExpect("Poll Empty Unreliable Client", Client.ClientEmptyUnreliablePollEvent, Server.ClientEmptyUnreliablePollEvent, nil)
 FireAndPollExpect("Poll Empty Unreliable Server", Server.ServerEmptyUnreliablePollEvent, Client.ServerEmptyUnreliablePollEvent, nil)
 
+RunClosure("Queue up and poll", function()
+    local Expect = 10
+    local Results = {
+        Client = {},
+        Server = {}
+    }
+
+    for _ = 1, Expect do
+        Client.ClientPollEvent.Fire(MergeStruct)
+        Server.ServerPollEvent.FireAll(MergeStruct)
+    end
+
+    task.wait(1 / 30)
+
+    for Index, Value in Client.ServerPollEvent.Next() do
+        table.insert(Results.Client, Value)
+    end
+
+    for Index, Player, Value in Server.ClientPollEvent.Next() do
+        if tostring(Player) ~= "Player" then
+            ErrorPrint(`Expected argument #1 to be Player, got {Player} instead.`)
+        end
+
+        table.insert(Results.Server, Value)
+    end
+
+    for _, Context in Results do
+        if #Context ~= Expect then
+            ErrorPrint(`Expected to poll {Expect} events, got {#Results.Client} instead`)
+        end
+
+        for _, Result in Context do
+            if not CompareValues(Result, MergeStruct) then
+                ErrorPrint(`Xxpected to recieve: {Expect}, got "{Result}" instead.`)
+            end
+        end
+    end
+end)
+
 PrettyPrint("green", `All tests passed successfully!`)
 
 process.exit(0)
