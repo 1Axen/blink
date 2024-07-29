@@ -18,6 +18,12 @@ option TypesOutput = "../Network/Types.luau"
 option ServerOutput = "../Network/Server.luau"
 option ClientOutput = "../Network/Client.luau"
 ```
+### `UsePolling`
+Default: `false`
+Instructs the compiler to automatically output all events with a polling API.
+```
+option UsePolling = true
+```
 ### `FutureLibrary` and `PromiseLibrary`
 In order to use future and promise yield types with functions a path to each library used must be specified  
 ```
@@ -203,10 +209,44 @@ event Command {
 }
 ```
 In the code above we have a simple packet transmission protocol which contains the current packets identifier (Sequence), the last recieved packet (Ack) and a generic data field. Instead of repeating the contents of `Packet` everytime we need to send something over the wire we can take advantage of generics to automatically fill the `Data` field with whatever we need to transmit.
+### Merging
+Structs can merge other structs into themselves, this is equivalent to a table union in Luau. When merging avoid duplicate fields as they will result in a compilation error.
+```
+struct a {
+    foo: u8
+}
+
+struct b {
+    bar: u8,
+}
+
+struct c<A, B, C> {
+    a: A,
+    b: b,
+    c: C
+} 
+
+struct merge {
+    ..a,
+    ..b,
+    ..c<u8, u8, u8>,
+}
+```
+Produces the following Luau type for `merge`:
+```lua
+type merge = {
+    foo: number,
+    bar: number,
+    a: number,
+    b: number,
+    c: number
+}
+```
 ## Maps
 You can define maps using the `map` keyword   
-> [!NOTE]
-> Maps cannot have optional keys or values as there is no way to represent those in Luau.
+!!! Note
+    Maps cannot have optional keys or values as there is no way to represent those in Luau.
+
 ```
 map Example = {[string]: u8}
 ```
@@ -235,6 +275,7 @@ You can define events using the `event` keyword
 Events have 4 fields:  
 `From` - `Client` or `Server`  
 `Type` - `Reliable` or `Unreliable`  
+`Poll` - `true` or `false` - Controls whether the event will generate using the polling API
 `Call` - `SingleSync`, `SingleAsync`, `ManySync`, `ManyAsync` - `Many` refers to multiple connections 
 `Data` - Can hold either a type definition or a reference to an already defined type, omit for events with no data.
 ```
@@ -260,6 +301,22 @@ event Complex {
         Field = u8
     }
 }
+```
+### Polling
+When `Poll` is `true` or the `UsePolling` option is `true`, events will generate with a polling API on the listener side, the `On` function is replaced with a `Next` function which returns an iterator to be used within a for loop.
+```
+event ReplicateEntities {
+    From: Server,
+    Type: Unreliable,
+    Call: SingleSync,
+    Poll: true,
+    Data: map {[u8]: unknown[]}
+}
+```
+```luau
+for Index, EntityMap in Blink.ReplicateEntities.Next() do
+    ...
+end
 ```
 ## Functions
 You can define functions using the `function` keyword  
