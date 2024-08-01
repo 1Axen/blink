@@ -1,7 +1,10 @@
 <div align="center">
   <img src="./docs/assets/Logo.png" class="center">
 </div>
-<h1>Blink</h1>
+
+[![GitHub License](https://img.shields.io/github/license/1Axen/blink?style=flat-square&color=%23a350af)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/1Axen/blink?style=flat-square&color=%23a350af)](https://github.com/1Axen/blink/releases/latest)
+
 An IDL compiler written in Luau for ROBLOX buffer networking
 
 # Performance
