@@ -8,6 +8,7 @@ local Parser = require("../Parser")
 local Table = require("../Modules/Table")
 local Builder = require("../Modules/Builder")
 
+local Util = require("./Util")
 local Prefabs = require("./Prefabs")
 local Settings = require("../Settings")
 
@@ -89,40 +90,6 @@ local Types = Prefabs.Types
 local Primitives = Prefabs.Primitives
 local Structures = Prefabs.Structures
 
---> Utility functions
-
-local function GetScopePrefix(ReferenceScope: Scope?, Dots: boolean?): string
-	local Prefix = ""
-	local WorkingScope: Scope? = ReferenceScope or Scope
-	while (WorkingScope and WorkingScope.Identifier.Value ~= "") do
-		Prefix = `{WorkingScope.Identifier.Value}{Dots and "." or "_"}` .. Prefix
-		WorkingScope = WorkingScope.Parent
-	end
-
-	return Prefix
-end
-
-
-local function GetScopeIndent(): number
-	return math.max(#string.split(GetScopePrefix(nil, true), "."), 1)
-end
-
-local function GetTypesPath(Identifier: string, Write: boolean): string
-	return `Types.{GetScopePrefix()}{Write and "Write" or "Read"}{Identifier}`
-end
-
-local function GetExportName(Identifier: string): string
-	return `{GetScopePrefix()}{Identifier}`
-end
-
-local function GenerateEnumLiterals(Enums: { string }): string
-	local Literals = {}
-	for Index, EnumItem in Enums do
-		table.insert(Literals, `"{EnumItem}"`)
-	end
-	return `{table.concat(Literals, " | ")}`
-end
-
 --> Declaration functions
 
 function Declarations.Primitive(Declaration: Parser.PrimitiveDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
@@ -180,7 +147,7 @@ end
 function Declarations.Enum(Declaration: Parser.EnumDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local Value = Declaration.Value
 	local Enums = Value.Values
-	local Literal = GenerateEnumLiterals(Enums)
+	local Literal = Util.GenerateEnumLiterals(Enums)
 	Literal = string.gsub(Literal, "|", "or")
 
 	--> Read body
@@ -347,8 +314,8 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 
 	--> Return body
 	local Body = Builder.new()
-	local Indent = GetScopeIndent()
-	local WriteEvent = `{GetTypesPath(Identifier, true)}({Arguments})`
+	local Indent = Util.GetScopeIndent()
+	local WriteEvent = `{Util.GetTypesPath(Identifier, true)}({Arguments})`
 	Body.Push(`{Value.Identifier} = \{`, 0, Indent)
 
 	if Value.From ~= Context and IsPolling ~= true then
@@ -383,7 +350,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 		local CallManyListenerFunction = IsSingle and `Listener({ListenerArguments})` or `task.spawn(Listener, {ListenerArguments})`
 		local CallSingleListenerFunction = IsSync and `{Connection}({ListenerArguments})` or `task.spawn({Connection}, {ListenerArguments})`
 
-		Block:Line(`local {Values} = {GetTypesPath(Identifier, false)}()`)
+		Block:Line(`local {Values} = {Util.GetTypesPath(Identifier, false)}()`)
 
 		local Disconnect = Blocks.Function("", "", "()")
 			:Line(IsSingle and `{Connection} = nil` or `table.remove({Connection}, table.find({Connection}, Listener))`)
@@ -450,7 +417,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 		end
 
 		Channel.Listening = true
-		Block:Line(`Push({Queue}, table.pack({Context == "Server" and "Player, " or ""}{GetTypesPath(Identifier, false)}()))`)
+		Block:Line(`Push({Queue}, table.pack({Context == "Server" and "Player, " or ""}{Util.GetTypesPath(Identifier, false)}()))`)
 
 		local IterTypes = `number, {Context == "Server" and "Player, " or ""}{Types}`
 		
@@ -621,7 +588,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 
 	--> Main
 	local Body = Builder.new()
-	local Indent = GetScopeIndent()
+	local Indent = Util.GetScopeIndent()
 	Body.Push(`{Value.Identifier} = \{`, 0, Indent)
 
 	--> Create queue and event branch
@@ -636,7 +603,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 	if Context == "Server" then
 		--> Data recieve body
 		Types.u8.Read("InvocationIdentifier", Block)
-		Block:Line(`local {DataValues} = {GetTypesPath(DataIdentifier, false)}()`)
+		Block:Line(`local {DataValues} = {Util.GetTypesPath(DataIdentifier, false)}()`)
 		:Compare(Connection, "nil", "Not")
 			:Line(`{Connection}(Player, {DataArguments}, InvocationIdentifier)`)
 		:Branch("Default")
@@ -659,7 +626,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 		local Serialize = Blocks.Function("", "")
 			:Line(`local {ReturnValues} = Listener(Player, {DataArguments})`)
 			:Line(`SerializationError = true`)
-			:Line(`{GetTypesPath(ReturnIdentifier, true)}({ReturnArguments}, InvocationIdentifier)`)
+			:Line(`{Util.GetTypesPath(ReturnIdentifier, true)}({ReturnArguments}, InvocationIdentifier)`)
 		:End()
 		:Wrap("local Success, Error = pcall(", ")")
 
@@ -689,7 +656,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 	else
 		--> Return recieve body
 		local Deserialize = Blocks.Function("", "")
-			:Return(`{GetTypesPath(ReturnIdentifier, false)}()`)
+			:Return(`{Util.GetTypesPath(ReturnIdentifier, false)}()`)
 		:End()
 		:Wrap(`local Success, {ReturnArguments} = pcall(`, ")")
 
@@ -703,7 +670,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 		local Error = `"Server encountered an exception while processing \\"{Value.Identifier}\\"."`
 		local Contents = Blocks.Block()
 			:Line("local InvocationIdentifier = Invoke()")
-			:Line(`{GetTypesPath(DataIdentifier, true)}({DataArguments}, InvocationIdentifier)`)
+			:Line(`{Util.GetTypesPath(DataIdentifier, true)}({DataArguments}, InvocationIdentifier)`)
 			:Line("Calls[InvocationIdentifier] = coroutine.running()")
 			:Line(`local Success, {ReturnValues} = coroutine.yield()`)
 			:Compare("Success", "true", "Not")
@@ -728,7 +695,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 
 			local Promise = Blocks.Function("", "Resolve, Reject, OnCancel")
 				:Line("local InvocationIdentifier = Invoke()")
-				:Line(`{GetTypesPath(DataIdentifier, true)}({DataArguments}, InvocationIdentifier)`)
+				:Line(`{Util.GetTypesPath(DataIdentifier, true)}({DataArguments}, InvocationIdentifier)`)
 				:Line("Calls[InvocationIdentifier] = coroutine.running()")
 				:Lines(OnCancel.Content, 1)
 				:Line(`local Success, {ReturnValues} = coroutine.yield()`)
@@ -866,7 +833,7 @@ end
 function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (string, string, string, string)
 	local Type = ""
 	local Values = ""
-	local Export = GetExportName(Declaration.Value.Identifier)
+	local Export = Util.GetExportName(Declaration.Value.Identifier)
 	local Returns = "Value"
 
 	if Declaration.Type == "Primitive" then
@@ -888,7 +855,7 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 		Type = `\{{table.concat(Entries)}\}`
 	elseif Declaration.Type == "Enum" then
 		local Value = (Declaration :: Parser.EnumDeclaration).Value
-		Type = GenerateEnumLiterals(Value.Values)
+		Type = Util.GenerateEnumLiterals(Value.Values)
 	elseif Declaration.Type == "TagEnum" then
 		local Value = (Declaration :: Parser.TagEnumDeclaration).Value
 		local Literals = {}
@@ -922,7 +889,7 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 	elseif Declaration.Type == "Reference" then
 		local Value = (Declaration :: Parser.ReferenceDeclaration).Value
 		local Reference = Value.Declaration.Value
-		Type = `{GetScopePrefix(Reference.Scope)}{Reference.Identifier}` 
+		Type = `{Util.GetScopePrefix(Reference.Scope)}{Reference.Identifier}` 
 	elseif Declaration.Type == "Tuple" then
 		local Value = (Declaration :: Parser.TupleDeclaration).Value
 		local TupleValues = Value.Values
@@ -985,8 +952,8 @@ function Generators.Type(Declaration: Type)
 	local Identifier = Value.Identifier
 	local Type, Values, Export, Returns = Generators.LuauType(Declaration)
 
-	local Read = Blocks.Function(GetTypesPath(Identifier, false), "", `({Export})`)
-	local Write = Blocks.Function(GetTypesPath(Identifier, true), Values, "()")
+	local Read = Blocks.Function(Util.GetTypesPath(Identifier, false), "", `({Export})`)
+	local Write = Blocks.Function(Util.GetTypesPath(Identifier, true), Values, "()")
 
 	local Generics = ""
 	if Value.Generics then
@@ -1021,7 +988,7 @@ function Generators.Export(Declaration: Type)
 	local Write = Blocks.Function("Write", `{Values}`, `(buffer)`, true)
 
 	local Body = Builder.new()
-	local Indent = GetScopeIndent()
+	local Indent = Util.GetScopeIndent()
 	Body.Push(`{Identifier} = \{`, 0, Indent)
 
 	--> Overwrite buffer
@@ -1048,8 +1015,8 @@ function Generators.Export(Declaration: Type)
 	Read:Comment("Buffer read")
 	Write:Comment("Buffer write")
 
-	Read:Line(`local {Values} = {GetTypesPath(Identifier, false)}()`)
-	Write:Line(`{GetTypesPath(Identifier, true)}({Returns})`)
+	Read:Line(`local {Values} = {Util.GetTypesPath(Identifier, false)}()`)
+	Write:Line(`{Util.GetTypesPath(Identifier, true)}({Returns})`)
 
 	--> Restore buffer
 	Read:Comment("Buffer restore")
@@ -1085,8 +1052,8 @@ function Generators.Event(Data: Type?, Index: number, Identifier: string, Functi
 	end
 
 	local Arguments = `{Values}{Function and ", InvocationIdentifier: number" or ""}`
-	local Read = Blocks.Function(GetTypesPath(Identifier, false), "", `({Type})`)
-	local Write = Blocks.Function(GetTypesPath(Identifier, true), Arguments, "()")
+	local Read = Blocks.Function(Util.GetTypesPath(Identifier, false), "", `({Type})`)
+	local Write = Blocks.Function(Util.GetTypesPath(Identifier, true), Arguments, "()")
 
 	if not _G.BUNDLED then
 		Write:Comment(`{Identifier} ({Index})`)
@@ -1119,7 +1086,7 @@ function Generators.Scope(Declaration: Parser.ScopeDeclaration)
 	local Parent = Scope
 	local NewScope = Value.Scope
 
-	local Path = GetScopePrefix(NewScope, true)
+	local Path = Util.GetScopePrefix(NewScope, true)
 	local Indent = (#string.split(Path, ".") - 1)
 	Path = string.sub(Path, 1, #Path - 1)
 
@@ -1297,6 +1264,10 @@ function Generator.GenerateShared(AbstractSyntaxTree: Parser.Body): string
 	)
 
 	return table.concat(MergedOutput)
+end
+
+function Generator.GenerateTypescript(FileContext: Context, AbstractSyntaxTree: Parser.Body): string
+	
 end
 
 return Generator
