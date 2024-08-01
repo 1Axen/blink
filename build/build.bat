@@ -44,9 +44,12 @@ echo Zipping files
 
 echo Packaging plugin
 cd ../plugin
+mkdir "./bundle"
+copy ".\src\Error.rbxmx" ".\bundle\Error.rbxmx"
+copy ".\src\Widget.rbxmx" ".\bundle\Widget.rbxmx"
 copy "..\build\.darklua.json" ".\.darklua.json"
 darklua process "./src/init.server.luau" "./bundle/init.server.lua"
-rojo build bundle.project.json --output "../release/Plugin-%VERSION%.rbxmx"
+rojo build bundle.project.json --output "../release/blink-%VERSION%-plugin.rbxm"
 
 cd ../build
 
