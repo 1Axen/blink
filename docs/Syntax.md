@@ -18,6 +18,13 @@ option TypesOutput = "../Network/Types.luau"
 option ServerOutput = "../Network/Server.luau"
 option ClientOutput = "../Network/Client.luau"
 ```
+### `Typescript`
+Default: `false`  
+Tells Blink whether to generate TypeScript definition files alongside Luau files.  
+The generated `d.ts` files are placed in the same path as your output files.
+```
+option Typescript = true
+```
 ### `UsePolling`
 Default: `false`
 Instructs the compiler to automatically output all events with a polling API.
