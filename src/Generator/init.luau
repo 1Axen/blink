@@ -432,13 +432,20 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 			:End()
 		:Wrap("return ", "")
 
-		local Listener = Blocks.Function(Casing.Next, "", `() -> ({IterTypes})`, true)
+		local Deprecated = Blocks.Function(Casing.Next, "", `() -> ({IterTypes})`, true)
 			:Line(`local index = 0`)
 			:Line(`local queue = {Queue}`)
 			:Lines(Next.Content, 1)
 		:End()
 
-		Body.PushLines(Listener.Content, 0, Indent + 1)
+		local Iter = Blocks.Function(Casing.Iter, "", `() -> ({IterTypes})`, true)
+			:Line(`local index = 0`)
+			:Line(`local queue = {Queue}`)
+			:Lines(Next.Content, 1)
+		:End():Wrap("", ",")
+
+		Body.PushLines(Iter.Content, 0, Indent + 1)
+		Body.PushLines(Deprecated.Content, 0, Indent + 1)
 	elseif Context == "Client" then
 		local Fire = Blocks.Function(Casing.Fire, Values, "()", true)
 			if IsReliable then
@@ -985,8 +992,8 @@ function Generators.Export(Declaration: Type)
 	local Identifier = Value.Identifier
 	local _, Values, Export, Returns = Generators.LuauType(Declaration)
 
-	local Read = Blocks.Function("Read", "Buffer: buffer", `({Export})`, true)
-	local Write = Blocks.Function("Write", `{Values}`, `(buffer)`, true)
+	local Read = Blocks.Function(Casing.Read, "Buffer: buffer", `({Export})`, true)
+	local Write = Blocks.Function(Casing.Write, `{Values}`, `(buffer)`, true)
 
 	local Body = Builder.new()
 	local Indent = Util.GetScopeIndent(Scope)
