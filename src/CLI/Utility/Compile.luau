@@ -101,13 +101,13 @@ function Utility.Compile(Path: string, Options: CompileOptions)
     do
         local Directory, Filename = PathParser.Components(ClientOutputPath)
         ClientOutputPath = `{Directory}/{Filename}.luau`
-        ClientTypescriptPath = `{Directory}/{Filename}.d.ts`
+        ClientTypescriptPath = `{FileDirectory}{Directory}/{Filename}.d.ts`
     end
 
     do
         local Directory, Filename = PathParser.Components(ServerOutputPath)
         ServerOutputPath = `{Directory}/{Filename}.luau`
-        ServerTypescriptPath = `{Directory}/{Filename}.d.ts`
+        ServerTypescriptPath = `{FileDirectory}{Directory}/{Filename}.d.ts`
     end
 
     local TypesOutput: string;
