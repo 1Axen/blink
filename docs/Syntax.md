@@ -303,7 +303,7 @@ event Complex {
 }
 ```
 ### Polling
-When `Poll` is `true` or the `UsePolling` option is `true`, events will generate with a polling API on the listener side, the `On` function is replaced with a `Next` function which returns an iterator to be used within a for loop.
+When `Poll` is `true` or the `UsePolling` option is `true`, events will generate with a polling API on the listener side, the `On` function is replaced with a `Iter` function which returns an iterator to be used within a for loop.
 ```
 event ReplicateEntities {
     From: Server,
@@ -314,7 +314,7 @@ event ReplicateEntities {
 }
 ```
 ```luau
-for Index, EntityMap in Blink.ReplicateEntities.Next() do
+for Index, EntityMap in Blink.ReplicateEntities.Iter() do
     ...
 end
 ```
