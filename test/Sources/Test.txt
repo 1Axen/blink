@@ -1,4 +1,5 @@
 option Casing = Pascal
+option Typescript = true
 option TypesOutput = "../../Network/Types.luau"
 option ClientOutput = "../../Network/Client.luau"
 option ServerOutput = "../../Network/Server.luau"
@@ -37,10 +38,10 @@ struct StructOfFlags {
     C: set {Flag, Flag1},
 }
 
-map Map = {[string]: u8}
+map MapSimple = {[string]: u8}
 map MapComplex = {[string(0..20)]: u8(0..100)[8]}
 map MapReference = {[States]: States}?
-export map MapNested = {[Map]: Map}
+export map MapNested = {[MapSimple]: MapSimple}
 
 map ArrayMap = {[u8]: u8}[0..20]
 enum ArrayEnum = {A, B, C}[0..20]
@@ -55,7 +56,7 @@ struct Generic<A, B> {
     }
 }
 
-type import = u8
+type struct = u8
 struct Conflict {
     type: u8
 }
@@ -276,7 +277,7 @@ event MapEvent {
     From: Server,
     Type: Reliable,
     Call: SingleSync,
-    Data: Map
+    Data: MapSimple
 }
 
 event MapStructEvent {

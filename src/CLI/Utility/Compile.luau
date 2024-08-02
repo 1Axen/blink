@@ -95,6 +95,21 @@ function Utility.Compile(Path: string, Options: CompileOptions)
     assert(ClientOutputPath, "A client output path must be defined.")
     assert(ServerOutputPath, "A server output path must be defined.")
 
+    local ClientTypescriptPath;
+    local ServerTypescriptPath;
+
+    do
+        local Directory, Filename = PathParser.Components(ClientOutputPath)
+        ClientOutputPath = `{Directory}/{Filename}.luau`
+        ClientTypescriptPath = `{Directory}/{Filename}.d.ts`
+    end
+
+    do
+        local Directory, Filename = PathParser.Components(ServerOutputPath)
+        ServerOutputPath = `{Directory}/{Filename}.luau`
+        ServerTypescriptPath = `{Directory}/{Filename}.d.ts`
+    end
+
     local TypesOutput: string;
     local ClientOutput = `{FileDirectory}{ClientOutputPath}`
     local ServerOutput = `{FileDirectory}{ServerOutputPath}`
@@ -119,6 +134,13 @@ function Utility.Compile(Path: string, Options: CompileOptions)
         TypesSource = Generator.GenerateShared(AbstractSyntaxTree)
     end
 
+    local ClientTypescriptSource: string?
+    local ServerTypescriptSource: string?
+    if FileOptions.Typescript then
+        ClientTypescriptSource = Generator.GenerateTypescript("Client", AbstractSyntaxTree)
+        ServerTypescriptSource = Generator.GenerateTypescript("Server", AbstractSyntaxTree)
+    end
+
     local FilesTime = (os.clock() - FilesStart)
     fs.writeFile(ServerOutput, ServerSource)
     fs.writeFile(ClientOutput, ClientSource)
@@ -126,6 +148,11 @@ function Utility.Compile(Path: string, Options: CompileOptions)
     if TypesSource and TypesOutput then
         CreateDirectoryIfNotFound(TypesOutput, Options)
         fs.writeFile(TypesOutput, TypesSource)
+    end
+
+    if ClientTypescriptSource and ServerTypescriptSource then
+        fs.writeFile(ClientTypescriptPath, ClientTypescriptSource)
+        fs.writeFile(ServerTypescriptPath, ServerTypescriptSource)
     end
 
     Message("green", Options, "Network files generated!")

@@ -2,15 +2,16 @@
 --!optimize 2
 --!strict
 
-local Blocks = require("./Blocks")
 local Parser = require("../Parser")
+local Settings = require("../Settings")
 
 local Table = require("../Modules/Table")
 local Builder = require("../Modules/Builder")
 
 local Util = require("./Util")
+local Blocks = require("./Blocks")
 local Prefabs = require("./Prefabs")
-local Settings = require("../Settings")
+local GenerateTypescript = require("./Typescript")
 
 local Sources = {
 	Base = require("../Templates/Base"),
@@ -1267,7 +1268,7 @@ function Generator.GenerateShared(AbstractSyntaxTree: Parser.Body): string
 end
 
 function Generator.GenerateTypescript(FileContext: Context, AbstractSyntaxTree: Parser.Body): string
-	
+	return GenerateTypescript(FileContext, AbstractSyntaxTree)
 end
 
 return Generator
