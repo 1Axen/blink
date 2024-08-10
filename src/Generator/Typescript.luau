@@ -43,6 +43,10 @@ local function GetTypescriptType(State: State, Declaration: Type): (string, stri
 		else
 			Type = Primitive.Type
 		end
+
+		if Type == "any" then
+			Type = "unknown"
+		end
 	elseif Declaration.Type == "Set" then
 		local Value = (Declaration :: Parser.SetDeclaration).Value
 		local Entries: {string} = {}
