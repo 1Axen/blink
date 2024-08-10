@@ -37,7 +37,7 @@ function Builder.new(): Builder
         end,
 
         PushFront = function(Text: string, Returns: number?, Tabs: number?)
-            table.insert(Strings, `{string.rep("\n", Returns or 1)}{Text}{string.rep("\t", Tabs or 0)}\n`)
+            table.insert(Strings, 1, `{string.rep("\n", Returns or 1)}{Text}{string.rep("\t", Tabs or 0)}\n`)
         end,
 
         PushLines = PushLines,

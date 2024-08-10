@@ -58,6 +58,9 @@ local function GetEnviornment()
             IsServer = function(self)
                 return true
             end,
+            IsRunning = function(self)
+                return true
+            end
         }
     }
 
