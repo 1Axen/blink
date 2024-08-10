@@ -14,7 +14,7 @@ It means lower bandwidth usage directly resulting in **lower ping\*** experience
 
 *\* In comparison to standard ROBLOX networking, this may not always be the case but should never result in increased ping times.*
 
-Benchmarks are available here [here](https://1axen.github.io/blink/Benchmarks).
+Benchmarks are available here [here](./benchmark/Benchmarks.md).
 
 # Security
 Blink does two things to combat bad actors:
