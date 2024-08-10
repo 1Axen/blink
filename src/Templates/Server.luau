@@ -2,6 +2,7 @@ return [[local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+-- SPLIT --
 if not RunService:IsServer() then
     error("Server network module can only be required from the server.")
 end
@@ -22,7 +23,6 @@ if not Unreliable then
     Unreliable = UnreliableRemoteEvent
 end
 
--- SPLIT --
 local PlayersMap: {[Player]: BufferSave} = {}
 
 Players.PlayerRemoving:Connect(function(Player)

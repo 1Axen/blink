@@ -1,6 +1,7 @@
 return [[local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+-- SPLIT --
 if not RunService:IsClient() then
     error("Client network module can only be required from the client.")
 end
@@ -8,7 +9,6 @@ end
 local Reliable: RemoteEvent = ReplicatedStorage:WaitForChild("BLINK_RELIABLE_REMOTE") :: RemoteEvent
 local Unreliable: UnreliableRemoteEvent = ReplicatedStorage:WaitForChild("BLINK_UNRELIABLE_REMOTE") :: UnreliableRemoteEvent
 
--- SPLIT --
 local function StepReplication()
     if SendCursor <= 0 then
         return
