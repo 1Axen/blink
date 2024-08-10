@@ -1,0 +1,16 @@
+# Command-Line Usage
+## Compiling Descriptions
+Once you have written your description file (ex. `file-name.blink`), you can compile it like this:
+
+```sh copy
+blink file-name
+```
+
+This will look for a file `file-name` with an extension `.blink` or `.txt`, in the current directory.
+### Watching Description Files
+When you're making many rapid changes to a description file or it's imports it can be tedious to constantly have to re-run the build command.<br />
+Blink offers a solution in the form of a `--watch` option, when passed the target file and all it's imports (including imports of imports and so on) will be watched for changes,
+recompiling automatically when one occurs.
+```sh copy
+blink file-name --watch
+```

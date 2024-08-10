@@ -1,0 +1,65 @@
+import { Callout, Steps } from 'nextra/components'
+
+# Installation
+The recommened way to install blink is using [Rokit](https://github.com/rojo-rbx/rokit).
+<Steps>
+
+### Installing Blink
+
+Open a terminal in your project directory and run the following command:
+
+```sh copy filename="Bash"
+rokit add 1Axen/blink
+```
+
+### Updating Blink
+
+When a new version of blink releases, using Rokit you can easily update using the following command:
+
+```sh copy filename="Bash"
+rokit update 1Axen/blink
+```
+
+</Steps>
+
+## Alternatives
+
+<details>
+<summary>GitHub Releases</summary>
+
+You can download pre-built binaries directly from the
+[GitHub Releases](https://github.com/1Axen/blink/releases) page.
+
+</details>
+
+<details>
+<summary>Bytecode</summary>
+
+Blink releases also contain bundled bytecode which can be used to run blink.
+<Steps>
+
+### Downloading Bytecode
+You can download the bundled bytecode from [Github Releases](https://github.com/1Axen/Blink/releases).
+Once downloaded unzip it into your target directory.
+
+### Installing Lune
+Blink uses lune as it's runtime enviornment, you can install lune using Rokit:
+```sh copy filename="Bash"
+rokit add lune
+```
+
+### Running bytecode
+Open the directory in which you unzipped the bytecode and run the following command:
+```sh copy filename="Bash"
+lune run init [INPUT] -- [ARGS]
+```
+
+</Steps>
+
+</details>
+
+<details>
+<summary>Roblox Studio</summary>
+Blink offers a companion studio plugin which allows you to write and generate files within Studio without the need for external tooling.
+You can download the studio plugin from [Github Releases](https://github.com/1Axen/Blink/releases).
+</details>

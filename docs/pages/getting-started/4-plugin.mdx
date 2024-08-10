@@ -1,0 +1,51 @@
+import { Callout } from 'nextra/components'
+
+# Studio Plugin
+
+
+## Navigating
+After installing the plugin locate it within your plugin tab in Studio.
+<Callout type="info">
+    After opening the plugin you will be prompted to give it access to inject scripts, this is needed to be able to generate output files.
+</Callout>
+
+![Locate](/plugin/Locate.png)
+
+## Side Menu
+You can open the side menu using the sandwich button on the left hand side.
+![Menu](/plugin/Menu.png)
+
+Within the side menu you can manage your network description files.
+![Navigation](/plugin/Navigation.png)
+
+## Saving
+To save a network description simply press the save button at the bottom of the side menu.   
+This will prompt you to save whatever is currently in the editor.
+
+<Callout type="info">
+    You can save to already existing files by simply inputting their name.
+</Callout>
+
+![Save](/plugin/Save.png)
+
+## Generating
+To generate your networking modules simply press the "Generate" button on your desired file.  
+This will open a prompt asking you to select your desired output destination within the game explorer.  
+
+![Generate](/plugin/Generate.png)
+
+Once you've selected your desired output destination simply press "Generate" and your files will be ready.  
+
+![GenerateSelected](/plugin/GenerateSelected.png)
+
+If no issues arise Blink will generate the following Folder containing your networking modules:  
+
+![Output](/plugin/Output.png)
+
+## Editor
+The editor is the center piece of the plugin, it has various rudimentary intellisense features built-in to help with your writing speed, and analysis to correct any mistakes.
+![Editor](/plugin/Editor.png)
+
+## Errors
+Upon generating output files, Blink will parse the source contents and inform you of any errors within your files that are blocking generation.  
+![Error](/plugin/Error.png)

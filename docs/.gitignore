@@ -1,0 +1,13 @@
+/.DS_Store
+/node_modules
+/temp
+/out
+/.next
+/.env
+
+/**/.DS_Store
+/**/node_modules
+/**/temp
+/**/out
+/**/.next
+/**/.env
