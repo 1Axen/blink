@@ -751,11 +751,11 @@ RunClosure("Queue up and poll", function()
 
     task.wait(1 / 30)
 
-    for Index, Value in Client.ServerPollEvent.Next() do
+    for Index, Value in Client.ServerPollEvent.Iter() do
         table.insert(Results.Client, Value)
     end
 
-    for Index, Player, Value in Server.ClientPollEvent.Next() do
+    for Index, Player, Value in Server.ClientPollEvent.Iter() do
         if tostring(Player) ~= "Player" then
             ErrorPrint(`Expected argument #1 to be Player, got {Player} instead.`)
         end
