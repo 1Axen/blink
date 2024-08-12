@@ -28,6 +28,7 @@ local function Split(String: string): {Range}
 
 		--> Match words
 		Start, End = string.find(String, "^[%w%p]+", Cursor)
+
 		if Start then
 			local Text = string.sub(String, Start, End)
 			table.insert(Ranges, {
@@ -38,7 +39,10 @@ local function Split(String: string): {Range}
 			})
 			
 			Cursor = (End + 1)
+			continue
 		end
+
+		break
 	end
 
 	return Ranges
