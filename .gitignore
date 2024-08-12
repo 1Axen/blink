@@ -10,7 +10,7 @@
 /Blink
 test/Sources/Game.txt
 sourcemap.json
-/plugin/bundle/*
+/plugin/bundle
 
 /benchmark/tools
 /benchmark/packages
