@@ -151,6 +151,7 @@ local Tweens = {
 ---- Variables ----
 
 local Saving = false
+local IsFirstTimeOpening = true
 
 local Expanded = State.new(false)
 local Selected: State.Class<Instance?> = State.new(nil :: any)
@@ -377,6 +378,12 @@ local function OnExpandActivated()
 end
 
 local function OnEditorButtonClicked()
+    if IsFirstTimeOpening then
+        CreateTemplateFile()
+        LoadFiles()
+        IsFirstTimeOpening = false
+    end
+
     EditorWidget.Enabled = not EditorWidget.Enabled
 end
 
@@ -435,9 +442,6 @@ end
 
 Editor.Initialize(EditorWidget)
 Profiler.Initialize()
-
-CreateTemplateFile()
-LoadFiles()
 
 ---- Connections ----
 
