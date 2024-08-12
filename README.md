@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./docs/assets/Logo.png" class="center">
+  <img src="./docs/public/Logo.png" class="center">
 </div>
 
 [![GitHub License](https://img.shields.io/github/license/1Axen/blink?style=flat-square&color=%23a350af)](LICENSE)
