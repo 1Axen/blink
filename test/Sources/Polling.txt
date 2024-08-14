@@ -1,4 +1,5 @@
 option Casing = Snake
+option UsePolling = true
 option ClientOutput = "../../Network/PollingClient.luau"
 option ServerOutput = "../../Network/PollingServer.luau"
 
