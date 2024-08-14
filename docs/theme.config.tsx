@@ -19,6 +19,11 @@ const config: DocsThemeConfig = {
   footer: {
     text: '© 2024 Blink',
   },
+  head: (
+    <>
+      <meta property="og:description" content="An IDL compiler written in Luau for ROBLOX buffer networking." />
+    </>
+  )
 }
 
 export default config
