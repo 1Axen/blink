@@ -122,7 +122,7 @@ event SetGameFlags {
 
 }
 ```
-```luau copy
+```lua copy
 local GameFlags: Blink.GameFlags = {
     EntitiesSpawn = true,
     PlayersCanOpenChests = true,
@@ -341,7 +341,7 @@ event ReplicateEntities {
     Data: map {[u8]: unknown[]}
 }
 ```
-```luau copy
+```lua copy
 for Index, EntityMap in Blink.ReplicateEntities.Iter() do
     ...
 end
@@ -407,7 +407,7 @@ scope ExampleScope {
 ```  
 ---
 Using scopes in code:  
-```luau copy
+```lua copy
 local Blink = require(PATH_TO_BLINK)
 Blink.ExampleScope.InScopeEvent.FireAll(0)
 

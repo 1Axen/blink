@@ -1,2 +1,60 @@
+import { Callout, Steps } from 'nextra/components'
+
 # Introduction
-TODO!
+
+This guide is aimed towards CLI users, any syntax will apply to the Studio plugin as well.
+
+## First Steps
+
+<Steps>
+
+### Writing Your First Network Description
+
+Blink's language is really simple, you will learn more throught the guide.<br />
+First create a `.blink` file in your desired directory, then copy the example below into your file:
+
+```ts copy
+-- these can be ignored if you are using the studio plugin
+option ClientOutput = "path/to/client.luau"
+option ServerOutput = "path/to/server.luau"
+
+event MyFirstEvent {
+    from: Server,
+    type: Reliable,
+    call: SingleSync,
+    data: string
+}
+```
+
+### Compile Your Network Description
+
+Open a terminal in the directory you created your file and run the following command:
+
+```sh copy
+blink FILE_NAME
+```
+
+This will generate 2 Luau files, "path/to/client.luau" and "path/to/server.luau".
+You can now use these files in your project.
+
+### Using The Generated Code
+
+Blink returns an immutable table with all of your events and functions.
+Using this table you can connect to your events and or functions and fire/invoke them.
+
+```lua copy filename="server" {3}
+local Net = require(Path.To.Server)
+
+Net.MyFirstEvent.FireAll("Hello World")
+```
+
+```lua copy filename="client" {3-5}
+local Net = require(Path.To.Server)
+
+Net.MyFirstEvent.On(function(Text)
+    print(Text)
+end)
+```
+
+</Steps>
+
