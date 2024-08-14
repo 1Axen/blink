@@ -31,3 +31,10 @@ event PollingEvent {
     Call: SingleSync,
     Poll: true
 }
+
+event ImplicitPollingEvent {
+    From: Client,
+    Type: Reliable,
+    Call: SingleSync,
+    Poll: true
+}
