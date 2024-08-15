@@ -49,8 +49,10 @@ struct ArrayStruct {
 
 }[0..20]
 
-struct Generic<A, B> {
+struct Generic<A, B, C> {
     Data: A,
+    Array: A[],
+    Optional: C?,
     Nested: struct {
         Value: B
     }
@@ -262,7 +264,7 @@ event Booleans {
 event Generic {
     From: Server,
     Type: Reliable,
-    Data: Generic<u8, u8>,
+    Data: Generic<u8, u8, u8>,
     Call: SingleSync
 }
 

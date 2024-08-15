@@ -633,7 +633,17 @@ function Parser.SolveGenerics(self: Parser, Identifier: Token, Declaration: Stru
             ;(Reference :: Declaration).Value.Identifier = Value.Identifier
             
             --> Set value to reference
-            Values[Index] = Reference
+            Values[Index] = {
+                Type = "Reference",
+                Value = {
+                    Identifier = Value.Identifier,
+                    Declaration = Reference,
+                    Array = Value.Array,
+                    Range = Value.Range,
+                    Optional = Value.Optional
+                },
+                Tokens = {}
+            } :: any
         end
     end
 
@@ -1304,6 +1314,8 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
 
     Value.Range, Value.Optional, Value.Array, Value.Components = Attributes.Range, Attributes.Optional, Attributes.Array, Attributes.Components
     Tokens.Range, Tokens.Optional, Tokens.Array = AttributesTokens.Range, AttributesTokens.Optional, AttributesTokens.Array
+
+    --print(Declaration)
 
     return Declaration
 end
