@@ -947,17 +947,6 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 	local Value = Declaration.Value
 	local Array = Value.Array
 
-	if Value.Optional then
-		Type = `({Type})?`
-	end
-
-	if Array then
-		Type = `\{{Type}\}`
-		if Array.Optional then
-			Type = `({Type})?`
-		end
-	end
-
 	if Value.Parameters then
 		local Parameters = {}
 
@@ -969,6 +958,17 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 
 		--> Wrap in chevrons
 		Type = `{Type}<{table.concat(Parameters, ",")}>`
+	end
+
+	if Value.Optional then
+		Type = `({Type})?`
+	end
+
+	if Array then
+		Type = `\{{Type}\}`
+		if Array.Optional then
+			Type = `({Type})?`
+		end
 	end
 
 	--> Generalized type generation, works for everything except tuples
