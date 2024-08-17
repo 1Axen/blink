@@ -591,14 +591,14 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 
 	--> Data and return body
 	local DataTypes, DataValues, _, DataArguments = "nil", "Value: nil", nil, "Value"
-	local ReturnTypes, ReturnValues, _, ReturnArguments = "nil", "Value: nil", nil, "Value"
+	local ReturnTypes, ReturnValues, _, ReturnArguments = "nil", "ReturnValue: nil", nil, "ReturnValue"
 
 	if Value.Data then
 		DataTypes, DataValues, _, DataArguments = Generators.LuauType(Value.Data :: Type, true)
 	end
 
 	if Value.Return then
-		ReturnTypes, ReturnValues, _, ReturnArguments = Generators.LuauType(Value.Return :: Type, true)
+		ReturnTypes, ReturnValues, _, ReturnArguments = Generators.LuauType(Value.Return :: Type, true, "Return")
 	end
 
 	do
@@ -653,26 +653,22 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 		:Wrap("task.spawn(", ")")
 
 		local Serialize = Blocks.Function("", "")
-			:Line(`local {ReturnValues} = Listener(Player, {DataArguments})`)
-			:Line(`SerializationError = true`)
-			:Line("Load(PlayersMap[Player])")
-			:Line(`{Util.GetTypesPath(ReturnIdentifier, true, Scope)}({ReturnArguments}, InvocationIdentifier)`)
+			:Line(`{ReturnArguments} = Listener(Player, {DataArguments})`)
 		:End()
 		:Wrap("local Success, Error = pcall(", ")")
 
 		local TrueListener = Blocks.Function(Connection, `Player: Player, {DataValues}, InvocationIdentifier: number`, "()", true)
-			:Line("local SerializationError = false")
+			:Line(`local {ReturnValues};`)
 			:Lines(Serialize.Content, 1)
+			:Line("Load(PlayersMap[Player])")
 			:Compare("Success", "true", "Not")
-				:Compare("SerializationError", "true", "Equals")
-					:Line(`error(\`Blink failed to serialize function: "{Value.Identifier}", \{Error\}\`)`)
-				:End()
-				:Line("Load(PlayersMap[Player])")
 				:Line("local Position = Allocate(3)")
 				:Line(`buffer.writeu8(SendBuffer, Position, {Index})`)
 				:Line(`buffer.writeu8(SendBuffer, Position + 1, InvocationIdentifier)`)
 				:Line(`buffer.writeu8(SendBuffer, Position + 2, 0)`)
 				:Line(`warn(\`"{Value.Identifier}" encountered an error, \{Error\}\`)`)
+			:Branch("Default")
+				:Line(`{Util.GetTypesPath(ReturnIdentifier, true, Scope)}({ReturnArguments}, InvocationIdentifier)`)
 			:End()
 			:Line("PlayersMap[Player] = Save()")
 		:End()
@@ -863,11 +859,13 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 	end
 end
 
-function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (string, string, string, string)
+function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?, Prefix: string?): (string, string, string, string)
+	Prefix = Prefix or ""
+
 	local Type = ""
 	local Values = ""
 	local Export = Util.GetExportName(Declaration.Value.Identifier, Scope)
-	local Returns = "Value"
+	local Returns = `{Prefix}Value`
 
 	if Declaration.Type == "Primitive" then
 		local Tokens = (Declaration :: Parser.PrimitiveDeclaration).Tokens
@@ -933,7 +931,7 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 		local VariableTypes = {}
 
 		for Index, TupleValue in TupleValues do
-			local Variable = `Value{Index}`
+			local Variable = `{Prefix}Value{Index}`
 			local ValueType = Generators.LuauType(TupleValue)
 			table.insert(Types, ValueType)
 			table.insert(Variables, Variable)
@@ -974,7 +972,7 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?): (stri
 
 	--> Generalized type generation, works for everything except tuples
 	if Declaration.Type ~= "Tuple" then
-		Values = `Value: {UseTypeAsValue and Type or Export}`
+		Values = `{Prefix}Value: {UseTypeAsValue and Type or Export}`
 	end
 
 	return Type, Values, Export, Returns
