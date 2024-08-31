@@ -109,6 +109,7 @@ local RICH_TEXT_ESCAPES: {[string]: string} = {
 
 local SCROLL_LINES = 2
 local CURSOR_BLINK_RATE = 0.5
+local PRE_ALLOCATED_LINES = 2_000
 
 type CompletionItem = {
     Icon: string,
@@ -352,8 +353,9 @@ end
 
 local function UpdateHighlightedLine()
     local Line = Utility.GetCurrentLine(Input.Text, Input.CursorPosition)
-    local Label: TextLabel = LinesContainer[tostring(Line)]
+    Line = math.clamp(Line, 1, PRE_ALLOCATED_LINES)
 
+    local Label: TextLabel = LinesContainer[tostring(Line)]
     if PreviousLine then
         PreviousLine.TextColor3 = THEME.Line.Inactive
     end
@@ -754,7 +756,7 @@ end
 --> Create lines in the background
 local function GenerateLinesAsync()
     local Tick = os.clock()
-    for Index = 1, 2_000 do
+    for Index = 1, PRE_ALLOCATED_LINES do
         local Elapsed = (os.clock() - Tick)
         if Elapsed > (1 / 120) then
             task.wait()
