@@ -734,7 +734,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 			:End()
 			:Wrap(`return Promise.new(`, ")")
 
-			Invoke = Blocks.Function(Casing.Invoke, DataValues, `unknown`, true)
+			Invoke = Blocks.Function(Casing.Invoke, DataValues, `any`, true)
 			Invoke:Lines(Promise.Content, 1)
 		else
 			Invoke = Blocks.Function(Casing.Invoke, DataValues, `({ReturnTypes})`, true)
