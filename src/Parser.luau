@@ -983,6 +983,12 @@ function Parser.Declarations(self: Parser): {Declaration}
         local Identifier = self:ConsumeText()
         local Declaration: Declaration;
 
+        if Keyword.Value == "option" then
+            Error.new(Error.AnalyzeOptionAfterStart, self.Source, "Option set after start of file")
+                :Primary(Keyword, "Move to the start of the file")
+            :Emit()
+        end
+
         --> Prevent duplicates
         local KeywordSettings = KEYWORDS[Keyword.Value]
         local Type = KeywordSettings.Class

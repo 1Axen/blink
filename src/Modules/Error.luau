@@ -65,7 +65,8 @@ local Error = {
     AnalyzeInvalidGenerics = 3012,
     AnalyzeInvalidExport = 3013,
     AnalyzeUnknownImport = 3014,
-    AnalyzeErrorWhileImporting = 3015
+    AnalyzeErrorWhileImporting = 3015,
+    AnalyzeOptionAfterStart = 3016,
 }
 
 Error.__index = Error
