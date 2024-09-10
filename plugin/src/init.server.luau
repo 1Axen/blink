@@ -279,16 +279,16 @@ local function LoadFiles()
         Frame.Name = Name
         Frame.Title.Text = Name
 
-        Buttons.Edit.Activated:Connect(function()
+        Buttons.Edit.MouseButton1Click:Connect(function()
             LoadFile(File)
         end)
 
-        Buttons.Delete.Activated:Connect(function()
+        Buttons.Delete.MouseButton1Click:Connect(function()
             File:Destroy()
             LoadFiles()
         end)
 
-        Buttons.Generate.Activated:Connect(function()
+        Buttons.Generate.MouseButton1Click:Connect(function()
             if GeneratePrompt.Visible then
                 return
             end
@@ -466,7 +466,7 @@ Selection.SelectionChanged:Connect(function()
     Selected:Set(Instances[1])
 end)
 
-Generate.Activated:Connect(function()
+Generate.MouseButton1Click:Connect(function()
     local File = Generating:Get()
     if not File then
         return
@@ -481,16 +481,16 @@ Generate.Activated:Connect(function()
     GenerateFile(File, Directory)
 end)
 
-CancelGenerate.Activated:Connect(function()
+CancelGenerate.MouseButton1Click:Connect(function()
     Generating:Set()
 end)
 
-Import.Activated:Connect(OnImport)
+Import.MouseButton1Click:Connect(OnImport)
 Search.FocusLost:Connect(OnSearch)
-Save.Activated:Connect(OnSaveActivated)
-Cancel.Activated:Connect(OnSaveCompleted)
-Expand.Activated:Connect(OnExpandActivated)
+Save.MouseButton1Click:Connect(OnSaveActivated)
+Cancel.MouseButton1Click:Connect(OnSaveCompleted)
+Expand.MouseButton1Click:Connect(OnExpandActivated)
 Expand.MouseButton2Click:Connect(OnExpandRightClicked)
-QuickSave.Activated:Connect(OnQuickSave)
-QuickClear.Activated:Connect(OnQuickClear)
+QuickSave.MouseButton1Click:Connect(OnQuickSave)
+QuickClear.MouseButton1Click:Connect(OnQuickClear)
 EditorButton.Click:Connect(OnEditorButtonClicked)
