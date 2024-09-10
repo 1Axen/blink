@@ -48,10 +48,10 @@ local TOKENS = {
     {"^as", "As"},
 
     --> Comments
-    {"^%-%-.-\n", "Comment"},
-    {"^%-%-.-.*", "Comment"},
     {"^%-%-%[(=*)%[.-%]%1%]", "Comment"},
     {"^%-%-%[%[.-.*", "Comment"},
+    {"^%-%-.-\n", "Comment"},
+    {"^%-%-.-.*", "Comment"},
 
     --> Attribute patterns
     {"^?", "Optional"},
