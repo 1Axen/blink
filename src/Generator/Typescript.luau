@@ -205,6 +205,10 @@ function Generators.Function(State: State, Function: Parser.FunctionDeclaration)
     if State.Context == "Server" then
         StringBuilder.Push(`{Casing.On}: (Listener: (Player: Player, {Values}) => {Types}) => void`, 0, Indent + 1)
     else
+		if Value.Yield == "Promise" then
+			Types = `Promise<{Types}>`
+		end
+		
         StringBuilder.Push(`{Casing.Invoke}: ({Values}) => {Types}`, 0, Indent + 1)
     end
 
