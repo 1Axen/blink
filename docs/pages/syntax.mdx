@@ -326,7 +326,7 @@ event Complex {
     Type: Unreliable,
     Call: SingleSync,
     Data: struct {
-        Field = u8
+        Field: u8
     }
 }
 ```
@@ -446,6 +446,6 @@ type Number = u8
 ```
 [ERROR]
     |
-002 |     Field = Number
+002 |     Field: Number
     |             ^^^^^^ Unknown type referenced.
 ```
