@@ -323,6 +323,16 @@ local function CreateTemplateFile()
     LoadFile(GetSaveFolder():FindFirstChild(TEMPLATE_FILE.Name) :: StringValue)
 end
 
+local function HandleFirstTimeOpen()
+    if IsFirstTimeOpening == false then
+        return
+    end
+
+    CreateTemplateFile()
+    LoadFiles()
+    IsFirstTimeOpening = false
+end
+
 ---- Public Functions ----
 
 local function OnSearch(PressedEnter: boolean)
@@ -374,16 +384,12 @@ local function OnSaveActivated()
 end
 
 local function OnExpandActivated()
+    HandleFirstTimeOpen()
     Expanded:Set(not Expanded:Get())
 end
 
 local function OnEditorButtonClicked()
-    if IsFirstTimeOpening then
-        CreateTemplateFile()
-        LoadFiles()
-        IsFirstTimeOpening = false
-    end
-
+    HandleFirstTimeOpen()
     EditorWidget.Enabled = not EditorWidget.Enabled
 end
 
