@@ -68,7 +68,7 @@ local EXPAND_TWEEN = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirect
 ---- Constants ----
 
 local Toolbar = plugin:CreateToolbar("Blink Suite")
-local EditorButton = Toolbar:CreateButton("Editor", "Opens the configuration editor", "rbxassetid://16468561002")
+local EditorButton = Toolbar:CreateButton("Editor", "Opens the configuration editor", "rbxassetid://118423040995617")
 EditorButton.ClickableWhenViewportHidden = true
 
 local Template = script.Widget
@@ -169,6 +169,7 @@ local ProfilerClicks = 0
 local function ShowError(Error: string)
     local Start = string.find(Error, "<font", 1, true)
     ErrorText.Text = string.sub(Error, Start or 1, #Error)
+    ErrorText.RichText = true
     ErrorWidget.Enabled = true
 end
 
@@ -229,6 +230,7 @@ local function GenerateFile(File: StringValue, Directory: Instance)
     end
 
     if not RequestScriptPermissions() then
+        ShowError("File generation failed, plugin doesn't have script inject permissions.")
         warn("[BLINK]: File generation failed, plugin doesn't have script inject permissions.")
         return
     end
