@@ -8,8 +8,6 @@ if not IS_ROBLOX then
     stdio = require("@lune/stdio")
 end
 
-local INVISIBLE_SPACE = `<font transparency="1">0</font>`
-
 type Slice = {
     Line: number,
     Text: string,
@@ -27,6 +25,27 @@ type Color = "red" | "green" | "blue" | "black" | "white" | "cyan" | "purple" | 
 export type Span = {
     Start: number,
     End: number,
+}
+
+local SpecialSymbols = {
+    CLI = {
+        Line = "─",
+        Down = "│",
+        DownDash = "┆",
+        Cross = "┬",
+        RightUp = "╭",
+        LeftDown = "╯",
+        RightDown = "╰"
+    },
+    ROBLOX = {
+        Line = "-",
+        Down = "|",
+        DownDash = " ",
+        Cross = "-",
+        RightUp = "╭",
+        LeftDown = "╯",
+        RightDown = "╰"
+    }
 }
 
 local Colors = {
@@ -80,13 +99,7 @@ export type Class = typeof(setmetatable({} :: {
     RawMessage: string,
 }, Error))
 
-local function Fix(Text: string): string
-    if IS_ROBLOX then
-        Text = string.gsub(Text, "%s", INVISIBLE_SPACE)
-    end
-
-    return Text
-end
+local Symbols = IS_ROBLOX and SpecialSymbols.ROBLOX or SpecialSymbols.CLI
 
 local function Color(Text: string, Color: Color): string
     if IS_ROBLOX then
@@ -115,8 +128,8 @@ end
 function Error.new(Code: number, Source: string, Message: string, File: string?): Class
     local Lines = string.split(Source, "\n")
     local Content = `\n{Color(`[E{string.format("%04i", Code)}] Error:`, "red")}: {Message}`
-    Content ..= `\n    ╭─[{File or "input.blink"}:1:{#Lines}]`
-    Content ..= "\n    │"
+    Content ..= `\n    {Symbols.RightUp}{Symbols.Line}[{File or "input.blink"}:1:{#Lines}]`
+    Content ..= `\n    {Symbols.Down}`
 
     return setmetatable({
         Labels = {},
@@ -150,7 +163,7 @@ function Error.Slice(self: Class, Span: Span): {Slice}
 
         table.insert(Slices, {
             Line = Line,
-            Text = Fix(Text),
+            Text = Text,
             Spaces = Spaces,
             Underlines = Underlines
         })
@@ -169,21 +182,21 @@ function Error.Label(self: Class, Span: Span, Text: string, TextColor: Color): C
     --> Analyze hook
     table.insert(self.Labels, {
         Span = Span,
-        Text = Fix(Text),
+        Text = Text,
     })
 
     --> Construct message
     for Index, Slice in Slices do
-        self.Message ..= `\n{Style(string.format("%03i", Slice.Line), "dim")} │ {Slice.Text}`
+        self.Message ..= `\n{Style(string.format("%03i", Slice.Line), "dim")} {Symbols.Down} {Slice.Text}`
         if Index == #Slices then
             local Length =  (Slice.Underlines // 2) 
-            local Indent = `    ┆ {string.rep(" ", Slice.Spaces)}`
-            local Underlines = Color(string.rep("─", Length), TextColor)
+            local Indent = `    {Symbols.DownDash} {string.rep(" ", Slice.Spaces)}`
+            local Underlines = Color(string.rep(Symbols.Line, Length), TextColor)
             local ExtraIndent = string.rep(" ", Length)
 
-            self.Message ..= `\n{Indent}{Underlines}{Color("┬", TextColor)}{Underlines}`
-            self.Message ..= `\n{Indent}{ExtraIndent}{Color("│", TextColor)}`
-            self.Message ..= `\n{Indent}{ExtraIndent}{Color("╰──", TextColor)} {Color(Text, TextColor)}`
+            self.Message ..= `\n{Indent}{Underlines}{Color(Symbols.Cross, TextColor)}{Underlines}`
+            self.Message ..= `\n{Indent}{ExtraIndent}{Color(Symbols.Down, TextColor)}`
+            self.Message ..= `\n{Indent}{ExtraIndent}{Color(`{Symbols.RightDown}{Symbols.Line}{Symbols.Line}`, TextColor)} {Color(Text, TextColor)}`
         end
     end
     
@@ -199,11 +212,8 @@ function Error.Secondary(self: Class, Span: Span, Text: string): Class
 end
 
 function Error.Emit(self: Class): never
-    self.Message ..= "\n    │"
-    self.Message ..= "\n────╯"
-
-    --> Fix message rendering in ROBLOX
-    self.Message = Fix(self.Message)
+    self.Message ..= `\n    {Symbols.Down}`
+    self.Message ..= `\n{string.rep(Symbols.Line, 4)}{Symbols.LeftDown}`
 
     local OnEmit: ((Class) -> ())? = Error.OnEmit
     if OnEmit then

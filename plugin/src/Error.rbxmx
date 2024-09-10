@@ -93,7 +93,7 @@
 				<bool name="DefinesCapabilities">false</bool>
 				<bool name="Draggable">false</bool>
 				<Font name="FontFace">
-					<Family><url>rbxasset://fonts/families/Ubuntu.json</url></Family>
+					<Family><url>rbxassetid://16658246179</url></Family>
 					<Weight>400</Weight>
 					<Style>Normal</Style>
 				</Font>
@@ -108,6 +108,7 @@
 				<Ref name="NextSelectionLeft">null</Ref>
 				<Ref name="NextSelectionRight">null</Ref>
 				<Ref name="NextSelectionUp">null</Ref>
+				<string name="OpenTypeFeatures"></string>
 				<UDim2 name="Position">
 					<XS>0</XS>
 					<XO>0</XO>
