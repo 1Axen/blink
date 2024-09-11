@@ -34,6 +34,10 @@ local ARGUMENTS: {[string]: Argument} = {
 		Aliases = {"-q", "--quiet"},
 		Description = "Silence program output"
 	},
+	Compact = {
+		Aliases = {"-c", "--compact"},
+		Description = "Compacts error output, the full message is still printed out after a compacted version."
+	},
 	YesToAll = {
 		Aliases = {"-y", "--yes"},
 		Description = "Accept all prompts"
@@ -120,6 +124,7 @@ if not Arguments.Watch then
 	local CompileOptions: Compile.CompileOptions = {
 		Debug = (_G.BUNDLED == nil) or Arguments.Statistics,
 		Silent = Arguments.Silent,
+		Compact = Arguments.Compact,
 		YesToEverything = Arguments.YesToAll,
 		OutputAbstractSyntaxTree = Arguments.OutputAst
 	}

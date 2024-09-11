@@ -5,6 +5,7 @@
 local fs = require("@lune/fs")
 local stdio = require("@lune/stdio")
 
+local Error = require("../../Modules/Error")
 local Parser = require("../../Parser")
 local Generator = require("../../Generator/init.luau")
 local PathParser = require("../../Modules/Path")
@@ -15,6 +16,7 @@ local GetDefinitionFilePath = require("./GetDefinitionFilePath")
 export type CompileOptions = {
     Debug: boolean,
     Silent: boolean,
+    Compact: boolean,
     YesToEverything: boolean,
     OutputAbstractSyntaxTree: boolean,
 }
@@ -70,13 +72,14 @@ end
 
 function Utility.Compile(Path: string, Options: CompileOptions)
     local FilePath = GetDefinitionFilePath(Path)
-    local FileDirectory = PathParser.Directory(FilePath) or "./"
+    Error.SetCompact(Options.Compact)
 
     Message("cyan", Options, `Reading source from {FilePath}...`)
     local Source = fs.readFile(FilePath)
 
     Message("blue", Options, "Parsing source into AST...")
-    local SourceParser = Parser.new(FileDirectory)
+    local FileDirectory = PathParser.Directory(FilePath) or "./"
+    local SourceParser = Parser.new(FileDirectory, PathParser.NameWithExtension(FilePath))
 
     local ParseStart = os.clock()
     local AbstractSyntaxTree = SourceParser:Parse(Source)

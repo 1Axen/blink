@@ -381,7 +381,7 @@ end
 function Parser.Peek(self: Parser): Token
     local Token = self.LookAhead
     if not Token then
-        error(Error.new(Error.ParserUnexpectedEndOfFile, self.Source, "Unexpected end of file")
+        error(Error.new(Error.ParserUnexpectedEndOfFile, self.Source, "Unexpected end of file", self.File)
             :Primary({Start = #self.Source, End = #self.Source}, "File ends here")
         :Emit())
     end
@@ -392,7 +392,7 @@ end
 function Parser.Consume(self: Parser, Type: Lexer.Types): Token
     local Token = self.LookAhead
     if not Token then
-        Error.new(Error.ParserUnexpectedEndOfFile, self.Source, "Unexpected end of file")
+        Error.new(Error.ParserUnexpectedEndOfFile, self.Source, "Unexpected end of file", self.File)
             :Primary({Start = #self.Source, End = #self.Source}, "File ends here")
         :Emit()
         
@@ -401,7 +401,7 @@ function Parser.Consume(self: Parser, Type: Lexer.Types): Token
     end
 
     if Token.Type ~= Type then
-        Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`)
+        Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`, self.File)
             :Primary(Token, `Expected "{Type}", found "{Token.Type}"`)
         :Emit()
     end
@@ -440,7 +440,7 @@ function Parser.ConsumeAny(self: Parser, ...: Lexer.Types): Token
     end
 
     local Token = self:Peek()
-    error(Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`)
+    error(Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`, self.File)
         :Primary(Token, `Expected one of "{table.concat(Types, `", "`)}", found "{Token.Type}"`)
     :Emit())
 end
@@ -517,7 +517,7 @@ function Parser.SetReference(self: Parser, Bucket: Bucket, Identifier: Token, De
     local Name = Identifier.Value
 
     if RESERVED[Name] then
-        Error.new(Error.AnalyzeReservedIdentifier, self.Source, `Reserved identifier`)
+        Error.new(Error.AnalyzeReservedIdentifier, self.Source, `Reserved identifier`, self.File)
             :Primary(Identifier, `"{Name}" is reserved and cannot be used as an identifier.`)
             :Emit()
     end
@@ -581,7 +581,7 @@ function Parser.SolveGenerics(self: Parser, Identifier: Token, Declaration: Stru
 
     local OpenToken = self:TryConsume("OpenChevrons")
     if not OpenToken then
-        Error.new(Error.AnalyzeInvalidGenerics, self.Source, `Type expects parameters list`)
+        Error.new(Error.AnalyzeInvalidGenerics, self.Source, `Type expects parameters list`, self.File)
             :Primary(self:Peek(), "")
         :Emit()
 
@@ -604,7 +604,7 @@ function Parser.SolveGenerics(self: Parser, Identifier: Token, Declaration: Stru
 
     local CloseToken = self:Consume("CloseChevrons")
     if #Parameters ~= Maximum then
-        Error.new(Error.AnalyzeInvalidGenerics, self.Source, `Type expects {Maximum} parameters, but {#Parameters} are specified`)
+        Error.new(Error.AnalyzeInvalidGenerics, self.Source, `Type expects {Maximum} parameters, but {#Parameters} are specified`, self.File)
             :Primary({Start = OpenToken.Start, End = CloseToken.End}, "")
         :Emit()
     end
@@ -684,7 +684,7 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
             return NumberRange.new(Minimum, Maximum), Token
         end
 
-        error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Malformed range")
+        error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Malformed range", self.File)
             :Primary(Token, "Unable to parse range")
         :Emit())
     end
@@ -725,7 +725,7 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
             }, Token, OptionalToken
         end
 
-        error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Malformed array range")
+        error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Malformed array range", self.File)
             :Primary(Token, "Unable to parse array range")
         :Emit())
     end
@@ -741,7 +741,7 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
         end
 
         if Primitive.AllowedComponents == 0 then
-            error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Type doesn't accept components`)
+            error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Type doesn't accept components`, self.File)
                 :Primary(OpenChevrons, `Remove component here`)
             :Emit())
         end
@@ -763,13 +763,13 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
             local ComponentPrimitive = PRIMITIVES[Component]
 
             if not ComponentPrimitive then
-                error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Unknown primitive used as component`)
+                error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Unknown primitive used as component`, self.File)
                     :Primary(Token, `"{Component}" is invalid`)
                 :Emit())
             end
 
             if not ComponentPrimitive.Component then
-                error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Invalid primitive used as component`)
+                error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Invalid primitive used as component`, self.File)
                     :Primary(Token, `"{Component}" cannot be used as a component`)
                 :Emit())
             end
@@ -787,20 +787,20 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
 
     if Primitive then
         if RangeToken and Primitive.AllowsRange == false then
-            Error.new(Error.AnalyzeInvalidRangeType, self.Source, "Type does not support ranges")
+            Error.new(Error.AnalyzeInvalidRangeType, self.Source, "Type does not support ranges", self.File)
                 :Primary(RangeToken, `Type does not support ranges`)
             :Emit()
         end
 
         if OptionalToken and Primitive.AllowsOptional == false then
-            Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Type cannot be optional")
+            Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Type cannot be optional", self.File)
                 :Primary(OptionalToken, `Type cannot be optional`)
             :Emit()
         end
 
         local Bounds = Primitive.Bounds
         if RangeToken and Bounds and Range and (Range.Min < Bounds.Min or Range.Max > Bounds.Max) then
-            Error.new(Error.AnalyzeInvalidRange, self.Source, "Range out of bounds")
+            Error.new(Error.AnalyzeInvalidRange, self.Source, "Range out of bounds", self.File)
                 :Primary(RangeToken, `Range out of bounds ({Bounds.Min} -> {Bounds.Max})`)
             :Emit()
         end
@@ -854,7 +854,7 @@ function Parser.Import(self: Parser): ScopeDeclaration
     local ImportSource, ImportDirectory = GetFileSource(ImportPath, self.Directory)
 
     if not ImportSource then
-        error(Error.new(Error.AnalyzeUnknownImport, self.Source, `Unknown require`)
+        error(Error.new(Error.AnalyzeUnknownImport, self.Source, `Unknown require`, self.File)
             :Primary(Path, `Unknown require: "{ImportPath}"`)
         :Emit())
     end
@@ -872,6 +872,10 @@ function Parser.Import(self: Parser): ScopeDeclaration
         local Indices = string.split(ImportPath, ".")
         Identifier = Indices[#Indices]
     else
+        if string.sub(ImportPath, 1, 2) ~= "./" then
+            ImportPath = `./{ImportPath}`
+        end
+
         --> Use file name as namespace identifier
         local Filename = PathParser.Filename(ImportPath)
         assert(Filename, "Unable to parse file path for filename!")
@@ -882,7 +886,7 @@ function Parser.Import(self: Parser): ScopeDeclaration
 
     local Reference = self:GetReference("Scopes", Identifier)
     if Reference then
-        Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration: "{Identifier}"`)
+        Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration: "{Identifier}"`, self.File)
             :Secondary(Reference.Identifier, "Previously declared here")
             :Primary(Token, "Duplicate declared here")
         :Emit()
@@ -899,14 +903,15 @@ function Parser.Import(self: Parser): ScopeDeclaration
     }
 
     local AST: Body;
-    local ImportParser = Parser.new(ImportDirectory)
+    local ImportParser = Parser.new(ImportDirectory, ImportPath)
+    
     local Success, ErrorText = pcall(function()
         --> Parse declarations into import scope
         AST = ImportParser:Parse(ImportSource, Scope)
     end)
 
     if not Success then
-        error(`Error while parsing "{ImportPath}":\n{ErrorText}`)
+        error(ErrorText)
     end
 
     Scope.Parent = Parent
@@ -943,7 +948,7 @@ function Parser.Options(self: Parser): Options
                 Examples ..= `{Examples ~= "" and " or " or ""}"{Option}"`
             end
 
-            Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Identifier}"`)
+            Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Identifier}"`, self.File)
                 :Primary(Key, `Expected one of {Examples}`)
             :Emit()
         end
@@ -984,7 +989,7 @@ function Parser.Declarations(self: Parser): {Declaration}
         local Declaration: Declaration;
 
         if Keyword.Value == "option" then
-            Error.new(Error.AnalyzeOptionAfterStart, self.Source, "Option set after start of file")
+            Error.new(Error.AnalyzeOptionAfterStart, self.Source, "Option set after start of file", self.File)
                 :Primary(Keyword, "Move to the start of the file")
             :Emit()
         end
@@ -997,7 +1002,7 @@ function Parser.Declarations(self: Parser): {Declaration}
         local Reference = self:GetReference(Bucket, Identifier.Value)
 
         if Reference then
-            Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration`)
+            Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration`, self.File)
                 :Secondary(Reference.Identifier, "Previously declared here")
                 :Primary(Identifier, "Duplicate declared here")
             :Emit()
@@ -1029,12 +1034,12 @@ function Parser.Declarations(self: Parser): {Declaration}
         if Export then
             --> Prevent non exportable types from being exported
             if not KeywordSettings.Exportable then
-                Error.new(Error.AnalyzeInvalidExport, self.Source, `Declaration of type "{Keyword.Value}" is not exportable`)
+                Error.new(Error.AnalyzeInvalidExport, self.Source, `Declaration of type "{Keyword.Value}" is not exportable`, self.File)
                     :Primary(Export, `Remove export here`)
                 :Emit()
             --> Prevent types with generics from being exported
             elseif Generics then
-                Error.new(Error.AnalyzeInvalidExport, self.Source, `Generic types can't be exported`)
+                Error.new(Error.AnalyzeInvalidExport, self.Source, `Generic types can't be exported`, self.File)
                     :Primary(Export, `Remove export here`)
                 :Emit()
             end
@@ -1044,7 +1049,7 @@ function Parser.Declarations(self: Parser): {Declaration}
 
         if Generics then
             if Declaration.Type == "Enum" then
-                Error.new(Error.AnalyzeInvalidGenerics, self.Source, `Unit enums don't support generics`)
+                Error.new(Error.AnalyzeInvalidGenerics, self.Source, `Unit enums don't support generics`, self.File)
                     :Primary(Generics.Span, "Remove generics")
                 :Emit()
             end
@@ -1077,7 +1082,7 @@ function Parser.GetOptionFromToken(self: Parser, Token: Token, Structure: {Event
         OptionsString ..= `{Index ~= 1 and " or " or ""}"{Option.Key}"`
     end
 
-    error(Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Value}"`)
+    error(Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Value}"`, self.File)
         :Primary(Token, `Expected one of {OptionsString}`)
     :Emit())
 end
@@ -1099,7 +1104,7 @@ function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOpti
 
         --> Prevent duplicate fields
         if Fields[Option.Key] then
-            Error.new(Error.AnalyzeDuplicateField, self.Source, `Field "{Option.Key}" was already specified`)
+            Error.new(Error.AnalyzeDuplicateField, self.Source, `Field "{Option.Key}" was already specified`, self.File)
                 :Primary(Field, `Already specified earlier in the structure`)
             :Emit()
         end
@@ -1110,7 +1115,7 @@ function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOpti
             Value = Token.Value
 
             if not table.find(Option.Values, Value) then
-                Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Value}"`)
+                Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Value}"`, self.File)
                     :Primary(Token, `Expected one of "{table.concat(Option.Values, `" or "`)}"`)
                 :Emit()
             end
@@ -1143,7 +1148,7 @@ function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOpti
             Start = Open.Start
         }
 
-        Error.new(Error.ParserExpectedExtraToken, self.Source, `Field "{Option.Key}" is missing`)
+        Error.new(Error.ParserExpectedExtraToken, self.Source, `Field "{Option.Key}" is missing`, self.File)
             :Primary(Span, `Add missing field "{Option.Key}"`)
         :Emit()
     end
@@ -1184,12 +1189,6 @@ function Parser.Function(self: Parser, Identifier: Token): FunctionDeclaration
 end
 
 function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
-    --[[if self.Scope then
-        Error.new(Error.AnalyzeNestedScope, self.Source, "You cannot declare a scope within a scope")
-            :Primary(Identifier, `Nested scope declared`)
-            :Emit()
-    end]]
-
     self:Consume("OpenBraces")
 
     --> Open scope
@@ -1243,7 +1242,7 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
                 Declaration = self:Reference(Identifier)
                 local Reference = (Declaration :: ReferenceDeclaration).Value.Declaration
                 if not IsDeclarationTypeSimiliar(Reference.Type, Type :: Declarations) then
-                    Error.new(Error.AnalyzeReferenceInvalidType, self.Source, `Cannot cast "{Reference.Type}" to "{Type}"`)
+                    Error.new(Error.AnalyzeReferenceInvalidType, self.Source, `Cannot cast "{Reference.Type}" to "{Type}"`, self.File)
                         :Primary(Token, `Expected a reference to "{Type}", got "{Reference.Type}" instead`)
                     :Emit()
                 end
@@ -1293,7 +1292,7 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
         end
 
         if not Declaration then
-            Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`)
+            Error.new(Error.ParserUnexpectedToken, self.Source, `Unexpected token`, self.File)
                 :Primary(Peek, `Expected one of "Identifier" or "Primitive" or "Keyword", got "{Type}" instead`)
             :Emit()
         end
@@ -1369,7 +1368,7 @@ function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
         if Type == "Reference" then
             local Reference: TypeDeclaration = (Value :: any).Declaration
             if Reference.Value.Optional then
-                Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type")
+                Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type", self.File)
                     :Primary(Token, `Maps cannot have optionals as keys or values`)
                 :Emit()
             end
@@ -1448,7 +1447,7 @@ function Parser.TagEnum(self: Parser, Tag: Token, Identifier: Token): TagEnumDec
         --> Don't allow tag field to be set
         for _, Field: TypeDeclaration in Fields do
             if Field.Value.Identifier == Tag.Value then
-                Error.new(Error.AnalyzeReservedIdentifier, self.Source, `Enum tag used as field in variant`)
+                Error.new(Error.AnalyzeReservedIdentifier, self.Source, `Enum tag used as field in variant`, self.File)
                     :Secondary(Token, `Used in variant`)
                     :Primary(Tag, `Enum tag`)
                 :Emit()
@@ -1519,14 +1518,14 @@ function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
             local Text = self:ConsumeText()
             local Reference = self:GetReference("Types", Text.Value)
             if not Reference then
-                error(Error.new(Error.AnalyzeUnknownReference, self.Source, `Unknown reference`)
+                error(Error.new(Error.AnalyzeUnknownReference, self.Source, `Unknown reference`, self.File)
                     :Primary(Text, "Unknown reference")
                 :Emit())
             end
 
             local Declaration = Reference.Declaration
             if Declaration.Type ~= "Struct" then
-                error(Error.new(Error.AnalyzeReferenceInvalidType, self.Source, `Expected a struct to merge, got "{Declaration.Type}" instead`)
+                error(Error.new(Error.AnalyzeReferenceInvalidType, self.Source, `Expected a struct to merge, got "{Declaration.Type}" instead`, self.File)
                     :Primary(Text, `Expected a "Struct", got "{Declaration.Type}" instead`)
                 :Emit())
             end
@@ -1540,7 +1539,7 @@ function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
             for _, Field in StructValues do
                 local FieldIdentifier = Field.Value.Identifier
                 if Fields[FieldIdentifier] then
-                    error(Error.new(Error.AnalyzeDuplicateField, self.Source, `Merged struct contains a duplicate field`)
+                    error(Error.new(Error.AnalyzeDuplicateField, self.Source, `Merged struct contains a duplicate field`, self.File)
                         :Primary(Text, `Field "{FieldIdentifier}" already exists in struct`)
                     :Emit())
                 end
@@ -1551,7 +1550,7 @@ function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
         else --> fields
             local Text = self:ConsumeText()
             if Fields[Text.Value] then
-                error(Error.new(Error.AnalyzeDuplicateField, self.Source, `Duplicate field "{Text.Value}"`)
+                error(Error.new(Error.AnalyzeDuplicateField, self.Source, `Duplicate field "{Text.Value}"`, self.File)
                     :Primary(Text, `Duplicate field`)
                 :Emit())
             end
@@ -1625,7 +1624,7 @@ function Parser.Reference(self: Parser, Identifier: Token): (ReferenceDeclaratio
     --> Normal reference resolution
     local Reference = self:GetReference("Types", Token.Value)
     if not Reference then
-        error(Error.new(Error.AnalyzeUnknownReference, self.Source, `Unknown reference`)
+        error(Error.new(Error.AnalyzeUnknownReference, self.Source, `Unknown reference`, self.File)
             :Primary(Token, "Unknown reference")
         :Emit())
     end

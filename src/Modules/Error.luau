@@ -4,8 +4,10 @@
 local IS_ROBLOX = (game ~= nil)
 
 local stdio;
+local process;
 if not IS_ROBLOX then
     stdio = require("@lune/stdio")
+    process = require("@lune/process")
 end
 
 type Slice = {
@@ -59,6 +61,8 @@ local Colors = {
     yellow = "rgb(255, 255, 0)",
 }
 
+local Compact = false
+
 local Error = {
     OnEmit = nil,
 
@@ -96,7 +100,9 @@ export type Class = typeof(setmetatable({} :: {
     Message: string,
     
     Code: number,
+    File: string,
     RawMessage: string,
+    PrimarySpan: Span?,
 }, Error))
 
 local Symbols = IS_ROBLOX and SpecialSymbols.ROBLOX or SpecialSymbols.CLI
@@ -105,6 +111,7 @@ local function Color(Text: string, Color: Color): string
     if IS_ROBLOX then
         return `<font color="{Colors[Color]}">{Text}</font>`
     end
+
     return `{stdio.color(Color)}{Text}{stdio.color("reset")}`
 end
 
@@ -112,7 +119,12 @@ local function Style(Text: string, Style: "bold" | "dim"): string
     if IS_ROBLOX then
         return Text
     end
+
     return `{stdio.style(Style)}{Text}{stdio.style("reset")}`
+end
+
+function Error.SetCompact(Value: boolean)
+    Compact = Value
 end
 
 function Error.GetNameFromCode(From: number): string
@@ -127,7 +139,7 @@ end
 
 function Error.new(Code: number, Source: string, Message: string, File: string?): Class
     local Lines = string.split(Source, "\n")
-    local Content = `\n{Color(`[E{string.format("%04i", Code)}] Error:`, "red")}: {Message}`
+    local Content = `{Color(`[E{string.format("%04i", Code)}] Error`, "red")}: {Message}`
     Content ..= `\n    {Symbols.RightUp}{Symbols.Line}[{File or "input.blink"}:1:{#Lines}]`
     Content ..= `\n    {Symbols.Down}`
 
@@ -137,6 +149,7 @@ function Error.new(Code: number, Source: string, Message: string, File: string?)
         Message = Content,
 
         Code = Code,
+        File = File or "input.blink",
         RawMessage = Message
     }, Error)
 end
@@ -204,6 +217,7 @@ function Error.Label(self: Class, Span: Span, Text: string, TextColor: Color): C
 end
 
 function Error.Primary(self: Class, Span: Span, Text: string): Class
+    self.PrimarySpan = Span
     return self:Label(Span, Text, "red")
 end
 
@@ -215,12 +229,40 @@ function Error.Emit(self: Class): never
     self.Message ..= `\n    {Symbols.Down}`
     self.Message ..= `\n{string.rep(Symbols.Line, 4)}{Symbols.LeftDown}`
 
-    local OnEmit: ((Class) -> ())? = Error.OnEmit
-    if OnEmit then
-        OnEmit(self)
+    if IS_ROBLOX then
+        local OnEmit: ((Class) -> ())? = Error.OnEmit
+        if OnEmit then
+            OnEmit(self)
+        end
+
+        error(self.Message, 2)
+    elseif stdio and process then
+        if Compact then
+            local LineStart = 0
+            local LineFinish = 0
+            
+            if self.PrimarySpan then
+                local Slices = self:Slice(self.PrimarySpan)
+                LineStart = Slices[1].Line
+                LineFinish = Slices[#Slices].Line
+            end
+
+            stdio.ewrite(string.format(
+                "[E%04i] [L%03i:L%03i] [%s] Error: %s", 
+                self.Code,
+                LineStart,
+                LineFinish,
+                self.File,
+                self.RawMessage
+            ))
+        else
+            stdio.ewrite(self.Message)
+        end
+
+        process.exit(1)
     end
 
-    error(self.Message, 2)
+    error("never")
 end
 
 return Error

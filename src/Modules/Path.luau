@@ -45,6 +45,15 @@ function Utility.Extension(Path: string): string?
     return Extension
 end
 
+function Utility.NameWithExtension(Path: string): string?
+	local _, Name, Extension = Utility.Components(Path)
+	if Name and Extension then
+		return `{Name}.{Extension}`
+	end
+
+	return
+end
+
 ---- Initialization ----
 
 ---- Connections ----
