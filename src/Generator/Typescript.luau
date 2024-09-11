@@ -195,21 +195,26 @@ function Generators.Function(State: State, Function: Parser.FunctionDeclaration)
     local Casing = State.Casing
     local StringBuilder = State.Builder
 
-    local Types, Values = "void", "Value: void"
+    local _, Values = "void", "Value: void"
 	if Value.Data then
-		Types, Values = GetTypescriptType(State, Value.Data)
+		_, Values = GetTypescriptType(State, Value.Data)
+	end
+
+	local ReturnTypes = "void"
+	if Value.Return then
+		ReturnTypes = GetTypescriptType(State, Value.Return)
 	end
 
     StringBuilder.Push(`export {GetPrefix(Indent)}const {Identifier}: \{`, 0, Indent)
 
     if State.Context == "Server" then
-        StringBuilder.Push(`{Casing.On}: (Listener: (Player: Player, {Values}) => {Types}) => void`, 0, Indent + 1)
+        StringBuilder.Push(`{Casing.On}: (Listener: (Player: Player, {Values}) => {ReturnTypes}) => void`, 0, Indent + 1)
     else
 		if Value.Yield == "Promise" then
-			Types = `Promise<{Types}>`
+			ReturnTypes = `Promise<{ReturnTypes}>`
 		end
 		
-        StringBuilder.Push(`{Casing.Invoke}: ({Values}) => {Types}`, 0, Indent + 1)
+        StringBuilder.Push(`{Casing.Invoke}: ({Values}) => {ReturnTypes}`, 0, Indent + 1)
     end
 
     StringBuilder.Push(`\}`, 0, Indent)
