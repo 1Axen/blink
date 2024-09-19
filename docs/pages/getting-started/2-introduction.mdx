@@ -49,7 +49,7 @@ Net.MyFirstEvent.FireAll("Hello World")
 ```
 
 ```lua copy filename="client" {3-5}
-local Net = require(Path.To.Server)
+local Net = require(Path.To.Client)
 
 Net.MyFirstEvent.On(function(Text)
     print(Text)
