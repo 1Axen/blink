@@ -6,6 +6,7 @@
   },
   "luau-lsp.sourcemap.rojoProjectFile": "default.project.json",
   "luau-lsp.fflags.override": {
+    "LuauSolverV2": "false",
     "LuauTinyControlFlowAnalysis": "true"
   }
 }
