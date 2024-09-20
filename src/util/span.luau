@@ -1,4 +1,5 @@
 --!strict
+--!native
 
 -- Copyright (c) 2024 Axen
 
@@ -20,50 +21,57 @@
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
+local location = require("./location")
+
+type Location = location.Location
 export type Span = {
-    text: string,
-    start: number,
-    finish: number,
+    input: buffer,
+    start: Location,
+    finish: Location,
 }
 
-local span = {}
-
-function span.create(code: string, start: number, finish: number): Span
-    return ({
-        text = string.sub(code, start, finish),
+local function create(input: buffer, start: Location, finish: Location): Span
+    return table.freeze({
+        input = input,
         start = start,
         finish = finish,
     })
 end
 
---> Returns a span such that it occupies the space from a to b
-function span.union(code: string, a: Span, b: Span): Span
-    return span.create(
-        code,
-        math.min(a.start, b.start), 
-        math.max(a.finish, b.finish)
-    )
+--- creates a span from a to b
+local function merge(a: Span, b: Span): Span
+    return create(a.input, a.start, b.finish)
 end
 
---> Returns a span such that it occupies the space between a and b
-function span.negate(code: string, a: Span, b: Span): Span
-    return span.create(
-        code, 
-        math.min(a.finish, b.finish) + 1, 
-        math.max(a.start, b.start) - 1
-    )
+local function length(self: Span): number
+    return (self.finish.position - self.start.position) + 1
 end
 
-function span.length(span: Span): number
-    return (span.finish - span.start) + 1
+local function value(self: Span): string
+    return buffer.readstring(self.input, self.start.position, length(self))
 end
 
-function span.contains(span: Span, offset: number): boolean
-    return span.start <= offset and span.finish >= offset
+local function contains(self: Span, position: number): boolean
+    return self.start.position <= position and self.finish.position >= position
 end
 
-function span.intersects(span: Span, second_span: Span): boolean
-    return (span.finish >= second_span.start) or (second_span.finish >= span.start)
+--- checks if two spans are intersecting, assumes `a.start` <= `b.start`
+local function intersects(a: Span, b: Span): boolean
+    return (a.finish.position >= b.start.position)
 end
 
-return span
+local function is_multiline(self: Span): boolean
+    local start_line = self.start.line
+    local finish_line = self.finish.line
+    return start_line ~= finish_line
+end
+
+return table.freeze({
+    create = create,
+    merge = merge,
+    length = length,
+    contains = contains,
+    intersects = intersects,
+    is_multiline = is_multiline,
+    to_string = value,
+})

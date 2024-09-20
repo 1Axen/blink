@@ -31,3 +31,4 @@ docs/.vitepress/cache
 
 # TODO: Remove after rewrite is complete
 /old-src
+profile/tokens.json

@@ -21,34 +21,20 @@
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
-local BASE_ALLOCATION = 64
+export type Location = {
+    line: number,
+    position: number,
+    character: number,
+}
 
-local string_builder = {}
-
-function string_builder.create(allocate: number?)
-    local stack = table.create(allocate or BASE_ALLOCATION)
+local function create(position: number, line: number, character: number): Location
     return table.freeze({
-        get = function(): {string}
-            return stack
-        end,
-
-        append = function(string: string)
-            table.insert(stack, string)
-        end,
-
-        append_line = function(string: string)
-            table.insert(stack, string)
-            table.insert(stack, "\n")
-        end,
-
-        append_lines = function(lines: {string})
-            table.move(lines, 1, #lines, #stack + 1, stack)
-        end,
-
-        finish = function()
-            return table.concat(stack)
-        end
+        line = line,
+        position = position,
+        character = character,
     })
 end
 
-return string_builder
+return table.freeze({
+    create = create
+})

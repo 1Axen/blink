@@ -1,4 +1,5 @@
 --!strict
+--!native
 
 -- Copyright (c) 2024 Axen
 
@@ -21,155 +22,268 @@
 -- SOFTWARE.
 
 local span = require("../util/span")
+local location = require("../util/location")
 
-export type Types = 
-    "Word" | "Number" | "String"
-    | "Open" | "Close" | "Symbol"
-    | "Error" | "EndOfFile"
+type Span = span.Span
+type Location = location.Location
 
-export type Delimiter = 
-    "Brace" | "Arrow" | "Round"
+export type Keywords = "set" | "map" | "type" | "enum" | "event" 
+    | "scope" | "struct" | "option" | "function"
 
-export type Symbols = 
-    "Equal" | "Colon" | "Comma" | "DotDot" | "Question" | "Ampersand"
-
-export type Token<T = unknown> = {
-    type: Types,
-    data: T,
-    span: span.Span
+export type TokenBase<Kind, Value = nil> = {
+    kind: Kind,
+    span: span.Span,
+    value: Value
 }
 
-export type Word = Token<string>
-export type Number = Token<number>
-export type String = Token<string>
-export type Open = Token<Delimiter>
-export type Close = Token<Delimiter>
-export type Symbol = Token<Symbols>
-export type Error = Token<string>
-export type EndOfFile = Token<nil>
+export type Word = TokenBase<"word", string>
+export type Keyword = TokenBase<"keyword", Keywords>
+export type Number = TokenBase<"number", string>
+export type String = TokenBase<"string", string>
+export type Attribute = TokenBase<"attribute", string>
+export type Error = TokenBase<"error", string>
+export type EndOfFile = TokenBase<"eof">
 
-type Matcher = {
-    type: Types,
-    pattern: string,
-    transformer: ((text: string) -> any)?,
+export type Token = 
+    --> words
+     Word
+    | Keyword
+    --> literals
+    | Number
+    | String
+    --> symbols
+    | TokenBase<"=">
+    | TokenBase<":">
+    | TokenBase<",">
+    | TokenBase<"..">
+    | TokenBase<"?">
+    --> delimiters
+    | TokenBase<"{">
+    | TokenBase<"<">
+    | TokenBase<"(">
+    | TokenBase<"}">
+    | TokenBase<">">
+    | TokenBase<")">
+    --> control flow
+    | Error
+    | EndOfFile
+
+--> returns the numerical code of character
+local function code(character: string): number
+    return string.byte(character)
+end
+
+local SYMBOLS = {
+    [code("{")] = true,
+    [code("<")] = true,
+    [code("(")] = true,
+    [code("}")] = true,
+    [code(">")] = true,
+    [code(")")] = true,
+    [code(":")] = true,
+    [code(",")] = true,
+    [code("?")] = true,
+    [code("=")] = true,
 }
 
-local SYMBOLS: {[string]: Symbols} = {
-    ["="] = "Equal",
-    [":"] = "Colon",
-    [","] = "Comma",
-    ["?"] = "Question",
-    ["&"] = "Ampersand"
+local KEYWORDS: {[Keywords]: true} = {
+    set = true,
+    map = true,
+    enum = true,
+    type = true,
+    event = true,
+    scope = true,
+    struct = true,
+    option = true,
+    ["function"] = true,
 }
 
-local DELIMITERS: {[string]: Delimiter} = {
-    ["{"] = "Brace",
-    ["}"] = "Brace",
-    ["<"] = "Arrow",
-    [">"] = "Arrow",
-    ["("] = "Round",
-    [")"] = "Round",
-}
+local function is_whitespace(byte: number): boolean
+    return byte == code(" ") 
+        or byte == code("\t")
+        or byte == code("\n")
+        or byte == code("\r")
+        or byte == code("\v")
+        or byte == code("\f")
+end
 
-local WHITESPACE = "^%s+"
+local function is_letter(byte: number): boolean
+    return (string.byte("a") <= byte and byte <= string.byte("z"))
+        or (string.byte("A") <= byte and byte <= string.byte("Z"))
+end
 
-local LEXEMES: {Matcher} = {
-    {
-        type = "Word",
-        pattern = "^[_%a][_%w]*"
-    },
-    {
-        type = "Number",  
-        pattern = "^%d+",
-        transformer = tonumber
-    },
-    {
-        type = "String",
-        pattern = '^".-"',
-        transformer = function(text: string): string
-            return string.sub(text, 2, #text - 1)
+local function is_numeral(byte: number): boolean
+    return string.byte("0") <= byte 
+        and byte <= string.byte("9")
+end
+
+local function tokenize(input: buffer): {Token}
+    --> lexer state
+    local line = 1
+    local position = 0
+    local character = 0
+    local length = buffer.len(input)
+
+    local last_line = line
+    local last_position = position
+    local last_character = character
+
+    local function peek(): number
+        if position >= length then
+            return 0
         end
-    },
+    
+        return buffer.readu8(input, position)
+    end
+    
+    local function save()
+        last_line = line
+        last_position = position
+        last_character = character
+    end
 
-    {
-        type = "Open",
-        pattern = "^[{%(<]",
-        transformer = function(text: string): Delimiter
-            return DELIMITERS[text]
+    local function advance()
+        save()
+        position += 1
+        character += 1
+    end
+    
+    local function newline()
+        save()
+        line += 1
+        character = -1
+    end
+    
+    local function to_string(start: Location)
+        local start_position = start.position
+        return buffer.readstring(input, start_position, position - start_position)
+    end
+    
+    local function to_location()
+        return location.create(position, line, character)
+    end
+
+    local function to_last_location()
+        return location.create(last_position, last_line, last_character)
+    end
+
+    local tokens: {Token} = table.create(64) :: any
+    
+    local function next_token(): Token?
+        local byte = peek()
+        local start = to_location()
+
+        --> eof
+        if byte == 0 then
+            return {
+                kind = "eof",
+                span = span.create(input, start, start)
+            }
         end
-    },
-    {
-        type = "Close",
-        pattern = "^[}%)>]",
-        transformer = function(text: string): Delimiter
-            return DELIMITERS[text]
+
+        --> first byte is always consumed
+        advance()
+
+        --> whitespace is lost when lexed, lossy lexer :(
+        if is_whitespace(byte) then
+            --> keep clearing whitespace
+            local temp = peek()
+            while is_whitespace(temp) do
+                if temp == code("\n") then
+                    newline()
+                end
+
+                advance()
+                temp = peek()
+            end
+
+            return
+        --> word, can't start with numeral
+        elseif is_letter(byte) or byte == code("_") then
+            --> consume full word
+            local temp = peek()
+            while is_letter(temp) or is_numeral(temp) or temp == code("_") do
+                advance()
+                temp = peek()
+            end
+            
+            local finish = to_last_location()
+            local value = to_string(start)
+            local value_span = span.create(input, start, finish)
+
+            if KEYWORDS[value :: any] == true then
+                return {kind = "keyword", span = value_span, value = value :: Keywords}
+            end
+
+            return {
+                kind = "word",
+                span = value_span,
+                value = value
+            }
+        elseif is_numeral(byte) then
+            byte = peek()
+
+            while is_numeral(byte) or byte == code("_") do
+                advance()
+                byte = peek()
+            end
+
+            local finish = to_last_location()
+            local value = to_string(start)
+
+            return {
+                kind = "number",
+                span = span.create(input, start, finish),
+                value = value
+            }
+        elseif byte == code("\"") then
+            while peek() ~= code("\"") do
+                advance()
+            end
+
+            advance()
+
+            local finish = to_last_location()
+            local value = to_string(start)
+            
+            return {
+                kind = "string",
+                span = span.create(input, start, finish),
+                value = value
+            }
         end
-    },
-    {
-        type = "Symbol",
-        pattern = "^%.%.",
-        transformer = function(text: string): Symbols
-            return "DotDot"
+
+        if SYMBOLS[byte] then
+            return { kind = string.char(byte) :: any, span = span.create(input, start, start) }
+        elseif byte == code(".") and peek() == code(".") then
+            advance()
+            return { kind = "..", span = span.create(input, start, to_last_location()) }
         end
-    },
-    {
-        type = "Symbol",
-        pattern = "^[?:=,&]",
-        transformer = function(text: string): Symbols
-            return SYMBOLS[text]
-        end
-    },
 
-    {
-        type = "Error",
-        pattern = "^.",
-    }   
-}
+        return {
+            kind = "error",
+            span = span.create(input, start, start),
+            value = to_string(start)
+        }
+    end
 
-local lexer = {}
-
-function lexer.tokenize(code: string): {Token}
-    local index = 1
-    local length = #code
-    local tokens: {Token} = table.create(64)
-
-    while (index <= length) do
-        local _, whitespace_finish = string.find(code, WHITESPACE, index)
-        if whitespace_finish then
-            index = whitespace_finish + 1
+    while true do
+        local token = next_token()
+        if token == nil then
             continue
         end
 
-        for _, lexeme in LEXEMES do
-            local start, finish = string.find(code, lexeme.pattern, index)
-            if not start or not finish then
-                continue
-            end
-
-            local token_span = span.create(code, start, finish)
-        
-            local text = token_span.text
-            local transformer = lexeme.transformer
-            
-            local data = if transformer then transformer(text) else text
-
-            index += #text
-            table.insert(tokens, {
-                type = lexeme.type,
-                data = data,
-                span = token_span
-            })
-
+        table.insert(tokens, token)
+          
+        --> end of file
+        if token.kind == "eof" then
             break
         end
     end
 
-    table.insert(tokens, {
-        type = "EndOfFile",
-        span = span.create(code, index, index)
-    })
-
     return tokens
 end
 
-return lexer
+return table.freeze({
+    tokenize = tokenize
+})

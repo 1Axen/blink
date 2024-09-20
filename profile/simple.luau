@@ -3,8 +3,9 @@
 
 --> Temporary file used for running profiling
 
-local lexer = require("../src/compiler/lexer")
-local code = [[option Casing = Pascal
+local lexer = require("../src/compiler/lexer_buffer")
+
+local input = buffer.fromstring([[option Casing = Pascal
 option TypesOutput = "../../Network/Types.luau"
 option ClientOutput = "../../Network/Client.luau"
 option ServerOutput = "../../Network/Server.luau"
@@ -412,6 +413,6 @@ scope ExampleScope {
         Call: SingleSync,
         Data: AnotherScope.ScopeWithinAnotherScope.ExampleType
     }
-}]]
+}]])
 
-lexer.tokenize(code)
+lexer.tokenize(input)

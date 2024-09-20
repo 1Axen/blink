@@ -129,9 +129,9 @@ local function combine_styles(text: string, ...: Styler): string
     return result
 end
 
-return {
+return table.freeze({
     combine = combine_styles,
-    modifer = {
+    modifer = table.freeze({
         dim = create_styler(2, 22),
         bold = create_styler(1, 22),
         italic = create_styler(3, 23),
@@ -141,8 +141,8 @@ return {
         underline = create_styler(4, 24),
         strikethrough = create_styler(9, 29),
         reset = create_styler(0, 0),
-    },
-    color = {
+    }),
+    color = table.freeze({
         red = create_styler(31, 39),
         blue = create_styler(34, 39),
         cyan = create_styler(36, 39),
@@ -160,5 +160,5 @@ return {
         bright_white = create_styler(97, 39),
         bright_yellow = create_styler(93, 39),
         bright_purple = create_styler(95, 39),
-    }
-}
+    })
+})

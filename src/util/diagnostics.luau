@@ -25,14 +25,18 @@
 local span = require("./span")
 local style = require("./style")
 local builder = require("builder")
+local location = require("location")
+
+type Span = span.Span
+type Location = location.Location
 
 type Line = {
-    span: span.Span,
+    span: Span,
     index: number,
 }
 
 type Group = {
-    span: span.Span,
+    span: Span,
     labels: {LabelState}
 }
 
@@ -40,7 +44,7 @@ type LabelKind = "Inline" | "Multiline"
 
 type LabelState = {
     kind: LabelKind,
-    span: span.Span,
+    span: Span,
     color: style.Styler,
     message: string,
 }
@@ -57,25 +61,24 @@ export type ReportKind = "Warning" | "Error"
 local GRAY = style.color.gray
 local BREAK = GRAY("┆")
 
-local function get_lines_in_span(code: string, lines: {string}, group_span: span.Span): {Line}
+local function get_lines_in_span(input: buffer, lines: {string}, group_span: Span): {Line}
     local result: {Line} = {}
 
-    local position = 1
-    for line_number, line_text in lines do
-        local start = position
-        local finish = (position + #line_text)
-        position = finish + 1
+    local group_start = group_span.start
+    local group_finish = group_span.finish
+    local position = (group_start.position - group_start.character)
 
-        if group_span.finish < start then
-            break
-        end
+    for line_number = group_start.line, group_finish.line do
+        local line = lines[line_number]
+        local length = #line 
+        local stripped_length = length - 2
 
-        if group_span.start > finish then
-            continue
-        end
+        local start = location.create(position, line_number, 0)
+        local finish = location.create(position + stripped_length, line_number, stripped_length)
+        position += length + 1
 
         table.insert(result, {
-            span = span.create(code, start, finish - 1),
+            span = span.create(input, start, finish),
             index = line_number,
         })
     end
@@ -85,11 +88,11 @@ end
 
 local label = {}
 
-function label.create(span: span.Span): Label
-    local kind = (string.find(span.text, "\n") and "Multiline" or "Inline")
+function label.create(label_span: Span): Label
+    local kind = (span.is_multiline(label_span) and "Multiline" or "Inline")
     local state: LabelState = {
         kind = kind :: LabelKind,
-        span = span,
+        span = label_span,
         order = 1,
         color = style.color.white,
         message = "Something happened"
@@ -115,7 +118,7 @@ end
 
 local report = {}
 
-function report.create(kind: ReportKind, file: string, code: string): Report
+function report.create(kind: ReportKind, file: string, input: buffer): Report
     local state: ReportState = {
         note = nil,
         labels = {},
@@ -148,7 +151,7 @@ function report.create(kind: ReportKind, file: string, code: string): Report
         --> Prevent state from being altered
         table.freeze(state)
 
-        local lines = string.split(code, "\n")
+        local lines = string.split(buffer.tostring(input), "\n")
         local result_builder = builder.create()
 
         --> Build report header
@@ -159,7 +162,6 @@ function report.create(kind: ReportKind, file: string, code: string): Report
             kind_header = style.color.yellow(string.format("[W%02i] Warning:", state.report_code))
         end
 
-        result_builder.append_line("")
         result_builder.append_line(`{kind_header} {state.message}`)
         result_builder.append_line(`    {GRAY("╭─")}[{file}:1:{#lines}]`)
         result_builder.append_line(`    {GRAY("│")}`)
@@ -167,23 +169,27 @@ function report.create(kind: ReportKind, file: string, code: string): Report
                                               
         --> Build labels
         table.sort(state.labels, function(a, b)
-            return a.span.start < b.span.start
+            return a.span.start.position < b.span.start.position
         end)
 
         local groups: {Group} = {}
         for _, label in state.labels do
             local matched = false
             local label_span = label.span
+            local label_start = label_span.start
+            local label_finish = label_span.finish
 
             for _, group in groups do
                 local group_span = group.span
                 if span.intersects(group_span, label_span) then
+                    local group_start = group_span.start
+                    local group_finish = group_span.finish
+
+                    local start = group_start.position < label_start.position and group_start or label_start
+                    local finish = group_finish.position > label_finish.position and group_finish or label_finish
+                    
                     matched = true
-                    group.span = span.create(
-                        code, 
-                        math.min(group_span.start, label_span.start), 
-                        math.max(group_span.finish, label_span.finish)
-                    )
+                    group.span = span.create(input, start, finish)
                     table.insert(group.labels, label)
                 end
             end
@@ -199,32 +205,38 @@ function report.create(kind: ReportKind, file: string, code: string): Report
         end
 
         for _, group in groups do
-            local group_lines = get_lines_in_span(code, lines, group.span)
+            local group_lines = get_lines_in_span(input, lines, group.span)
             local group_labels = group.labels
+
             for _, line in group_lines do
                 local labels: {LabelState} = {}
                 local line_span = line.span
+                local line_start = line_span.start.position
+                local line_finish = line_span.finish.position
                 local multiline_indent = ""
 
                 for _, label in group_labels do
                     local label_span = label.span
+                    local label_start = label_span.start.position
+                    local label_finish = label_span.finish.position
+
                     if label.kind == "Multiline" and span.intersects(line_span, label_span) then
                         local indent = "│ "
-                        if label_span.start >= line_span.start then
+                        if label_start >= line_start then
                             indent = "╭─▸"
-                        elseif label_span.finish <= line_span.finish then
+                        elseif label_finish <= line_finish then
                             indent = "├─▸"
                             table.insert(labels, label)
                         end
 
                         multiline_indent = label.color(indent)
-                    elseif label_span.start >= line_span.start and label_span.finish <= line_span.finish then
+                    elseif label_start >= line_start and label_finish <= line_finish then
                         table.insert(labels, label)
                     end
                 end
 
                 result_builder.append(`{style.color.gray(string.format("% 3i", line.index))} {GRAY("│")} {multiline_indent} `)
-                result_builder.append_line(line_span.text)
+                result_builder.append_line(span.to_string(line_span))
 
                 for _, label in labels do
                     local color = label.color
@@ -233,7 +245,9 @@ function report.create(kind: ReportKind, file: string, code: string): Report
                         result_builder.append_line(`    {BREAK} {color("╰────")} {label.message}`)
                     elseif label.kind == "Inline" then
                         local label_span = label.span
-                        local spaces = (label_span.start - line_span.start)
+                        local label_start = label_span.start.position
+
+                        local spaces = (label_start - line_start)
                         local underlines = span.length(label_span)
 
                         local first_half = (underlines - 1) // 2
@@ -256,7 +270,7 @@ function report.create(kind: ReportKind, file: string, code: string): Report
 
         --> Finish building report
         result_builder.append_line(GRAY("    │"))
-        result_builder.append_line(GRAY("────╯"))
+        result_builder.append(GRAY("────╯"))
 
         local report_result = result_builder.finish()
 
@@ -267,7 +281,6 @@ function report.create(kind: ReportKind, file: string, code: string): Report
             error = function(stido_error: ((string) -> ())?)
                 if stido_error then
                     stido_error(report_result)
-                    error(state.message, 2)
                 else
                     error(report_result, 2)
                 end
@@ -282,8 +295,8 @@ local any: any
 export type Label = typeof(label.create(any))
 export type Report = typeof(report.create(any, any, any))
 
-return {
+return table.freeze({
     style = style,
     report = report,
     label = label
-}
+})
