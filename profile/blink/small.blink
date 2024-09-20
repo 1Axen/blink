@@ -1,29 +1,30 @@
 type a = array<u8>
 type b = map<string, u8>
 
-type c = interface {
+struct c {
     field: u8
 }
 
-type d = enum {
+enum d = {
     option
 }
 
-type d_tagged<T> = enum "Type" {
+enum d_tagged<T> = "Type" {
     Some {
         Value: T
     },
     None {}
 }
 
-type e<K, V> = interface {
+struct e<K, V> {
     key: K,
     value: V
 }
 
-type f = interface {
+struct f {
+    ..c,
     some_field: u8
-} & c
+}
 
 event g {
     from: Server,
