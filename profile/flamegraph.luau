@@ -1,7 +1,7 @@
 local fs = require("@lune/fs")
 local process = require("@lune/process")
 
-local LuauResult = process.spawn("luau/luau.exe", {"--profile", "simple.luau"}, {cwd = process.cwd})
+local LuauResult = process.spawn("luau/luau.exe", {"--codegen", "--profile", "simple.luau"}, {cwd = process.cwd})
 assert(LuauResult.ok, LuauResult.stderr)
 
 local PythonResult = process.spawn("python", {"luau/perfgraph.py", "profile.out"}, {cwd = process.cwd})
