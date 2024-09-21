@@ -411,7 +411,6 @@ function Parser.Consume(self: Parser, Type: Lexer.Types): Token
     end
 
     --> Advance tokenizer
-    --print(Type, Token.Value, debug.info(2, "nl"))
     self.LookAhead = self.Lexer:GetNextToken()
 
     return Token
@@ -428,7 +427,6 @@ function Parser.TryConsume(self: Parser, Type: Lexer.Types): Token?
     end
 
     --> Advance lexer
-    --print(Type, Token.Value, debug.info(2, "nl"))
     self.LookAhead = self.Lexer:GetNextToken()
 
     return Token
@@ -577,19 +575,17 @@ function Parser.GetGenerics(self: Parser): Generics?
     return Generics
 end
 
-function Parser.SolveGenerics(self: Parser, Identifier: Token, Declaration: StructDeclaration)
+function Parser.SolveGenerics(self: Parser, Identifier: Token, Declaration: StructDeclaration): (StructDeclaration, {TypeDeclaration})
     local Generics = Declaration.Value.Generics
     if not Generics then
-        return
+        return Declaration, {}
     end
 
     local OpenToken = self:TryConsume("OpenChevrons")
     if not OpenToken then
-        Error.new(Error.AnalyzeInvalidGenerics, self.Source, `Type expects parameters list`, self.File)
+        error(Error.new(Error.AnalyzeInvalidGenerics, self.Source, `Type expects parameters list`, self.File)
             :Primary(self:Peek(), "")
-        :Emit()
-
-        return
+        :Emit())
     end
 
     local Maximum = Generics.Total
@@ -1349,8 +1345,6 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
 
     Value.Range, Value.Optional, Value.Array, Value.Components = Attributes.Range, Attributes.Optional, Attributes.Array, Attributes.Components
     Tokens.Range, Tokens.Optional, Tokens.Array = AttributesTokens.Range, AttributesTokens.Optional, AttributesTokens.Array
-
-    --print(Declaration)
 
     return Declaration
 end
