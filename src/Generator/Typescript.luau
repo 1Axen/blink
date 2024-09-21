@@ -228,6 +228,8 @@ function Generators.Event(State: State, Event: Parser.EventDeclaration)
     local Casing = State.Casing
     local StringBuilder = State.Builder
 
+	local IsPolling = if Value.Poll ~= nil then Value.Poll else State.Options.UsePolling
+
     local _, Values = "", "Value: void"
 	if Value.Data then
 		_, Values = GetTypescriptType(State, Value.Data)
@@ -238,7 +240,7 @@ function Generators.Event(State: State, Event: Parser.EventDeclaration)
         ListenerValues = `Player: Player, {Values}`
     end
 
-    if Value.Poll then
+    if IsPolling then
         ListenerValues = `Index: number, {ListenerValues}`
         ListenerValues = `LuaTuple<[{ListenerValues}]>`
     end
@@ -254,7 +256,7 @@ function Generators.Event(State: State, Event: Parser.EventDeclaration)
         else
             StringBuilder.Push(`{Casing.Fire}: ({Values}) => void`, 0, Indent + 1)
         end
-    elseif Value.Poll then
+    elseif IsPolling then
         StringBuilder.Push(`{Casing.Iter}: () => IterableFunction<{ListenerValues}>`, 0, Indent + 1)
     else
         StringBuilder.Push(`{Casing.On}: (Listener: ({ListenerValues}) => void) => (() => void)`, 0, Indent + 1)
