@@ -18,6 +18,9 @@ type B = CFrame[10]
 type C = CFrame?
 type D = Color3
 
+type DecimalRange = f32(-5.5..10.5)
+type NegativeRange = i8(-5..10)
+
 type IntegerVector = vector<i16>
 type HalfPrecisionCFrame = CFrame<f32, f16>
 

@@ -333,6 +333,10 @@ end
 
 ---- Utility Functions ----
 
+local function IsInteger(Number: number): boolean
+    return (Number // 1) == Number
+end
+
 local function GetFileSource(Path: string, Directory: string): (string?, string?)
     local IsROBLOX = (task ~= nil)
     if IsROBLOX then
@@ -670,17 +674,43 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
         end
 
         local Value = Token.Value
+        local Bounds = Primitive.Bounds
+        local Integer = Primitive.Integer
         
         --> Parse exact range bounds
-        local Single = tonumber(string.match(Value, "%((%d+)%)"))
+        local Single = tonumber(string.match(Value, "%((%-?%d+)%)"))
         if Single then
+            if Integer and IsInteger(Single) == false then
+                error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Expected an integer", self.File)
+                    :Primary(Token, "Expected an integer")
+                :Emit())
+            end
+
+            if Bounds and (Single > Bounds.Max or Single < Bounds.Min) then
+                error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Range outside bounds", self.File)
+                    :Primary(Token, `Expected a range within ({Bounds.Min}..{Bounds.Max})`)
+                :Emit())
+            end
+
             return NumberRange.new(Single), Token
         end
 
         --> Parse inexact range bounds
-        local Lower, Upper = string.match(Value, "%((%d+)..(%d+)%)")
+        local Lower, Upper = string.match(Value, "%((%-?%d*%.?%d+)%.%.(%-?%d*%.?%d+)%)")
         local Minimum, Maximum = tonumber(Lower), tonumber(Upper)
         if Minimum and Maximum then
+            if Integer and (IsInteger(Minimum) == false or IsInteger(Maximum) == false) then
+                error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Expected an integer", self.File)
+                    :Primary(Token, "Expected an integer")
+                :Emit())
+            end
+
+            if Bounds and (Maximum > Bounds.Max or Minimum < Bounds.Min) then
+                error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Range outside bounds", self.File)
+                    :Primary(Token, `Expected a range within ({Bounds.Min}..{Bounds.Max})`)
+                :Emit())
+            end
+
             return NumberRange.new(Minimum, Maximum), Token
         end
 

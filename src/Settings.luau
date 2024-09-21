@@ -25,6 +25,7 @@ export type Cases = {
 
 export type Primitive = {
     Bounds: NumberRange?,
+    Integer: boolean?,
     Component: boolean,
     AllowsRange: boolean,
     AllowsOptional: boolean,
@@ -54,6 +55,7 @@ local Cases = {
 local Primitives: {[string]: Primitive} = {
     u8 = {
         Bounds = NumberRange.new(0, 255),
+        Integer = true,
         Component = true,
         AllowsRange = true,
         AllowsOptional = true,
@@ -61,6 +63,7 @@ local Primitives: {[string]: Primitive} = {
     },
     u16 = {
         Bounds = NumberRange.new(0, 65535),
+        Integer = true,
         Component = true,
         AllowsRange = true,
         AllowsOptional = true,
@@ -68,6 +71,7 @@ local Primitives: {[string]: Primitive} = {
     },
     u32 = {
         Bounds = NumberRange.new(0, 4294967295),
+        Integer = true,
         Component = true,
         AllowsRange = true,
         AllowsOptional = true,
@@ -75,6 +79,7 @@ local Primitives: {[string]: Primitive} = {
     },
     i8 = {
         Bounds = NumberRange.new(-128, 127),
+        Integer = true,
         Component = true,
         AllowsRange = true,
         AllowsOptional = true,
@@ -82,6 +87,7 @@ local Primitives: {[string]: Primitive} = {
     },
     i16 = {
         Bounds = NumberRange.new(-32768, 32767),
+        Integer = true,
         Component = true,
         AllowsRange = true,
         AllowsOptional = true,
@@ -89,6 +95,7 @@ local Primitives: {[string]: Primitive} = {
     },
     i32 = {
         Bounds = NumberRange.new(-2147483648, 2147483647),
+        Integer = true,
         Component = true,
         AllowsRange = true,
         AllowsOptional = true,
@@ -122,7 +129,8 @@ local Primitives: {[string]: Primitive} = {
         AllowedComponents = 0
     },
     string = {
-        Bounds = NumberRange.new(0, 65535),
+        Bounds = NumberRange.new(0, 4294967295),
+        Integer = true,
         Component = false,
         AllowsRange = true,
         AllowsOptional = true,
@@ -135,7 +143,8 @@ local Primitives: {[string]: Primitive} = {
         AllowedComponents = 1
     },
     buffer = {
-        Bounds = NumberRange.new(0, 65535),
+        Bounds = NumberRange.new(0, 4294967295),
+        Integer = true,
         Component = false,
         AllowsRange = true,
         AllowsOptional = true,
