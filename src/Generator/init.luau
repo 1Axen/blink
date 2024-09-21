@@ -698,8 +698,8 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 		local Exhaust = Blocks.Block()
 			:Compare("Calls[InvocationIdentifier]", "nil", "Not")
 				--> Fail instead of closing/cancelling the thread
-				:Line("task.spawn(Calls[InvocationIdentifier], false)")
-				:Line("warn(debug.traceback(\"More than 256 calls are awaiting a response, a previous call has been dropped.\"))")
+				:Line("Invocations -= 1")
+				:Line("error(\"More than 256 calls are awaiting a response, this packet has been dropped.\")")
 			:End()
 		.Content
 
