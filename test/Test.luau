@@ -770,8 +770,42 @@ RunClosure("Queue up and poll", function()
 
         for _, Result in Context do
             if not CompareValues(Result, MergeStruct) then
-                ErrorPrint(`Xxpected to recieve: {Expect}, got "{Result}" instead.`)
+                ErrorPrint(`Expected to recieve: {Expect}, got "{Result}" instead.`)
             end
+        end
+    end
+end)
+
+RunClosure("Ranges should be enforced", function()
+    do
+        local UpperSuccess = pcall(function()
+            local buf = Client.DecimalRange.Write(11)
+            Client.DecimalRange.Read(buf)
+        end)
+
+        local LowerSuccess = pcall(function()
+            local buf = Client.DecimalRange.Write(-6)
+            Client.DecimalRange.Read(buf)
+        end)
+    
+        if UpperSuccess or LowerSuccess then
+            ErrorPrint("Expected integer range to be enforced.")
+        end
+    end
+
+    do
+        local UpperSuccess = pcall(function()
+            local buf = Client.DecimalRange.Write(10.6)
+            Client.DecimalRange.Read(buf)
+        end)
+
+        local LowerSuccess = pcall(function()
+            local buf = Client.DecimalRange.Write(-5.6)
+            Client.DecimalRange.Read(buf)
+        end)
+    
+        if UpperSuccess or LowerSuccess then
+            ErrorPrint("Expected decimal range to be enforced.")
         end
     end
 end)
