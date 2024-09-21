@@ -691,12 +691,22 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 		Block:Compare("Calls[InvocationIdentifier]", "nil", "Not")
 			:Lines(Deserialize.Content, Block.Indent + 1)
 			:Line(`task.spawn(Calls[InvocationIdentifier], Success, {ReturnArguments})`)
+			:Line("Calls[InvocationIdentifier] = nil")
 		:End()
 
 		--> Function listener body
-		local Error = `"Server encountered an exception while processing \\"{Value.Identifier}\\"."`
+		local Exhaust = Blocks.Block()
+			:Compare("Calls[InvocationIdentifier]", "nil", "Not")
+				--> Fail instead of closing/cancelling the thread
+				:Line("task.spawn(Calls[InvocationIdentifier], false)")
+				:Line("warn(debug.traceback(\"More than 256 calls are awaiting a response, a previous call has been dropped.\"))")
+			:End()
+		.Content
+
+		local Error = `"There was an exception while processing \\"{Value.Identifier}\\"."`
 		local Contents = Blocks.Block()
 			:Line("local InvocationIdentifier = Invoke()")
+			:Lines(Exhaust)
 			:Line(`{Util.GetTypesPath(DataIdentifier, true, Scope)}({DataArguments}, InvocationIdentifier)`)
 			:Line("Calls[InvocationIdentifier] = coroutine.running()")
 			:Line(`local Success, {ReturnValues} = coroutine.yield()`)
@@ -722,6 +732,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 
 			local Promise = Blocks.Function("", "Resolve, Reject, OnCancel")
 				:Line("local InvocationIdentifier = Invoke()")
+				:Lines(Exhaust)
 				:Line(`{Util.GetTypesPath(DataIdentifier, true, Scope)}({DataArguments}, InvocationIdentifier)`)
 				:Line("Calls[InvocationIdentifier] = coroutine.running()")
 				:Lines(OnCancel.Content, 1)
