@@ -22,7 +22,7 @@ Blink does two things to combat bad actors:
 2. As a result of the compression done by Blink it becomes **significantly harder** to snoop on your game's network traffic. Long gone are the days of skids using RemoteSpy to snoop on your game's traffic.
 
 # Get Started
-Head over to the [installation](https://1axen.github.io/blink/Installation) page to get started with Blink.
+Head over to the [installation](https://1axen.github.io/blink/getting-started/1-installation) page to get started with Blink.
 
 # Credits
 Credits to [Zap](https://zap.redblox.dev/) for the range and array syntax  
