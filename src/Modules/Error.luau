@@ -227,7 +227,7 @@ end
 
 function Error.Emit(self: Class): never
     self.Message ..= `\n    {Symbols.Down}`
-    self.Message ..= `\n{string.rep(Symbols.Line, 4)}{Symbols.LeftDown}`
+    self.Message ..= `\n{string.rep(Symbols.Line, 4)}{Symbols.LeftDown}\n`
 
     if IS_ROBLOX then
         local OnEmit: ((Class) -> ())? = Error.OnEmit
@@ -259,7 +259,11 @@ function Error.Emit(self: Class): never
             stdio.ewrite(self.Message)
         end
 
-        process.exit(1)
+        if _G.WATCH_THREAD then
+            error(self.RawMessage)
+        else
+            process.exit(1)
+        end
     end
 
     error("never")

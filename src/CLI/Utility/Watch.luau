@@ -5,6 +5,7 @@
 local fs = require("@lune/fs")
 local task = require("@lune/task")
 local stdio = require("@lune/stdio")
+local process = require("@lune/process")
 local dateTime = require("@lune/datetime")
 
 local Compile = require("./Compile")
@@ -19,6 +20,7 @@ local IMPORT_PATTERN = `import "([%w%/%.-_]+)"`
 local WATCH_OPTIONS: Compile.CompileOptions = {
     Debug = false,
     Silent = true,
+    Compact = false,
     YesToEverything = true,
     OutputAbstractSyntaxTree = false
 }
@@ -71,42 +73,39 @@ end
 
 function Utility.Watch(Path: string)
     local FilePath = GetDefinitionFilePath(Path)
-
     local Imports: {string};
-    local ShouldUpdateStatus = true
 
-    local function Recompile()
+    _G.WATCH_THREAD = true
+
+    local function Traverse()
         --> Resolve imports
         local OldImports = Imports and #Imports or 0
         Imports = BuildImportsArray(FilePath)
 
         if OldImports ~= #Imports then
-            ShouldUpdateStatus = true
-        end
-
-        --> Compile
-        Compile.Compile(Path, WATCH_OPTIONS)
-
-        --> Status
-        if ShouldUpdateStatus then
-            ShouldUpdateStatus = false
             print(`Blink is watching for changes:\n\tEntry: {Color("yellow", FilePath)}\n\tImports: {Color("yellow", tostring(#Imports - 1))}`)
         end
-
+        
         return true
     end
 
-    --> Initial compilation
-    local InitialSuccess, Why = pcall(Recompile)
+    local function Recompile()
+        Traverse()
+        Compile.Compile(Path, WATCH_OPTIONS)
+    end
+
+    --> Initial traversal
+    local InitialSuccess, Why = pcall(Traverse)
     if not InitialSuccess then
         warn(`There was an error while trying to start the watcher thread:\n{Why}`)
         return
     end
 
     --> Watch loop
-    local LastModification: {[string]: number} = {}
+    local Timestamps: {[string]: number} = {}
 
     while true do
+        local FileChanged = false
         for _, File in Imports do
             local Metadata = fs.metadata(File)
 
@@ -115,22 +114,17 @@ function Utility.Watch(Path: string)
                 continue
             end
 
-            local LastModified = LastModification[File]
-            if not LastModified then
-                LastModification[File] = Metadata.modifiedAt or 0
-                continue
-            end
+            local ModifiedAt = Metadata.modifiedAt and Metadata.modifiedAt.unixTimestampMillis or 0
+            local LastModifiedA = Timestamps[File]
+            Timestamps[File] = ModifiedAt
 
-            if Metadata.modifiedAt ~= LastModified then
-                local Success, Error = pcall(Recompile)
-                if not Success then
-                    warn(Error)
-                end
-
-                --> Prevent spam errors
-                table.clear(LastModification)
-                break
+            if ModifiedAt ~= LastModifiedA then
+                FileChanged = true
             end
+        end
+
+        if FileChanged then
+            pcall(Recompile)
         end
         
         task.wait(1)
