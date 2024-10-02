@@ -837,6 +837,8 @@ RunClosure("Ranges should be enforced", function()
         end
     end
 
+    Client.ExactRange.Write(0)
+
     Client.DecimalRange.Write(-5.5)
     Client.DecimalRange.Write(10)
 
