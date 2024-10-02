@@ -229,7 +229,7 @@ function Error.Emit(self: Class): never
     self.Message ..= `\n    {Symbols.Down}`
     self.Message ..= `\n{string.rep(Symbols.Line, 4)}{Symbols.LeftDown}\n`
 
-    if IS_ROBLOX then
+    if IS_ROBLOX or _G.BUNDLED == nil then
         local OnEmit: ((Class) -> ())? = Error.OnEmit
         if OnEmit then
             OnEmit(self)
