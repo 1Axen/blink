@@ -47,9 +47,6 @@ local TOKENS = {
     {"^,", "Comma"},
     {"^%.%.", "Merge"},
 
-    {"^import", "Import"},
-    {"^as", "As"},
-
     --> Comments
     {"^%-%-%[(=*)%[.-%]%1%]", "Comment"},
     {"^%-%-%[%[.-.*", "Comment"},
@@ -90,7 +87,11 @@ local TOKENS = {
     --> Complex patterns
     {"^[%w_]+%.[%w_%.]+", "Identifier"},
     {"^[%a_][%w_]*", function(Token: string)
-        if Keywords[Token] then
+        if Token == "import" then
+            return "Import", Token
+        elseif Token == "as" then
+            return "As", Token
+        elseif Keywords[Token] then
             return "Keyword", Token
         elseif Primitives[Token] then
             return "Primitive", Token
