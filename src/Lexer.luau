@@ -24,6 +24,9 @@ export type Token = {
 
 export type Mode = "Parsing" | "Highlighting"
 
+local DOTS = "%.%."
+local NUMBER = "%-?%d*%.?%d+"
+
 local Keywords = Settings.Keywords
 local Primitives = Settings.Primtives
 
@@ -57,11 +60,14 @@ local TOKENS = {
     {"^?", "Optional"},
     {`^%(%a+%)`, "Class"},
     {`^%[]`, "Array"},
-    {`^%(%-?%d+%)`, "Range"},
-    {`^%(%-?%d*%.?%d+%.%.%-?%d*%.?%d+%)`, "Range"},
-    {`^%[[%+%-]?%d+]`, "Array"},
-    {`^%[[%+%-]?%d+..[%+%-]?%d+]`, "Array"},
-    --{`^%b<>`, "Component"},
+    {`^%({NUMBER}%)`, "Range"},
+    {`^%({NUMBER}{DOTS}%)`, "Range"},
+    {`^%({DOTS}{NUMBER}%)`, "Range"},
+    {`^%({NUMBER}{DOTS}{NUMBER}%)`, "Range"},
+    {`^%[{NUMBER}%]`, "Array"},
+    {`^%[{NUMBER}{DOTS}%]`, "Array"},
+    {`^%[{NUMBER}{DOTS}%]`, "Array"},
+    {`^%[{NUMBER}{DOTS}{NUMBER}%]`, "Array"},
 
     {"^%(", "OpenParentheses"},
     {"^%)", "CloseParentheses"},

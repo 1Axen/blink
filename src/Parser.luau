@@ -292,6 +292,8 @@ local RESERVED = {
 
 local PRIMITIVES = Settings.Primtives
 local ARRAY_BOUNDS = NumberRange.new(0, (PRIMITIVES.u16.Bounds :: NumberRange).Max)
+local UINT_BOUNDS = (PRIMITIVES.u32.Bounds :: NumberRange)
+local DOUBLE_BOUNDS = (PRIMITIVES.f64.Bounds :: NumberRange)
 
 ---- Variables -----
 
@@ -654,12 +656,68 @@ function Parser.SolveGenerics(self: Parser, Identifier: Token, Declaration: Stru
 end
 
 function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?): (Attributes, AttributesTokens)
-    local function TryToParseOptional(): (boolean, Token?)
+    local function ParseOptional(): (boolean, Token?)
         local Token = self:TryConsume("Optional")
         return (Token ~= nil), Token
     end
 
-    local function TryToParseRange(): (NumberRange?, Token?)
+    local function ParseRangeUnified(Token: Lexer.Token, Bounds: NumberRange, Integer: boolean?): NumberRange
+        local Value = Token.Value
+        Value = string.sub(Value, 2, #Value - 1)
+
+        local function ParseRange(): NumberRange
+            local Single = tonumber(string.match(Value, `^(%-?%d*%.?%d+)$`))
+            if Single then
+                return NumberRange.new(Single)
+            end
+    
+            local LowerBounds = tonumber(string.match(Value, `^(%-?%d*%.?%d+)%.%.$`))
+            if LowerBounds then
+                return NumberRange.new(LowerBounds, Bounds.Max)
+            end
+
+            local UpperBounds = tonumber(string.match(Value, `^%.%.(%-?%d*%.?%d+)$`))
+            if UpperBounds then
+                return NumberRange.new(Bounds.Min, UpperBounds)
+            end
+
+            local Lower, Upper = string.match(Value, `^(%-?%d*%.?%d+)%.%.(%-?%d*%.?%d+)$`)
+            local Minimum, Maximum = tonumber(Lower), tonumber(Upper)
+            if Minimum and Maximum then
+                return NumberRange.new(Minimum, Maximum)
+            end
+
+            Error.new(Error.AnalyzeInvalidRange, self.Source, "Malformed range", self.File)
+                :Primary(Token, "Unable to parse range")
+            :Emit()
+
+            error("never")
+        end
+
+        local Range = ParseRange()
+
+        --> check int
+        if Integer and (IsInteger(Range.Min) == false or IsInteger(Range.Max) == false) then
+            Error.new(Error.AnalyzeInvalidRange, self.Source, "Expected an integer", self.File)
+                :Primary(Token, "Expected an integer")
+            :Emit()
+
+            error("never")
+        end
+
+        --> check bounds
+        if Range.Min < Bounds.Min or Range.Max > Bounds.Max then
+            Error.new(Error.AnalyzeInvalidRange, self.Source, "Range outside bounds", self.File)
+                :Primary(Token, `Expected a range within ({Bounds.Min}..{Bounds.Max})`)
+            :Emit()
+
+            error("never")
+        end
+
+        return Range
+    end
+
+    local function ParseRange(): (NumberRange?, Token?)
         if not Primitive then
             return
         end
@@ -669,60 +727,21 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
             return
         end
 
-        local Value = Token.Value
-        local Bounds = Primitive.Bounds
-        local Integer = Primitive.Integer
-        
-        --> Parse exact range bounds
-        local Single = tonumber(string.match(Value, "%((%-?%d+)%)"))
-        if Single then
-            if Integer and IsInteger(Single) == false then
-                error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Expected an integer", self.File)
-                    :Primary(Token, "Expected an integer")
-                :Emit())
-            end
-
-            if Bounds and (Single > Bounds.Max or Single < Bounds.Min) then
-                error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Range outside bounds", self.File)
-                    :Primary(Token, `Expected a range within ({Bounds.Min}..{Bounds.Max})`)
-                :Emit())
-            end
-
-            return NumberRange.new(Single), Token
-        end
-
-        --> Parse inexact range bounds
-        local Lower, Upper = string.match(Value, "%((%-?%d*%.?%d+)%.%.(%-?%d*%.?%d+)%)")
-        local Minimum, Maximum = tonumber(Lower), tonumber(Upper)
-        if Minimum and Maximum then
-            if Integer and (IsInteger(Minimum) == false or IsInteger(Maximum) == false) then
-                error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Expected an integer", self.File)
-                    :Primary(Token, "Expected an integer")
-                :Emit())
-            end
-
-            if Bounds and (Maximum > Bounds.Max or Minimum < Bounds.Min) then
-                error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Range outside bounds", self.File)
-                    :Primary(Token, `Expected a range within ({Bounds.Min}..{Bounds.Max})`)
-                :Emit())
-            end
-
-            return NumberRange.new(Minimum, Maximum), Token
-        end
-
-        error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Malformed range", self.File)
-            :Primary(Token, "Unable to parse range")
-        :Emit())
+        return ParseRangeUnified(
+            Token, 
+            Primitive.Bounds or DOUBLE_BOUNDS, 
+            Primitive.Integer
+        )
     end
 
-    local function TryToParseArray(): (Array?, Token?, Token?)
+    local function ParseArray(): (Array?, Token?, Token?)
         local Token = self:TryConsume("Array")
         if not Token then
             return
         end
 
         local Value = Token.Value
-        local Optional, OptionalToken = TryToParseOptional()
+        local Optional, OptionalToken = ParseOptional()
 
         --> Empty bounds
         if Value == "[]" then
@@ -732,28 +751,13 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
             }, Token, OptionalToken
         end
         
-        --> Parse exact range bounds
-        local Single = tonumber(string.match(Value, "%[(%d+)%]"))
-        if Single then
-            return {
-                Bounds = NumberRange.new(Single),
-                Optional = Optional,
-            }, Token, OptionalToken
-        end
+        --> Parse range
+        local Range = ParseRangeUnified(Token, ARRAY_BOUNDS, true)
 
-        --> Parse inexact range bounds
-        local Lower, Upper = string.match(Value, "%[(%d+)..(%d+)%]")
-        local Minimum, Maximum = tonumber(Lower), tonumber(Upper)
-        if Minimum and Maximum then
-            return {
-                Bounds = NumberRange.new(Minimum, Maximum),
-                Optional = Optional,
-            }, Token, OptionalToken
-        end
-
-        error(Error.new(Error.AnalyzeInvalidRange, self.Source, "Malformed array range", self.File)
-            :Primary(Token, "Unable to parse array range")
-        :Emit())
+        return {
+            Bounds = Range,
+            Optional = Optional,
+        }, Token, OptionalToken
     end
 
     local function TryToParseComponents(): {string}?
@@ -806,10 +810,10 @@ function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?):
         return Components
     end
 
-    local Range, RangeToken = TryToParseRange()
+    local Range, RangeToken = ParseRange()
     local Components = TryToParseComponents()
-    local Optional, OptionalToken = TryToParseOptional()
-    local Array, ArrayToken, ArrayOptionalToken = TryToParseArray()
+    local Optional, OptionalToken = ParseOptional()
+    local Array, ArrayToken, ArrayOptionalToken = ParseArray()
 
     if Primitive then
         if RangeToken and Primitive.AllowsRange == false then

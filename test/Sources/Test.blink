@@ -3,6 +3,7 @@ option Typescript = true
 option TypesOutput = "../../Network/Types.luau"
 option ClientOutput = "../../Network/Client.luau"
 option ServerOutput = "../../Network/Server.luau"
+option WriteValidations = true
 option ManualReplication = false
 
 import "./Sub-Sources/Source"
@@ -20,6 +21,8 @@ type D = Color3
 
 export type DecimalRange = f32(-5.5..10.5)
 export type NegativeRange = i8(-5..10)
+export type UnboundUpper = f32(-0.0..)
+export type UnboundLower = f32(..-0.0)
 
 type IntegerVector = vector<i16>
 type HalfPrecisionCFrame = CFrame<f32, f16>

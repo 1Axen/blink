@@ -473,9 +473,13 @@ end
 local function RunClosure(Name: string, Closure: () -> ())
     PrettyPrint("cyan", `Testing: {Name}...`, true)
 
-    local Success, Error = pcall(Closure)
+    local Trace: string?;
+    local Success = xpcall(Closure, function(Error)
+        Trace = debug.traceback(`Failed "{Name}": {Error}`, 2)
+    end)
+
     if not Success then
-        ErrorPrint(Error)
+        ErrorPrint(Trace or `Failed "{Name}"`)
     end
 
     OkPrint(`Test "{Name}" passed!`)
@@ -779,13 +783,11 @@ end)
 RunClosure("Ranges should be enforced", function()
     do
         local UpperSuccess = pcall(function()
-            local buf = Client.DecimalRange.Write(11)
-            Client.DecimalRange.Read(buf)
+            Client.NegativeRange.Write(11)
         end)
 
         local LowerSuccess = pcall(function()
-            local buf = Client.DecimalRange.Write(-6)
-            Client.DecimalRange.Read(buf)
+            Client.NegativeRange.Write(-6)
         end)
     
         if UpperSuccess or LowerSuccess then
@@ -795,19 +797,57 @@ RunClosure("Ranges should be enforced", function()
 
     do
         local UpperSuccess = pcall(function()
-            local buf = Client.DecimalRange.Write(10.6)
-            Client.DecimalRange.Read(buf)
+            Client.DecimalRange.Write(10.6)
         end)
 
         local LowerSuccess = pcall(function()
-            local buf = Client.DecimalRange.Write(-5.6)
-            Client.DecimalRange.Read(buf)
+            Client.DecimalRange.Write(-5.6)
         end)
     
         if UpperSuccess or LowerSuccess then
             ErrorPrint("Expected decimal range to be enforced.")
         end
     end
+
+    do
+        local UpperSuccess = pcall(function()
+            Client.UnboundUpper.Write(2^53 + 1)
+        end)
+
+        local LowerSuccess = pcall(function()
+            Client.UnboundUpper.Write(-1)
+        end)
+    
+        if UpperSuccess or LowerSuccess then
+            ErrorPrint("Expected unbound upper range to be enforced.")
+        end
+    end
+
+    do
+        local UpperSuccess = pcall(function()
+            Client.UnboundLower.Write(1)
+        end)
+
+        local LowerSuccess = pcall(function()
+            Client.UnboundLower.Write(-(2^53 + 1))
+        end)
+    
+        if UpperSuccess or LowerSuccess then
+            ErrorPrint("Expected unbound upper range to be enforced.")
+        end
+    end
+
+    Client.DecimalRange.Write(-5.5)
+    Client.DecimalRange.Write(10)
+
+    Client.NegativeRange.Write(-5)
+    Client.NegativeRange.Write(10)
+
+    Client.UnboundUpper.Write(0)
+    Client.UnboundUpper.Write(16777216)
+
+    Client.UnboundLower.Write(-16777216)
+    Client.UnboundLower.Write(0)
 end)
 
 PrettyPrint("green", `All tests passed successfully!`)
