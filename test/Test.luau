@@ -441,23 +441,23 @@ local function FireAndPollExpect(Name: string, OutgoingEvent: any, IncomingEvent
     local Result = "this is wrong"
     local IsServerSending = (OutgoingEvent.FireAll ~= nil)
     local IsServerRecieving = (OutgoingEvent.FireAll == nil)
+    local FireEvent = IsServerSending and OutgoingEvent.FireAll or OutgoingEvent.Fire
 
-    if IsServerSending then
-        OutgoingEvent.FireAll(Expect)
-    else
-        OutgoingEvent.Fire(Expect)
-    end
+    FireEvent(Expect)
 
     --> Wait for replication
     task.wait(1 / 30)
     
-    do
-        local _, First, Second = IncomingEvent.Iter()()
+    for Index, First, Second in IncomingEvent.Iter() do
+        if Index ~= 1 then
+            ErrorPrint(`Failed "{Name}", expected only 1 event in the queue.`)
+        end
+
         if IsServerRecieving then
             if tostring(First) ~= "Player" then
                 ErrorPrint(`Expected argument #1 to {Name} to be Player, got {First} instead.`)
             end
-
+    
             Result = Second
         else
             Result = First
