@@ -50,17 +50,18 @@ if stdio.prompt("confirm", "Compile files?") then
     PrettyPrint("green", `Successfully compiled {#Sources}/{#Sources} source files!`)
 end
 
-local ClientEnviornment = require("Client")
-local ServerEnviornment = require("Server")
+local BaseEnvironment = require("Shared").GetEnvironment()
+local ClientEnvironment = require("Client")
+local ServerEnvironment = require("Server")
 
 _G.client = {
-    game = ClientEnviornment.game,
-    buffer = ClientEnviornment.buffer
+    game = ClientEnvironment.game,
+    Color3 = ClientEnvironment.Color3,
 }
 
 _G.server = {
-    game = ServerEnviornment.game,
-    buffer = ServerEnviornment.buffer
+    game = ServerEnvironment.game,
+    Color3 = ClientEnvironment.Color3,
 }
 
 local Client = require("../Network/Client")
@@ -437,7 +438,7 @@ end
 local function FireAndPollExpect(Name: string, OutgoingEvent: any, IncomingEvent: any, Expect: any)
     PrettyPrint("cyan", `Testing: {Name}...`, true)
 
-    local Result: unknown;
+    local Result = "this is wrong"
     local IsServerSending = (OutgoingEvent.FireAll ~= nil)
     local IsServerRecieving = (OutgoingEvent.FireAll == nil)
 
@@ -451,7 +452,7 @@ local function FireAndPollExpect(Name: string, OutgoingEvent: any, IncomingEvent
     task.wait(1 / 30)
     
     do
-        local _, First, Second = IncomingEvent.Next()()
+        local _, First, Second = IncomingEvent.Iter()()
         if IsServerRecieving then
             if tostring(First) ~= "Player" then
                 ErrorPrint(`Expected argument #1 to {Name} to be Player, got {First} instead.`)
@@ -619,6 +620,21 @@ FireAllAndExpectAll("Many events", 32, {
 FireAndExpect("TagEnum Join", Server.PlayerEvent, Client.PlayerEvent, {Type = "Join", Name = "Player", UserId = 5})
 FireAndExpect("TagEnum Chat", Server.PlayerEvent, Client.PlayerEvent, {Type = "Chat", UserId = 5, Message = "Hello"})
 FireAndExpect("TagEnum Leave", Server.PlayerEvent, Client.PlayerEvent, {Type = "Leave", UserId = 5})
+
+RunClosure("Color3", function()
+    local Color = BaseEnvironment.Color3.fromRGB(
+        math.random(0, 255),
+        math.random(0, 255),
+        math.random(0, 255)
+    )
+
+    local Serialized = Server.Color.Write(Color)
+    local Deserialized = Server.Color.Read(Serialized)
+
+    assert(Color.R == Deserialized.R, `Expected {Color.R}, got {Deserialized.R}`)
+    assert(Color.G == Deserialized.G, `Expected {Color.G}, got {Deserialized.G}`)
+    assert(Color.B == Deserialized.B, `Expected {Color.B}, got {Deserialized.B}`)
+end)
 
 RunClosure("Nested Map", function()
     local Map = {string = 1}

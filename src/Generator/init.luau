@@ -58,6 +58,7 @@ local DEBUG_GLOBALS = {
 	"end\n",
 	"local task = require(\"@lune/task\")\n",
 	"local game = _G.%s.game\n",
+	"local Color3 = _G.%s.Color3\n",
 }
 
 local IGNORED_TYPES_IN_SHARED = {
@@ -1263,7 +1264,12 @@ function Generator.Generate(FileContext: Context, AbstractSyntaxTree: Parser.Bod
 	local Globals = {}
 	if not _G.BUNDLED then
 		Globals = table.clone(DEBUG_GLOBALS)
-		Globals[#Globals] = string.format(Globals[#Globals], string.lower(Context))
+		for Index, Macro in Globals do
+			local HasPattern = (string.find(Macro :: string, "%s", 1, true) ~= nil)
+			if HasPattern then
+				Globals[Index] = string.format(Macro :: string, string.lower(Context))
+			end
+		end
 	end
 
 	Noop.Push(`\})`, 0, 1)

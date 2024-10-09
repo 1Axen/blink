@@ -19,6 +19,8 @@ type B = CFrame[10]
 type C = CFrame?
 type D = Color3
 
+export type Color = Color3
+
 export type ExactRange = f32(0)
 export type DecimalRange = f32(-5.5..10.5)
 export type NegativeRange = i8(-5..10)

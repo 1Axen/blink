@@ -1,7 +1,7 @@
 local Shared = require("Shared")
 
 local Signal = Shared.Signal
-local ServerEnviornment = Shared.GetEnviornment()
+local ServerEnviornment = Shared.GetEnvironment()
 
 local function Clone(Source: buffer): buffer
     local Size = buffer.len(Source)

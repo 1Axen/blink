@@ -32,7 +32,7 @@ function Signal:Connect(Callback: (...unknown) -> (unknown))
 end
 
 --> Game emulation enviornment
-local function GetEnviornment()
+local function GetEnvironment()
     local Instances = {}
     local Services = {
         Players = {
@@ -75,6 +75,15 @@ local function GetEnviornment()
         end
     end)
 
+    local Color3 = {}
+    function Color3.new(R: number, G: number, B: number): Color3
+        return table.freeze({R = R, G = G, B = B, __typeof = "Color3"}) :: any
+    end
+
+    function Color3.fromRGB(R: number, G: number, B: number): Color3
+        return Color3.new(R / 255, G / 255, B / 255)
+    end
+
     return {
         game = {
             GetService = function(self, Service: string)
@@ -83,6 +92,7 @@ local function GetEnviornment()
             end
         },
 
+        Color3 = Color3,
         Services = Services,
         Instances = Instances
     }
@@ -92,6 +102,6 @@ return {
     Signal = Signal,
     Player = Player,
     Bridge = Signal.new(),
-    GetEnviornment = GetEnviornment
+    GetEnvironment = GetEnvironment
 }
 
