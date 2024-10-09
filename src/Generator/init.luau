@@ -1261,13 +1261,13 @@ function Generator.Generate(FileContext: Context, AbstractSyntaxTree: Parser.Bod
 	Reliables = Reliables:End():End()
 	Unreliables = Unreliables:End():End()
 
-	local Globals = {}
+	local Globals: {string} = {}
 	if not _G.BUNDLED then
 		Globals = table.clone(DEBUG_GLOBALS)
 		for Index, Macro in Globals do
-			local HasPattern = (string.find(Macro :: string, "%s", 1, true) ~= nil)
+			local HasPattern = (string.find(Macro, "%s", 1, true) ~= nil)
 			if HasPattern then
-				Globals[Index] = string.format(Macro :: string, string.lower(Context))
+				Globals[Index] = string.format(Macro, string.lower(Context))
 			end
 		end
 	end
