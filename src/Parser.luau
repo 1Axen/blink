@@ -459,13 +459,16 @@ function Parser.ConsumeAll(self: Parser, ...: Lexer.Types): (...Token)
 end
 
 --> Used to consume identifiers without getting "Expected Identifier, got Keyword" errors
---> Does not accept primitives in order to prevent developers from shooting themselves in the foot ex:
---> type u8 = u32
---> type a = u8 -- A developer might expect this to reference u8 but it won't
+--> Boolean flag here is code smell but this codebase is already EOL and will soonish be replaced by the rewrite
 
-function Parser.ConsumeText(self: Parser): Token
+function Parser.ConsumeText(self: Parser, ConsumePrimitives: boolean?): Token
     --> Get text token
-    local Token = self:ConsumeAny("As", "Import", "Boolean", "Keyword", "Identifier")
+    local Token: Token;
+    if ConsumePrimitives then
+        Token = self:ConsumeAny("As", "Import", "Boolean", "Keyword", "Identifier", "Primitive")
+    else
+        Token = self:ConsumeAny("As", "Import", "Boolean", "Keyword", "Identifier")
+    end
 
     --> Convert token to identifier token
     return {
@@ -1362,7 +1365,7 @@ function Parser.Set(self: Parser, Identifier: Token): SetDeclaration
             break
         end
 
-        local Token = self:ConsumeText()
+        local Token = self:ConsumeText(true)
         table.insert(Values, Token.Value)
 
         if self:TryConsume("CloseBraces") then
@@ -1439,7 +1442,7 @@ function Parser.Enum(self: Parser, Identifier: Token): EnumDeclaration | TagEnum
             break
         end
 
-        local Token = self:ConsumeText()
+        local Token = self:ConsumeText(true)
         table.insert(Values, Token.Value)
 
         if self:TryConsume("CloseBraces") then
@@ -1468,7 +1471,7 @@ function Parser.TagEnum(self: Parser, Tag: Token, Identifier: Token): TagEnumDec
             break
         end
 
-        local Token = self:ConsumeText()
+        local Token = self:ConsumeText(true)
         local Struct = self:Struct(Token)
         local Fields = Struct.Value.Values
 
@@ -1576,7 +1579,7 @@ function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
                 Fields[FieldIdentifier] = true
             end
         else --> fields
-            local Text = self:ConsumeText()
+            local Text = self:ConsumeText(true)
             if Fields[Text.Value] then
                 error(Error.new(Error.AnalyzeDuplicateField, self.Source, `Duplicate field "{Text.Value}"`, self.File)
                     :Primary(Text, `Duplicate field`)

@@ -111,6 +111,22 @@ struct Example {
     }
 }
 
+set PrimitiveFlag = {
+    CFrame
+}
+
+enum PrimitiveEnum = {
+    CFrame
+}
+
+enum PrimitiveTagEnum = "Type" {
+    CFrame {}
+}
+
+struct PrimitiveField {
+    CFrame: u8
+}
+
 struct GenericMerge<A, B> {
     Data: A,
     AnotherNested: struct {
