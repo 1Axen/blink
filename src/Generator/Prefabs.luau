@@ -459,7 +459,7 @@ do
 			local R = Block:Read(BYTE)
 			local G = Block:Read(BYTE)
 			local B = Block:Read(BYTE)
-			Block:Line(`{Block:Declare(Variable)} = Color3.new(buffer.readu8({RECIEVE_BUFFER}, {R}), buffer.readu8({RECIEVE_BUFFER}, {G}), buffer.readu8({RECIEVE_BUFFER}, {B}))`)
+			Block:Line(`{Block:Declare(Variable)} = Color3.fromRGB(buffer.readu8({RECIEVE_BUFFER}, {R}), buffer.readu8({RECIEVE_BUFFER}, {G}), buffer.readu8({RECIEVE_BUFFER}, {B}))`)
 		end,
 		Write = function(Value: string, Block: Block)
 			Block:Line(`local Color = {Value}`)
