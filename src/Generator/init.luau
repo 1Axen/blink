@@ -69,6 +69,7 @@ local IGNORED_TYPES_IN_SHARED = {
 type Type = Parser.TypeDeclaration
 type Scope = Parser.Scope
 type Context = "Client" | "Server" | "Shared"
+type NumberRange = {Min: number, Max: number}
 
 local Scope: Scope;
 local Context: Context;
@@ -235,14 +236,6 @@ function Declarations.Tuple(Declaration: Parser.TupleDeclaration, Read: Blocks.B
 		local Variable = `Value{Index}`
 		Generators.UserType(Value :: Type, Read, Write, Variable)
 	end
-end
-
-function Declarations.Reference(Declaration: Parser.ReferenceDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
-    local Value = Declaration.Value
-	local Reference = Value.Declaration
-
-	--> Inline reference
-	Generators.UserType(Reference, Read, Write, Variable)
 end
 
 function Declarations.TagEnum(Declaration: Parser.TagEnumDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
@@ -766,6 +759,53 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 	Return.PushLines(Body.DumpLines(), 0)
 end
 
+function Declarations.Array(Declaration: Parser.ArrayDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
+	local Value = Declaration.Value
+	local Of = Value.Declaration
+	local Range = Value.Range :: NumberRange
+
+	Read:Comment("START ARRAY")
+	Write:Comment("START ARRAY")
+
+	local Lower = Range.Min
+	local Upper = Range.Max
+
+	local Iterator = `Item_{Read.Indent}`
+	local IsVariableSize = (Lower ~= Upper)
+
+	--> Length
+	if IsVariableSize then
+		local LengthType = Prefabs.GetTypeToUse(Upper)
+		LengthType.Read("Length", Read)
+		local Assert = Prefabs.Asserts.number("Length", Lower, Upper)
+
+		Read:Line(Assert.Lower)
+		Read:Line(Assert.Upper)
+		LengthType.Write(`#{Variable}`, Write)
+	else
+		Read:Line(`local Length = {Upper}`)
+	end
+
+	--> Array
+	Read:Line(`{Read:Declare(Variable)} = table.create(Length)`)
+
+	--> Body
+	Read = Read:Loop("Index = 1", "Length")
+	Write = Write:Loop("Index = 1", IsVariableSize and `#{Variable}` or Upper)
+
+	Write:Line(`local {Iterator} = {Variable}[Index]`)
+	Generators.UserType(Of, Read, Write, Iterator)
+
+	Read:Line(`table.insert({Variable}, {Iterator})`)
+
+	--> End
+	Read = Read:End()
+	Write = Write:End()
+
+	Read:Comment("END ARRAY")
+	Write:Comment("END ARRAY")
+end
+
 --> Generator functions
 function Generators.Optional(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string, Default: boolean?): (Blocks.Block, Blocks.Block)
 	if 
@@ -785,12 +825,11 @@ end
 
 function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string?)
 	local Value = Declaration.Value
-	local Array = Value.Array
 	local Optional = Value.Optional
 	local IsInstance, IsUnknown;
 
 	local Variable = Variable or "Value"
-	local ActualVariable = Array and `Item_{Read.Indent}` or Variable
+	--local Variable = Array and `Item_{Read.Indent}` or Variable
 
 	if Declaration.Type == "Primitive" then
 		local Tokens = (Declaration :: Parser.PrimitiveDeclaration).Tokens
@@ -806,12 +845,16 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 	end
 
 	--> Instance
-	if IsInstance and Array == nil then
+	if IsInstance then
 		Read:Line("RecieveInstanceCursor += 1")
 	end
 
+	--[[if IsInstance and Array == nil then
+		Read:Line("RecieveInstanceCursor += 1")
+	end]]
+
 	--> Array
-	if Array then
+	--[[if Array then
 		if Array.Optional then
 			Read:Declare(Variable, true)
 			Read, Write = Generators.Optional(Declaration, Read, Write, Variable, true)
@@ -824,33 +867,33 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 		if IsInstance then
 			Read:Line("RecieveInstanceCursor += 1")
 		end
-	end
+	end]]
 
 	--> Optional
 	if Optional then
-		Read:Declare(ActualVariable, true)
-		Read, Write = Generators.Optional(Declaration, Read, Write, ActualVariable)
+		Read:Declare(Variable, true)
+		Read, Write = Generators.Optional(Declaration, Read, Write, Variable)
 	end
 
 	if Declaration.Type == "Primitive" then
-        Declarations.Primitive(Declaration, Read, Write, ActualVariable)
+        Declarations.Primitive(Declaration, Read, Write, Variable)
 	elseif Declaration.Type == "Set" then
-		Declarations.Set(Declaration, Read, Write, ActualVariable)
+		Declarations.Set(Declaration, Read, Write, Variable)
 	elseif Declaration.Type == "Map" then
-		Declarations.Map(Declaration, Read, Write, ActualVariable)
+		Declarations.Map(Declaration, Read, Write, Variable)
 	elseif Declaration.Type == "Enum" then
-		Declarations.Enum(Declaration, Read, Write, ActualVariable)
+		Declarations.Enum(Declaration, Read, Write, Variable)
 	elseif Declaration.Type == "Struct" then
-		Declarations.Struct(Declaration, Read, Write, ActualVariable)
+		Declarations.Struct(Declaration, Read, Write, Variable)
 	elseif Declaration.Type == "Tuple" then
 		Declarations.Tuple(Declaration, Read, Write)
 	elseif Declaration.Type == "TagEnum" then
-		Declarations.TagEnum(Declaration, Read, Write, ActualVariable)
-	elseif Declaration.Type == "Reference" then
-		Declarations.Reference(Declaration, Read, Write, ActualVariable)
+		Declarations.TagEnum(Declaration, Read, Write, Variable)
+	elseif Declaration.Type == "Array" then
+		Declarations.Array(Declaration, Read, Write, Variable)
     end
 
-	if Array then
+	--[[if Array then
 		Read:Line(`table.insert({Variable}, {ActualVariable})`)
 		Read = Read:End()
 		Write = Write:End()
@@ -861,7 +904,7 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 			Read = Read:End()
 			Write = Write:End()
 		end
-	end
+	end]]
 
 	if Optional then
 		Read:End()
@@ -898,7 +941,7 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?, Prefix
 		Type = `\{{table.concat(Entries)}\}`
 	elseif Declaration.Type == "Enum" then
 		local Value = (Declaration :: Parser.EnumDeclaration).Value
-		Type = Util.GenerateEnumLiterals(Value.Values)
+		Type = `({Util.GenerateEnumLiterals(Value.Values)})`
 	elseif Declaration.Type == "TagEnum" then
 		local Value = (Declaration :: Parser.TagEnumDeclaration).Value
 		local Literals = {}
@@ -929,10 +972,6 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?, Prefix
 		Type = `\{ {table.concat(Fields, ", ")}\ }`
 	elseif Declaration.Type == "Generic" then
 		Type = `{Declaration.Value.Generic}`
-	elseif Declaration.Type == "Reference" then
-		local Value = (Declaration :: Parser.ReferenceDeclaration).Value
-		local Reference = Value.Declaration.Value
-		Type = `{Util.GetScopePrefix(Reference.Scope, false, Scope)}{Reference.Identifier}` 
 	elseif Declaration.Type == "Tuple" then
 		local Value = (Declaration :: Parser.TupleDeclaration).Value
 		local TupleValues = Value.Values
@@ -953,10 +992,13 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?, Prefix
 		Type = table.concat(Types, ", ")
 		Values = table.concat(VariableTypes, ", ")
 		Returns = table.concat(Variables, ", ")
+	elseif Declaration.Type == "Array" then
+		local Value = Declaration.Value
+		local Of = Value.Declaration
+		Type = `\{ {Generators.LuauType(Of)} }`
 	end
 
 	local Value = Declaration.Value
-	local Array = Value.Array
 
 	if Value.Parameters then
 		local Parameters = {}
@@ -975,13 +1017,6 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?, Prefix
 		Type = `({Type})?`
 	end
 
-	if Array then
-		Type = `\{{Type}\}`
-		if Array.Optional then
-			Type = `({Type})?`
-		end
-	end
-
 	--> Generalized type generation, works for everything except tuples
 	if Declaration.Type ~= "Tuple" then
 		Values = `{Prefix}Value: {UseTypeAsValue and Type or Export}`
@@ -992,11 +1027,7 @@ end
 
 function Generators.Type(Declaration: Type)
 	local Value = Declaration.Value
-	local Identifier = Value.Identifier
-	local Type, Values, Export, Returns = Generators.LuauType(Declaration)
-
-	local Read = Blocks.Function(Util.GetTypesPath(Identifier, false, Scope), "", `({Export})`)
-	local Write = Blocks.Function(Util.GetTypesPath(Identifier, true, Scope), Values, "()")
+	local Type, _, Export = Generators.LuauType(Declaration)
 
 	local Generics = ""
 	if Value.Generics then
@@ -1006,16 +1037,6 @@ function Generators.Type(Declaration: Type)
 		end
 
 		Generics = `<{table.concat(Types, ",")}>`
-	else
-		--Read:Line(`local {Values};`)
-		Generators.UserType(Declaration, Read, Write)
-		Read:Return(Returns)
-
-		Read:End()
-		Write:End()
-
-		UserTypes.PushLines(Read.Content, 1, 0)
-		UserTypes.PushLines(Write.Content, 1, 0)
 	end
 
 	--> Write luau export
@@ -1058,8 +1079,10 @@ function Generators.Export(Declaration: Type)
 	Read:Comment("Buffer read")
 	Write:Comment("Buffer write")
 
-	Read:Line(`local {Values} = {Util.GetTypesPath(Identifier, false, Scope)}()`)
-	Write:Line(`{Util.GetTypesPath(Identifier, true, Scope)}({Returns})`)
+	--Read:Line(`local {Values} = {Util.GetTypesPath(Identifier, false, Scope)}()`)
+	--Write:Line(`{Util.GetTypesPath(Identifier, true, Scope)}({Returns})`)
+
+	Generators.UserType(Declaration, Read, Write)
 
 	--> Restore buffer
 	Read:Comment("Buffer restore")
