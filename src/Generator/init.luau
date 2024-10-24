@@ -1032,11 +1032,27 @@ function Generators.Type(Declaration: Type)
 	local Generics = ""
 	if Value.Generics then
 		local Types = {}
-		for Generic in Value.Generics.Indices do
+		for _, Generic in Value.Generics.List do
 			table.insert(Types, Generic)
 		end
 
 		Generics = `<{table.concat(Types, ",")}>`
+	else
+		local Identifier = Value.Identifier
+		local _, Values, _, Returns = Generators.LuauType(Declaration)
+
+		local Read = Blocks.Function(Util.GetTypesPath(Identifier, false, Scope), "", `({Export})`)
+		local Write = Blocks.Function(Util.GetTypesPath(Identifier, true, Scope), Values, "()")
+
+		--Read:Line(`local {Values};`)
+		Generators.UserType(Declaration, Read, Write)
+		Read:Return(Returns)
+
+		Read:End()
+		Write:End()
+
+		UserTypes.PushLines(Read.Content, 1, 0)
+		UserTypes.PushLines(Write.Content, 1, 0)
 	end
 
 	--> Write luau export

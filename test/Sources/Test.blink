@@ -34,6 +34,8 @@ type InstanceArray = Instance(Sound)[10]
 type InstanceArrayOptional = Instance(Sound)[10]?
 type ConstrainedArray = u8(0..10)[10]
 
+export type MultiDimensionalArray = u8[][][]
+
 enum States = { A, B, C, D }
 
 set Flags8 = {F1, F2, F3, F4, F5, F6, F7, F8}
@@ -127,7 +129,10 @@ struct PrimitiveField {
     CFrame: u8
 }
 
+map GenericMap<A, B> = {[A]: B}
+
 struct GenericMerge<A, B> {
+    Map: GenericMap<A, B>,
     Data: A,
     AnotherNested: struct {
         Value: B

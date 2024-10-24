@@ -33,10 +33,9 @@ type Node<Type, Body, Tokens> = {
 }
 
 type Generics = {
-    Total: number,
     Span: Error.Span,
-    Keys: {[number]: string},
-    Indices: {[string]: number}
+    List: {string},
+    Keys: {[string]: {GenericDeclaration}},
 }
 
 type Reference = {
@@ -552,13 +551,12 @@ function Parser.GetGenerics(self: Parser): Generics?
 
     --> Parse generics
     local Generics: Generics = {
-        Total = 0,
+        Keys = {},
+        List = {},
         Span = {
             Start = OpenChevrons.Start,
             End = OpenChevrons.End + 1
         },
-        Keys = {},
-        Indices = {}
     }
 
     while true do
@@ -566,14 +564,11 @@ function Parser.GetGenerics(self: Parser): Generics?
             break
         end
 
-        local Index = (Generics.Total + 1)
         local Token = self:ConsumeText()
-        local Identifier = Token.Value
-        
-        Generics.Total = Index
-        Generics.Span.End += (Token.End - Token.Start)
-        Generics.Keys[Index] = Identifier
-        Generics.Indices[Identifier] = Index
+
+        Generics.Span.End = Token.End
+        Generics.Keys[Token.Value] = {}
+        table.insert(Generics.List, Token.Value)
 
         if self:Peek().Type ~= "CloseChevrons" then
             self:Consume("Comma")
@@ -734,6 +729,40 @@ end
 
 function Parser.Optional(self: Parser): Token?
     return self:TryConsume("Optional")
+end
+
+function Parser.ReplaceGenerics(self: Parser, Of: TypeDeclaration, Previous: {[string]: TypeDeclaration}?): TypeDeclaration
+    local Clone = Table.DeepClone(Of) :: StructDeclaration
+    local Generics = Clone.Value.Generics :: Generics
+    Clone.Value.Generics = nil
+
+    --> Parse generics input
+    self:Consume("OpenChevrons")
+
+    for Index = 1, #Generics.List do
+        local Key = Generics.List[Index]
+        local Token = self:Peek()
+        local Replacement = self:Type(Token)
+
+        local List = Generics.Keys[Key]
+        for _, Generic in List do
+            local Identifier = Generic.Value.Identifier
+            local ReplacementClone = Table.DeepClone(Replacement) :: TypeDeclaration
+            ReplacementClone.Value.Identifier = Identifier
+
+            Generic.Type = ReplacementClone.Type
+            Generic.Value = ReplacementClone.Value
+            Generic.Tokens = ReplacementClone.Tokens
+        end
+
+        if Index < #Generics.List then
+            self:Consume("Comma")
+        end
+    end
+
+    self:Consume("CloseChevrons")
+    
+    return Clone
 end
 
 ---- Top-Level Parsing Functions ----
@@ -926,10 +955,10 @@ function Parser.Declarations(self: Parser): {Declaration}
         end
 
         --> Generics
-        --[[local Generics: Generics?;
+        local Generics: Generics?;
         if KeywordSettings.Generics then
             Generics = self:GetGenerics()
-        end]]
+        end
 
         --> Parse declaration
         if Type == "Type" then
@@ -955,16 +984,16 @@ function Parser.Declarations(self: Parser): {Declaration}
                     :Primary(Export, `Remove export here`)
                 :Emit()
             --> Prevent types with generics from being exported
-            --[[elseif Generics then
+            elseif Generics then
                 Error.new(Error.AnalyzeInvalidExport, self.Source, `Generic types can't be exported`, self.File)
                     :Primary(Export, `Remove export here`)
-                :Emit()]]
+                :Emit()
             end
 
             Declaration.Value.Export = true
         end
 
-        --[[if Generics then
+        if Generics then
             if Declaration.Type == "Enum" then
                 Error.new(Error.AnalyzeInvalidGenerics, self.Source, `Unit enums don't support generics`, self.File)
                     :Primary(Generics.Span, "Remove generics")
@@ -973,7 +1002,7 @@ function Parser.Declarations(self: Parser): {Declaration}
 
             self.Generics = nil
             Declaration.Value.Generics = Generics
-        end]]
+        end
 
         if Type ~= "Scope" then
             self:SetReference(Bucket, Identifier, Declaration)
@@ -1461,15 +1490,8 @@ function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
 
         --> struct merging
         if self:TryConsume("Merge") then
-            local Text = self:ConsumeText()
-            local Reference = self:Reference("Types", Text.Value) :: Reference
-            if not Reference then
-                error(Error.new(Error.AnalyzeUnknownReference, self.Source, `Unknown reference`, self.File)
-                    :Primary(Text, "Unknown reference")
-                :Emit())
-            end
-
-            local Declaration = Reference.Declaration
+            local Text = self:Peek()
+            local Declaration = self:Declaration(Identifier)
             if Declaration.Type ~= "Struct" then
                 error(Error.new(Error.AnalyzeReferenceInvalidType, self.Source, `Expected a struct to merge, got "{Declaration.Type}" instead`, self.File)
                     :Primary(Text, `Expected a "Struct", got "{Declaration.Type}" instead`)
@@ -1477,10 +1499,6 @@ function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
             end
 
             local Struct: StructDeclaration = Declaration :: StructDeclaration
-            --[[if Struct.Value.Generics then
-                Struct = self:SolveGenerics(Identifier, Struct)
-            end]]
-        
             local StructValues = Struct.Value.Values
             for _, Field in StructValues do
                 local FieldIdentifier = Field.Value.Identifier
@@ -1554,17 +1572,19 @@ function Parser.Declaration(self: Parser, Identifier: Token): TypeDeclaration
 
     --> Generics reference resolution
     local Generics = self.Generics
-    local Generic = Generics and Generics.Indices[Token.Value]
-
-    if Generic then
-        return {
+    local List = (Generics and Generics.Keys[Token.Value])
+    if List then
+        local Declaration: GenericDeclaration = {
             Type = "Generic",
             Value = {
                 Identifier = Identifier.Value,
                 Generic = Token.Value
             },
             Tokens = {}
-        } :: GenericDeclaration
+        }
+
+        table.insert(List, Declaration)
+        return Declaration
     end
 
     --> Normal reference resolution
@@ -1575,7 +1595,12 @@ function Parser.Declaration(self: Parser, Identifier: Token): TypeDeclaration
         :Emit())
     end
 
-    return Reference.Declaration
+    local To = Reference.Declaration
+    if GENERICS_TYPES[To.Type] and To.Value.Generics then
+        To = self:ReplaceGenerics(To)
+    end
+
+    return To
 end
 
 return Parser

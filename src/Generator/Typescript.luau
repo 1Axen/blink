@@ -1,3 +1,5 @@
+--!strict
+
 local Parser = require("../Parser")
 local Settings = require("../Settings")
 
@@ -89,10 +91,6 @@ local function GetTypescriptType(State: State, Declaration: Type): (string, stri
 		Type = `\{ {table.concat(Fields, ", ")}\ }`
 	elseif Declaration.Type == "Generic" then
 		Type = `{Declaration.Value.Generic}`
-	elseif Declaration.Type == "Reference" then
-		local Value = (Declaration :: Parser.ReferenceDeclaration).Value
-		local Reference = Value.Declaration.Value
-		Type = `{Util.GetScopePrefix(Reference.Scope, true, State.Scope)}{Reference.Identifier}` 
 	elseif Declaration.Type == "Tuple" then
 		local Value = (Declaration :: Parser.TupleDeclaration).Value
 		local TupleValues = Value.Values
@@ -111,20 +109,15 @@ local function GetTypescriptType(State: State, Declaration: Type): (string, stri
 
 		Type = `{table.concat(Types, ", ")}`
         Values = table.concat(VariableTypes, ", ")
+	elseif Declaration.Type == "Array" then
+		local Value = Declaration.Value
+		local Of = Value.Declaration
+		Type = `{GetTypescriptType(State, Of)}[]`
 	end
 
 	local Value = Declaration.Value
-	local Array = Value.Array
-
 	if Value.Optional then
 		Type = `{Type} | undefined`
-	end
-
-	if Array then
-		Type = `{Type}[]`
-		if Array.Optional then
-			Type = `{Type} | undefined`
-		end
 	end
 
 	if Value.Parameters then
@@ -162,7 +155,7 @@ function Generators.Type(State: State, Type: Type)
     local Generics = ""
 	if Value.Generics then
 		local Types = {}
-		for Generic in Value.Generics.Indices do
+		for _, Generic in Value.Generics.List do
 			table.insert(Types, Generic)
 		end
 
@@ -304,7 +297,7 @@ end
 
 return function(FileContext: Context, AbstractSyntaxTree: AbstractSyntaxTree): string
     local Options = AbstractSyntaxTree.Value.Options
-    local Casing = Settings.GetCasing(Options.Casing or "Pascal")
+    local Casing = Settings.GetCasing(Options.Casing or "Pascal" :: any)
     local StringBuilder = Builder.new()
 
     StringBuilder.Push(VERSION_HEADER)
