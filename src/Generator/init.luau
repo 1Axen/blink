@@ -975,7 +975,6 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?, Prefix
 end
 
 function Generators.Type(Declaration: Type)
-	local Name = Declaration.Name
 	local Value = Declaration.Value
 	local Type, _, Export = Generators.LuauType(Declaration)
 
@@ -987,21 +986,6 @@ function Generators.Type(Declaration: Type)
 		end
 
 		Generics = `<{table.concat(Types, ",")}>`
-	else
-		local _, Values, _, Returns = Generators.LuauType(Declaration)
-
-		local Read = Blocks.Function(Util.GetTypesPath(Name, false, Scope), "", `({Export})`)
-		local Write = Blocks.Function(Util.GetTypesPath(Name, true, Scope), Values, "()")
-
-		--Read:Line(`local {Values};`)
-		Generators.UserType(Declaration, Read, Write)
-		Read:Return(Returns)
-
-		Read:End()
-		Write:End()
-
-		UserTypes.PushLines(Read.Content, 1, 0)
-		UserTypes.PushLines(Write.Content, 1, 0)
 	end
 
 	--> Write luau export
