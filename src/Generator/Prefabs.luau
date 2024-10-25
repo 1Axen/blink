@@ -7,7 +7,7 @@ local Parser = require("../Parser")
 type Block = Blocks.Block
 type Writer = (Value: string, Block: Block, Range: NumberRange?, Components: {string}?) -> ()
 type Reader = (Variable: string, Block: Block, Range: NumberRange?, Components: {string}?) -> ()
-type Generate = (Declaration: Parser.PrimitiveDeclaration, Variable: string?, Read: Block, Write: Block, WriteValidations: boolean?) -> ()
+type Generate = (Declaration: Parser.Primitive, Variable: string?, Read: Block, Write: Block, WriteValidations: boolean?) -> ()
 
 type TypePrefab = {
 	Read: Reader,
@@ -79,7 +79,7 @@ local Structures = {
 	Array = nil :: any
 }
 local Primitives: {[string]: {
-	Type: string | (Declaration: Parser.PrimitiveDeclaration) -> string,
+	Type: string | (Declaration: Parser.Primitive) -> string,
 	Generate: Generate
 }} = {}
 
@@ -110,7 +110,7 @@ local function GetTypeToUseByBits(UpperBits: number): TypePrefab
 end
 
 local function GeneratePrimitivePrefab(Type: string, Prefab: TypePrefab, AssertGenerator: AssertGenerator?): Generate
-	return function(Declaration: Parser.PrimitiveDeclaration, Variable: string?, Read: Block, Write: Block, WriteValidations: boolean?)
+	return function(Declaration: Parser.Primitive, Variable: string?, Read: Block, Write: Block, WriteValidations: boolean?)
 		local Value = Declaration.Value
 		local Tokens = Declaration.Tokens
 		local Variable = Variable or "Value"
@@ -257,41 +257,6 @@ Primitives.f16 = {
 	Type = "number",
 	Generate = GeneratePrimitivePrefab("number", Types.f16, Asserts.number)
 }
-
---> Structures
-Structures.Array = function(Variable: string, Read: Block, Write: Block, Bounds: NumberRange, Iterator: string?): (Block, Block)
-	local Lower = Bounds.Min
-	local Upper = Bounds.Max
-	local ReadArray, WriteArray;
-
-	local Iterator = Iterator or "Item"
-	local IsVariableSize = (Lower ~= Upper)
-
-	--> Length
-	if IsVariableSize then
-		local LengthType = GetTypeToUse(Upper)
-		LengthType.Read("Length", Read)
-		local Assert = Asserts.number("Length", Lower, Upper)
-
-		Read:Line(Assert.Lower)
-		Read:Line(Assert.Upper)
-		LengthType.Write(`#{Variable}`, Write)
-	else
-		Read:Line(`local Length = {Upper}`)
-	end
-
-	--> Array
-	Read:Line(`{Read:Declare(Variable)} = table.create(Length)`)
-
-	--> Body
-	ReadArray = Read:Loop("Index = 1", "Length")
-	WriteArray = Write:Loop("Index = 1", IsVariableSize and `#{Variable}` or Upper)
-
-	--ReadArray:Line(Read:Declare(Iterator))
-	WriteArray:Line(`local {Iterator} = {Variable}[Index]`)
-
-	return ReadArray, WriteArray
-end
 
 --> Boolean
 do

@@ -1,8 +1,8 @@
 local fs = require("@lune/fs")
-local net = require("@lune/net")
 local task = require("@lune/task")
 local stdio = require("@lune/stdio")
 local process = require("@lune/process")
+local Format = require("../src/Modules/Format")
 
 local Compiler = "init"
 local Sources = fs.readDir("./Sources")
@@ -76,43 +76,80 @@ local function GetFlags(Amount: number): {[string]: boolean}
     return Flags
 end
 
-function CompareTables(a, b)
-    if a == b then 
-        return true 
-    end
-
-    if type(a) == "buffer" and type(b) == "buffer" then
-        return buffer.tostring(a) == buffer.tostring(b)
-    end
-
-    if type(a) ~= type(b) then 
-        return false 
-    end
-
-    if type(a) ~= "table" then 
-        return false 
-    end
-
-    for Key, Value in a do
-        if not CompareTables(Value, b[Key]) then
-            return false
-        end
-    end
-
-    for Key, Value in b do
-        if not CompareTables(Value, a[Key]) then 
-            return false 
-        end
-    end
-
-    return true
+local function Fail(Name: string, Expect: any, Got: any)
+    ErrorPrint(`Failed "{Name}"\nExpected: {Format(Expect)}\nGot: {Format(Got)}.`)
 end
 
-function CompareValues(a, b): boolean
-    if type(a) == "table" or type(b) == "table" then
-        return CompareTables(a, b)
-    end
-    return (a == b)
+local function Equals(a, b)
+    local Cyclic = {}
+	local function Compare(a, b)
+        local TypeA = type(a)
+        local TypeB = type(b)
+
+        if TypeA ~= TypeB then
+            return false
+        end
+
+        if TypeA == "table" then
+            if Cyclic[a] then
+                return Cyclic[a] == b
+            end
+
+            Cyclic[a] = b
+
+            local KeysB = {}
+            local TableKeysB = {}
+
+            for Key in b do
+                if type(Key) == "table" then 
+                    table.insert(TableKeysB, Key) 
+                end
+
+                KeysB[Key] = true
+            end
+
+            for KeyA, ValueA in pairs(a) do
+                local ValueB = b[KeyA]
+                if type(KeyA) == "table" then
+                    local Match = false
+                    for Index, Key in TableKeysB do
+                        if Equals(KeyA, Key) and Compare(ValueA, b[Key]) then
+                            Match = true
+                            KeysB[Key] = nil
+                            table.remove(TableKeysB, Index)
+                            break
+                        end
+                    end
+
+                    if Match == false then 
+                        return false 
+                    end
+                else
+                    if ValueB == nil then 
+                        return false 
+                    end
+
+                    KeysB[KeyA] = nil
+
+                    if not Compare(ValueA, ValueB) then 
+                        return false 
+                    end
+                end
+            end
+            
+            if next(KeysB) then 
+                return false 
+            end
+
+            return true
+        elseif TypeA == "buffer" then
+            return buffer.tostring(a) == buffer.tostring(b)
+        end
+
+        return a == b
+	end
+
+    return Compare(a, b)
 end
 
 local function FireAndFail(Name: string, OutgoingEvent: any, IncomingEvent: any, Data: any)
@@ -123,7 +160,7 @@ local function FireAndFail(Name: string, OutgoingEvent: any, IncomingEvent: any,
         Result = if (Second ~= nil) then Second else First
     end)
 
-    local Success, Error = pcall(function()
+    local Success = pcall(function()
         if OutgoingEvent.FireAll then
             OutgoingEvent.FireAll(Data)
         else
@@ -175,8 +212,8 @@ local function FireAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: an
     --> Wait for replication
     task.wait(1 / 30)
 
-    if not CompareValues(Result, Expect) then
-        ErrorPrint(`Failed "{Name}", expected to recieve: {Expect}, got "{Result}" instead.`)
+    if not Equals(Result, Expect) then
+        Fail(Name, Expect, Result)
     end
 
     Disconnect()
@@ -213,7 +250,7 @@ local function InvokeAndExpect(Name: string, ClientFunction: any, ServerFunction
             ErrorPrint(`Expected server {Name} to recieve {Data}, got {ServerRecieve} instead.`)
         end
     
-        if not CompareValues(Result, Data) then
+        if not Equals(Result, Data) then
             ErrorPrint(`Expected client {Name} to recieve {Data}, got {Result} instead.`)
         end
     end
@@ -241,8 +278,8 @@ local function QueueAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: a
     --> Wait for queue to empty
     task.wait(1 / 30)
 
-    if not CompareValues(Result, Expect) then
-        ErrorPrint(`Failed "{Name}", queue expected to recieve: {Expect}, got "{Result}" instead.`)
+    if not Equals(Result, Expect) then
+        Fail(Name, Expect, Result)
     end
 
     Disconnect()
@@ -252,13 +289,13 @@ end
 local function FireAndExpectAll(Name: string, OutgoingEvent: any, IncomingEvent: any, Values: {any})
     PrettyPrint("cyan", `Testing: {Name}...`, true)
 
-    local Index = 0
+    local Events = 0
     local Results: {unknown} = {}
     local Disconnect = IncomingEvent.On(function(First, Second)
         local Value = (if Second ~= nil then Second else First)
 
-        Index += 1
-        Results[Index] = Value
+        Events += 1
+        Results[Events] = Value
     end)
 
     local Method = OutgoingEvent.FireAll or OutgoingEvent.Fire
@@ -271,8 +308,8 @@ local function FireAndExpectAll(Name: string, OutgoingEvent: any, IncomingEvent:
 
     for Index, Expect in Values do
         local Result = Results[Index]
-        if not CompareValues(Expect, Result) then
-            ErrorPrint(`Failed "{Name}", expected to recieve: {Expect} at {Index}, got {Result} instead.`)
+        if not Equals(Expect, Result) then
+            Fail(Name, Expect, Result)
         end
     end
 
@@ -312,7 +349,7 @@ local function FireAllAndExpectAll(Name: string, Times: number, Events: {[string
         local EventResults = Results[Index]
         for ResultIndex = 1, Times do
             local Result = EventResults[ResultIndex]
-            if not CompareValues(Data, Result) then
+            if not Equals(Data, Result) then
                 ErrorPrint(`Failed "{Name}" at {Index}, mismatched value at {ResultIndex}.`)
             end
         end
@@ -341,7 +378,7 @@ local function FireAndExpectTuple(Name: string, OutgoingEvent: any, IncomingEven
 
     for Index, Expect in {...} do
         local Result = Results[Index]
-        if not CompareValues(Expect, Result) then
+        if not Equals(Expect, Result) then
             ErrorPrint(`Failed "{Name}", mismatched value at {Index}. Expected {Expect}, got {Result} instead.`)
         end
     end
@@ -371,11 +408,11 @@ local function InvokeAndExpectTuple(Name: string, ClientFunction: any, ServerFun
     if not Success then
         ErrorPrint(`Expected {Name} to succeed but it encountered an error, {Error}.`)
     elseif Success and Return then
-        if not CompareValues(ServerRecieve, Data) then
+        if not Equals(ServerRecieve, Data) then
             ErrorPrint(`Expected server {Name} to recieve {Data}, got {ServerRecieve} instead.`)
         end
     
-        if not CompareValues(ClientRecieve, Return) then
+        if not Equals(ClientRecieve, Return) then
             ErrorPrint(`Expected client {Name} to recieve {Data}, got {ClientRecieve} instead.`)
         end
     end
@@ -423,8 +460,8 @@ local function FireManyAndExpectMany(Name: string, Count: number, OutgoingEvent:
     end
 
     for _, Result in Results do
-        if not CompareValues(Result, Expect) then
-            ErrorPrint(`Failed "{Name}", expected to recieve: {Expect}, got "{Result}" instead.`)
+        if not Equals(Result, Expect) then
+            Fail(Name, Expect, Result)
         end
     end
 
@@ -464,8 +501,8 @@ local function FireAndPollExpect(Name: string, OutgoingEvent: any, IncomingEvent
         end
     end
 
-    if not CompareValues(Result, Expect) then
-        ErrorPrint(`Failed "{Name}", expected to recieve: {Expect}, got "{Result}" instead.`)
+    if not Equals(Result, Expect) then
+        Fail(Name, Expect, Result)
     end
 
     OkPrint(`Test "{Name}" passed!`)
@@ -670,7 +707,7 @@ RunClosure("Standalone", function()
     local Serialized = Server.Standalone.Write(Original)
     local Deserialized = Server.Standalone.Read(Serialized)
 
-    assert(CompareTables(Original, Deserialized), "Deserialized doesn't match original")
+    assert(Equals(Original, Deserialized), "Deserialized doesn't match original")
 end)
 
 RunClosure("Disconnect & Queue", function()
@@ -741,11 +778,21 @@ local MergeStruct: Server.MergeStruct = {
     Enum = "A",
     Nested = {
         Guh = 1,
-        Array = table.create(10, 0)
+        Array = table.create(10, 0),
     },
     AnotherNested = {
         Value = 1
     },
+    Map = {
+        [{0}] = 0
+    },
+    Struct = {
+        Data = 0,
+        Array = {0},
+        Nested = {
+            Value = "hi"
+        }
+    }
 }
 
 FireAndPollExpect("Poll Reliable Client", Client.ClientPollEvent, Server.ClientPollEvent, MergeStruct)
@@ -789,8 +836,8 @@ RunClosure("Queue up and poll", function()
         end
 
         for _, Result in Context do
-            if not CompareValues(Result, MergeStruct) then
-                ErrorPrint(`Expected to recieve: {Expect}, got "{Result}" instead.`)
+            if not Equals(Result, MergeStruct) then
+                Fail("Closure", Expect, Result)
             end
         end
     end
@@ -866,6 +913,16 @@ RunClosure("Ranges should be enforced", function()
 
     Client.UnboundLower.Write(-16777216)
     Client.UnboundLower.Write(0)
+end)
+
+RunClosure("Multi Dimensional Array", function()
+    local Array = {{{1, 2, 3, 4, 5, 6}}}
+    local Serialized = Client.MultiDimensionalArray.Write(Array)
+    local Deserialized = Client.MultiDimensionalArray.Read(Serialized)
+
+    if not Equals(Array, Deserialized) then
+        ErrorPrint(`Expected: {Format(Array)}, got: {Format(Deserialized)} instead`)
+    end
 end)
 
 PrettyPrint("green", `All tests passed successfully!`)

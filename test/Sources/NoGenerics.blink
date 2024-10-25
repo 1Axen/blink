@@ -34,8 +34,6 @@ type InstanceArray = Instance(Sound)[10]
 type InstanceArrayOptional = Instance(Sound)[10]?
 type ConstrainedArray = u8(0..10)[10]
 
-export type MultiDimensionalArray = u8[][][]
-
 enum States = { A, B, C, D }
 
 set Flags8 = {F1, F2, F3, F4, F5, F6, F7, F8}
@@ -59,15 +57,6 @@ enum ArrayEnum = {A, B, C}[0..20]
 struct ArrayStruct {
 
 }[0..20]
-
-struct Generic<A, B, C> {
-    Data: A,
-    Array: A[],
-    Optional: C?,
-    Nested: struct {
-        Value: B
-    }
-}
 
 type struct = u8
 struct Conflict {
@@ -129,20 +118,8 @@ struct PrimitiveField {
     CFrame: u8
 }
 
-map GenericMap<K, V> = {[K]: V}
-
-struct GenericMerge<A, B> {
-    Map: GenericMap<A[], B>,
-    Data: A,
-    Struct: Generic<u8, string, B[]>,
-    AnotherNested: struct {
-        Value: B
-    }
-}
-
 struct MergeStruct {
     ..Example,
-    ..GenericMerge<u8, f64>
 }
 
 struct MapStruct {
@@ -290,20 +267,6 @@ event Booleans {
     type: Reliable,
     call: SingleAsync,
     data: boolean[]
-}
-
-event Generic {
-    From: Server,
-    Type: Reliable,
-    Data: Generic<u8, u8, u8>,
-    Call: SingleSync
-}
-
-event GenericArray {
-    From: Server,
-    Type: Reliable,
-    Data: Generic<u8, u8, u8>[]?,
-    Call: SingleSync
 }
 
 event Unknown {

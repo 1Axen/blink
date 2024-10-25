@@ -5,6 +5,7 @@
 local Lexer = require("./Lexer")
 local Table = require("./Modules/Table")
 local Error = require("./Modules/Error")
+local Format = require("./Modules/Format")
 local PathParser = require("./Modules/Path")
 
 local Settings = require("./Settings")
@@ -28,29 +29,29 @@ type Token = Lexer.Token
 type Type = "Type" | "Event" | "Scope"
 type Node<Type, Body, Tokens> = {
     Type: Type,
+    Name: string,
     Value: Body,
     Tokens: Tokens
 }
 
 type Generics = {
-    Total: number,
     Span: Error.Span,
-    Keys: {[number]: string},
-    Indices: {[string]: number}
+    List: {string},
+    Keys: {[string]: {Generic}},
+}
+
+type Reference = {
+    Name: Token,
+    To: TypeNode
 }
 
 export type Scope = {
-    Identifier: Token,
+    Name: Token,
     Parent: Scope?,
     Symbols: {
         Types: {[string]: Reference},
         Scopes: {[string]: Scope},
     },
-}
-
-type Array = {
-    Bounds: NumberRange,
-    Optional: boolean
 }
 
 type EventOption = {
@@ -62,24 +63,15 @@ type EventOption = {
 
 type Attributes = {
     Scope: Scope?,
-    Array: Array?,
     Range: NumberRange?,
     Export: boolean?,
-    Optional: boolean?,
     Generics: Generics?,
-    Parameters: {TypeDeclaration}?,
+    Parameters: {TypeNode}?,
     Components: {string}?
 }
 
 type AttributesTokens = {
-    Array: Token?,
     Range: Token?,
-    Optional: Token?
-}
-
-type Reference = {
-    Identifier: Token,
-    Declaration: Declaration
 }
 
 export type Options = {
@@ -102,84 +94,85 @@ export type Body = Node<"Body", {
     Declarations: {Declaration}
 }, {}>
 
-type Declarations = "Map" | "Set" | "Enum" | "TagEnum" | "Tuple" | "Struct" | "Primitive" | "Generic" | "Reference" | "Event" | "Function" | "Scope" 
-export type TypeDeclaration = MapDeclaration | SetDeclaration | EnumDeclaration | TagEnumDeclaration | TupleDeclaration | StructDeclaration | PrimitiveDeclaration | GenericDeclaration | ReferenceDeclaration
+type Declarations = "Map" | "Set" | "Enum" | "TagEnum" | "Tuple" | "Struct" | "Primitive" | "Generic" | "Array" | "Event" | "Function" | "Scope" | "Optional"
+export type TypeNode = 
+    | Map 
+    | Set 
+    | Enum 
+    | TagEnum 
+    | Tuple 
+    | Struct 
+    | Primitive 
+    | Generic 
+    | Array
+    | Optional
 
 export type Declaration = Node<Declarations, {
-    Identifier: string,
     [any]: any
 }, {
     [any]: any
 }>
 
-export type SetDeclaration = Node<"Set", {
-    Identifier: string,
+export type Array = Node<"Array", {
+    Of: TypeNode
+} & Attributes, AttributesTokens>
+
+export type Optional = Node<"Optional", {
+    Of: TypeNode
+} & Attributes, AttributesTokens>
+
+export type Set = Node<"Set", {
     Values: {string}
 } & Attributes, AttributesTokens>
 
-export type MapDeclaration = Node<"Map", {
-    Identifier: string,
-    Values: {TypeDeclaration}
+export type Map = Node<"Map", {
+    Values: {TypeNode}
 } & Attributes, AttributesTokens>
 
-export type EnumDeclaration = Node<"Enum", {
-    Identifier: string,
+export type Enum = Node<"Enum", {
     Values: {string}
 } & Attributes, AttributesTokens>
 
-export type TagEnumDeclaration = Node<"TagEnum", {
-    Identifier: string,
+export type TagEnum = Node<"TagEnum", {
     Tag: string,
-    Values: {StructDeclaration}
+    Values: {Struct}
 } & Attributes, AttributesTokens>
 
-export type StructDeclaration = Node<"Struct", {
-    Identifier: string,
-    Values: {TypeDeclaration}
+export type Struct = Node<"Struct", {
+    Values: {TypeNode}
 } & Attributes, AttributesTokens>
 
-export type PrimitiveDeclaration = Node<"Primitive", {
-    Identifier: string,
+export type Primitive = Node<"Primitive", {
     Class: string?,
     Primitive: Settings.Primitive,
 } & Attributes, {
     Primitive: Token,
 } & AttributesTokens>
 
-export type GenericDeclaration = Node<"Generic", {
-    Identifier: string,
+export type Generic = Node<"Generic", {
     Generic: string,
 } & Attributes, AttributesTokens>
 
-export type ReferenceDeclaration = Node<"Reference", {
-    Identifier: string,
-    Declaration: TypeDeclaration
+export type Tuple = Node<"Tuple", {
+    Values: {TypeNode}
 } & Attributes, AttributesTokens>
 
-export type TupleDeclaration = Node<"Tuple", {
-    Identifier: string,
-    Values: {TypeDeclaration}
-} & Attributes, AttributesTokens>
-
-export type EventDeclaration = Node<"Event", {
-    Identifier: string,
+export type Event = Node<"Event", {
     From: "Client" | "Server",
     Type: "Reliable" | "Unreliable",
     Call: "SingleSync" | "SingleAsync" | "ManySync" | "ManyAsync",
     Poll: boolean?,
-    Data: (TypeDeclaration | TupleDeclaration)? 
+    Data: (TypeNode | Tuple)? 
 }, {}>
 
-export type FunctionDeclaration = Node<"Function", {
-    Identifier: string,
+export type Function = Node<"Function", {
     Yield: "Future" | "Promise" | "Coroutine",
-    Data: (TypeDeclaration | TupleDeclaration)?,
-    Return: (TypeDeclaration | TupleDeclaration)?
+    Data: (TypeNode | Tuple)?,
+    Return: (TypeNode | Tuple)?
 }, {}>
 
-export type ScopeDeclaration = Node<"Scope", {
+export type ScopeNode = Node<"Scope", {
     Scope: Scope,
-    Identifier: string,
     Values: {Declaration}
 }, {}> 
 
@@ -481,12 +474,13 @@ end
 
 ---- Utility Parsing Functions ----
 
-function Parser.GetReference(self: Parser, Bucket: Bucket, Identifier: string): Reference?
+function Parser.Reference(self: Parser, Bucket: Bucket, Identifier: string): (Scope | Reference)?
     local Path = string.split(Identifier, ".")
     local Scope: Scope? = self.Scope
 
     local Offset = 1
     local Length = #Path
+    local Result;
 
     while (Scope) do
         local Index = Path[Offset]
@@ -514,10 +508,11 @@ function Parser.GetReference(self: Parser, Bucket: Bucket, Identifier: string): 
         end
 
         --> Found the reference
-        return Symbol :: Reference
+        Result = Symbol
+        break
     end
 
-    return nil
+    return Result
 end
 
 function Parser.SetReference(self: Parser, Bucket: Bucket, Identifier: Token, Declaration: Declaration)
@@ -531,9 +526,9 @@ function Parser.SetReference(self: Parser, Bucket: Bucket, Identifier: Token, De
 
     self.Symbols[Name] = true
     self.Scope.Symbols[Bucket][Name] = {
-        Identifier = Identifier,
-        Declaration = Declaration
-    }
+        To = Declaration,
+        Name = Identifier,
+    } :: Reference
 end
 
 function Parser.GetGenerics(self: Parser): Generics?
@@ -548,13 +543,12 @@ function Parser.GetGenerics(self: Parser): Generics?
 
     --> Parse generics
     local Generics: Generics = {
-        Total = 0,
+        Keys = {},
+        List = {},
         Span = {
             Start = OpenChevrons.Start,
             End = OpenChevrons.End + 1
         },
-        Keys = {},
-        Indices = {}
     }
 
     while true do
@@ -562,14 +556,11 @@ function Parser.GetGenerics(self: Parser): Generics?
             break
         end
 
-        local Index = (Generics.Total + 1)
         local Token = self:ConsumeText()
-        local Identifier = Token.Value
-        
-        Generics.Total = Index
-        Generics.Span.End += (Token.End - Token.Start)
-        Generics.Keys[Index] = Identifier
-        Generics.Indices[Identifier] = Index
+
+        Generics.Span.End = Token.End
+        Generics.Keys[Token.Value] = {}
+        table.insert(Generics.List, Token.Value)
 
         if self:Peek().Type ~= "CloseChevrons" then
             self:Consume("Comma")
@@ -580,283 +571,230 @@ function Parser.GetGenerics(self: Parser): Generics?
     return Generics
 end
 
-function Parser.SolveGenerics(self: Parser, Identifier: Token, Declaration: StructDeclaration): (StructDeclaration, {TypeDeclaration})
-    local Generics = Declaration.Value.Generics
-    if not Generics then
-        return Declaration, {}
-    end
+function Parser.NumberRange(self: Parser, Token: Lexer.Token, Bounds: NumberRange, Integer: boolean?): NumberRange
+    local Value = Token.Value
+    Value = string.sub(Value, 2, #Value - 1)
 
-    local OpenToken = self:TryConsume("OpenChevrons")
-    if not OpenToken then
-        error(Error.new(Error.AnalyzeInvalidGenerics, self.Source, `Type expects parameters list`, self.File)
-            :Primary(self:Peek(), "")
-        :Emit())
-    end
-
-    local Maximum = Generics.Total
-    local Parameters = {}
-    local References: {[string]: TypeDeclaration} = {}
-
-    for Index, Generic in Generics.Keys do
-        local Type = self:Type(Identifier)
-        References[Generic] = Type
-        table.insert(Parameters, Type)
-        
-        if Index ~= Maximum then
-            self:Consume("Comma")
+    local function ParseRange(): NumberRange
+        local Single = tonumber(string.match(Value, `^(%-?%d*%.?%d+)$`))
+        if Single then
+            return NumberRange.new(Single)
         end
-    end
 
-    local CloseToken = self:Consume("CloseChevrons")
-    if #Parameters ~= Maximum then
-        Error.new(Error.AnalyzeInvalidGenerics, self.Source, `Type expects {Maximum} parameters, but {#Parameters} are specified`, self.File)
-            :Primary({Start = OpenToken.Start, End = CloseToken.End}, "")
+        local LowerBounds = tonumber(string.match(Value, `^(%-?%d*%.?%d+)%.%.$`))
+        if LowerBounds then
+            return NumberRange.new(LowerBounds, Bounds.Max)
+        end
+
+        local UpperBounds = tonumber(string.match(Value, `^%.%.(%-?%d*%.?%d+)$`))
+        if UpperBounds then
+            return NumberRange.new(Bounds.Min, UpperBounds)
+        end
+
+        local Lower, Upper = string.match(Value, `^(%-?%d*%.?%d+)%.%.(%-?%d*%.?%d+)$`)
+        local Minimum, Maximum = tonumber(Lower), tonumber(Upper)
+        if Minimum and Maximum then
+            return NumberRange.new(Minimum, Maximum)
+        end
+
+        Error.new(Error.AnalyzeInvalidRange, self.Source, "Malformed range", self.File)
+            :Primary(Token, "Unable to parse range")
         :Emit()
+
+        error("never")
     end
 
-    --> Solve references
-    Declaration = Table.DeepClone(Declaration)
+    local Range = ParseRange()
 
-    local function SolveValues(Values: {TypeDeclaration})
-        for Index, Field in Values do
-            if GENERICS_TYPES[Field.Type] then
-                local Value = (Field :: StructDeclaration).Value
-                SolveValues(Value.Values)
-                continue
-            end
+    --> check int
+    if Integer and (IsInteger(Range.Min) == false or IsInteger(Range.Max) == false) then
+        Error.new(Error.AnalyzeInvalidRange, self.Source, "Expected an integer", self.File)
+            :Primary(Token, "Expected an integer")
+        :Emit()
 
-            if Field.Type ~= "Generic" then
-                continue
-            end
-
-            local Value = Field.Value
-            local Generic = Value.Generic
-
-            --> Create a unique reference for each generic
-            local Reference = References[Generic]
-            Reference = Table.DeepClone(Reference)
-            ;(Reference :: Declaration).Value.Identifier = Value.Identifier
-            
-            --> Set value to reference
-            Values[Index] = {
-                Type = "Reference",
-                Value = {
-                    Identifier = Value.Identifier,
-                    Declaration = Reference,
-                    Array = Value.Array,
-                    Range = Value.Range,
-                    Optional = Value.Optional
-                },
-                Tokens = {}
-            } :: any
-        end
+        error("never")
     end
 
-    Declaration.Value.Generics = nil
-    SolveValues(Declaration.Value.Values)
+    --> check bounds
+    if Range.Min < Bounds.Min or Range.Max > Bounds.Max then
+        Error.new(Error.AnalyzeInvalidRange, self.Source, "Range outside bounds", self.File)
+            :Primary(Token, `Expected a range within ({Bounds.Min}..{Bounds.Max})`)
+        :Emit()
 
-    return Declaration, Parameters
+        error("never")
+    end
+
+    return Range
 end
 
-function Parser.GetTypeAttributes(self: Parser, Primitive: Settings.Primitive?): (Attributes, AttributesTokens)
-    local function ParseOptional(): (boolean, Token?)
-        local Token = self:TryConsume("Optional")
-        return (Token ~= nil), Token
+function Parser.Range(self: Parser, Primitive: Settings.Primitive): {Range: NumberRange, Token: Token}?
+    local Token = self:TryConsume("Range")
+    if Token == nil then
+        return
     end
 
-    local function ParseRangeUnified(Token: Lexer.Token, Bounds: NumberRange, Integer: boolean?): NumberRange
-        local Value = Token.Value
-        Value = string.sub(Value, 2, #Value - 1)
-
-        local function ParseRange(): NumberRange
-            local Single = tonumber(string.match(Value, `^(%-?%d*%.?%d+)$`))
-            if Single then
-                return NumberRange.new(Single)
-            end
-    
-            local LowerBounds = tonumber(string.match(Value, `^(%-?%d*%.?%d+)%.%.$`))
-            if LowerBounds then
-                return NumberRange.new(LowerBounds, Bounds.Max)
-            end
-
-            local UpperBounds = tonumber(string.match(Value, `^%.%.(%-?%d*%.?%d+)$`))
-            if UpperBounds then
-                return NumberRange.new(Bounds.Min, UpperBounds)
-            end
-
-            local Lower, Upper = string.match(Value, `^(%-?%d*%.?%d+)%.%.(%-?%d*%.?%d+)$`)
-            local Minimum, Maximum = tonumber(Lower), tonumber(Upper)
-            if Minimum and Maximum then
-                return NumberRange.new(Minimum, Maximum)
-            end
-
-            Error.new(Error.AnalyzeInvalidRange, self.Source, "Malformed range", self.File)
-                :Primary(Token, "Unable to parse range")
-            :Emit()
-
-            error("never")
-        end
-
-        local Range = ParseRange()
-
-        --> check int
-        if Integer and (IsInteger(Range.Min) == false or IsInteger(Range.Max) == false) then
-            Error.new(Error.AnalyzeInvalidRange, self.Source, "Expected an integer", self.File)
-                :Primary(Token, "Expected an integer")
-            :Emit()
-
-            error("never")
-        end
-
-        --> check bounds
-        if Range.Min < Bounds.Min or Range.Max > Bounds.Max then
-            Error.new(Error.AnalyzeInvalidRange, self.Source, "Range outside bounds", self.File)
-                :Primary(Token, `Expected a range within ({Bounds.Min}..{Bounds.Max})`)
-            :Emit()
-
-            error("never")
-        end
-
-        return Range
-    end
-
-    local function ParseRange(): (NumberRange?, Token?)
-        if not Primitive then
-            return
-        end
-
-        local Token = self:TryConsume("Range")
-        if not Token then
-            return
-        end
-
-        return ParseRangeUnified(
-            Token, 
-            Primitive.Bounds or DOUBLE_BOUNDS, 
-            Primitive.Integer
-        )
-    end
-
-    local function ParseArray(): (Array?, Token?, Token?)
-        local Token = self:TryConsume("Array")
-        if not Token then
-            return
-        end
-
-        local Value = Token.Value
-        local Optional, OptionalToken = ParseOptional()
-
-        --> Empty bounds
-        if Value == "[]" then
-            return {
-                Bounds = ARRAY_BOUNDS,
-                Optional = Optional,
-            }, Token, OptionalToken
-        end
-        
-        --> Parse range
-        local Range = ParseRangeUnified(Token, ARRAY_BOUNDS, true)
-
-        return {
-            Bounds = Range,
-            Optional = Optional,
-        }, Token, OptionalToken
-    end
-
-    local function TryToParseComponents(): {string}?
-        if not Primitive then
-            return
-        end
-
-        local OpenChevrons = self:TryConsume("OpenChevrons")
-        if not OpenChevrons then
-            return
-        end
-
-        if Primitive.AllowedComponents == 0 then
-            error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Type doesn't accept components`, self.File)
-                :Primary(OpenChevrons, `Remove component here`)
-            :Emit())
-        end
-
-        local Components = {}
-        local Primitives = {}
-
-        for Index = 1, Primitive.AllowedComponents do
-            table.insert(Primitives, self:Consume("Primitive"))
-            if self:TryConsume("CloseChevrons") then
-                break
-            end
-
-            self:Consume("Comma")
-        end
-
-        for Index, Token in Primitives do
-            local Component = Token.Value
-            local ComponentPrimitive = PRIMITIVES[Component]
-
-            if not ComponentPrimitive then
-                error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Unknown primitive used as component`, self.File)
-                    :Primary(Token, `"{Component}" is invalid`)
-                :Emit())
-            end
-
-            if not ComponentPrimitive.Component then
-                error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Invalid primitive used as component`, self.File)
-                    :Primary(Token, `"{Component}" cannot be used as a component`)
-                :Emit())
-            end
-
-            table.insert(Components, Component)
-        end
-
-        return Components
-    end
-
-    local Range, RangeToken = ParseRange()
-    local Components = TryToParseComponents()
-    local Optional, OptionalToken = ParseOptional()
-    local Array, ArrayToken, ArrayOptionalToken = ParseArray()
-
-    if Primitive then
-        if RangeToken and Primitive.AllowsRange == false then
-            Error.new(Error.AnalyzeInvalidRangeType, self.Source, "Type does not support ranges", self.File)
-                :Primary(RangeToken, `Type does not support ranges`)
-            :Emit()
-        end
-
-        if OptionalToken and Primitive.AllowsOptional == false then
-            Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Type cannot be optional", self.File)
-                :Primary(OptionalToken, `Type cannot be optional`)
-            :Emit()
-        end
-
-        local Bounds = Primitive.Bounds
-        if RangeToken and Bounds and Range and (Range.Min < Bounds.Min or Range.Max > Bounds.Max) then
-            Error.new(Error.AnalyzeInvalidRange, self.Source, "Range out of bounds", self.File)
-                :Primary(RangeToken, `Range out of bounds ({Bounds.Min} -> {Bounds.Max})`)
-            :Emit()
-        end
-    end
+    local NumberRange = self:NumberRange(
+        Token, 
+        Primitive.Bounds or DOUBLE_BOUNDS, 
+        Primitive.Integer
+    )
 
     return {
-        Range = Range,
-        Array = Array,
-        Optional = Optional,
-        Components = Components
-    }, {
-        Range = RangeToken,
-        Array = ArrayToken,
-        Optional = OptionalToken,
+        Range = NumberRange,
+        Token = Token
     }
 end
 
+function Parser.Array(self: Parser): {Range: NumberRange, Token: Token}?
+    local Token = self:TryConsume("Array")
+    if not Token then
+        return
+    end
+
+    local Value = Token.Value
+
+    --> Empty bounds
+    if Value == "[]" then
+        return {
+            Range = ARRAY_BOUNDS,
+            Token = Token,
+        }
+    end
+    
+    --> Parse range
+    local NumberRange = self:NumberRange(Token, ARRAY_BOUNDS, true)
+
+    return {
+        Range = NumberRange,
+        Token = Token,
+    }
+end
+
+function Parser.Components(self: Parser, Primitive: Settings.Primitive): {string}?
+    local OpenChevrons = self:TryConsume("OpenChevrons")
+    if not OpenChevrons then
+        return
+    end
+
+    if Primitive.AllowedComponents == 0 then
+        error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Type doesn't accept components`, self.File)
+            :Primary(OpenChevrons, `Remove component here`)
+        :Emit())
+    end
+
+    local Components = {}
+    local Primitives = {}
+
+    for Index = 1, Primitive.AllowedComponents do
+        table.insert(Primitives, self:Consume("Primitive"))
+        if self:TryConsume("CloseChevrons") then
+            break
+        end
+
+        self:Consume("Comma")
+    end
+
+    for Index, Token in Primitives do
+        local Component = Token.Value
+        local ComponentPrimitive = PRIMITIVES[Component]
+
+        if not ComponentPrimitive then
+            error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Unknown primitive used as component`, self.File)
+                :Primary(Token, `"{Component}" is invalid`)
+            :Emit())
+        end
+
+        if not ComponentPrimitive.Component then
+            error(Error.new(Error.AnalyzeInvalidRange, self.Source, `Invalid primitive used as component`, self.File)
+                :Primary(Token, `"{Component}" cannot be used as a component`)
+            :Emit())
+        end
+
+        table.insert(Components, Component)
+    end
+
+    return Components
+end
+
+function Parser.Optional(self: Parser): Token?
+    return self:TryConsume("Optional")
+end
+
+--> Here's the logic:
+--> When a generic is used it will reuse the same table under the hood
+--> When replacing the generic the table's contents are changed to what it is being replaced with
+--> Issues start to arise when you have another generic type that references a generic ex:
+--> map GenericMap<K, V> = {[K]: V} 
+--> struct GenericStruct<T> { Map: GenericMap<string, T> }
+--> struct MergeStruct { ..GenericStruct<u8> }
+--> GenericStruct is merged just fine but GenericMap loses the reference to the table for `T` somewhere along the process (likely at the deep clone stage)
+
+function Parser.ReplaceGenerics(self: Parser, Of: TypeNode, Previous: {[string]: TypeNode}?): TypeNode
+    local Clone = Table.DeepClone(Of) :: Struct
+    local Generics = Clone.Value.Generics :: Generics
+    local Replacements: {[string]: TypeNode} = {}
+
+    Clone.Value.Generics = nil
+
+    --> Parse generics input
+    self:Consume("OpenChevrons")
+
+    for Index = 1, #Generics.List do
+        local Key = Generics.List[Index]
+        local List = Generics.Keys[Key]
+
+        local Token = self:Peek()
+        local Declaration = self:Type(Token)
+        Replacements[Key] = Declaration
+
+        for _, Generic in List do
+            local Replacement = Table.DeepClone(Declaration)
+
+            Generic.Type = Replacement.Type
+            Generic.Value = Replacement.Value
+            Generic.Tokens = Replacement.Tokens
+        end
+
+        if Index < #Generics.List then
+            self:Consume("Comma")
+        end
+    end
+
+    self:Consume("CloseChevrons")
+
+    --> hack to find lost references
+    local function Traverse(Type: TypeNode)
+        if Type.Type == "Array" or Type.Type == "Optional" then
+            Traverse(Type.Value.Of)
+        elseif (Type :: Struct).Value.Values ~= nil then
+            for _, Type in (Type :: Struct).Value.Values do
+                Traverse(Type)
+            end
+        elseif Type.Type == "Generic" then
+            local Key = Type.Value.Generic
+            local Declaration = Replacements[Key]
+            if Declaration == nil then
+                return
+            end
+
+            local Replacement = Table.DeepClone(Declaration)
+
+            Type.Type = Replacement.Type
+            Type.Value = Replacement.Value
+            Type.Tokens = Replacement.Tokens
+        end
+    end
+
+    Traverse(Clone)
+    
+    return Clone
+end
 
 ---- Top-Level Parsing Functions ----
 
 function Parser.Parse(self: Parser, Source: string, Scope: Scope?): Body
     --> Set state
-    self.Scope = Scope or {Identifier = {Value = "", Start = 0, End = 0} :: any, Symbols = {Types = {}, Scopes = {}}}
+    self.Scope = Scope or {Name = {Value = "", Start = 0, End = 0} :: any, Symbols = {Types = {}, Scopes = {}}}
     self.Source = Source
     table.clear(self.Symbols)
     
@@ -870,6 +808,7 @@ function Parser.Parse(self: Parser, Source: string, Scope: Scope?): Body
 
     return {
         Type = "Body",
+        Name = Scope and Scope.Name.Value or "Body",
         Value = {
             Symbols = table.clone(self.Symbols),
             Options = Options,
@@ -879,7 +818,7 @@ function Parser.Parse(self: Parser, Source: string, Scope: Scope?): Body
     }
 end
 
-function Parser.Import(self: Parser): ScopeDeclaration
+function Parser.Import(self: Parser): ScopeNode
     self:Consume("Import")
 
     local Path = self:Consume("String")
@@ -893,17 +832,17 @@ function Parser.Import(self: Parser): ScopeDeclaration
     end
 
     --> Import namespace
+    local Name: string;
     local Token = Path
-    local Identifier: string;
 
     if self:TryConsume("As") then
         --> Use user provided namespace identifier
         Token = self:ConsumeText()
-        Identifier = Token.Value 
+        Name = Token.Value 
     elseif (task ~= nil) then
         --> ROBLOX
         local Indices = string.split(ImportPath, ".")
-        Identifier = Indices[#Indices]
+        Name = Indices[#Indices]
     else
         if string.sub(ImportPath, 1, 2) ~= "./" then
             ImportPath = `./{ImportPath}`
@@ -913,14 +852,14 @@ function Parser.Import(self: Parser): ScopeDeclaration
         local Filename = PathParser.Filename(ImportPath)
         assert(Filename, "Unable to parse file path for filename!")
         
-        Identifier = Filename
+        Name = Filename
         Token.Value = Filename
     end
 
-    local Reference = self:GetReference("Scopes", Identifier)
-    if Reference then
-        Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration: "{Identifier}"`, self.File)
-            :Secondary(Reference.Identifier, "Previously declared here")
+    local Existing = self:Reference("Scopes", Name)
+    if Existing then
+        Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration: "{Name}"`, self.File)
+            :Secondary(Existing.Name, "Previously declared here")
             :Primary(Token, "Duplicate declared here")
         :Emit()
     end
@@ -928,7 +867,7 @@ function Parser.Import(self: Parser): ScopeDeclaration
     --> Import
     local Parent = self.Scope
     local Scope: Scope = {
-        Identifier = Token,
+        Name = Token,
         Symbols = {
             Types = {},
             Scopes = {}
@@ -948,14 +887,14 @@ function Parser.Import(self: Parser): ScopeDeclaration
     end
 
     Scope.Parent = Parent
-    self.Symbols[Identifier] = true
-    Parent.Symbols.Scopes[Identifier] = Scope
+    self.Symbols[Name] = true
+    Parent.Symbols.Scopes[Name] = Scope
     
     return {
         Type = "Scope",
+        Name = Name,
         Value = {
             Scope = Scope,
-            Identifier = Identifier,
             Values = AST.Value.Declarations
         },
         Tokens = {}
@@ -972,22 +911,22 @@ function Parser.Options(self: Parser): Options
 
         self:Consume("Keyword")
         local Key = self:ConsumeAll("Identifier", "Assign")
-        local Identifier = Key.Value
+        local Name = Key.Value
         
-        local Type: Lexer.Types = OPTIONS[Identifier]
+        local Type: Lexer.Types = OPTIONS[Name]
         if not Type then
             local Examples = ""
             for Option in OPTIONS do
                 Examples ..= `{Examples ~= "" and " or " or ""}"{Option}"`
             end
 
-            Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Identifier}"`, self.File)
+            Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Name}"`, self.File)
                 :Primary(Key, `Expected one of {Examples}`)
             :Emit()
         end
 
         local Value = self:Consume(Type)
-        Options[Identifier] = Value.Value
+        Options[Name] = Value.Value
     end
 
     return Options
@@ -1018,7 +957,7 @@ function Parser.Declarations(self: Parser): {Declaration}
         end
 
         local Keyword = self:Consume("Keyword")
-        local Identifier = self:ConsumeText()
+        local Name = self:ConsumeText()
         local Declaration: Declaration;
 
         if Keyword.Value == "option" then
@@ -1032,12 +971,12 @@ function Parser.Declarations(self: Parser): {Declaration}
         local Type = KeywordSettings.Class
 
         local Bucket: Bucket = BUCKETS[Type]
-        local Reference = self:GetReference(Bucket, Identifier.Value)
+        local Existing = self:Reference(Bucket, Name.Value)
 
-        if Reference then
+        if Existing then
             Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration`, self.File)
-                :Secondary(Reference.Identifier, "Previously declared here")
-                :Primary(Identifier, "Duplicate declared here")
+                :Secondary(Existing.Name, "Previously declared here")
+                :Primary(Name, "Duplicate declared here")
             :Emit()
         end
 
@@ -1049,16 +988,16 @@ function Parser.Declarations(self: Parser): {Declaration}
 
         --> Parse declaration
         if Type == "Type" then
-           local TypeDeclaration = self:Type(Identifier, Keyword)
-           local Value: Attributes = TypeDeclaration.Value
+           local Node = self:Type(Name, Keyword)
+           local Value: Attributes = Node.Value
            Value.Scope = self.Scope
-           Declaration = TypeDeclaration
+           Declaration = Node
         elseif Type == "Event" then
-            Declaration = self:Event(Identifier)
+            Declaration = self:Event(Name)
         elseif Type == "Function" then
-            Declaration = self:Function(Identifier)
+            Declaration = self:Function(Name)
         elseif Type  == "Scope" then
-            Declaration = self:Namespace(Identifier)
+            Declaration = self:Namespace(Name)
         end
 
         --> Update declarations
@@ -1092,7 +1031,7 @@ function Parser.Declarations(self: Parser): {Declaration}
         end
 
         if Type ~= "Scope" then
-            self:SetReference(Bucket, Identifier, Declaration)
+            self:SetReference(Bucket, Name, Declaration)
         end
     end
 
@@ -1120,7 +1059,7 @@ function Parser.GetOptionFromToken(self: Parser, Token: Token, Structure: {Event
     :Emit())
 end
 
-function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOption}): {[string]: any}
+function Parser.Structure(self: Parser, Name: Token, Structure: {EventOption}): {[string]: any}
     local Fields: {[string]: any} = {}
     local Open, Close: Lexer.Token? = self:Consume("OpenBraces"), nil
 
@@ -1153,7 +1092,7 @@ function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOpti
                 :Emit()
             end
         else
-            Value = self:Type(Identifier, nil, true)
+            Value = self:Type(Name, nil, true)
         end
 
         Fields[Option.Key] = Value  
@@ -1189,13 +1128,13 @@ function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOpti
     return Fields
 end
 
-function Parser.Event(self: Parser, Identifier: Token): EventDeclaration
-    local Structure = self:Structure(Identifier, EVENT)
+function Parser.Event(self: Parser, Name: Token): Event
+    local Structure = self:Structure(Name, EVENT)
 
     return {
         Type = "Event",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             From = Structure.From,
             Type = Structure.Type,
             Call = Structure.Call,
@@ -1206,13 +1145,13 @@ function Parser.Event(self: Parser, Identifier: Token): EventDeclaration
     }
 end
 
-function Parser.Function(self: Parser, Identifier: Token): FunctionDeclaration
-    local Structure = self:Structure(Identifier, FUNCTION)
+function Parser.Function(self: Parser, Name: Token): Function
+    local Structure = self:Structure(Name, FUNCTION)
 
     return {
         Type = "Function",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             Yield = Structure.Yield,
             Data = Structure.Data,
             Return = Structure.Return
@@ -1221,13 +1160,13 @@ function Parser.Function(self: Parser, Identifier: Token): FunctionDeclaration
     }
 end
 
-function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
+function Parser.Namespace(self: Parser, Name: Token): ScopeNode
     self:Consume("OpenBraces")
 
     --> Open scope
     local Parent = self.Scope
     local Scope: Scope = {
-        Identifier = Identifier,
+        Name = Name,
         Parent = Parent,
         Symbols = {
             Types = {},
@@ -1236,8 +1175,8 @@ function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
     }
 
     self.Scope = Scope
-    self.Symbols[Identifier.Value] = true
-    Parent.Symbols.Scopes[Identifier.Value] = Scope
+    self.Symbols[Name.Value] = true
+    Parent.Symbols.Scopes[Name.Value] = Scope
 
     --> Gather declarations
     local Declarations = self:Declarations()
@@ -1247,9 +1186,9 @@ function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
 
     return {
         Type = "Scope",
+        Name = Name.Value,
         Value = {
             Scope = Scope,
-            Identifier = Identifier.Value,
             Values = Declarations
         },
         Tokens = {}
@@ -1258,8 +1197,8 @@ end
 
 ---- Type Parsing Functions ----
 
-function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataField: boolean?): TypeDeclaration
-    local Declaration: TypeDeclaration;
+function Parser.Type(self: Parser, Name: Token, Keyword: Token?, IsDataField: boolean?): TypeNode
+    local Declaration: TypeNode;
 
     --> Fast path: We know the exact type
     if Keyword then
@@ -1272,11 +1211,10 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
             local Token = self:Peek()
             
             if Token.Type == "Identifier" then
-                Declaration = self:Reference(Identifier)
-                local Reference = (Declaration :: ReferenceDeclaration).Value.Declaration
-                if not IsDeclarationTypeSimiliar(Reference.Type, Type :: Declarations) then
-                    Error.new(Error.AnalyzeReferenceInvalidType, self.Source, `Cannot cast "{Reference.Type}" to "{Type}"`, self.File)
-                        :Primary(Token, `Expected a reference to "{Type}", got "{Reference.Type}" instead`)
+                Declaration = self:Declaration(Name)
+                if not IsDeclarationTypeSimiliar(Declaration.Type, Type :: Declarations) then
+                    Error.new(Error.AnalyzeReferenceInvalidType, self.Source, `Cannot cast "{Declaration.Type}" to "{Type}"`, self.File)
+                        :Primary(Token, `Expected a reference to "{Type}", got "{Declaration.Type}" instead`)
                     :Emit()
                 end
             end
@@ -1285,15 +1223,15 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
         --> Wasn't a reference declaration
         if not Declaration then
             if Value == "map" then
-                Declaration = self:Map(Identifier)
+                Declaration = self:Map(Name)
             elseif Value == "set" then
-                Declaration = self:Set(Identifier)
+                Declaration = self:Set(Name)
             elseif Value == "enum" then
-                Declaration = self:Enum(Identifier)
+                Declaration = self:Enum(Name)
             elseif Value == "type" then
-                Declaration = self:Primitive(Identifier)
+                Declaration = self:Primitive(Name)
             elseif Value == "struct" then
-                Declaration = self:Struct(Identifier)
+                Declaration = self:Struct(Name)
             end
         end
     end
@@ -1308,20 +1246,20 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
             self:Consume("Keyword")
 
             if Value == "map" then
-                Declaration = self:Map(Identifier)
+                Declaration = self:Map(Name)
             elseif Value == "set" then
-                Declaration = self:Set(Identifier)
+                Declaration = self:Set(Name)
             elseif Value == "enum" then
-                Declaration = self:Enum(Identifier)
+                Declaration = self:Enum(Name)
             elseif Value == "struct" then
-                Declaration = self:Struct(Identifier)
+                Declaration = self:Struct(Name)
             end
         elseif Type == "Primitive" then
-            Declaration = self:Primitive(Identifier)
+            Declaration = self:Primitive(Name)
         elseif Type == "Identifier" then
-            Declaration = self:Reference(Identifier)
+            Declaration = self:Declaration(Name)
         elseif Type == "OpenParentheses" and IsDataField then
-            Declaration = self:Tuple(Identifier)
+            Declaration = self:Tuple(Name)
         end
 
         if not Declaration then
@@ -1331,32 +1269,69 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
         end
     end
 
-    --> Solve generics
-    if Declaration.Type == "Reference" then
-        local Value = Declaration.Value
-        local Referencing = Value.Declaration
-        if Referencing.Value.Generics then
-            Value.Declaration, Value.Parameters = self:SolveGenerics(Identifier, Referencing :: StructDeclaration)
-        end
-    end
-
     --> Set type attributes
     local Primitive: Settings.Primitive?;
     if Declaration.Type == "Primitive" then
-        Primitive = (Declaration :: PrimitiveDeclaration).Value.Primitive
+        Primitive = (Declaration :: Primitive).Value.Primitive
     end
 
     local Value = Declaration.Value :: Attributes
     local Tokens = Declaration.Tokens :: AttributesTokens
-    local Attributes, AttributesTokens = self:GetTypeAttributes(Primitive)
 
-    Value.Range, Value.Optional, Value.Array, Value.Components = Attributes.Range, Attributes.Optional, Attributes.Array, Attributes.Components
-    Tokens.Range, Tokens.Optional, Tokens.Array = AttributesTokens.Range, AttributesTokens.Optional, AttributesTokens.Array
+    -- ex: vector<u8> and u8(0..00)
+    if Primitive then
+        Value.Components = self:Components(Primitive)
+        
+        local Range = self:Range(Primitive)
+        if Range then
+            Value.Range = Range.Range
+            Tokens.Range = Range.Token
+        end
+    end
 
+    local function WrapInOptional()
+        -- ex: u8?
+        local Optional = self:Optional()
+        if Optional then
+            Declaration = {
+                Type = "Optional",
+                Name = Name.Value,
+                Value = { Of = Declaration },
+                Tokens = {}
+            } :: Optional
+        end
+    end
+
+    WrapInOptional()
+
+    -- ex: u8[][][]
+    while (true) do
+        local Array = self:Array()
+        if Array then
+            Declaration = {
+                Type = "Array",
+                Name = Name.Value,
+                Value = {
+                    Of = Declaration,
+                    Range = Array.Range,
+                },
+                Tokens = {
+                    Range = Array.Token
+                }
+            } :: Array
+        end
+
+        WrapInOptional()
+
+        if Array == nil then
+            break
+        end
+    end
+    
     return Declaration
 end
 
-function Parser.Set(self: Parser, Identifier: Token): SetDeclaration
+function Parser.Set(self: Parser, Name: Token): Set
     self:Consume("OpenBraces")
 
     local Values: {string} = {}
@@ -1377,32 +1352,25 @@ function Parser.Set(self: Parser, Identifier: Token): SetDeclaration
 
     return {
         Type = "Set",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             Values = Values,
         },
         Tokens = {}
-    } :: SetDeclaration
+    } :: Set
 end
 
-function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
+function Parser.Map(self: Parser, Name: Token): Map
     self:ConsumeAll("OpenBraces", "OpenBrackets")
 
     --> Errors
-    local function ParseElement(): TypeDeclaration
+    local function ParseElement(): TypeNode
         local Token = self:Peek()
-        local Declaration = self:Type(Identifier)
-
-        local Type = Declaration.Type
-        local Value = Declaration.Value
-
-        if Type == "Reference" then
-            local Reference: TypeDeclaration = (Value :: any).Declaration
-            if Reference.Value.Optional then
-                Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type", self.File)
-                    :Primary(Token, `Maps cannot have optionals as keys or values`)
-                :Emit()
-            end
+        local Declaration = self:Type(Name)
+        if Declaration.Type == "Optional" then
+            Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type", self.File)
+                :Primary(Token, `Maps cannot have optionals as keys or values`)
+            :Emit()
         end
 
         return Declaration
@@ -1418,21 +1386,21 @@ function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
 
     return {
         Type = "Map",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             Values = {Key, Value}
         },
         Tokens = {}
     }
 end
 
-function Parser.Enum(self: Parser, Identifier: Token): EnumDeclaration | TagEnumDeclaration
+function Parser.Enum(self: Parser, Name: Token): Enum | TagEnum
     local Values: {string} = {}
 
     --> Is it a tagged enum?
     local Tag = self:TryConsume("String")
     if Tag then
-        return self:TagEnum(Tag, Identifier)
+        return self:TagEnum(Tag, Name)
     end
 
     self:Consume("OpenBraces")
@@ -1454,16 +1422,14 @@ function Parser.Enum(self: Parser, Identifier: Token): EnumDeclaration | TagEnum
 
     return {
         Type = "Enum",
-        Value = {
-            Identifier = Identifier.Value,
-            Values = Values,
-        },
+        Name = Name.Value,
+        Value = { Values = Values } :: any,
         Tokens = {}
-    } :: EnumDeclaration
+    }
 end
 
-function Parser.TagEnum(self: Parser, Tag: Token, Identifier: Token): TagEnumDeclaration
-    local Values: {StructDeclaration} = {}
+function Parser.TagEnum(self: Parser, Tag: Token, Name: Token): TagEnum
+    local Values: {Struct} = {}
     self:Consume("OpenBraces")
 
     while true do
@@ -1476,8 +1442,8 @@ function Parser.TagEnum(self: Parser, Tag: Token, Identifier: Token): TagEnumDec
         local Fields = Struct.Value.Values
 
         --> Don't allow tag field to be set
-        for _, Field: TypeDeclaration in Fields do
-            if Field.Value.Identifier == Tag.Value then
+        for _, Field: TypeNode in Fields do
+            if Field.Name == Tag.Value then
                 Error.new(Error.AnalyzeReservedIdentifier, self.Source, `Enum tag used as field in variant`, self.File)
                     :Secondary(Token, `Used in variant`)
                     :Primary(Tag, `Enum tag`)
@@ -1496,8 +1462,8 @@ function Parser.TagEnum(self: Parser, Tag: Token, Identifier: Token): TagEnumDec
 
     return {
         Type = "TagEnum",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             Tag = Tag.Value,
             Values = Values
         },
@@ -1505,8 +1471,8 @@ function Parser.TagEnum(self: Parser, Tag: Token, Identifier: Token): TagEnumDec
     }
 end
 
-function Parser.Tuple(self: Parser, Identifier: Token): TupleDeclaration
-    local Values: {TypeDeclaration} = {}
+function Parser.Tuple(self: Parser, Name: Token): Tuple
+    local Values: {TypeNode} = {}
     self:Consume("OpenParentheses")
 
     while true do
@@ -1514,7 +1480,7 @@ function Parser.Tuple(self: Parser, Identifier: Token): TupleDeclaration
             break
         end
 
-        local Value = self:Type(Identifier)
+        local Value = self:Type(Name)
         table.insert(Values, Value)
 
         if self:TryConsume("CloseParentheses") then
@@ -1526,17 +1492,17 @@ function Parser.Tuple(self: Parser, Identifier: Token): TupleDeclaration
 
     return {
         Type = "Tuple",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             Values = Values,
         },
         Tokens = {}
     }
 end
 
-function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
+function Parser.Struct(self: Parser, Name: Token): Struct
     local Fields: {[string]: true} = {}
-    local Values: {TypeDeclaration} = {}
+    local Values: {TypeNode} = {}
     self:Consume("OpenBraces")
 
     while true do
@@ -1546,29 +1512,18 @@ function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
 
         --> struct merging
         if self:TryConsume("Merge") then
-            local Text = self:ConsumeText()
-            local Reference = self:GetReference("Types", Text.Value)
-            if not Reference then
-                error(Error.new(Error.AnalyzeUnknownReference, self.Source, `Unknown reference`, self.File)
-                    :Primary(Text, "Unknown reference")
-                :Emit())
-            end
-
-            local Declaration = Reference.Declaration
+            local Text = self:Peek()
+            local Declaration = self:Declaration(Name)
             if Declaration.Type ~= "Struct" then
                 error(Error.new(Error.AnalyzeReferenceInvalidType, self.Source, `Expected a struct to merge, got "{Declaration.Type}" instead`, self.File)
                     :Primary(Text, `Expected a "Struct", got "{Declaration.Type}" instead`)
                 :Emit())
             end
 
-            local Struct: StructDeclaration = Declaration :: StructDeclaration
-            if Struct.Value.Generics then
-                Struct = self:SolveGenerics(Identifier, Struct)
-            end
-        
+            local Struct: Struct = Declaration :: Struct
             local StructValues = Struct.Value.Values
             for _, Field in StructValues do
-                local FieldIdentifier = Field.Value.Identifier
+                local FieldIdentifier = Field.Name
                 if Fields[FieldIdentifier] then
                     error(Error.new(Error.AnalyzeDuplicateField, self.Source, `Merged struct contains a duplicate field`, self.File)
                         :Primary(Text, `Field "{FieldIdentifier}" already exists in struct`)
@@ -1601,15 +1556,15 @@ function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
 
     return {
         Type = "Struct",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             Values = Values,
         },
         Tokens = {}
     }
 end
 
-function Parser.Primitive(self: Parser, Identifier: Token): PrimitiveDeclaration
+function Parser.Primitive(self: Parser, Name: Token): Primitive
     local Token = self:Consume("Primitive")
 
     local Class: string?;
@@ -1623,8 +1578,8 @@ function Parser.Primitive(self: Parser, Identifier: Token): PrimitiveDeclaration
 
     return {
         Type = "Primitive",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             Class = Class,
             Primitive = Primitive
         },
@@ -1634,40 +1589,48 @@ function Parser.Primitive(self: Parser, Identifier: Token): PrimitiveDeclaration
     }
 end
 
-function Parser.Reference(self: Parser, Identifier: Token): (ReferenceDeclaration | GenericDeclaration)
+function Parser.Declaration(self: Parser, Name: Token): TypeNode
     local Token = self:ConsumeText()
 
     --> Generics reference resolution
     local Generics = self.Generics
-    local Generic = Generics and Generics.Indices[Token.Value]
-
-    if Generic then
-        return {
+    local List = (Generics and Generics.Keys[Token.Value])
+    if List then
+        local Generic: Generic = {
+            __debug = os.clock(),
             Type = "Generic",
-            Value = {
-                Identifier = Identifier.Value,
-                Generic = Token.Value
-            },
+            Name = Name.Value,
+            Value = { Generic = Token.Value },
             Tokens = {}
-        } :: GenericDeclaration
+        }
+
+        table.insert(List, Generic)
+        return Generic
     end
 
     --> Normal reference resolution
-    local Reference = self:GetReference("Types", Token.Value)
+    local Reference = self:Reference("Types", Token.Value) :: Reference
     if not Reference then
         error(Error.new(Error.AnalyzeUnknownReference, self.Source, `Unknown reference`, self.File)
             :Primary(Token, "Unknown reference")
         :Emit())
     end
 
-    return {
-        Type = "Reference",
-        Value = {
-            Identifier = Identifier.Value,
-            Declaration = Reference.Declaration
-        },
-        Tokens = {}
-    } :: ReferenceDeclaration
+    local To = Reference.To
+
+    --> Need to use the new node name
+    To = {
+        Name = Name.Value,
+        Type = To.Type :: any,
+        Value = To.Value :: any,
+        Tokens = To.Tokens :: any
+    }
+    
+    if GENERICS_TYPES[To.Type] and To.Value.Generics then
+        To = self:ReplaceGenerics(To)
+    end
+
+    return To
 end
 
 return Parser

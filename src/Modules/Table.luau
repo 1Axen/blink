@@ -17,24 +17,26 @@ return {
 
         return Merged
     end,
-
     DeepClone = function(Table: {[any]: any}): {[any]: any}
-        local Clones = {}
+        local Cache = {}
+        
         local function Clone(Original)
-            local Result = Original
+            local Cached = Cache[Original] 
+            if Cached ~= nil then
+                return Cached
+            end
+
+            local Copy = Original
             if type(Original) == "table" then
-                if Clones[Original] then
-                    Result = Clones[Original]
-                else
-                    Result = {}
-                    Clones[Original] = Result
-                    for Key, Value in Original do
-                        Result[Clone(Key)] = Clone(Value)
-                    end
+                Copy = {}
+                Cache[Original] = Copy
+                
+                for Key, Value in Original do
+                    Copy[Clone(Key)] = Clone(Value)
                 end
             end
 
-            return Result
+            return Copy
         end
 
         return Clone(Table)

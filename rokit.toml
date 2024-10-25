@@ -5,7 +5,7 @@
 
 [tools]
 selene = "Kampfkarren/selene@0.26.1"
-lune = "filiptibell/lune@0.8.7"
+lune = "filiptibell/lune@0.8.9"
 darklua = "seaofvoices/darklua@0.13.1"
 rojo = "rojo-rbx/rojo@7.4.1"
 run-in-roblox = "rojo-rbx/run-in-roblox@0.3.0"
