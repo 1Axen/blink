@@ -1,4 +1,5 @@
 return {
+
     Merge = function(...: {any}): {any}
         local Tables = {...}
         local Allocate = 0
@@ -17,24 +18,25 @@ return {
 
         return Merged
     end,
-
     DeepClone = function(Table: {[any]: any}): {[any]: any}
-        local Clones = {}
+        local Cache = {}
         local function Clone(Original)
-            local Result = Original
+            local Copy = Original
             if type(Original) == "table" then
-                if Clones[Original] then
-                    Result = Clones[Original]
+                if Cache[Original] then
+                    Copy = Cache[Original]
                 else
-                    Result = {}
-                    Clones[Original] = Result
+                    Copy = {}
+                    Cache[Original] = Copy
+                    
                     for Key, Value in Original do
-                        Result[Clone(Key)] = Clone(Value)
+                        Copy[Clone(Key)] = Clone(Value)
                     end
                 end
             end
 
-            return Result
+            Cache[Original] = Copy
+            return Copy
         end
 
         return Clone(Table)
