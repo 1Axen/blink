@@ -5,6 +5,7 @@
 local Lexer = require("./Lexer")
 local Table = require("./Modules/Table")
 local Error = require("./Modules/Error")
+local Format = require("./Modules/Format")
 local PathParser = require("./Modules/Path")
 
 local Settings = require("./Settings")
@@ -35,7 +36,7 @@ type Node<Type, Body, Tokens> = {
 type Generics = {
     Span: Error.Span,
     List: {string},
-    Keys: {[string]: {GenericDeclaration}},
+    Keys: {[string]: {Generic: GenericDeclaration?}},
 }
 
 type Reference = {
@@ -63,7 +64,6 @@ type Attributes = {
     Scope: Scope?,
     Range: NumberRange?,
     Export: boolean?,
-    Optional: boolean?,
     Generics: Generics?,
     Parameters: {TypeDeclaration}?,
     Components: {string}?
@@ -71,7 +71,6 @@ type Attributes = {
 
 type AttributesTokens = {
     Range: Token?,
-    Optional: Token?
 }
 
 export type Options = {
@@ -94,7 +93,7 @@ export type Body = Node<"Body", {
     Declarations: {Declaration}
 }, {}>
 
-type Declarations = "Map" | "Set" | "Enum" | "TagEnum" | "Tuple" | "Struct" | "Primitive" | "Generic" | "Array" | "Event" | "Function" | "Scope" 
+type Declarations = "Map" | "Set" | "Enum" | "TagEnum" | "Tuple" | "Struct" | "Primitive" | "Generic" | "Array" | "Event" | "Function" | "Scope" | "Optional"
 export type TypeDeclaration = 
     | MapDeclaration 
     | SetDeclaration 
@@ -105,6 +104,7 @@ export type TypeDeclaration =
     | PrimitiveDeclaration 
     | GenericDeclaration 
     | ArrayDeclaration
+    | OptionalDeclaration
 
 export type Declaration = Node<Declarations, {
     Identifier: string,
@@ -115,7 +115,12 @@ export type Declaration = Node<Declarations, {
 
 export type ArrayDeclaration = Node<"Array", {
     Identifier: string,
-    Declaration: TypeDeclaration
+    Of: TypeDeclaration
+} & Attributes, AttributesTokens>
+
+export type OptionalDeclaration = Node<"Optional", {
+    Identifier: string,
+    Of: TypeDeclaration
 } & Attributes, AttributesTokens>
 
 export type SetDeclaration = Node<"Set", {
@@ -653,21 +658,19 @@ function Parser.Range(self: Parser, Primitive: Settings.Primitive): {Range: Numb
     }
 end
 
-function Parser.Array(self: Parser): {Range: NumberRange, Token: Token, Optional: Token?}?
+function Parser.Array(self: Parser): {Range: NumberRange, Token: Token}?
     local Token = self:TryConsume("Array")
     if not Token then
         return
     end
 
     local Value = Token.Value
-    local Optional = self:Optional()
 
     --> Empty bounds
     if Value == "[]" then
         return {
             Range = ARRAY_BOUNDS,
             Token = Token,
-            Optional = Optional,
         }
     end
     
@@ -677,7 +680,6 @@ function Parser.Array(self: Parser): {Range: NumberRange, Token: Token, Optional
     return {
         Range = NumberRange,
         Token = Token,
-        Optional = Optional,
     }
 end
 
@@ -731,6 +733,15 @@ function Parser.Optional(self: Parser): Token?
     return self:TryConsume("Optional")
 end
 
+--> Here's the logic:
+--> When a generic is used it will reuse the same table under the hood
+--> When replacing the generic the table's contents are changed to what it is being replaced with
+--> Issues start to arise when you have another generic type that references a generic ex:
+--> map GenericMap<K, V> = {[K]: V} 
+--> struct GenericStruct<T> { Map: GenericMap<string, T> }
+--> struct MergeStruct { ..GenericStruct<u8> }
+--> GenericStruct is merged just fine but GenericMap loses the reference to the table for `T` somewhere along the process (likely at the deep clone stage)
+
 function Parser.ReplaceGenerics(self: Parser, Of: TypeDeclaration, Previous: {[string]: TypeDeclaration}?): TypeDeclaration
     local Clone = Table.DeepClone(Of) :: StructDeclaration
     local Generics = Clone.Value.Generics :: Generics
@@ -742,18 +753,18 @@ function Parser.ReplaceGenerics(self: Parser, Of: TypeDeclaration, Previous: {[s
     for Index = 1, #Generics.List do
         local Key = Generics.List[Index]
         local Token = self:Peek()
-        local Replacement = self:Type(Token)
+        local Declaration = self:Type(Token)
 
-        local List = Generics.Keys[Key]
-        for _, Generic in List do
-            local Identifier = Generic.Value.Identifier
-            local ReplacementClone = Table.DeepClone(Replacement) :: TypeDeclaration
-            ReplacementClone.Value.Identifier = Identifier
+        local Generic = Generics.Keys[Key].Generic :: GenericDeclaration
+        local Identifier = Generic.Value.Identifier
 
-            Generic.Type = ReplacementClone.Type
-            Generic.Value = ReplacementClone.Value
-            Generic.Tokens = ReplacementClone.Tokens
-        end
+        local Replacement = Table.DeepClone(Declaration) :: StructDeclaration
+        Replacement.Value.Identifier = Identifier
+
+        --> war crimes
+        Generic.Type = Replacement.Type :: any
+        Generic.Value = Replacement.Value :: any
+        Generic.Tokens = Replacement.Tokens
 
         if Index < #Generics.List then
             self:Consume("Comma")
@@ -761,6 +772,9 @@ function Parser.ReplaceGenerics(self: Parser, Of: TypeDeclaration, Previous: {[s
     end
 
     self:Consume("CloseChevrons")
+
+    print(Format(Of))
+    print(Format(Clone))
     
     return Clone
 end
@@ -1268,33 +1282,45 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
         end
     end
 
-    -- ex: u8?
-    local Optional = self:Optional()
-    if Optional then
-        Value.Optional = true
-        Tokens.Optional = Optional
+    local function WrapInOptional()
+        -- ex: u8?
+        local Optional = self:Optional()
+        if Optional then
+            Declaration = {
+                Type = "Optional",
+                Value = {
+                    Identifier = Identifier.Value,
+                    Of = Declaration,
+                },
+                Tokens = {}
+            } :: OptionalDeclaration
+        end
     end
+
+    WrapInOptional()
 
     -- ex: u8[][][]
     while (true) do
         local Array = self:Array()
+        if Array then
+            Declaration = {
+                Type = "Array",
+                Value = {
+                    Range = Array.Range,
+                    Identifier = Identifier.Value,
+                    Of = Declaration,
+                },
+                Tokens = {
+                    Range = Array.Token
+                }
+            } :: ArrayDeclaration
+        end
+
+        WrapInOptional()
+
         if Array == nil then
             break
         end
-
-        Declaration = {
-            Type = "Array",
-            Value = {
-                Range = Array.Range,
-                Optional = Array.Optional ~= nil,
-                Identifier = Identifier.Value,
-                Declaration = Declaration,
-            },
-            Tokens = {
-                Range = Array.Token,
-                Optional = Array.Optional,
-            }
-        } :: ArrayDeclaration
     end
     
     return Declaration
@@ -1336,17 +1362,10 @@ function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
     local function ParseElement(): TypeDeclaration
         local Token = self:Peek()
         local Declaration = self:Type(Identifier)
-
-        local Type = Declaration.Type
-        local Value = Declaration.Value
-
-        if Type == "Reference" then
-            local Reference: TypeDeclaration = (Value :: any).Declaration
-            if Reference.Value.Optional then
-                Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type", self.File)
-                    :Primary(Token, `Maps cannot have optionals as keys or values`)
-                :Emit()
-            end
+        if Declaration.Type == "Optional" then
+            Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type", self.File)
+                :Primary(Token, `Maps cannot have optionals as keys or values`)
+            :Emit()
         end
 
         return Declaration
@@ -1572,19 +1591,26 @@ function Parser.Declaration(self: Parser, Identifier: Token): TypeDeclaration
 
     --> Generics reference resolution
     local Generics = self.Generics
-    local List = (Generics and Generics.Keys[Token.Value])
-    if List then
-        local Declaration: GenericDeclaration = {
-            Type = "Generic",
-            Value = {
-                Identifier = Identifier.Value,
-                Generic = Token.Value
-            },
-            Tokens = {}
-        }
+    local Key = (Generics and Generics.Keys[Token.Value])
+    if Key then
+        local Generic: GenericDeclaration;
+        if Key.Generic then
+            Generic = Key.Generic
+        else
+            Generic = {
+                __debug = os.clock(),
+                Type = "Generic",
+                Value = {
+                    Identifier = Identifier.Value,
+                    Generic = Token.Value
+                },
+                Tokens = {}
+            }
+            Key.Generic = Generic
+            print(`new generic {Token.Value} {tostring(Generic)}`)
+        end
 
-        table.insert(List, Declaration)
-        return Declaration
+        return Generic
     end
 
     --> Normal reference resolution

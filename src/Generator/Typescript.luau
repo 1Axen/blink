@@ -111,15 +111,13 @@ local function GetTypescriptType(State: State, Declaration: Type): (string, stri
         Values = table.concat(VariableTypes, ", ")
 	elseif Declaration.Type == "Array" then
 		local Value = Declaration.Value
-		local Of = Value.Declaration
-		Type = `{GetTypescriptType(State, Of)}[]`
+		Type = `{GetTypescriptType(State, Value.Of)}[]`
+	elseif Declaration.Type == "Optional" then
+		local Value = Declaration.Value
+		Type = `{GetTypescriptType(State, Value.Of)} | undefined`
 	end
 
 	local Value = Declaration.Value
-	if Value.Optional then
-		Type = `{Type} | undefined`
-	end
-
 	if Value.Parameters then
 		local Parameters = {}
 

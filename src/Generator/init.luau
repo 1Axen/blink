@@ -761,7 +761,7 @@ end
 
 function Declarations.Array(Declaration: Parser.ArrayDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local Value = Declaration.Value
-	local Of = Value.Declaration
+	local Of = Value.Of
 	local Range = Value.Range :: NumberRange
 
 	Read:Comment("START ARRAY")
@@ -806,13 +806,10 @@ function Declarations.Array(Declaration: Parser.ArrayDeclaration, Read: Blocks.B
 	Write:Comment("END ARRAY")
 end
 
---> Generator functions
-function Generators.Optional(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string, Default: boolean?): (Blocks.Block, Blocks.Block)
-	if 
-		Declaration.Type == "Primitive" 
-		and Declaration.Tokens.Primitive.Value == "Instance" 
-		and Default ~= true 
-	then
+function Declarations.Optional(Declaration: Parser.OptionalDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string, IsInstance: boolean)
+	Read:Declare(Variable, true)
+
+	if IsInstance then
 		Read = Read:Compare("typeof(RecieveInstances[RecieveInstanceCursor])", "\"Instance\"", "Equals")
 	else
 		Types.u8.Write(`{Variable} ~= nil and 1 or 0`, Write)
@@ -820,23 +817,24 @@ function Generators.Optional(Declaration: Type, Read: Blocks.Block, Write: Block
 		Write = Write:Compare(Variable, "nil", "Not")
 	end
 
-	return Read, Write
+	Generators.UserType(Declaration.Value.Of, Read, Write, Variable)
+	Read:End()
+
+	if not IsInstance then
+		Write:End()
+	end
 end
 
+--> Generator functions
 function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string?)
 	local Value = Declaration.Value
-	local Optional = Value.Optional
-	local IsInstance, IsUnknown;
-
 	local Variable = Variable or "Value"
-	--local Variable = Array and `Item_{Read.Indent}` or Variable
+	local IsInstance = false
 
 	if Declaration.Type == "Primitive" then
 		local Tokens = (Declaration :: Parser.PrimitiveDeclaration).Tokens
 		local Primitive = Tokens.Primitive.Value
-		IsUnknown = (Primitive == "unknown")
 		IsInstance = (Primitive == "Instance")
-		Optional = if IsUnknown then true else Optional
 	end
 
 	if not _G.BUNDLED then
@@ -847,32 +845,6 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 	--> Instance
 	if IsInstance then
 		Read:Line("RecieveInstanceCursor += 1")
-	end
-
-	--[[if IsInstance and Array == nil then
-		Read:Line("RecieveInstanceCursor += 1")
-	end]]
-
-	--> Array
-	--[[if Array then
-		if Array.Optional then
-			Read:Declare(Variable, true)
-			Read, Write = Generators.Optional(Declaration, Read, Write, Variable, true)
-		end
-
-		Read:Comment("START ARRAY")
-		Write:Comment("START ARRAY")
-		Read, Write = Structures.Array(Variable, Read, Write, Array.Bounds, ActualVariable)
-		
-		if IsInstance then
-			Read:Line("RecieveInstanceCursor += 1")
-		end
-	end]]
-
-	--> Optional
-	if Optional then
-		Read:Declare(Variable, true)
-		Read, Write = Generators.Optional(Declaration, Read, Write, Variable)
 	end
 
 	if Declaration.Type == "Primitive" then
@@ -891,27 +863,9 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 		Declarations.TagEnum(Declaration, Read, Write, Variable)
 	elseif Declaration.Type == "Array" then
 		Declarations.Array(Declaration, Read, Write, Variable)
+	elseif Declaration.Type == "Optional" then
+		Declarations.Optional(Declaration, Read, Write, Variable, IsInstance)
     end
-
-	--[[if Array then
-		Read:Line(`table.insert({Variable}, {ActualVariable})`)
-		Read = Read:End()
-		Write = Write:End()
-		Read:Comment("END ARRAY")
-		Write:Comment("END ARRAY")
-
-		if Array.Optional then
-			Read = Read:End()
-			Write = Write:End()
-		end
-	end]]
-
-	if Optional then
-		Read:End()
-		if not IsInstance then
-			Write:End()
-		end
-	end
 end
 
 function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?, Prefix: string?): (string, string, string, string)
@@ -994,8 +948,10 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?, Prefix
 		Returns = table.concat(Variables, ", ")
 	elseif Declaration.Type == "Array" then
 		local Value = Declaration.Value
-		local Of = Value.Declaration
-		Type = `\{ {Generators.LuauType(Of)} }`
+		Type = `\{ {Generators.LuauType(Value.Of)} }`
+	elseif Declaration.Type == "Optional" then
+		local Value = Declaration.Value
+		Type = `({Generators.LuauType(Value.Of)})?`
 	end
 
 	local Value = Declaration.Value
@@ -1011,10 +967,6 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?, Prefix
 
 		--> Wrap in chevrons
 		Type = `{Type}<{table.concat(Parameters, ",")}>`
-	end
-
-	if Value.Optional then
-		Type = `({Type})?`
 	end
 
 	--> Generalized type generation, works for everything except tuples
