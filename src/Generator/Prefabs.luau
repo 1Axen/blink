@@ -7,7 +7,7 @@ local Parser = require("../Parser")
 type Block = Blocks.Block
 type Writer = (Value: string, Block: Block, Range: NumberRange?, Components: {string}?) -> ()
 type Reader = (Variable: string, Block: Block, Range: NumberRange?, Components: {string}?) -> ()
-type Generate = (Declaration: Parser.PrimitiveDeclaration, Variable: string?, Read: Block, Write: Block, WriteValidations: boolean?) -> ()
+type Generate = (Declaration: Parser.Primitive, Variable: string?, Read: Block, Write: Block, WriteValidations: boolean?) -> ()
 
 type TypePrefab = {
 	Read: Reader,
@@ -79,7 +79,7 @@ local Structures = {
 	Array = nil :: any
 }
 local Primitives: {[string]: {
-	Type: string | (Declaration: Parser.PrimitiveDeclaration) -> string,
+	Type: string | (Declaration: Parser.Primitive) -> string,
 	Generate: Generate
 }} = {}
 
@@ -110,7 +110,7 @@ local function GetTypeToUseByBits(UpperBits: number): TypePrefab
 end
 
 local function GeneratePrimitivePrefab(Type: string, Prefab: TypePrefab, AssertGenerator: AssertGenerator?): Generate
-	return function(Declaration: Parser.PrimitiveDeclaration, Variable: string?, Read: Block, Write: Block, WriteValidations: boolean?)
+	return function(Declaration: Parser.Primitive, Variable: string?, Read: Block, Write: Block, WriteValidations: boolean?)
 		local Value = Declaration.Value
 		local Tokens = Declaration.Tokens
 		local Variable = Variable or "Value"

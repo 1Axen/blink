@@ -66,7 +66,7 @@ local IGNORED_TYPES_IN_SHARED = {
 	Function = true
 }
 
-type Type = Parser.TypeDeclaration
+type Type = Parser.TypeNode
 type Scope = Parser.Scope
 type Context = "Client" | "Server" | "Shared"
 type NumberRange = {Min: number, Max: number}
@@ -97,14 +97,14 @@ local Structures = Prefabs.Structures
 
 --> Declaration functions
 
-function Declarations.Primitive(Declaration: Parser.PrimitiveDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
+function Declarations.Primitive(Declaration: Parser.Primitive, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local Tokens = Declaration.Tokens
 	local Primitive = Tokens.Primitive.Value
     local Generator = Primitives[Primitive]
     Generator.Generate(Declaration, Variable, Read, Write, Options.WriteValidations)
 end
 
-function Declarations.Set(Declaration: Parser.SetDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
+function Declarations.Set(Declaration: Parser.Set, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local Value = Declaration.Value
 	local Flags = Value.Values
 
@@ -149,7 +149,7 @@ function Declarations.Set(Declaration: Parser.SetDeclaration, Read: Blocks.Block
 	end
 end
 
-function Declarations.Enum(Declaration: Parser.EnumDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
+function Declarations.Enum(Declaration: Parser.Enum, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local Value = Declaration.Value
 	local Enums = Value.Values
 	local Literal = Util.GenerateEnumLiterals(Enums)
@@ -186,7 +186,7 @@ function Declarations.Enum(Declaration: Parser.EnumDeclaration, Read: Blocks.Blo
 	:End()
 end
 
-function Declarations.Map(Declaration: Parser.MapDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
+function Declarations.Map(Declaration: Parser.Map, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local MapValue = Declaration.Value
 	local Key = MapValue.Values[1]
 	local Value = MapValue.Values[2]
@@ -219,32 +219,31 @@ function Declarations.Map(Declaration: Parser.MapDeclaration, Read: Blocks.Block
 	Write:Line(`buffer.writeu16(SendBuffer, {ElementsAllocation}, {ElementsVariable})`)
 end
 
-function Declarations.Struct(Declaration: Parser.StructDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
+function Declarations.Struct(Declaration: Parser.Struct, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local Value = Declaration.Value
 	Read:Line(`{Read:Declare(Variable)} = \{\} :: any`)
 
 	for _, Field in Value.Values do
-		local FieldValue = Field.Value
-		local Identifier = FieldValue.Identifier
-		local FieldVariable = `{Variable}.{Identifier}`
+		local Name = Field.Name
+		local FieldVariable = `{Variable}.{Name}`
 		Generators.UserType(Field :: Type, Read, Write, FieldVariable)
 	end
 end
 
-function Declarations.Tuple(Declaration: Parser.TupleDeclaration, Read: Blocks.Block, Write: Blocks.Block)
+function Declarations.Tuple(Declaration: Parser.Tuple, Read: Blocks.Block, Write: Blocks.Block)
 	for Index, Value in Declaration.Value.Values do
 		local Variable = `Value{Index}`
 		Generators.UserType(Value :: Type, Read, Write, Variable)
 	end
 end
 
-function Declarations.TagEnum(Declaration: Parser.TagEnumDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
+function Declarations.TagEnum(Declaration: Parser.TagEnum, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local Value = Declaration.Value
 	local Values = Value.Values
 
 	--> Body
 	local Tag = Value.Tag
-	local Header = `"{Values[1].Value.Identifier}"`
+	local Header = `"{Values[1].Name}"`
 	local TagIndex = `{Variable}.{Tag}`
 
 	Types.u8.Read(`Tag`, Read)
@@ -256,14 +255,11 @@ function Declarations.TagEnum(Declaration: Parser.TagEnumDeclaration, Read: Bloc
 	Write = Write:Compare(TagIndex, Header, "Equals")
 
 	for Index, Variant in Values do
-		local VariantValue = Variant.Value
-		local Name = `"{VariantValue.Identifier}"` 
-
+		local Name = `"{Variant.Name}"` 
 		if Index > 1 then
 			Read = Read:Branch("Conditional", "Tag", tostring(Index - 1), "Equals")
 			Write = Write:Branch("Conditional", TagIndex, Name, "Equals")
 		end
-
 
 		Write:_lineFront(`buffer.writeu8(SendBuffer, {Allocation}, {Index - 1})`)
 		Write:Advance(1)
@@ -281,10 +277,10 @@ function Declarations.TagEnum(Declaration: Parser.TagEnumDeclaration, Read: Bloc
 	:End()
 end
 
-function Declarations.Event(Declaration: Parser.EventDeclaration)
+function Declarations.Event(Declaration: Parser.Event)
 	local Value = Declaration.Value
 
-	local Identifier = `EVENT_{Value.Identifier}`
+	local Identifier = `EVENT_{Declaration.Name}`
 	local Reliability = Value.Type
 
 	local IsReliable = (Reliability == "Reliable")
@@ -314,8 +310,8 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 	local Indent = Util.GetScopeIndent(Scope)
 	local WriteEvent = `{Util.GetTypesPath(Identifier, true, Scope)}({Arguments})`
 
-	Body.Push(`{Value.Identifier} = \{`, 0, Indent)
-	Noop.Push(`{Value.Identifier} = \{`, 0, Indent)
+	Body.Push(`{Declaration.Name} = \{`, 0, Indent)
+	Noop.Push(`{Declaration.Name} = \{`, 0, Indent)
 
 	if Value.From ~= Context and IsPolling ~= true then
 		local IsSync = (Value.Call == "SingleSync" or Value.Call == "ManySync")
@@ -370,7 +366,7 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 				
 			ListenerBound:Branch("Default")
 				:Compare(`#{Queue}`, "256", "Greater")
-					:Line(`warn("[Blink]: Event queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement a listener?")`)
+					:Line(`warn("[Blink]: Event queue of \\"{Declaration.Name}\\" exceeded 256, did you forget to implement a listener?")`)
 				:End()
 				:Line(`table.insert({Queue}, \{{ListenerArguments}\} :: \{any\})`)
 			:End()
@@ -558,10 +554,12 @@ function Declarations.Event(Declaration: Parser.EventDeclaration)
 	Return.PushLines(Body.DumpLines(), 0)
 end
 
-function Declarations.Function(Declaration: Parser.FunctionDeclaration)
+function Declarations.Function(Declaration: Parser.Function)
+	local Name = Declaration.Name
 	local Value = Declaration.Value
-	local DataIdentifier = `FUNCTION_DATA_{Value.Identifier}`
-	local ReturnIdentifier = `FUNCTION_RETURN_{Value.Identifier}`
+
+	local DataIdentifier = `FUNCTION_DATA_{Name}`
+	local ReturnIdentifier = `FUNCTION_RETURN_{Name}`
 
 	local Yield = Value.Yield
 	local IsFuture = (Yield == "Future")
@@ -611,8 +609,8 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 	local Body = Builder.new()
 	local Indent = Util.GetScopeIndent(Scope)
 
-	Noop.Push(`{Value.Identifier} = \{`, 0, Indent)
-	Body.Push(`{Value.Identifier} = \{`, 0, Indent)
+	Noop.Push(`{Name} = \{`, 0, Indent)
+	Body.Push(`{Name} = \{`, 0, Indent)
 
 	--> Create queue and event branch
 	Events.Push(`{Queue} = table.create(256)`)
@@ -631,7 +629,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 			:Line(`{Connection}(Player, {DataArguments}, InvocationIdentifier)`)
 		:Branch("Default")
 			:Compare(`#{Queue}`, "256", "Greater")
-				:Line(`warn("[Blink]: Event queue of \\"{Value.Identifier}\\" exceeded 256, did you forget to implement a listener?")`)
+				:Line(`warn("[Blink]: Event queue of \\"{Name}\\" exceeded 256, did you forget to implement a listener?")`)
 			:End()
 			:Line(`table.insert({Queue}, \{Player, {DataArguments}, InvocationIdentifier\} :: \{any\})`)
 		:End()
@@ -660,7 +658,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 				:Line(`buffer.writeu8(SendBuffer, Position, {Index})`)
 				:Line(`buffer.writeu8(SendBuffer, Position + 1, InvocationIdentifier)`)
 				:Line(`buffer.writeu8(SendBuffer, Position + 2, 0)`)
-				:Line(`warn(\`"{Value.Identifier}" encountered an error, \{Error\}\`)`)
+				:Line(`warn(\`"{Name}" encountered an error, \{Error\}\`)`)
 			:Branch("Default")
 				:Line(`{Util.GetTypesPath(ReturnIdentifier, true, Scope)}({ReturnArguments}, InvocationIdentifier)`)
 			:End()
@@ -697,7 +695,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 			:End()
 		.Content
 
-		local Error = `"There was an exception while processing \\"{Value.Identifier}\\"."`
+		local Error = `"There was an exception while processing \\"{Name}\\"."`
 		local Contents = Blocks.Block()
 			:Line("local InvocationIdentifier = Invoke()")
 			:Lines(Exhaust)
@@ -759,7 +757,7 @@ function Declarations.Function(Declaration: Parser.FunctionDeclaration)
 	Return.PushLines(Body.DumpLines(), 0)
 end
 
-function Declarations.Array(Declaration: Parser.ArrayDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
+function Declarations.Array(Declaration: Parser.Array, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local Value = Declaration.Value
 	local Of = Value.Of
 	local Range = Value.Range :: NumberRange
@@ -806,7 +804,7 @@ function Declarations.Array(Declaration: Parser.ArrayDeclaration, Read: Blocks.B
 	Write:Comment("END ARRAY")
 end
 
-function Declarations.Optional(Declaration: Parser.OptionalDeclaration, Read: Blocks.Block, Write: Blocks.Block, Variable: string, IsInstance: boolean)
+function Declarations.Optional(Declaration: Parser.Optional, Read: Blocks.Block, Write: Blocks.Block, Variable: string, IsInstance: boolean)
 	Read:Declare(Variable, true)
 
 	if IsInstance then
@@ -827,19 +825,19 @@ end
 
 --> Generator functions
 function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string?)
-	local Value = Declaration.Value
+	local Name = Declaration.Name
 	local Variable = Variable or "Value"
 	local IsInstance = false
 
 	if Declaration.Type == "Primitive" then
-		local Tokens = (Declaration :: Parser.PrimitiveDeclaration).Tokens
+		local Tokens = (Declaration :: Parser.Primitive).Tokens
 		local Primitive = Tokens.Primitive.Value
 		IsInstance = (Primitive == "Instance")
 	end
 
 	if not _G.BUNDLED then
-		Read:Comment(`{Variable}: {Value.Identifier}`)
-		Write:Comment(`{Variable}: {Value.Identifier}`)
+		Read:Comment(`{Variable}: {Name}`)
+		Write:Comment(`{Variable}: {Name}`)
 	end
 
 	--> Instance
@@ -873,19 +871,19 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?, Prefix
 
 	local Type = ""
 	local Values = ""
-	local Export = Util.GetExportName(Declaration.Value.Identifier, Scope)
+	local Export = Util.GetExportName(Declaration.Name, Scope)
 	local Returns = `{Prefix}Value`
 
 	if Declaration.Type == "Primitive" then
-		local Tokens = (Declaration :: Parser.PrimitiveDeclaration).Tokens
+		local Tokens = (Declaration :: Parser.Primitive).Tokens
 		local Primitive = Primitives[Tokens.Primitive.Value]
 		if type(Primitive.Type) == "function" then
-			Type = Primitive.Type(Declaration :: Parser.PrimitiveDeclaration)
+			Type = Primitive.Type(Declaration :: Parser.Primitive)
 		else
 			Type = Primitive.Type
 		end
 	elseif Declaration.Type == "Set" then
-		local Value = (Declaration :: Parser.SetDeclaration).Value
+		local Value = (Declaration :: Parser.Set).Value
 		local Entries: {string} = {}
 
 		for _, Flag in Value.Values do
@@ -894,21 +892,21 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?, Prefix
 
 		Type = `\{{table.concat(Entries)}\}`
 	elseif Declaration.Type == "Enum" then
-		local Value = (Declaration :: Parser.EnumDeclaration).Value
+		local Value = (Declaration :: Parser.Enum).Value
 		Type = `({Util.GenerateEnumLiterals(Value.Values)})`
 	elseif Declaration.Type == "TagEnum" then
-		local Value = (Declaration :: Parser.TagEnumDeclaration).Value
+		local Value = (Declaration :: Parser.TagEnum).Value
 		local Literals = {}
 
 		for Index, Variant in Value.Values do
-			local TagField = `{Value.Tag}: "{Variant.Value.Identifier}"`
+			local TagField = `{Value.Tag}: "{Variant.Name}"`
 			local ValueType = Generators.LuauType(Variant)
 			table.insert(Literals, `\{ {TagField},{string.sub(ValueType, 2)}`)
 		end
 
 		Type = table.concat(Literals, " | ")
 	elseif Declaration.Type == "Map" then
-		local MapValue = (Declaration :: Parser.MapDeclaration).Value
+		local MapValue = (Declaration :: Parser.Map).Value
 		local Key = Generators.LuauType(MapValue.Values[1])
 		local Value = Generators.LuauType(MapValue.Values[2])
 		Type = `\{[{Key}]: {Value}\}`
@@ -917,17 +915,16 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?, Prefix
 		local Fields = {}
 		
 		for _, Field in Value.Values do
-			local FieldValue = Field.Value
-			local Identifier = FieldValue.Identifier
+			local Name = Field.Name
 			local FieldType = Generators.LuauType(Field)
-			table.insert(Fields, `{Identifier}: {FieldType}`)
+			table.insert(Fields, `{Name}: {FieldType}`)
 		end
 
 		Type = `\{ {table.concat(Fields, ", ")}\ }`
 	elseif Declaration.Type == "Generic" then
 		Type = `{Declaration.Value.Generic}`
 	elseif Declaration.Type == "Tuple" then
-		local Value = (Declaration :: Parser.TupleDeclaration).Value
+		local Value = (Declaration :: Parser.Tuple).Value
 		local TupleValues = Value.Values
 		Returns = ""
 
@@ -978,6 +975,7 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?, Prefix
 end
 
 function Generators.Type(Declaration: Type)
+	local Name = Declaration.Name
 	local Value = Declaration.Value
 	local Type, _, Export = Generators.LuauType(Declaration)
 
@@ -990,11 +988,10 @@ function Generators.Type(Declaration: Type)
 
 		Generics = `<{table.concat(Types, ",")}>`
 	else
-		local Identifier = Value.Identifier
 		local _, Values, _, Returns = Generators.LuauType(Declaration)
 
-		local Read = Blocks.Function(Util.GetTypesPath(Identifier, false, Scope), "", `({Export})`)
-		local Write = Blocks.Function(Util.GetTypesPath(Identifier, true, Scope), Values, "()")
+		local Read = Blocks.Function(Util.GetTypesPath(Name, false, Scope), "", `({Export})`)
+		local Write = Blocks.Function(Util.GetTypesPath(Name, true, Scope), Values, "()")
 
 		--Read:Line(`local {Values};`)
 		Generators.UserType(Declaration, Read, Write)
@@ -1012,8 +1009,7 @@ function Generators.Type(Declaration: Type)
 end
 
 function Generators.Export(Declaration: Type)
-	local Value = Declaration.Value
-	local Identifier = Value.Identifier
+	local Name = Declaration.Name
 	local _, Values, Export, Returns = Generators.LuauType(Declaration)
 
 	local Read = Blocks.Function(Casing.Read, "Buffer: buffer", `({Export})`, true)
@@ -1021,7 +1017,7 @@ function Generators.Export(Declaration: Type)
 
 	local Body = Builder.new()
 	local Indent = Util.GetScopeIndent(Scope)
-	Body.Push(`{Identifier} = \{`, 0, Indent)
+	Body.Push(`{Name} = \{`, 0, Indent)
 
 	--> Overwrite buffer
 	Read:Comment("Buffer overwrite")
@@ -1116,9 +1112,9 @@ function Generators.Event(Data: Type?, Index: number, Identifier: string, Functi
 	return Read:Return(Returns):End().Content, Write:End().Content
 end
 
-function Generators.Scope(Declaration: Parser.ScopeDeclaration)
+function Generators.Scope(Declaration: Parser.ScopeNode)
+	local Name = Declaration.Name
 	local Value = Declaration.Value
-	local Identifier = Value.Identifier
 
 	local Parent = Scope
 	local NewScope = Value.Scope
@@ -1129,8 +1125,8 @@ function Generators.Scope(Declaration: Parser.ScopeDeclaration)
 
 	Scope = NewScope
 	Events.Push(`Types.{Path} = \{\}`, 1, 0)
-	Noop.Push(`{Identifier} = \{`, 0, Indent)
-	Return.Push(`{Identifier} = \{`, 0, Indent)
+	Noop.Push(`{Name} = \{`, 0, Indent)
+	Return.Push(`{Name} = \{`, 0, Indent)
 
 	Generators.AbstractSyntaxTree(Value.Values)
 
@@ -1146,11 +1142,11 @@ function Generators.AbstractSyntaxTree(Tree: {Parser.Declaration})
 		end
 
 		if Declaration.Type == "Scope" then
-			Generators.Scope(Declaration :: Parser.ScopeDeclaration)
+			Generators.Scope(Declaration :: Parser.ScopeNode)
 		elseif Declaration.Type == "Event" then
-			Declarations.Event(Declaration :: Parser.EventDeclaration)
+			Declarations.Event(Declaration :: Parser.Event)
 		elseif Declaration.Type == "Function" then
-			Declarations.Function(Declaration :: Parser.FunctionDeclaration)
+			Declarations.Function(Declaration :: Parser.Function)
 		else
 			if Declaration.Value.Export then
 				Generators.Export(Declaration :: Type)

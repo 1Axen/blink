@@ -9,7 +9,7 @@ local Prefabs = require("./Prefabs")
 
 local Builder = require("../Modules/Builder")
 
-type Type = Parser.TypeDeclaration
+type Type = Parser.TypeNode
 type Scope = Parser.Scope
 type Context = "Client" | "Server" | "Shared"
 type AbstractSyntaxTree = Parser.Body
@@ -38,10 +38,10 @@ local function GetTypescriptType(State: State, Declaration: Type): (string, stri
     local Values = ""
 
     if Declaration.Type == "Primitive" then
-		local Tokens = (Declaration :: Parser.PrimitiveDeclaration).Tokens
+		local Tokens = (Declaration :: Parser.Primitive).Tokens
 		local Primitive = Primitives[Tokens.Primitive.Value]
 		if type(Primitive.Type) == "function" then
-			Type = Primitive.Type(Declaration :: Parser.PrimitiveDeclaration)
+			Type = Primitive.Type(Declaration :: Parser.Primitive)
 		else
 			Type = Primitive.Type
 		end
@@ -50,7 +50,7 @@ local function GetTypescriptType(State: State, Declaration: Type): (string, stri
 			Type = "unknown"
 		end
 	elseif Declaration.Type == "Set" then
-		local Value = (Declaration :: Parser.SetDeclaration).Value
+		local Value = (Declaration :: Parser.Set).Value
 		local Entries: {string} = {}
 
 		for _, Flag in Value.Values do
@@ -59,21 +59,21 @@ local function GetTypescriptType(State: State, Declaration: Type): (string, stri
 
 		Type = `\{{table.concat(Entries)}\}`
 	elseif Declaration.Type == "Enum" then
-		local Value = (Declaration :: Parser.EnumDeclaration).Value
+		local Value = (Declaration :: Parser.Enum).Value
 		Type = Util.GenerateEnumLiterals(Value.Values)
 	elseif Declaration.Type == "TagEnum" then
-		local Value = (Declaration :: Parser.TagEnumDeclaration).Value
+		local Value = (Declaration :: Parser.TagEnum).Value
 		local Literals = {}
 
 		for Index, Variant in Value.Values do
-			local TagField = `{Value.Tag}: "{Variant.Value.Identifier}"`
+			local TagField = `{Value.Tag}: "{Variant.Name}"`
 			local ValueType = GetTypescriptType(State, Variant)
 			table.insert(Literals, `\{ {TagField},{string.sub(ValueType, 2)}`)
 		end
 
 		Type = table.concat(Literals, " | ")
 	elseif Declaration.Type == "Map" then
-		local MapValue = (Declaration :: Parser.MapDeclaration).Value
+		local MapValue = (Declaration :: Parser.Map).Value
 		local Key = GetTypescriptType(State, MapValue.Values[1])
 		local Value = GetTypescriptType(State, MapValue.Values[2])
 		Type = `Map<{Key}, {Value}>`
@@ -82,17 +82,16 @@ local function GetTypescriptType(State: State, Declaration: Type): (string, stri
 		local Fields = {}
 		
 		for _, Field in Value.Values do
-			local FieldValue = Field.Value
-			local Identifier = FieldValue.Identifier
+			local Name = Field.Name
 			local FieldType = GetTypescriptType(State, Field)
-			table.insert(Fields, `{Identifier}: {FieldType}`)
+			table.insert(Fields, `{Name}: {FieldType}`)
 		end
 
 		Type = `\{ {table.concat(Fields, ", ")}\ }`
 	elseif Declaration.Type == "Generic" then
 		Type = `{Declaration.Value.Generic}`
 	elseif Declaration.Type == "Tuple" then
-		local Value = (Declaration :: Parser.TupleDeclaration).Value
+		local Value = (Declaration :: Parser.Tuple).Value
 		local TupleValues = Value.Values
 
 		local Types = {}
@@ -142,8 +141,8 @@ local function GetTypescriptType(State: State, Declaration: Type): (string, stri
 end
 
 function Generators.Type(State: State, Type: Type)
+	local Name = Type.Name
     local Value = Type.Value
-	local Identifier = Value.Identifier
 
     local Indent = State.Indent
     local StringBuilder = State.Builder
@@ -160,27 +159,26 @@ function Generators.Type(State: State, Type: Type)
 		Generics = `<{table.concat(Types, ",")}>`
 	end
 
-    StringBuilder.Push(`type {Identifier}{Generics} = {TypescriptType}`, 0, Indent)
+    StringBuilder.Push(`type {Name}{Generics} = {TypescriptType}`, 0, Indent)
 end
 
 function Generators.Export(State: State, Type: Type)
-    local Value = Type.Value
-	local Identifier = Value.Identifier
+	local Name = Type.Name
 
     local Indent = State.Indent
     local Casing = State.Casing
     local StringBuilder = State.Builder
 
     local Types, Values = GetTypescriptType(State, Type)
-    StringBuilder.Push(`{GetPrefix(Indent)}const {Identifier}: \{`, 0, Indent)
+    StringBuilder.Push(`{GetPrefix(Indent)}const {Name}: \{`, 0, Indent)
     StringBuilder.Push(`{Casing.Read}: (Buffer: buffer) => {Types}`, 0, Indent + 1)
     StringBuilder.Push(`{Casing.Write}: ({Values}) => buffer`, 0, Indent + 1)
     StringBuilder.Push(`\}`, 0, Indent)
 end
 
-function Generators.Function(State: State, Function: Parser.FunctionDeclaration)
+function Generators.Function(State: State, Function: Parser.Function)
+	local Name = Function.Name
     local Value = Function.Value
-	local Identifier = Value.Identifier
 
     local Indent = State.Indent
     local Casing = State.Casing
@@ -196,7 +194,7 @@ function Generators.Function(State: State, Function: Parser.FunctionDeclaration)
 		ReturnTypes = GetTypescriptType(State, Value.Return)
 	end
 
-    StringBuilder.Push(`export {GetPrefix(Indent)}const {Identifier}: \{`, 0, Indent)
+    StringBuilder.Push(`export {GetPrefix(Indent)}const {Name}: \{`, 0, Indent)
 
     if State.Context == "Server" then
         StringBuilder.Push(`{Casing.On}: (Listener: (Player: Player, {Values}) => {ReturnTypes}) => void`, 0, Indent + 1)
@@ -211,9 +209,9 @@ function Generators.Function(State: State, Function: Parser.FunctionDeclaration)
     StringBuilder.Push(`\}`, 0, Indent)
 end
 
-function Generators.Event(State: State, Event: Parser.EventDeclaration)
+function Generators.Event(State: State, Event: Parser.Event)
+	local Name = Event.Name
     local Value = Event.Value
-	local Identifier = Value.Identifier
 
     local Indent = State.Indent
     local Casing = State.Casing
@@ -236,7 +234,7 @@ function Generators.Event(State: State, Event: Parser.EventDeclaration)
         ListenerValues = `LuaTuple<[{ListenerValues}]>`
     end
 
-    StringBuilder.Push(`export {GetPrefix(Indent)}const {Identifier}: \{`, 0, Indent)
+    StringBuilder.Push(`export {GetPrefix(Indent)}const {Name}: \{`, 0, Indent)
 
     if Value.From == State.Context then
         if Value.From == "Server" then
@@ -256,9 +254,9 @@ function Generators.Event(State: State, Event: Parser.EventDeclaration)
     StringBuilder.Push(`\}`, 0, Indent)
 end
 
-function Generators.Scope(State: State, Scope: Parser.ScopeDeclaration)
+function Generators.Scope(State: State, Scope: Parser.ScopeNode)
+	local Name = Scope.Name
     local Value = Scope.Value
-	local Identifier = Value.Identifier
 
     local Parent = State.Scope
     local Indent = State.Indent
@@ -267,7 +265,7 @@ function Generators.Scope(State: State, Scope: Parser.ScopeDeclaration)
     State.Indent += 1
 	State.Scope = Value.Scope
 
-	StringBuilder.Push(`export {GetPrefix(Indent)}namespace {Identifier} \{`, 0, Indent)
+	StringBuilder.Push(`export {GetPrefix(Indent)}namespace {Name} \{`, 0, Indent)
 	Generators.Tree(State, Value.Values)
 	StringBuilder.Push(`}`, 0, Indent)
 
@@ -278,11 +276,11 @@ end
 function Generators.Tree(State: State, Tree: {Parser.Declaration})
     for Index, Declaration in Tree do
 		if Declaration.Type == "Scope" then
-			Generators.Scope(State, Declaration :: Parser.ScopeDeclaration)
+			Generators.Scope(State, Declaration :: Parser.ScopeNode)
 		elseif Declaration.Type == "Event" then
-			Generators.Event(State, Declaration :: Parser.EventDeclaration)
+			Generators.Event(State, Declaration :: Parser.Event)
 		elseif Declaration.Type == "Function" then
-			Generators.Function(State, Declaration :: Parser.FunctionDeclaration)
+			Generators.Function(State, Declaration :: Parser.Function)
 		else
 			if Declaration.Value.Export then
 				Generators.Export(State, Declaration :: Type)

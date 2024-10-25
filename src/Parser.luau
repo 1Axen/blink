@@ -29,6 +29,7 @@ type Token = Lexer.Token
 type Type = "Type" | "Event" | "Scope"
 type Node<Type, Body, Tokens> = {
     Type: Type,
+    Name: string,
     Value: Body,
     Tokens: Tokens
 }
@@ -36,16 +37,16 @@ type Node<Type, Body, Tokens> = {
 type Generics = {
     Span: Error.Span,
     List: {string},
-    Keys: {[string]: {Generic: GenericDeclaration?}},
+    Keys: {[string]: {Generic}},
 }
 
 type Reference = {
-    Identifier: Token,
-    Declaration: TypeDeclaration
+    Name: Token,
+    To: TypeNode
 }
 
 export type Scope = {
-    Identifier: Token,
+    Name: Token,
     Parent: Scope?,
     Symbols: {
         Types: {[string]: Reference},
@@ -65,7 +66,7 @@ type Attributes = {
     Range: NumberRange?,
     Export: boolean?,
     Generics: Generics?,
-    Parameters: {TypeDeclaration}?,
+    Parameters: {TypeNode}?,
     Components: {string}?
 }
 
@@ -94,98 +95,84 @@ export type Body = Node<"Body", {
 }, {}>
 
 type Declarations = "Map" | "Set" | "Enum" | "TagEnum" | "Tuple" | "Struct" | "Primitive" | "Generic" | "Array" | "Event" | "Function" | "Scope" | "Optional"
-export type TypeDeclaration = 
-    | MapDeclaration 
-    | SetDeclaration 
-    | EnumDeclaration 
-    | TagEnumDeclaration 
-    | TupleDeclaration 
-    | StructDeclaration 
-    | PrimitiveDeclaration 
-    | GenericDeclaration 
-    | ArrayDeclaration
-    | OptionalDeclaration
+export type TypeNode = 
+    | Map 
+    | Set 
+    | Enum 
+    | TagEnum 
+    | Tuple 
+    | Struct 
+    | Primitive 
+    | Generic 
+    | Array
+    | Optional
 
 export type Declaration = Node<Declarations, {
-    Identifier: string,
     [any]: any
 }, {
     [any]: any
 }>
 
-export type ArrayDeclaration = Node<"Array", {
-    Identifier: string,
-    Of: TypeDeclaration
+export type Array = Node<"Array", {
+    Of: TypeNode
 } & Attributes, AttributesTokens>
 
-export type OptionalDeclaration = Node<"Optional", {
-    Identifier: string,
-    Of: TypeDeclaration
+export type Optional = Node<"Optional", {
+    Of: TypeNode
 } & Attributes, AttributesTokens>
 
-export type SetDeclaration = Node<"Set", {
-    Identifier: string,
+export type Set = Node<"Set", {
     Values: {string}
 } & Attributes, AttributesTokens>
 
-export type MapDeclaration = Node<"Map", {
-    Identifier: string,
-    Values: {TypeDeclaration}
+export type Map = Node<"Map", {
+    Values: {TypeNode}
 } & Attributes, AttributesTokens>
 
-export type EnumDeclaration = Node<"Enum", {
-    Identifier: string,
+export type Enum = Node<"Enum", {
     Values: {string}
 } & Attributes, AttributesTokens>
 
-export type TagEnumDeclaration = Node<"TagEnum", {
-    Identifier: string,
+export type TagEnum = Node<"TagEnum", {
     Tag: string,
-    Values: {StructDeclaration}
+    Values: {Struct}
 } & Attributes, AttributesTokens>
 
-export type StructDeclaration = Node<"Struct", {
-    Identifier: string,
-    Values: {TypeDeclaration}
+export type Struct = Node<"Struct", {
+    Values: {TypeNode}
 } & Attributes, AttributesTokens>
 
-export type PrimitiveDeclaration = Node<"Primitive", {
-    Identifier: string,
+export type Primitive = Node<"Primitive", {
     Class: string?,
     Primitive: Settings.Primitive,
 } & Attributes, {
     Primitive: Token,
 } & AttributesTokens>
 
-export type GenericDeclaration = Node<"Generic", {
-    Identifier: string,
+export type Generic = Node<"Generic", {
     Generic: string,
 } & Attributes, AttributesTokens>
 
-export type TupleDeclaration = Node<"Tuple", {
-    Identifier: string,
-    Values: {TypeDeclaration}
+export type Tuple = Node<"Tuple", {
+    Values: {TypeNode}
 } & Attributes, AttributesTokens>
 
-export type EventDeclaration = Node<"Event", {
-    Identifier: string,
+export type Event = Node<"Event", {
     From: "Client" | "Server",
     Type: "Reliable" | "Unreliable",
     Call: "SingleSync" | "SingleAsync" | "ManySync" | "ManyAsync",
     Poll: boolean?,
-    Data: (TypeDeclaration | TupleDeclaration)? 
+    Data: (TypeNode | Tuple)? 
 }, {}>
 
-export type FunctionDeclaration = Node<"Function", {
-    Identifier: string,
+export type Function = Node<"Function", {
     Yield: "Future" | "Promise" | "Coroutine",
-    Data: (TypeDeclaration | TupleDeclaration)?,
-    Return: (TypeDeclaration | TupleDeclaration)?
+    Data: (TypeNode | Tuple)?,
+    Return: (TypeNode | Tuple)?
 }, {}>
 
-export type ScopeDeclaration = Node<"Scope", {
+export type ScopeNode = Node<"Scope", {
     Scope: Scope,
-    Identifier: string,
     Values: {Declaration}
 }, {}> 
 
@@ -539,9 +526,9 @@ function Parser.SetReference(self: Parser, Bucket: Bucket, Identifier: Token, De
 
     self.Symbols[Name] = true
     self.Scope.Symbols[Bucket][Name] = {
-        Identifier = Identifier,
-        Declaration = Declaration
-    }
+        To = Declaration,
+        Name = Identifier,
+    } :: Reference
 end
 
 function Parser.GetGenerics(self: Parser): Generics?
@@ -742,9 +729,11 @@ end
 --> struct MergeStruct { ..GenericStruct<u8> }
 --> GenericStruct is merged just fine but GenericMap loses the reference to the table for `T` somewhere along the process (likely at the deep clone stage)
 
-function Parser.ReplaceGenerics(self: Parser, Of: TypeDeclaration, Previous: {[string]: TypeDeclaration}?): TypeDeclaration
-    local Clone = Table.DeepClone(Of) :: StructDeclaration
+function Parser.ReplaceGenerics(self: Parser, Of: TypeNode, Previous: {[string]: TypeNode}?): TypeNode
+    local Clone = Table.DeepClone(Of) :: Struct
     local Generics = Clone.Value.Generics :: Generics
+    local Replacements: {[string]: TypeNode} = {}
+
     Clone.Value.Generics = nil
 
     --> Parse generics input
@@ -752,19 +741,19 @@ function Parser.ReplaceGenerics(self: Parser, Of: TypeDeclaration, Previous: {[s
 
     for Index = 1, #Generics.List do
         local Key = Generics.List[Index]
+        local List = Generics.Keys[Key]
+
         local Token = self:Peek()
         local Declaration = self:Type(Token)
+        Replacements[Key] = Declaration
 
-        local Generic = Generics.Keys[Key].Generic :: GenericDeclaration
-        local Identifier = Generic.Value.Identifier
+        for _, Generic in List do
+            local Replacement = Table.DeepClone(Declaration)
 
-        local Replacement = Table.DeepClone(Declaration) :: StructDeclaration
-        Replacement.Value.Identifier = Identifier
-
-        --> war crimes
-        Generic.Type = Replacement.Type :: any
-        Generic.Value = Replacement.Value :: any
-        Generic.Tokens = Replacement.Tokens
+            Generic.Type = Replacement.Type
+            Generic.Value = Replacement.Value
+            Generic.Tokens = Replacement.Tokens
+        end
 
         if Index < #Generics.List then
             self:Consume("Comma")
@@ -773,8 +762,30 @@ function Parser.ReplaceGenerics(self: Parser, Of: TypeDeclaration, Previous: {[s
 
     self:Consume("CloseChevrons")
 
-    print(Format(Of))
-    print(Format(Clone))
+    --> hack to find lost references
+    local function Traverse(Type: TypeNode)
+        if Type.Type == "Array" or Type.Type == "Optional" then
+            Traverse(Type.Value.Of)
+        elseif (Type :: Struct).Value.Values ~= nil then
+            for _, Type in (Type :: Struct).Value.Values do
+                Traverse(Type)
+            end
+        elseif Type.Type == "Generic" then
+            local Key = Type.Value.Generic
+            local Declaration = Replacements[Key]
+            if Declaration == nil then
+                return
+            end
+
+            local Replacement = Table.DeepClone(Declaration)
+
+            Type.Type = Replacement.Type
+            Type.Value = Replacement.Value
+            Type.Tokens = Replacement.Tokens
+        end
+    end
+
+    Traverse(Clone)
     
     return Clone
 end
@@ -783,7 +794,7 @@ end
 
 function Parser.Parse(self: Parser, Source: string, Scope: Scope?): Body
     --> Set state
-    self.Scope = Scope or {Identifier = {Value = "", Start = 0, End = 0} :: any, Symbols = {Types = {}, Scopes = {}}}
+    self.Scope = Scope or {Name = {Value = "", Start = 0, End = 0} :: any, Symbols = {Types = {}, Scopes = {}}}
     self.Source = Source
     table.clear(self.Symbols)
     
@@ -797,6 +808,7 @@ function Parser.Parse(self: Parser, Source: string, Scope: Scope?): Body
 
     return {
         Type = "Body",
+        Name = Scope and Scope.Name.Value or "Body",
         Value = {
             Symbols = table.clone(self.Symbols),
             Options = Options,
@@ -806,7 +818,7 @@ function Parser.Parse(self: Parser, Source: string, Scope: Scope?): Body
     }
 end
 
-function Parser.Import(self: Parser): ScopeDeclaration
+function Parser.Import(self: Parser): ScopeNode
     self:Consume("Import")
 
     local Path = self:Consume("String")
@@ -820,17 +832,17 @@ function Parser.Import(self: Parser): ScopeDeclaration
     end
 
     --> Import namespace
+    local Name: string;
     local Token = Path
-    local Identifier: string;
 
     if self:TryConsume("As") then
         --> Use user provided namespace identifier
         Token = self:ConsumeText()
-        Identifier = Token.Value 
+        Name = Token.Value 
     elseif (task ~= nil) then
         --> ROBLOX
         local Indices = string.split(ImportPath, ".")
-        Identifier = Indices[#Indices]
+        Name = Indices[#Indices]
     else
         if string.sub(ImportPath, 1, 2) ~= "./" then
             ImportPath = `./{ImportPath}`
@@ -840,14 +852,14 @@ function Parser.Import(self: Parser): ScopeDeclaration
         local Filename = PathParser.Filename(ImportPath)
         assert(Filename, "Unable to parse file path for filename!")
         
-        Identifier = Filename
+        Name = Filename
         Token.Value = Filename
     end
 
-    local Existing = self:Reference("Scopes", Identifier)
+    local Existing = self:Reference("Scopes", Name)
     if Existing then
-        Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration: "{Identifier}"`, self.File)
-            :Secondary(Existing.Identifier, "Previously declared here")
+        Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration: "{Name}"`, self.File)
+            :Secondary(Existing.Name, "Previously declared here")
             :Primary(Token, "Duplicate declared here")
         :Emit()
     end
@@ -855,7 +867,7 @@ function Parser.Import(self: Parser): ScopeDeclaration
     --> Import
     local Parent = self.Scope
     local Scope: Scope = {
-        Identifier = Token,
+        Name = Token,
         Symbols = {
             Types = {},
             Scopes = {}
@@ -875,14 +887,14 @@ function Parser.Import(self: Parser): ScopeDeclaration
     end
 
     Scope.Parent = Parent
-    self.Symbols[Identifier] = true
-    Parent.Symbols.Scopes[Identifier] = Scope
+    self.Symbols[Name] = true
+    Parent.Symbols.Scopes[Name] = Scope
     
     return {
         Type = "Scope",
+        Name = Name,
         Value = {
             Scope = Scope,
-            Identifier = Identifier,
             Values = AST.Value.Declarations
         },
         Tokens = {}
@@ -899,22 +911,22 @@ function Parser.Options(self: Parser): Options
 
         self:Consume("Keyword")
         local Key = self:ConsumeAll("Identifier", "Assign")
-        local Identifier = Key.Value
+        local Name = Key.Value
         
-        local Type: Lexer.Types = OPTIONS[Identifier]
+        local Type: Lexer.Types = OPTIONS[Name]
         if not Type then
             local Examples = ""
             for Option in OPTIONS do
                 Examples ..= `{Examples ~= "" and " or " or ""}"{Option}"`
             end
 
-            Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Identifier}"`, self.File)
+            Error.new(Error.ParserUnknownOption, self.Source, `Unknown option "{Name}"`, self.File)
                 :Primary(Key, `Expected one of {Examples}`)
             :Emit()
         end
 
         local Value = self:Consume(Type)
-        Options[Identifier] = Value.Value
+        Options[Name] = Value.Value
     end
 
     return Options
@@ -945,7 +957,7 @@ function Parser.Declarations(self: Parser): {Declaration}
         end
 
         local Keyword = self:Consume("Keyword")
-        local Identifier = self:ConsumeText()
+        local Name = self:ConsumeText()
         local Declaration: Declaration;
 
         if Keyword.Value == "option" then
@@ -959,12 +971,12 @@ function Parser.Declarations(self: Parser): {Declaration}
         local Type = KeywordSettings.Class
 
         local Bucket: Bucket = BUCKETS[Type]
-        local Existing = self:Reference(Bucket, Identifier.Value)
+        local Existing = self:Reference(Bucket, Name.Value)
 
         if Existing then
             Error.new(Error.AnalyzeDuplicateDeclaration, self.Source, `Duplicate declaration`, self.File)
-                :Secondary(Existing.Identifier, "Previously declared here")
-                :Primary(Identifier, "Duplicate declared here")
+                :Secondary(Existing.Name, "Previously declared here")
+                :Primary(Name, "Duplicate declared here")
             :Emit()
         end
 
@@ -976,16 +988,16 @@ function Parser.Declarations(self: Parser): {Declaration}
 
         --> Parse declaration
         if Type == "Type" then
-           local TypeDeclaration = self:Type(Identifier, Keyword)
-           local Value: Attributes = TypeDeclaration.Value
+           local Node = self:Type(Name, Keyword)
+           local Value: Attributes = Node.Value
            Value.Scope = self.Scope
-           Declaration = TypeDeclaration
+           Declaration = Node
         elseif Type == "Event" then
-            Declaration = self:Event(Identifier)
+            Declaration = self:Event(Name)
         elseif Type == "Function" then
-            Declaration = self:Function(Identifier)
+            Declaration = self:Function(Name)
         elseif Type  == "Scope" then
-            Declaration = self:Namespace(Identifier)
+            Declaration = self:Namespace(Name)
         end
 
         --> Update declarations
@@ -1019,7 +1031,7 @@ function Parser.Declarations(self: Parser): {Declaration}
         end
 
         if Type ~= "Scope" then
-            self:SetReference(Bucket, Identifier, Declaration)
+            self:SetReference(Bucket, Name, Declaration)
         end
     end
 
@@ -1047,7 +1059,7 @@ function Parser.GetOptionFromToken(self: Parser, Token: Token, Structure: {Event
     :Emit())
 end
 
-function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOption}): {[string]: any}
+function Parser.Structure(self: Parser, Name: Token, Structure: {EventOption}): {[string]: any}
     local Fields: {[string]: any} = {}
     local Open, Close: Lexer.Token? = self:Consume("OpenBraces"), nil
 
@@ -1080,7 +1092,7 @@ function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOpti
                 :Emit()
             end
         else
-            Value = self:Type(Identifier, nil, true)
+            Value = self:Type(Name, nil, true)
         end
 
         Fields[Option.Key] = Value  
@@ -1116,13 +1128,13 @@ function Parser.Structure(self: Parser, Identifier: Token, Structure: {EventOpti
     return Fields
 end
 
-function Parser.Event(self: Parser, Identifier: Token): EventDeclaration
-    local Structure = self:Structure(Identifier, EVENT)
+function Parser.Event(self: Parser, Name: Token): Event
+    local Structure = self:Structure(Name, EVENT)
 
     return {
         Type = "Event",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             From = Structure.From,
             Type = Structure.Type,
             Call = Structure.Call,
@@ -1133,13 +1145,13 @@ function Parser.Event(self: Parser, Identifier: Token): EventDeclaration
     }
 end
 
-function Parser.Function(self: Parser, Identifier: Token): FunctionDeclaration
-    local Structure = self:Structure(Identifier, FUNCTION)
+function Parser.Function(self: Parser, Name: Token): Function
+    local Structure = self:Structure(Name, FUNCTION)
 
     return {
         Type = "Function",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             Yield = Structure.Yield,
             Data = Structure.Data,
             Return = Structure.Return
@@ -1148,13 +1160,13 @@ function Parser.Function(self: Parser, Identifier: Token): FunctionDeclaration
     }
 end
 
-function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
+function Parser.Namespace(self: Parser, Name: Token): ScopeNode
     self:Consume("OpenBraces")
 
     --> Open scope
     local Parent = self.Scope
     local Scope: Scope = {
-        Identifier = Identifier,
+        Name = Name,
         Parent = Parent,
         Symbols = {
             Types = {},
@@ -1163,8 +1175,8 @@ function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
     }
 
     self.Scope = Scope
-    self.Symbols[Identifier.Value] = true
-    Parent.Symbols.Scopes[Identifier.Value] = Scope
+    self.Symbols[Name.Value] = true
+    Parent.Symbols.Scopes[Name.Value] = Scope
 
     --> Gather declarations
     local Declarations = self:Declarations()
@@ -1174,9 +1186,9 @@ function Parser.Namespace(self: Parser, Identifier: Token): ScopeDeclaration
 
     return {
         Type = "Scope",
+        Name = Name.Value,
         Value = {
             Scope = Scope,
-            Identifier = Identifier.Value,
             Values = Declarations
         },
         Tokens = {}
@@ -1185,8 +1197,8 @@ end
 
 ---- Type Parsing Functions ----
 
-function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataField: boolean?): TypeDeclaration
-    local Declaration: TypeDeclaration;
+function Parser.Type(self: Parser, Name: Token, Keyword: Token?, IsDataField: boolean?): TypeNode
+    local Declaration: TypeNode;
 
     --> Fast path: We know the exact type
     if Keyword then
@@ -1199,7 +1211,7 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
             local Token = self:Peek()
             
             if Token.Type == "Identifier" then
-                Declaration = self:Declaration(Identifier)
+                Declaration = self:Declaration(Name)
                 if not IsDeclarationTypeSimiliar(Declaration.Type, Type :: Declarations) then
                     Error.new(Error.AnalyzeReferenceInvalidType, self.Source, `Cannot cast "{Declaration.Type}" to "{Type}"`, self.File)
                         :Primary(Token, `Expected a reference to "{Type}", got "{Declaration.Type}" instead`)
@@ -1211,15 +1223,15 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
         --> Wasn't a reference declaration
         if not Declaration then
             if Value == "map" then
-                Declaration = self:Map(Identifier)
+                Declaration = self:Map(Name)
             elseif Value == "set" then
-                Declaration = self:Set(Identifier)
+                Declaration = self:Set(Name)
             elseif Value == "enum" then
-                Declaration = self:Enum(Identifier)
+                Declaration = self:Enum(Name)
             elseif Value == "type" then
-                Declaration = self:Primitive(Identifier)
+                Declaration = self:Primitive(Name)
             elseif Value == "struct" then
-                Declaration = self:Struct(Identifier)
+                Declaration = self:Struct(Name)
             end
         end
     end
@@ -1234,20 +1246,20 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
             self:Consume("Keyword")
 
             if Value == "map" then
-                Declaration = self:Map(Identifier)
+                Declaration = self:Map(Name)
             elseif Value == "set" then
-                Declaration = self:Set(Identifier)
+                Declaration = self:Set(Name)
             elseif Value == "enum" then
-                Declaration = self:Enum(Identifier)
+                Declaration = self:Enum(Name)
             elseif Value == "struct" then
-                Declaration = self:Struct(Identifier)
+                Declaration = self:Struct(Name)
             end
         elseif Type == "Primitive" then
-            Declaration = self:Primitive(Identifier)
+            Declaration = self:Primitive(Name)
         elseif Type == "Identifier" then
-            Declaration = self:Declaration(Identifier)
+            Declaration = self:Declaration(Name)
         elseif Type == "OpenParentheses" and IsDataField then
-            Declaration = self:Tuple(Identifier)
+            Declaration = self:Tuple(Name)
         end
 
         if not Declaration then
@@ -1257,15 +1269,10 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
         end
     end
 
-    --> Solve generics
-    --[[if GENERICS_TYPES[Declaration.Type] then
-        Declaration = self:SolveGenerics(Identifier, Referencing :: StructDeclaration)
-    end]]
-
     --> Set type attributes
     local Primitive: Settings.Primitive?;
     if Declaration.Type == "Primitive" then
-        Primitive = (Declaration :: PrimitiveDeclaration).Value.Primitive
+        Primitive = (Declaration :: Primitive).Value.Primitive
     end
 
     local Value = Declaration.Value :: Attributes
@@ -1288,12 +1295,10 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
         if Optional then
             Declaration = {
                 Type = "Optional",
-                Value = {
-                    Identifier = Identifier.Value,
-                    Of = Declaration,
-                },
+                Name = Name.Value,
+                Value = { Of = Declaration },
                 Tokens = {}
-            } :: OptionalDeclaration
+            } :: Optional
         end
     end
 
@@ -1305,15 +1310,15 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
         if Array then
             Declaration = {
                 Type = "Array",
+                Name = Name.Value,
                 Value = {
-                    Range = Array.Range,
-                    Identifier = Identifier.Value,
                     Of = Declaration,
+                    Range = Array.Range,
                 },
                 Tokens = {
                     Range = Array.Token
                 }
-            } :: ArrayDeclaration
+            } :: Array
         end
 
         WrapInOptional()
@@ -1326,7 +1331,7 @@ function Parser.Type(self: Parser, Identifier: Token, Keyword: Token?, IsDataFie
     return Declaration
 end
 
-function Parser.Set(self: Parser, Identifier: Token): SetDeclaration
+function Parser.Set(self: Parser, Name: Token): Set
     self:Consume("OpenBraces")
 
     local Values: {string} = {}
@@ -1347,21 +1352,21 @@ function Parser.Set(self: Parser, Identifier: Token): SetDeclaration
 
     return {
         Type = "Set",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             Values = Values,
         },
         Tokens = {}
-    } :: SetDeclaration
+    } :: Set
 end
 
-function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
+function Parser.Map(self: Parser, Name: Token): Map
     self:ConsumeAll("OpenBraces", "OpenBrackets")
 
     --> Errors
-    local function ParseElement(): TypeDeclaration
+    local function ParseElement(): TypeNode
         local Token = self:Peek()
-        local Declaration = self:Type(Identifier)
+        local Declaration = self:Type(Name)
         if Declaration.Type == "Optional" then
             Error.new(Error.AnalyzeInvalidOptionalType, self.Source, "Invalid optional type", self.File)
                 :Primary(Token, `Maps cannot have optionals as keys or values`)
@@ -1381,21 +1386,21 @@ function Parser.Map(self: Parser, Identifier: Token): MapDeclaration
 
     return {
         Type = "Map",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             Values = {Key, Value}
         },
         Tokens = {}
     }
 end
 
-function Parser.Enum(self: Parser, Identifier: Token): EnumDeclaration | TagEnumDeclaration
+function Parser.Enum(self: Parser, Name: Token): Enum | TagEnum
     local Values: {string} = {}
 
     --> Is it a tagged enum?
     local Tag = self:TryConsume("String")
     if Tag then
-        return self:TagEnum(Tag, Identifier)
+        return self:TagEnum(Tag, Name)
     end
 
     self:Consume("OpenBraces")
@@ -1417,16 +1422,14 @@ function Parser.Enum(self: Parser, Identifier: Token): EnumDeclaration | TagEnum
 
     return {
         Type = "Enum",
-        Value = {
-            Identifier = Identifier.Value,
-            Values = Values,
-        },
+        Name = Name.Value,
+        Value = { Values = Values } :: any,
         Tokens = {}
-    } :: EnumDeclaration
+    }
 end
 
-function Parser.TagEnum(self: Parser, Tag: Token, Identifier: Token): TagEnumDeclaration
-    local Values: {StructDeclaration} = {}
+function Parser.TagEnum(self: Parser, Tag: Token, Name: Token): TagEnum
+    local Values: {Struct} = {}
     self:Consume("OpenBraces")
 
     while true do
@@ -1439,8 +1442,8 @@ function Parser.TagEnum(self: Parser, Tag: Token, Identifier: Token): TagEnumDec
         local Fields = Struct.Value.Values
 
         --> Don't allow tag field to be set
-        for _, Field: TypeDeclaration in Fields do
-            if Field.Value.Identifier == Tag.Value then
+        for _, Field: TypeNode in Fields do
+            if Field.Name == Tag.Value then
                 Error.new(Error.AnalyzeReservedIdentifier, self.Source, `Enum tag used as field in variant`, self.File)
                     :Secondary(Token, `Used in variant`)
                     :Primary(Tag, `Enum tag`)
@@ -1459,8 +1462,8 @@ function Parser.TagEnum(self: Parser, Tag: Token, Identifier: Token): TagEnumDec
 
     return {
         Type = "TagEnum",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             Tag = Tag.Value,
             Values = Values
         },
@@ -1468,8 +1471,8 @@ function Parser.TagEnum(self: Parser, Tag: Token, Identifier: Token): TagEnumDec
     }
 end
 
-function Parser.Tuple(self: Parser, Identifier: Token): TupleDeclaration
-    local Values: {TypeDeclaration} = {}
+function Parser.Tuple(self: Parser, Name: Token): Tuple
+    local Values: {TypeNode} = {}
     self:Consume("OpenParentheses")
 
     while true do
@@ -1477,7 +1480,7 @@ function Parser.Tuple(self: Parser, Identifier: Token): TupleDeclaration
             break
         end
 
-        local Value = self:Type(Identifier)
+        local Value = self:Type(Name)
         table.insert(Values, Value)
 
         if self:TryConsume("CloseParentheses") then
@@ -1489,17 +1492,17 @@ function Parser.Tuple(self: Parser, Identifier: Token): TupleDeclaration
 
     return {
         Type = "Tuple",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             Values = Values,
         },
         Tokens = {}
     }
 end
 
-function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
+function Parser.Struct(self: Parser, Name: Token): Struct
     local Fields: {[string]: true} = {}
-    local Values: {TypeDeclaration} = {}
+    local Values: {TypeNode} = {}
     self:Consume("OpenBraces")
 
     while true do
@@ -1510,17 +1513,17 @@ function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
         --> struct merging
         if self:TryConsume("Merge") then
             local Text = self:Peek()
-            local Declaration = self:Declaration(Identifier)
+            local Declaration = self:Declaration(Name)
             if Declaration.Type ~= "Struct" then
                 error(Error.new(Error.AnalyzeReferenceInvalidType, self.Source, `Expected a struct to merge, got "{Declaration.Type}" instead`, self.File)
                     :Primary(Text, `Expected a "Struct", got "{Declaration.Type}" instead`)
                 :Emit())
             end
 
-            local Struct: StructDeclaration = Declaration :: StructDeclaration
+            local Struct: Struct = Declaration :: Struct
             local StructValues = Struct.Value.Values
             for _, Field in StructValues do
-                local FieldIdentifier = Field.Value.Identifier
+                local FieldIdentifier = Field.Name
                 if Fields[FieldIdentifier] then
                     error(Error.new(Error.AnalyzeDuplicateField, self.Source, `Merged struct contains a duplicate field`, self.File)
                         :Primary(Text, `Field "{FieldIdentifier}" already exists in struct`)
@@ -1553,15 +1556,15 @@ function Parser.Struct(self: Parser, Identifier: Token): StructDeclaration
 
     return {
         Type = "Struct",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             Values = Values,
         },
         Tokens = {}
     }
 end
 
-function Parser.Primitive(self: Parser, Identifier: Token): PrimitiveDeclaration
+function Parser.Primitive(self: Parser, Name: Token): Primitive
     local Token = self:Consume("Primitive")
 
     local Class: string?;
@@ -1575,8 +1578,8 @@ function Parser.Primitive(self: Parser, Identifier: Token): PrimitiveDeclaration
 
     return {
         Type = "Primitive",
+        Name = Name.Value,
         Value = {
-            Identifier = Identifier.Value,
             Class = Class,
             Primitive = Primitive
         },
@@ -1586,30 +1589,22 @@ function Parser.Primitive(self: Parser, Identifier: Token): PrimitiveDeclaration
     }
 end
 
-function Parser.Declaration(self: Parser, Identifier: Token): TypeDeclaration
+function Parser.Declaration(self: Parser, Name: Token): TypeNode
     local Token = self:ConsumeText()
 
     --> Generics reference resolution
     local Generics = self.Generics
-    local Key = (Generics and Generics.Keys[Token.Value])
-    if Key then
-        local Generic: GenericDeclaration;
-        if Key.Generic then
-            Generic = Key.Generic
-        else
-            Generic = {
-                __debug = os.clock(),
-                Type = "Generic",
-                Value = {
-                    Identifier = Identifier.Value,
-                    Generic = Token.Value
-                },
-                Tokens = {}
-            }
-            Key.Generic = Generic
-            print(`new generic {Token.Value} {tostring(Generic)}`)
-        end
+    local List = (Generics and Generics.Keys[Token.Value])
+    if List then
+        local Generic: Generic = {
+            __debug = os.clock(),
+            Type = "Generic",
+            Name = Name.Value,
+            Value = { Generic = Token.Value },
+            Tokens = {}
+        }
 
+        table.insert(List, Generic)
         return Generic
     end
 
@@ -1621,7 +1616,16 @@ function Parser.Declaration(self: Parser, Identifier: Token): TypeDeclaration
         :Emit())
     end
 
-    local To = Reference.Declaration
+    local To = Reference.To
+
+    --> Need to use the new node name
+    To = {
+        Name = Name.Value,
+        Type = To.Type :: any,
+        Value = To.Value :: any,
+        Tokens = To.Tokens :: any
+    }
+    
     if GENERICS_TYPES[To.Type] and To.Value.Generics then
         To = self:ReplaceGenerics(To)
     end

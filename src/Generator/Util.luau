@@ -5,8 +5,8 @@ type Scope = Parser.Scope
 local function GetScopePrefix(ReferenceScope: Scope?, Dots: boolean?, CurrentScope: Scope): string
 	local Prefix = ""
 	local WorkingScope: Scope? = ReferenceScope or CurrentScope
-	while (WorkingScope and WorkingScope.Identifier.Value ~= "") do
-		Prefix = `{WorkingScope.Identifier.Value}{Dots and "." or "_"}` .. Prefix
+	while (WorkingScope and WorkingScope.Name.Value ~= "") do
+		Prefix = `{WorkingScope.Name.Value}{Dots and "." or "_"}` .. Prefix
 		WorkingScope = WorkingScope.Parent
 	end
 
