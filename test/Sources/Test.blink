@@ -129,11 +129,12 @@ struct PrimitiveField {
     CFrame: u8
 }
 
-map GenericMap<A, B> = {[A]: B}
+map GenericMap<K, V> = {[K]: V}
 
 struct GenericMerge<A, B> {
-    Map: GenericMap<A, B>,
+    Map: GenericMap<A[], B>,
     Data: A,
+    Struct: Generic<u8, string, B[]>,
     AnotherNested: struct {
         Value: B
     }
