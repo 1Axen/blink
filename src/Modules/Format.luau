@@ -1,10 +1,12 @@
+--!strict
+
 local stdio = require("@lune/stdio")
 
-local function Style(text: string, style: stdio.Style): string
+local function Style(text: any, style: stdio.Style): string
 	return `{stdio.style(style)}{text}{stdio.style("reset")}`
 end
 
-local function Color(text: string, color: stdio.Color): string
+local function Color(text: any, color: stdio.Color): string
 	return `{stdio.color(color)}{text}{stdio.color("reset")}`
 end
 
@@ -32,26 +34,23 @@ local KEYWORDS = {
 	["while"] = true
 }
  
-local function ShouldWrap(value: any): boolean
+local function ShouldntWrap(value: any): boolean
 	if type(value) ~= "string" then 
 		return false 
 	end
-	-- must be nonempty
+
 	if #value == 0 then 
 		return false 
 	end
 
-	-- can only contain a-z, A-Z, 0-9 and underscore
 	if string.find(value, "[^%d%a_]") then
 		return false 
 	end
 
-	-- cannot begin with digit
 	if tonumber(string.sub(value, 1, 1)) then 
 		return false 
 	end
 
-	-- cannot be keyword
 	if KEYWORDS[value] then 
 		return false 
 	end
@@ -62,79 +61,65 @@ end
  
 local Cache
 local INDENT = string.rep(" ", 3)
+
+local function Noop()
+	
+end
  
-local function Format(Value: any, Depth: number?)
+local function Format(Value: any, Filter: ((Value: any) -> boolean)?, Depth: number?): string
 	local Depth = Depth or 0
-	local Tabs = string.rep(INDENT, Depth)
+	local Filter = (Filter or Noop) :: (Value: any) -> boolean
 
 	if Depth == 0 then
 		Cache = {}
 	end
 
-	if type(Value) == "string" then
-		return Color(string.format("%q", Value), "green")
-	elseif type(Value) == "number" then
+	if Filter(Value) == false then
+		return ""
+	end
+
+	local Type = type(Value)
+	if Type == "string" then
+		return Color(`"{Value}"`, "green")
+	elseif Type == "number" then
 		if Value == math.huge then return Color("math.huge", "cyan") end
 		if Value == -math.huge then return Color("-math.huge", "cyan") end
-		return Color(tostring(Value), "cyan")
-	elseif type(Value) == "boolean" then
-		return Color(tostring(Value), "yellow")
-	elseif type(Value) == "table" then
+		return Color(Value, "cyan")
+	elseif Type == "boolean" then
+		return Color(Value, "yellow")
+	elseif Type == "table" then
+		local Address = string.match(tostring(Value), "0x[%w]+")
 		if Cache[Value] then 
-			return Color("{CACHED}" , "red")
+			return `{Color("{CACHED}" , "red")} {Style(Address, "dim")}`
 		end
 
-		local Hex = string.match(tostring(Value), "0x[%w]+")
-		local Text = Style(`\{ ({Hex})`, "dim") .. ("\n" .. INDENT .. Tabs)
-		local IsArray = true
+		local Tabs = string.rep(INDENT, Depth)
+		local Newline = ("\n" .. INDENT .. Tabs)
+		local Text = Style(`\{ ({Address})`, "dim") .. Newline
 
 		Cache[Value] = true
 
-		for key in Value do
-			if type(key) ~= "number" then
-				IsArray = false
-				break
+		local First = true
+		for Key, Value in Value do
+			if Filter(Key) == false then
+				continue
 			end
-		end
 
-		if IsArray then
-			for Index = 1, #Value do
-				if Index ~= 1 then
-					Text ..= Style(",", "dim") .. ("\n" .. INDENT .. Tabs)
-				end
-
-				Text ..= Format(Value[Index], Depth + 1)
+			local KeyText = ShouldntWrap(Key) and Key or `["{Format(Key, Filter, Depth + 1)}"]`
+			
+			if not First then
+				Text ..= Style(",", "dim") .. Newline
 			end
-		else
-			local First = true
-			for Key, Value in Value do
-				if 
-					Key == "Scope" 
-					or Key == "Scopes" 
-					or Key == "Symbols" 
-					or Key == "Tokens" 
-					or Key == "Primitive"
-				then
-					continue
-				end
 
-				local KeyString = ShouldWrap(Key) and Key or ("[" .. Format(Key, Depth + 1) .. "]")
-				local ValueString = Format(Value, Depth + 1)
-
-				if not First then
-					Text ..= Style(",", "dim") .. ("\n" .. INDENT .. Tabs)
-				end
-
-				First = false
-				Text ..= string.format("%s = %s", KeyString, ValueString)
-			end
+			First = false
+			Text ..= `{KeyText} = {Format(Value, Filter, Depth + 1)}`
 		end
 
 		Text ..= "\n" .. Tabs .. Style("}", "dim")
 		return Text
 	end
 
-	return "<" .. type(Value) .. ">"
+	return `<{Type}>`
 end
  
 return Format
