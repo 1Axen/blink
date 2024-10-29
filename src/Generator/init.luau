@@ -286,6 +286,7 @@ function Declarations.Event(Declaration: Parser.Event)
 	local IsReliable = (Reliability == "Reliable")
 	local IsUnreliable = (Reliability == "Unreliable")
 	local IsPolling = if Value.Poll ~= nil then Value.Poll else Options.UsePolling
+	local IsSameContext = Value.From == Context
 
 	local Block = IsUnreliable and Unreliables or Reliables
 	local Channel = IsUnreliable and Channels.Unreliable or Channels.Reliable
@@ -302,13 +303,16 @@ function Declarations.Event(Declaration: Parser.Event)
 		Types, Values, _, Arguments = Generators.LuauType(Value.Data :: Type, true)
 	end
 
-	UserTypes.PushLines(Read, 1, 0)
-	UserTypes.PushLines(Write, 1, 0)
+	if IsSameContext then
+		UserTypes.PushLines(Write, 1, 0)
+	else
+		UserTypes.PushLines(Read, 1, 0)
+	end
 
 	--> Return body
 	local Body = Builder.new()
 	local Indent = Util.GetScopeIndent(Scope)
-	local WriteEvent = `{Util.GetTypesPath(Identifier, true, Scope)}({Arguments})`
+	local WriteEvent = `{Util.GetPath(Identifier, true, Scope)}({Arguments})`
 
 	Body.Push(`{Declaration.Name} = \{`, 0, Indent)
 	Noop.Push(`{Declaration.Name} = \{`, 0, Indent)
@@ -345,7 +349,7 @@ function Declarations.Event(Declaration: Parser.Event)
 		local CallManyListenerFunction = IsSingle and `Listener({ListenerArguments})` or `task.spawn(Listener, {ListenerArguments})`
 		local CallSingleListenerFunction = IsSync and `{Connection}({ListenerArguments})` or `task.spawn({Connection}, {ListenerArguments})`
 
-		Block:Line(`local {Values} = {Util.GetTypesPath(Identifier, false, Scope)}()`)
+		Block:Line(`local {Values} = {Util.GetPath(Identifier, false, Scope)}()`)
 
 		local Disconnect = Blocks.Function("", "", "()")
 			:Line(IsSingle and `{Connection} = nil` or `table.remove({Connection}, table.find({Connection}, Listener))`)
@@ -413,7 +417,7 @@ function Declarations.Event(Declaration: Parser.Event)
 		end
 
 		Channel.Listening = true
-		Block:Line(`Push({Queue}, table.pack({Context == "Server" and "Player, " or ""}{Util.GetTypesPath(Identifier, false, Scope)}()))`)
+		Block:Line(`Push({Queue}, table.pack({Context == "Server" and "Player, " or ""}{Util.GetPath(Identifier, false, Scope)}()))`)
 
 		local IterTypes = `number, {Context == "Server" and "Player, " or ""}{Types}`
 		
@@ -594,15 +598,16 @@ function Declarations.Function(Declaration: Parser.Function)
 	end
 
 	do
-		local Read, Write = Generators.Event(Value.Data :: Type, Index, DataIdentifier, "Data")
-		UserTypes.PushLines(Read, 1, 0)
-		UserTypes.PushLines(Write, 1, 0)
-	end
-
-	do
-		local Read, Write = Generators.Event(Value.Return :: Type, Index, ReturnIdentifier, "Return")
-		UserTypes.PushLines(Read, 1, 0)
-		UserTypes.PushLines(Write, 1, 0)
+		local DataRead, DataWrite = Generators.Event(Value.Data :: Type, Index, DataIdentifier, "Data")
+		local ReturnRead, ReturnWrite = Generators.Event(Value.Return :: Type, Index, ReturnIdentifier, "Return")
+		
+		if Context == "Client" then
+			UserTypes.PushLines(DataWrite, 1, 0)
+			UserTypes.PushLines(ReturnRead, 1, 0)
+		elseif Context == "Server" then
+			UserTypes.PushLines(DataRead, 1, 0)
+			UserTypes.PushLines(ReturnWrite, 1, 0)
+		end
 	end
 
 	--> Main
@@ -624,7 +629,7 @@ function Declarations.Function(Declaration: Parser.Function)
 	if Context == "Server" then
 		--> Data recieve body
 		Types.u8.Read("InvocationIdentifier", Block)
-		Block:Line(`local {DataValues} = {Util.GetTypesPath(DataIdentifier, false, Scope)}()`)
+		Block:Line(`local {DataValues} = {Util.GetPath(DataIdentifier, false, Scope)}()`)
 		:Compare(Connection, "nil", "Not")
 			:Line(`{Connection}(Player, {DataArguments}, InvocationIdentifier)`)
 		:Branch("Default")
@@ -660,7 +665,7 @@ function Declarations.Function(Declaration: Parser.Function)
 				:Line(`buffer.writeu8(SendBuffer, Position + 2, 0)`)
 				:Line(`warn(\`"{Name}" encountered an error, \{Error\}\`)`)
 			:Branch("Default")
-				:Line(`{Util.GetTypesPath(ReturnIdentifier, true, Scope)}({ReturnArguments}, InvocationIdentifier)`)
+				:Line(`{Util.GetPath(ReturnIdentifier, true, Scope)}({ReturnArguments}, InvocationIdentifier)`)
 			:End()
 			:Line("PlayersMap[Player] = Save()")
 		:End()
@@ -675,7 +680,7 @@ function Declarations.Function(Declaration: Parser.Function)
 	else
 		--> Return recieve body
 		local Deserialize = Blocks.Function("", "")
-			:Return(`{Util.GetTypesPath(ReturnIdentifier, false, Scope)}()`)
+			:Return(`{Util.GetPath(ReturnIdentifier, false, Scope)}()`)
 		:End()
 		:Wrap(`local Success, {ReturnArguments} = pcall(`, ")")
 
@@ -699,7 +704,7 @@ function Declarations.Function(Declaration: Parser.Function)
 		local Contents = Blocks.Block()
 			:Line("local InvocationIdentifier = Invoke()")
 			:Lines(Exhaust)
-			:Line(`{Util.GetTypesPath(DataIdentifier, true, Scope)}({DataArguments}, InvocationIdentifier)`)
+			:Line(`{Util.GetPath(DataIdentifier, true, Scope)}({DataArguments}, InvocationIdentifier)`)
 			:Line("Calls[InvocationIdentifier] = coroutine.running()")
 			:Line(`local Success, {ReturnValues} = coroutine.yield()`)
 			:Compare("Success", "true", "Not")
@@ -725,7 +730,7 @@ function Declarations.Function(Declaration: Parser.Function)
 			local Promise = Blocks.Function("", "Resolve, Reject, OnCancel")
 				:Line("local InvocationIdentifier = Invoke()")
 				:Lines(Exhaust)
-				:Line(`{Util.GetTypesPath(DataIdentifier, true, Scope)}({DataArguments}, InvocationIdentifier)`)
+				:Line(`{Util.GetPath(DataIdentifier, true, Scope)}({DataArguments}, InvocationIdentifier)`)
 				:Line("Calls[InvocationIdentifier] = coroutine.running()")
 				:Lines(OnCancel.Content, 1)
 				:Line(`local Success, {ReturnValues} = coroutine.yield()`)
@@ -1027,9 +1032,6 @@ function Generators.Export(Declaration: Type)
 	Read:Comment("Buffer read")
 	Write:Comment("Buffer write")
 
-	--Read:Line(`local {Values} = {Util.GetTypesPath(Identifier, false, Scope)}()`)
-	--Write:Line(`{Util.GetTypesPath(Identifier, true, Scope)}({Returns})`)
-
 	Generators.UserType(Declaration, Read, Write)
 
 	--> Restore buffer
@@ -1069,8 +1071,8 @@ function Generators.Event(Data: Type?, Index: number, Identifier: string, Functi
 	end
 
 	local Arguments = `{Values}{Function and ", InvocationIdentifier: number" or ""}`
-	local Read = Blocks.Function(Util.GetTypesPath(Identifier, false, Scope), "", `({Type})`)
-	local Write = Blocks.Function(Util.GetTypesPath(Identifier, true, Scope), Arguments, "()")
+	local Read = Blocks.Function(Util.GetPath(Identifier, false, Scope), "", `({Type})`, false, true)
+	local Write = Blocks.Function(Util.GetPath(Identifier, true, Scope), Arguments, "()", false, true)
 
 	if not _G.BUNDLED then
 		Write:Comment(`{Identifier} ({Index})`)
@@ -1088,7 +1090,6 @@ function Generators.Event(Data: Type?, Index: number, Identifier: string, Functi
 		end
 	end
 
-	--Read:Line(`local {Values};`)
 	if Data then
 		Generators.UserType(Data, Read, Write)
 	end
@@ -1108,7 +1109,6 @@ function Generators.Scope(Declaration: Parser.ScopeNode)
 	Path = string.sub(Path, 1, #Path - 1)
 
 	Scope = NewScope
-	Events.Push(`Types.{Path} = \{\}`, 1, 0)
 	Noop.Push(`{Name} = \{`, 0, Indent)
 	Return.Push(`{Name} = \{`, 0, Indent)
 

@@ -124,7 +124,6 @@ local function Push(queue: Queue, value: any)
     end
 end
 
-local Types = {}
 local Calls = table.create(256)
 
 local Events: any = {

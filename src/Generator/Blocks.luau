@@ -271,7 +271,7 @@ local Function = {}
 Function.__index = Function
 setmetatable(Function, Block)
 
-function Function.new(Name: string, Arguments: string, Return: string?, IsInlined: boolean?): Block
+function Function.new(Name: string, Arguments: string, Return: string?, IsInlined: boolean?, Localised: boolean?): Block
     local Block = Block.new(nil)
     setmetatable(Block, Function)
     
@@ -280,6 +280,8 @@ function Function.new(Name: string, Arguments: string, Return: string?, IsInline
 
     if IsInlined then 
         Block:Line(`{Name} = function({Arguments}){Suffix}`, 0)
+    elseif Localised then
+        Block:Line(`local function {Name}({Arguments}){Suffix}`, 0)
     else
         Block:Line(`function {Name}({Arguments}){Suffix}`, 0)
     end

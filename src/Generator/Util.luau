@@ -17,12 +17,12 @@ local function GetScopeIndent(CurrentScope: Scope): number
 	return math.max(#string.split(GetScopePrefix(nil, true, CurrentScope), "."), 1)
 end
 
-local function GetTypesPath(Identifier: string, Write: boolean, CurrentScope: Scope): string
-	return `Types.{GetScopePrefix(nil, false, CurrentScope)}{Write and "Write" or "Read"}{Identifier}`
+local function GetTypesPath(Name: string, Write: boolean, CurrentScope: Scope): string
+	return `{GetScopePrefix(nil, false, CurrentScope)}{Write and "Write" or "Read"}{Name}`
 end
 
-local function GetExportName(Identifier: string, CurrentScope: Scope): string
-	return `{GetScopePrefix(nil, false, CurrentScope)}{Identifier}`
+local function GetExportName(Name: string, CurrentScope: Scope): string
+	return `{GetScopePrefix(nil, false, CurrentScope)}{Name}`
 end
 
 local function GenerateEnumLiterals(Variants: { string }): string
@@ -34,7 +34,7 @@ local function GenerateEnumLiterals(Variants: { string }): string
 end
 
 return {
-    GetTypesPath = GetTypesPath,
+    GetPath = GetTypesPath,
     GetExportName = GetExportName,
     GetScopePrefix = GetScopePrefix,
     GetScopeIndent = GetScopeIndent,
