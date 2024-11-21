@@ -25,30 +25,28 @@ local location = require("./location")
 
 type Location = location.Location
 export type Span = {
-    input: buffer,
     start: Location,
     finish: Location,
 }
 
-local function create(input: buffer, start: Location, finish: Location): Span
+local function create(start: Location, finish: Location): Span
     return table.freeze({
-        input = input,
         start = start,
-        finish = finish,
-    })
+        finish = finish
+    }) :: Span
 end
 
 --- creates a span from a to b
 local function merge(a: Span, b: Span): Span
-    return create(a.input, a.start, b.finish)
+    return create(a.start, b.finish)
 end
 
 local function length(self: Span): number
     return (self.finish.position - self.start.position) + 1
 end
 
-local function value(self: Span): string
-    return buffer.readstring(self.input, self.start.position, length(self))
+local function value(self: Span, text: buffer): string
+    return buffer.readstring(text, self.start.position, length(self))
 end
 
 local function contains(self: Span, position: number): boolean

@@ -177,7 +177,7 @@ local function tokenize(input: buffer): {Token}
         if byte == 0 then
             return {
                 kind = "eof",
-                span = span.create(input, start, start)
+                span = span.create(start, start)
             }
         end
 
@@ -209,7 +209,7 @@ local function tokenize(input: buffer): {Token}
             
             local finish = to_last_location()
             local value = to_string(start)
-            local value_span = span.create(input, start, finish)
+            local value_span = span.create(start, finish)
 
             if KEYWORDS[value :: any] == true then
                 return {kind = "keyword", span = value_span, value = value :: Keywords}
@@ -233,7 +233,7 @@ local function tokenize(input: buffer): {Token}
 
             return {
                 kind = "number",
-                span = span.create(input, start, finish),
+                span = span.create(start, finish),
                 value = value
             }
         elseif byte == code("\"") then
@@ -248,21 +248,21 @@ local function tokenize(input: buffer): {Token}
             
             return {
                 kind = "string",
-                span = span.create(input, start, finish),
+                span = span.create(start, finish),
                 value = value
             }
         end
 
         if SYMBOLS[byte] then
-            return { kind = string.char(byte) :: any, span = span.create(input, start, start) }
+            return { kind = string.char(byte) :: any, span = span.create(start, start) }
         elseif byte == code(".") and peek() == code(".") then
             advance()
-            return { kind = "..", span = span.create(input, start, to_last_location()) }
+            return { kind = "..", span = span.create(start, to_last_location()) }
         end
 
         return {
             kind = "error",
-            span = span.create(input, start, start),
+            span = span.create(start, start),
             value = to_string(start)
         }
     end

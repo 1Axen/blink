@@ -78,7 +78,7 @@ local function get_lines_in_span(input: buffer, lines: {string}, group_span: Spa
         position += length + 1
 
         table.insert(result, {
-            span = span.create(input, start, finish),
+            span = span.create(start, finish),
             index = line_number,
         })
     end
@@ -189,7 +189,7 @@ function report.create(kind: ReportKind, file: string, input: buffer): Report
                     local finish = group_finish.position > label_finish.position and group_finish or label_finish
                     
                     matched = true
-                    group.span = span.create(input, start, finish)
+                    group.span = span.create(start, finish)
                     table.insert(group.labels, label)
                 end
             end
@@ -236,7 +236,7 @@ function report.create(kind: ReportKind, file: string, input: buffer): Report
                 end
 
                 result_builder.append(`{style.color.gray(string.format("% 3i", line.index))} {GRAY("│")} {multiline_indent} `)
-                result_builder.append_line(span.to_string(line_span))
+                result_builder.append_line(span.to_string(line_span, input))
 
                 for _, label in labels do
                     local color = label.color

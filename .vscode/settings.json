@@ -6,7 +6,10 @@
   },
   "luau-lsp.sourcemap.rojoProjectFile": "default.project.json",
   "luau-lsp.fflags.override": {
-    "LuauSolverV2": "false",
-    "LuauTinyControlFlowAnalysis": "true"
-  }
+    "LuauSolverV2": "false"
+  },
+  "luau-lsp.bytecode.vectorCtor": "create",
+  "luau-lsp.bytecode.vectorLib": "vector",
+  "luau-lsp.bytecode.vectorType": "vector",
+  "luau-lsp.completion.imports.enabled": true
 }
