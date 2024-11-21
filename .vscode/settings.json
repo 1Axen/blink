@@ -2,14 +2,11 @@
   "luau-lsp.plugin.enabled": false,
   "luau-lsp.require.mode": "relativeToFile",
   "luau-lsp.require.directoryAliases": {
-    "@lune/": "~/.lune/.typedefs/0.8.6/"
+    "@lune/": "~/.lune/.typedefs/0.8.9/"
   },
   "luau-lsp.sourcemap.rojoProjectFile": "default.project.json",
   "luau-lsp.fflags.override": {
     "LuauSolverV2": "false"
   },
-  "luau-lsp.bytecode.vectorCtor": "create",
-  "luau-lsp.bytecode.vectorLib": "vector",
-  "luau-lsp.bytecode.vectorType": "vector",
   "luau-lsp.completion.imports.enabled": true
 }

@@ -21,20 +21,33 @@
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
-export type Location = {
-    line: number,
-    position: number,
-    character: number,
-}
+export type Location = vector
 
 local function create(position: number, line: number, character: number): Location
-    return table.freeze({
-        line = line,
-        position = position,
-        character = character,
-    })
+    -- TODO: Uncomment and remove "fake" vector
+    ---return vector.create(line, character, position)
+    return {
+        x = line,
+        y = character,
+        z = position
+    } :: any
+end
+
+local function line(location: vector)
+    return location.x
+end
+
+local function position(location: vector)
+    return location.z
+end
+
+local function character(location: vector)
+    return location.y
 end
 
 return table.freeze({
-    create = create
+    create = create,
+    line = line,
+    position = position,
+    character = character
 })

@@ -27,51 +27,59 @@ local location = require("../util/location")
 type Span = span.Span
 type Location = location.Location
 
-export type Keywords = "set" | "map" | "type" | "enum" | "event" 
-    | "scope" | "struct" | "option" | "function"
-
 export type TokenBase<Kind, Value = nil> = {
     kind: Kind,
     span: span.Span,
     value: Value
 }
-
-export type Word = TokenBase<"word", string>
-export type Keyword = TokenBase<"keyword", Keywords>
-export type Number = TokenBase<"number", string>
-export type String = TokenBase<"string", string>
-export type Attribute = TokenBase<"attribute", string>
-export type Error = TokenBase<"error", string>
-export type EndOfFile = TokenBase<"eof">
-
 export type Token = 
+    --> trivia
+    | TokenBase<"attribute", string>
+
     --> words
-     Word
-    | Keyword
+    | TokenBase<"word", string>
+    | TokenBase<"set">
+    | TokenBase<"map">
+    | TokenBase<"enum">
+    | TokenBase<"type">
+    | TokenBase<"scope">
+    | TokenBase<"event">
+    | TokenBase<"struct">
+    | TokenBase<"option">
+    | TokenBase<"function">
+
     --> literals
-    | Number
-    | String
+    | TokenBase<"number", string>
+    | TokenBase<"string", string>
+
     --> symbols
     | TokenBase<"=">
     | TokenBase<":">
     | TokenBase<",">
     | TokenBase<"..">
     | TokenBase<"?">
+
     --> delimiters
     | TokenBase<"{">
     | TokenBase<"<">
     | TokenBase<"(">
+    | TokenBase<"[">
     | TokenBase<"}">
     | TokenBase<">">
     | TokenBase<")">
-    --> control flow
-    | Error
-    | EndOfFile
+    | TokenBase<"]">
+
+    | TokenBase<"error", string>
+    | TokenBase<"eof">
 
 --> returns the numerical code of character
 local function code(character: string): number
     return string.byte(character)
 end
+
+local QOUTE = code("\"")
+local NEW_LINE = code("\n")
+local UNDERSCORE = code("_")
 
 local SYMBOLS = {
     [code("{")] = true,
@@ -86,22 +94,10 @@ local SYMBOLS = {
     [code("=")] = true,
 }
 
-local KEYWORDS: {[Keywords]: true} = {
-    set = true,
-    map = true,
-    enum = true,
-    type = true,
-    event = true,
-    scope = true,
-    struct = true,
-    option = true,
-    ["function"] = true,
-}
-
 local function is_whitespace(byte: number): boolean
     return byte == code(" ") 
         or byte == code("\t")
-        or byte == code("\n")
+        or byte == NEW_LINE
         or byte == code("\r")
         or byte == code("\v")
         or byte == code("\f")
@@ -124,38 +120,30 @@ local function tokenize(input: buffer): {Token}
     local character = 0
     local length = buffer.len(input)
 
-    local last_line = line
-    local last_position = position
-    local last_character = character
-
     local function peek(): number
-        if position >= length then
+        if position == length then
             return 0
         end
     
         return buffer.readu8(input, position)
     end
     
-    local function save()
-        last_line = line
-        last_position = position
-        last_character = character
+    local function advance()
+        position = math.min(position + 1, length)
+        character += 1
     end
 
-    local function advance()
-        save()
-        position += 1
-        character += 1
+    local function advance_peek(): number
+        advance()
+        return peek()
     end
     
     local function newline()
-        save()
         line += 1
         character = -1
     end
     
-    local function to_string(start: Location)
-        local start_position = start.position
+    local function to_string(start_position: number)
         return buffer.readstring(input, start_position, position - start_position)
     end
     
@@ -163,56 +151,64 @@ local function tokenize(input: buffer): {Token}
         return location.create(position, line, character)
     end
 
-    local function to_last_location()
-        return location.create(last_position, last_line, last_character)
-    end
-
     local tokens: {Token} = table.create(64) :: any
     
     local function next_token(): Token?
-        local byte = peek()
+        local first = peek()
         local start = to_location()
+        local start_position = position
 
         --> eof
-        if byte == 0 then
+        if first == 0 then
             return {
                 kind = "eof",
                 span = span.create(start, start)
             }
         end
 
-        --> first byte is always consumed
-        advance()
-
         --> whitespace is lost when lexed, lossy lexer :(
-        if is_whitespace(byte) then
+        if is_whitespace(first) then
             --> keep clearing whitespace
-            local temp = peek()
-            while is_whitespace(temp) do
-                if temp == code("\n") then
+            local char = first
+            repeat
+                if char == NEW_LINE then
                     newline()
                 end
 
-                advance()
-                temp = peek()
-            end
+                char = advance_peek()
+            until not (is_whitespace(char))
 
             return
         --> word, can't start with numeral
-        elseif is_letter(byte) or byte == code("_") then
+        elseif is_letter(first) or first == UNDERSCORE then
             --> consume full word
-            local temp = peek()
-            while is_letter(temp) or is_numeral(temp) or temp == code("_") do
-                advance()
-                temp = peek()
-            end
+            local char = first
+            repeat
+                char = advance_peek()
+            until not (is_letter(char) or is_numeral(char) or char == UNDERSCORE)
             
-            local finish = to_last_location()
-            local value = to_string(start)
+            local finish = to_location()
+            local value = to_string(start_position)
             local value_span = span.create(start, finish)
 
-            if KEYWORDS[value :: any] == true then
-                return {kind = "keyword", span = value_span, value = value :: Keywords}
+            if value == "map" then
+                return {kind = value, span = value_span}
+            elseif value == "set" then
+                return {kind = value, span = value_span}
+            elseif value == "enum" then
+                return {kind = value, span = value_span}
+            elseif value == "type" then
+                return {kind = value, span = value_span}
+            elseif value == "event" then
+                return {kind = value, span = value_span}
+            elseif value == "struct" then
+                return {kind = value, span = value_span}
+            elseif value == "scope" then
+                return {kind = value, span = value_span}
+            elseif value == "option" then
+                return {kind = value, span = value_span}
+            elseif value == "function" then
+                return {kind = value, span = value_span}
             end
 
             return {
@@ -220,31 +216,28 @@ local function tokenize(input: buffer): {Token}
                 span = value_span,
                 value = value
             }
-        elseif is_numeral(byte) then
-            byte = peek()
+        elseif is_numeral(first) then
+            local char = first
+            repeat
+                char = advance_peek()
+            until not (is_numeral(char) or char == UNDERSCORE)
 
-            while is_numeral(byte) or byte == code("_") do
-                advance()
-                byte = peek()
-            end
-
-            local finish = to_last_location()
-            local value = to_string(start)
+            local finish = to_location()
+            local value = to_string(start_position)
 
             return {
                 kind = "number",
                 span = span.create(start, finish),
                 value = value
             }
-        elseif byte == code("\"") then
-            while peek() ~= code("\"") do
-                advance()
-            end
+        elseif first == QOUTE then
+            local char = first
+            repeat
+                char = advance_peek()
+            until (char == QOUTE)
 
-            advance()
-
-            local finish = to_last_location()
-            local value = to_string(start)
+            local finish = to_location()
+            local value = to_string(start_position)
             
             return {
                 kind = "string",
@@ -253,17 +246,17 @@ local function tokenize(input: buffer): {Token}
             }
         end
 
-        if SYMBOLS[byte] then
-            return { kind = string.char(byte) :: any, span = span.create(start, start) }
-        elseif byte == code(".") and peek() == code(".") then
+        if SYMBOLS[first] then
+            return { kind = string.char(first) :: any, span = span.create(start, start) }
+        elseif first == code(".") and peek() == code(".") then
             advance()
-            return { kind = "..", span = span.create(start, to_last_location()) }
+            return { kind = "..", span = span.create(start, to_location()) }
         end
 
         return {
             kind = "error",
             span = span.create(start, start),
-            value = to_string(start)
+            value = to_string(start_position)
         }
     end
 

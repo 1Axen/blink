@@ -66,9 +66,9 @@ local function get_lines_in_span(input: buffer, lines: {string}, group_span: Spa
 
     local group_start = group_span.start
     local group_finish = group_span.finish
-    local position = (group_start.position - group_start.character)
+    local position = (location.position(group_start) - location.character(group_start))
 
-    for line_number = group_start.line, group_finish.line do
+    for line_number = location.line(group_start), location.line(group_finish) do
         local line = lines[line_number]
         local length = #line 
         local stripped_length = length - 2
@@ -169,7 +169,7 @@ function report.create(kind: ReportKind, file: string, input: buffer): Report
                                               
         --> Build labels
         table.sort(state.labels, function(a, b)
-            return a.span.start.position < b.span.start.position
+            return location.position(a.span.start) < location.position(b.span.start)
         end)
 
         local groups: {Group} = {}
@@ -185,8 +185,13 @@ function report.create(kind: ReportKind, file: string, input: buffer): Report
                     local group_start = group_span.start
                     local group_finish = group_span.finish
 
-                    local start = group_start.position < label_start.position and group_start or label_start
-                    local finish = group_finish.position > label_finish.position and group_finish or label_finish
+                    local start = location.position(group_start) < location.position(label_start) 
+                        and group_start 
+                        or label_start
+
+                    local finish = location.position(group_finish) > location.position(label_finish) 
+                        and group_finish 
+                        or label_finish
                     
                     matched = true
                     group.span = span.create(start, finish)
@@ -211,14 +216,14 @@ function report.create(kind: ReportKind, file: string, input: buffer): Report
             for _, line in group_lines do
                 local labels: {LabelState} = {}
                 local line_span = line.span
-                local line_start = line_span.start.position
-                local line_finish = line_span.finish.position
+                local line_start = location.position(line_span.start)
+                local line_finish = location.position(line_span.finish)
                 local multiline_indent = ""
 
                 for _, label in group_labels do
                     local label_span = label.span
-                    local label_start = label_span.start.position
-                    local label_finish = label_span.finish.position
+                    local label_start = location.position(label_span.start)
+                    local label_finish = location.position(label_span.finish)
 
                     if label.kind == "Multiline" and span.intersects(line_span, label_span) then
                         local indent = "│ "
@@ -245,7 +250,7 @@ function report.create(kind: ReportKind, file: string, input: buffer): Report
                         result_builder.append_line(`    {BREAK} {color("╰────")} {label.message}`)
                     elseif label.kind == "Inline" then
                         local label_span = label.span
-                        local label_start = label_span.start.position
+                        local label_start = location.position(label_span.start)
 
                         local spaces = (label_start - line_start)
                         local underlines = span.length(label_span)
