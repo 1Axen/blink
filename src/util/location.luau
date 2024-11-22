@@ -21,7 +21,11 @@
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
-export type Location = vector
+export type Location = {
+    x: number,
+    y: number,
+    z: number
+}
 
 local function create(position: number, line: number, character: number): Location
     -- TODO: Uncomment and remove "fake" vector
@@ -30,18 +34,18 @@ local function create(position: number, line: number, character: number): Locati
         x = line,
         y = character,
         z = position
-    } :: any
+    }
 end
 
-local function line(location: vector)
+local function line(location: Location)
     return location.x
 end
 
-local function position(location: vector)
+local function position(location: Location)
     return location.z
 end
 
-local function character(location: vector)
+local function character(location: Location)
     return location.y
 end
 
