@@ -73,15 +73,10 @@ export type Token =
     | TokenBase<"error", string>
     | TokenBase<"eof">
 
---> returns the numerical code of character
-local function code(character: string): number
-    return string.byte(character)
-end
-
-local DOT = code(".")
-local QOUTE = code("\"")
-local NEW_LINE = code("\n")
-local UNDERSCORE = code("_")
+local DOT = string.byte(".")
+local QOUTE = string.byte("\"")
+local NEW_LINE = string.byte("\n")
+local UNDERSCORE = string.byte("_")
 
 local function is_whitespace(byte: number): boolean
     return byte == string.byte(" ") 
@@ -97,9 +92,8 @@ local function is_letter(byte: number): boolean
         or (string.byte("A") <= byte and byte <= string.byte("Z"))
 end
 
-local function is_numeral(byte: number): boolean
-    return string.byte("0") <= byte 
-        and byte <= string.byte("9")
+local function is_digit(byte: number): boolean
+    return string.byte("0") <= byte and byte <= string.byte("9")
 end
 
 local function tokenize(input: buffer): {Token}
@@ -178,7 +172,7 @@ local function tokenize(input: buffer): {Token}
             local char = first
             repeat
                 char = advance_peek()
-            until not (is_letter(char) or is_numeral(char) or char == UNDERSCORE)
+            until not (is_letter(char) or is_digit(char) or char == UNDERSCORE)
             
             local finish = to_location()
             local value = to_string(start_position)
@@ -203,11 +197,21 @@ local function tokenize(input: buffer): {Token}
                 span = value_span,
                 value = value
             }
-        elseif is_numeral(first) then
+        elseif is_digit(first) or first == string.byte("-") then
             local char = first
-            repeat
+            local decimal = false
+
+            if char == string.byte("-") then
                 char = advance_peek()
-            until not (is_numeral(char) or char == UNDERSCORE)
+            end
+
+            repeat
+                if char == DOT then
+                    decimal = true
+                end
+
+                char = advance_peek()
+            until not (is_digit(char) or char == UNDERSCORE or (char == DOT and decimal == false))
 
             local finish = to_location()
             local value = to_string(start_position)
@@ -246,29 +250,29 @@ local function tokenize(input: buffer): {Token}
         advance()
         
         local value_span = span.create(start, start)
-        if first == code("{") then
+        if first == string.byte("{") then
             return { kind = "{", span = value_span }
-        elseif first == code("<") then
+        elseif first == string.byte("<") then
             return { kind = "<", span = value_span }
-        elseif first == code("(") then
+        elseif first == string.byte("(") then
             return { kind = "(", span = value_span }
-        elseif first == code("[") then
+        elseif first == string.byte("[") then
             return { kind = "[", span = value_span }
-        elseif first == code("}") then
+        elseif first == string.byte("}") then
             return { kind = "}", span = value_span }
-        elseif first == code(">") then
+        elseif first == string.byte(">") then
             return { kind = ">", span = value_span }
-        elseif first == code(")") then
+        elseif first == string.byte(")") then
             return { kind = ")", span = value_span }
-        elseif first == code("]") then
+        elseif first == string.byte("]") then
             return { kind = "]", span = value_span }
-        elseif first == code(":") then
+        elseif first == string.byte(":") then
             return { kind = ":", span = value_span }
-        elseif first == code(",") then
+        elseif first == string.byte(",") then
             return { kind = ",", span = value_span }
-        elseif first == code("?") then
+        elseif first == string.byte("?") then
             return { kind = "?", span = value_span }
-        elseif first == code("=") then
+        elseif first == string.byte("=") then
             return { kind = "=", span = value_span }
         end
 
