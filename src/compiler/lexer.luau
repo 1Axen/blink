@@ -1,5 +1,5 @@
 --!strict
---!native
+--!optimize 2
 
 -- Copyright (c) 2024 Axen
 
@@ -53,6 +53,7 @@ export type Token =
     | TokenBase<"string", string>
 
     --> symbols
+    | TokenBase<".">
     | TokenBase<"=">
     | TokenBase<":">
     | TokenBase<",">
@@ -77,30 +78,18 @@ local function code(character: string): number
     return string.byte(character)
 end
 
+local DOT = code(".")
 local QOUTE = code("\"")
 local NEW_LINE = code("\n")
 local UNDERSCORE = code("_")
 
-local SYMBOLS = {
-    [code("{")] = true,
-    [code("<")] = true,
-    [code("(")] = true,
-    [code("}")] = true,
-    [code(">")] = true,
-    [code(")")] = true,
-    [code(":")] = true,
-    [code(",")] = true,
-    [code("?")] = true,
-    [code("=")] = true,
-}
-
 local function is_whitespace(byte: number): boolean
-    return byte == code(" ") 
-        or byte == code("\t")
+    return byte == string.byte(" ") 
+        or byte == string.byte("\t")
         or byte == NEW_LINE
-        or byte == code("\r")
-        or byte == code("\v")
-        or byte == code("\f")
+        or byte == string.byte("\r")
+        or byte == string.byte("\v")
+        or byte == string.byte("\f")
 end
 
 local function is_letter(byte: number): boolean
@@ -151,6 +140,10 @@ local function tokenize(input: buffer): {Token}
         return location.create(position, line, character)
     end
 
+    local function to_span(start: Location)
+        return span.create(start, to_location())
+    end
+
     local tokens: {Token} = table.create(64) :: any
     
     local function next_token(): Token?
@@ -190,25 +183,19 @@ local function tokenize(input: buffer): {Token}
             local finish = to_location()
             local value = to_string(start_position)
             local value_span = span.create(start, finish)
-
-            if value == "map" then
-                return {kind = value, span = value_span}
-            elseif value == "set" then
-                return {kind = value, span = value_span}
-            elseif value == "enum" then
-                return {kind = value, span = value_span}
-            elseif value == "type" then
-                return {kind = value, span = value_span}
-            elseif value == "event" then
-                return {kind = value, span = value_span}
-            elseif value == "struct" then
-                return {kind = value, span = value_span}
-            elseif value == "scope" then
-                return {kind = value, span = value_span}
-            elseif value == "option" then
-                return {kind = value, span = value_span}
-            elseif value == "function" then
-                return {kind = value, span = value_span}
+            
+            if 
+                value == "set"
+                or value == "map"
+                or value == "type"
+                or value == "enum"
+                or value == "event"
+                or value == "scope"
+                or value == "struct"
+                or value == "option"
+                or value == "function" 
+            then
+                return {kind = value :: any, span = value_span}
             end
 
             return {
@@ -231,10 +218,12 @@ local function tokenize(input: buffer): {Token}
                 value = value
             }
         elseif first == QOUTE then
-            local char = first
-            repeat
+            local char = advance_peek()
+            while char ~= 0 and char ~= QOUTE do
                 char = advance_peek()
-            until (char == QOUTE)
+            end
+
+            advance()
 
             local finish = to_location()
             local value = to_string(start_position)
@@ -244,18 +233,48 @@ local function tokenize(input: buffer): {Token}
                 span = span.create(start, finish),
                 value = value
             }
+        elseif first == DOT then
+            local char = advance_peek()
+            if char == DOT then
+                advance()
+                return { kind = "..", span = to_span(start) }
+            end
+
+            return { kind = ".", span = span.create(start, start) }
         end
 
-        if SYMBOLS[first] then
-            return { kind = string.char(first) :: any, span = span.create(start, start) }
-        elseif first == code(".") and peek() == code(".") then
-            advance()
-            return { kind = "..", span = span.create(start, to_location()) }
+        advance()
+        
+        local value_span = span.create(start, start)
+        if first == code("{") then
+            return { kind = "{", span = value_span }
+        elseif first == code("<") then
+            return { kind = "<", span = value_span }
+        elseif first == code("(") then
+            return { kind = "(", span = value_span }
+        elseif first == code("[") then
+            return { kind = "[", span = value_span }
+        elseif first == code("}") then
+            return { kind = "}", span = value_span }
+        elseif first == code(">") then
+            return { kind = ">", span = value_span }
+        elseif first == code(")") then
+            return { kind = ")", span = value_span }
+        elseif first == code("]") then
+            return { kind = "]", span = value_span }
+        elseif first == code(":") then
+            return { kind = ":", span = value_span }
+        elseif first == code(",") then
+            return { kind = ",", span = value_span }
+        elseif first == code("?") then
+            return { kind = "?", span = value_span }
+        elseif first == code("=") then
+            return { kind = "=", span = value_span }
         end
 
         return {
             kind = "error",
-            span = span.create(start, start),
+            span = value_span,
             value = to_string(start_position)
         }
     end
