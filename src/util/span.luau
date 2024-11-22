@@ -42,25 +42,25 @@ local function merge(a: Span, b: Span): Span
 end
 
 local function length(self: Span): number
-    return (self.finish.position - self.start.position) + 1
+    return (location.position(self.finish) - location.position(self.start)) + 1
 end
 
 local function value(self: Span, text: buffer): string
-    return buffer.readstring(text, self.start.position, length(self))
+    return buffer.readstring(text, location.position(self.start), length(self))
 end
 
 local function contains(self: Span, position: number): boolean
-    return self.start.position <= position and self.finish.position >= position
+    return location.position(self.start) <= position and location.position(self.finish) >= position
 end
 
 --- checks if two spans are intersecting, assumes `a.start` <= `b.start`
 local function intersects(a: Span, b: Span): boolean
-    return (a.finish.position >= b.start.position)
+    return (location.position(a.finish) >= location.position(b.start))
 end
 
 local function is_multiline(self: Span): boolean
-    local start_line = self.start.line
-    local finish_line = self.finish.line
+    local start_line = location.line(self.start)
+    local finish_line = location.line(self.finish)
     return start_line ~= finish_line
 end
 
