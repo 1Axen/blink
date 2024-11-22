@@ -30,10 +30,10 @@ export type Span = {
 }
 
 local function create(start: Location, finish: Location): Span
-    return table.freeze({
+    return {
         start = start,
         finish = finish
-    }) :: Span
+    }
 end
 
 --- creates a span from a to b
