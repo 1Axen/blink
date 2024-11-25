@@ -21,6 +21,9 @@
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
+--- x: line
+--- y: character in line
+--- z: position in buffer
 export type Location = {
     x: number,
     y: number,

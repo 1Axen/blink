@@ -57,11 +57,13 @@ type ReportState = {
 }
 
 export type ReportKind = "Warning" | "Error"
+type ErrorFunction = (string) -> never
 
 local GRAY = style.color.gray
 local BREAK = GRAY("┆")
+local default_error: ErrorFunction = error
 
-local function get_lines_in_span(input: buffer, lines: {string}, group_span: Span): {Line}
+local function get_lines_in_span(text: buffer, lines: {string}, group_span: Span): {Line}
     local result: {Line} = {}
 
     local group_start = group_span.start
@@ -70,11 +72,11 @@ local function get_lines_in_span(input: buffer, lines: {string}, group_span: Spa
 
     for line_number = location.line(group_start), location.line(group_finish) do
         local line = lines[line_number]
-        local length = #line 
-        local stripped_length = length - 2
+        local length = #line
+        local stripped_len = #string.gsub(line, "[\n\r]+", "")
 
         local start = location.create(position, line_number, 0)
-        local finish = location.create(position + stripped_length, line_number, stripped_length)
+        local finish = location.create(position + stripped_len, line_number, stripped_len)
         position += length + 1
 
         table.insert(result, {
@@ -241,7 +243,7 @@ function report.create(kind: ReportKind, file: string, input: buffer): Report
                 end
 
                 result_builder.append(`{style.color.gray(string.format("% 3i", line.index))} {GRAY("│")} {multiline_indent} `)
-                result_builder.append_line(span.to_string(line_span, input))
+                result_builder.append_line(span.value(line_span, input))
 
                 for _, label in labels do
                     local color = label.color
@@ -283,17 +285,21 @@ function report.create(kind: ReportKind, file: string, input: buffer): Report
             print = function()
                 print(report_result)
             end,
-            error = function(stido_error: ((string) -> ())?)
-                if stido_error then
-                    stido_error(report_result)
-                else
-                    error(report_result, 2)
+            error = function(custom_error: ErrorFunction?): never
+                if custom_error then
+                    return custom_error(report_result)
                 end
+
+                return default_error(report_result)
             end
         }
     end
 
     return prototype
+end
+
+local function set_default_error(error_function: ErrorFunction)
+    default_error = error_function
 end
 
 local any: any
@@ -303,5 +309,7 @@ export type Report = typeof(report.create(any, any, any))
 return table.freeze({
     style = style,
     report = report,
-    label = label
+    label = label,
+
+    set_default_error = set_default_error
 })

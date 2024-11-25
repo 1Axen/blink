@@ -46,7 +46,7 @@ local function length(self: Span): number
 end
 
 local function value(self: Span, text: buffer): string
-    return buffer.readstring(text, location.position(self.start), length(self))
+    return buffer.readstring(text, location.position(self.start), length(self) - 1)
 end
 
 local function contains(self: Span, position: number): boolean
@@ -66,10 +66,10 @@ end
 
 return table.freeze({
     create = create,
+    value = value,
     merge = merge,
     length = length,
     contains = contains,
     intersects = intersects,
     is_multiline = is_multiline,
-    to_string = value,
 })

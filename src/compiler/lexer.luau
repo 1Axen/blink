@@ -32,6 +32,7 @@ export type TokenBase<Kind, Value = nil> = {
     span: span.Span,
     value: Value
 }
+
 export type Token = 
     --> trivia
     | TokenBase<"attribute", string>
@@ -46,9 +47,12 @@ export type Token =
     | TokenBase<"event">
     | TokenBase<"struct">
     | TokenBase<"option">
+    | TokenBase<"export">
     | TokenBase<"function">
 
     --> literals
+    | TokenBase<"true">
+    | TokenBase<"false">
     | TokenBase<"number", string>
     | TokenBase<"string", string>
 
@@ -57,8 +61,9 @@ export type Token =
     | TokenBase<"=">
     | TokenBase<":">
     | TokenBase<",">
-    | TokenBase<"..">
+    | TokenBase<"&">
     | TokenBase<"?">
+    | TokenBase<"..">
 
     --> delimiters
     | TokenBase<"{">
@@ -96,19 +101,28 @@ local function is_digit(byte: number): boolean
     return string.byte("0") <= byte and byte <= string.byte("9")
 end
 
-local function tokenize(input: buffer): {Token}
+local function tokenize(text: buffer): {Token}
     --> lexer state
     local line = 1
     local position = 0
     local character = 0
-    local length = buffer.len(input)
+
+    local length = buffer.len(text)
 
     local function peek(): number
         if position == length then
             return 0
         end
     
-        return buffer.readu8(input, position)
+        return buffer.readu8(text, position)
+    end
+
+    local function lookahead(): number
+        if position >= (length - 1) then
+            return 0
+        end
+
+        return buffer.readu8(text, position + 1)
     end
     
     local function advance()
@@ -127,22 +141,22 @@ local function tokenize(input: buffer): {Token}
     end
     
     local function to_string(start_position: number)
-        return buffer.readstring(input, start_position, position - start_position)
+        return buffer.readstring(text, start_position, position - start_position)
     end
     
-    local function to_location()
-        return location.create(position, line, character)
+    local function last_location()
+        return location.create(position - 1, line, character - 1)
     end
 
-    local function to_span(start: Location)
-        return span.create(start, to_location())
+    local function current_location()
+        return location.create(position, line, character)
     end
 
     local tokens: {Token} = table.create(64) :: any
     
     local function next_token(): Token?
         local first = peek()
-        local start = to_location()
+        local start = current_location()
         local start_position = position
 
         --> eof
@@ -174,7 +188,7 @@ local function tokenize(input: buffer): {Token}
                 char = advance_peek()
             until not (is_letter(char) or is_digit(char) or char == UNDERSCORE)
             
-            local finish = to_location()
+            local finish = last_location()
             local value = to_string(start_position)
             local value_span = span.create(start, finish)
             
@@ -183,11 +197,14 @@ local function tokenize(input: buffer): {Token}
                 or value == "map"
                 or value == "type"
                 or value == "enum"
+                or value == "true"
+                or value == "false"
                 or value == "event"
                 or value == "scope"
                 or value == "struct"
                 or value == "option"
-                or value == "function" 
+                or value == "export"
+                or value == "function"
             then
                 return {kind = value :: any, span = value_span}
             end
@@ -207,13 +224,17 @@ local function tokenize(input: buffer): {Token}
 
             repeat
                 if char == DOT then
+                    if is_digit(lookahead()) == false then
+                        break
+                    end
+
                     decimal = true
                 end
 
                 char = advance_peek()
             until not (is_digit(char) or char == UNDERSCORE or (char == DOT and decimal == false))
 
-            local finish = to_location()
+            local finish = last_location()
             local value = to_string(start_position)
 
             return {
@@ -229,7 +250,7 @@ local function tokenize(input: buffer): {Token}
 
             advance()
 
-            local finish = to_location()
+            local finish = last_location()
             local value = to_string(start_position)
             
             return {
@@ -237,14 +258,6 @@ local function tokenize(input: buffer): {Token}
                 span = span.create(start, finish),
                 value = value
             }
-        elseif first == DOT then
-            local char = advance_peek()
-            if char == DOT then
-                advance()
-                return { kind = "..", span = to_span(start) }
-            end
-
-            return { kind = ".", span = span.create(start, start) }
         end
 
         advance()
@@ -274,6 +287,15 @@ local function tokenize(input: buffer): {Token}
             return { kind = "?", span = value_span }
         elseif first == string.byte("=") then
             return { kind = "=", span = value_span }
+        elseif first == string.byte(".") then
+            if peek() == string.byte(".") then
+                advance()
+                return { kind = "..", span = span.create(start, last_location()) }
+            end
+
+            return { kind = ".", span = value_span }
+        elseif first == string.byte("&") then
+            return { kind = "&", span = value_span }
         end
 
         return {
