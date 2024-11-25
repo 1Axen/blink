@@ -1,28 +1,27 @@
-type a = array<u8>
-type b = map<string, u8>
+type num = u8[-0.0..255]
+type dict = map {[string]: u8}
 
-struct c {
+type c = struct {
     field: u8
 }
 
-enum d = {
-    option
+type d = enum {
+    "option"
 }
 
-enum d_tagged<T> = "Type" {
+type d_tagged<T> = enum "Type" {
     Some {
         Value: T
     },
     None {}
 }
 
-struct e<K, V> {
+type e<K, V> = struct {
     key: K,
     value: V
 }
 
-struct f {
-    ..c,
+type f = c & struct {
     some_field: u8
 }
 
@@ -31,4 +30,13 @@ event g {
     type: Reliable,
     call: SingleSync,
     data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+}
+
+function h {
+    yield: Server,
+    data: u8
+}
+
+scope foo {
+    type bar = u8
 }

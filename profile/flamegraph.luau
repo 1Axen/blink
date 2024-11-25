@@ -1,18 +1,25 @@
 local fs = require("@lune/fs")
 local process = require("@lune/process")
 
-local LuauResult = process.spawn("luau/luau.exe", {"--codegen", "--profile", "simple.luau"}, {cwd = process.cwd})
+local file_source = fs.readFile("./blink/large.blink")
+local luau_source = `--!native\n--!optimize 2\nlocal lexer = require("../../src/compiler/lexer")\nlocal source = [[{file_source}]]\nlexer.tokenize(buffer.fromstring(source))`
+fs.writeFile("./out/bench.luau", luau_source)
+
+local darklua_result = process.spawn("darklua", {"process", "--config", "./config/bench.darklua.json", "./out/bench.luau", "./out/bench.luau"})
+assert(darklua_result.ok, darklua_result.stderr)
+
+local LuauResult = process.spawn("luau/luau.exe", {"--codegen", "-O2", "--profile", "./out/bench.luau"}, {cwd = process.cwd})
 assert(LuauResult.ok, LuauResult.stderr)
 
 local PythonResult = process.spawn("python", {"luau/perfgraph.py", "profile.out"}, {cwd = process.cwd})
 assert(PythonResult.ok, PythonResult.stderr)
 
-fs.writeFile("luau/profile.svg", PythonResult.stdout)
+fs.writeFile("out/profile.svg", PythonResult.stdout)
 fs.removeFile("profile.out")
 
 print("Flamegraph generated!")
 
-local OpenResult = process.spawn("cmd", {"/C", "start", "luau/profile.svg"}, {shell = true})
+local OpenResult = process.spawn("powershell", {"-c", '"./out/profile.svg"'}, {shell = true})
 assert(OpenResult.ok, OpenResult.stderr)
 
 print("Flamegraph opened!")

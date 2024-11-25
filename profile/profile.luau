@@ -42,7 +42,7 @@ local function benchmark_closure(name: string, closure: () -> ()): number
     local text_result = `{date_time.now():formatLocalTime()} - {name} - {format_seconds(average_time)}`
     
     print(text_result)
-    fs_append("performance.txt", `\n{text_result}`)
+    fs_append("./out/performance.txt", `\n{text_result}`)
 
     return average_time
 end

@@ -1,0 +1,7 @@
+{
+    "generator": "readable",
+    "bundle": {
+        "require_mode": "path",
+        "excludes": ["@lune/**"]
+    }
+}
