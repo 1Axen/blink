@@ -8,5 +8,6 @@
   "luau-lsp.fflags.override": {
     "LuauSolverV2": "false"
   },
-  "luau-lsp.completion.imports.enabled": true
+  "luau-lsp.completion.imports.enabled": true,
+  "stylua.targetReleaseVersion": "latest"
 }
