@@ -1,0 +1,7 @@
+{
+	"languageMode": "strict",
+    "aliases": {
+        "util": "src/util",
+        "compiler": "src/compiler/"
+    }
+}
