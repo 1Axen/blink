@@ -24,8 +24,8 @@
 
 local span = require("./span")
 local style = require("./style")
-local builder = require("builder")
-local location = require("location")
+local builder = require("./builder")
+local location = require("./location")
 
 type Span = span.Span
 type Location = location.Location
@@ -164,10 +164,9 @@ function report.create(kind: ReportKind, file: string, input: buffer): Report
             kind_header = style.color.yellow(string.format("[W%02i] Warning:", state.report_code))
         end
 
-        result_builder.append_line(`{kind_header} {state.message}`)
-        result_builder.append_line(`    {GRAY("╭─")}[{file}:1:{#lines}]`)
-        result_builder.append_line(`    {GRAY("│")}`)
-        --result_builder.append_line("\╭─▸")
+        builder.append_line(result_builder, `{kind_header} {state.message}`)
+        builder.append_line(result_builder, `    {GRAY("╭─")}[{file}:1:{#lines}]`)
+        builder.append_line(result_builder, `    {GRAY("│")}`)
                                               
         --> Build labels
         table.sort(state.labels, function(a, b)
@@ -242,14 +241,14 @@ function report.create(kind: ReportKind, file: string, input: buffer): Report
                     end
                 end
 
-                result_builder.append(`{style.color.gray(string.format("% 3i", line.index))} {GRAY("│")} {multiline_indent} `)
-                result_builder.append_line(span.value(line_span, input))
+                builder.append(result_builder, `{style.color.gray(string.format("% 3i", line.index))} {GRAY("│")} {multiline_indent} `)
+                builder.append_line(result_builder, span.value(line_span, input))
 
                 for _, label in labels do
                     local color = label.color
                     if label.kind == "Multiline" then
-                        result_builder.append_line(`    {BREAK} {color("│")}`)
-                        result_builder.append_line(`    {BREAK} {color("╰────")} {label.message}`)
+                        builder.append_line(result_builder, `    {BREAK} {color("│")}`)
+                        builder.append_line(result_builder, `    {BREAK} {color("╰────")} {label.message}`)
                     elseif label.kind == "Inline" then
                         local label_span = label.span
                         local label_start = location.position(label_span.start)
@@ -260,8 +259,8 @@ function report.create(kind: ReportKind, file: string, input: buffer): Report
                         local first_half = (underlines - 1) // 2
                         local second_half = (underlines - 1) - first_half
 
-                        result_builder.append_line(`    {BREAK} {multiline_indent} {string.rep(" ", spaces)}{color(string.rep("─", first_half))}{color("┬")}{color(string.rep("─", second_half))}`)
-                        result_builder.append_line(`    {BREAK} {multiline_indent} {string.rep(" ", spaces + first_half)}{color("╰──")} {label.message}`)
+                        builder.append_line(result_builder, `    {BREAK} {multiline_indent} {string.rep(" ", spaces)}{color(string.rep("─", first_half))}{color("┬")}{color(string.rep("─", second_half))}`)
+                        builder.append_line(result_builder, `    {BREAK} {multiline_indent} {string.rep(" ", spaces + first_half)}{color("╰──")} {label.message}`)
                     end
                 end
             end
@@ -269,17 +268,17 @@ function report.create(kind: ReportKind, file: string, input: buffer): Report
 
         --> Build note
         if state.note then
-            result_builder.append_line(`    {BREAK}`)
-            result_builder.append(`    {BREAK}    `)
-            result_builder.append(style.combine("Note", style.color.green))
-            result_builder.append_line(`: {state.note}`)
+            builder.append_line(result_builder, `    {BREAK}`)
+            builder.append(result_builder, `    {BREAK}    `)
+            builder.append(result_builder, style.combine("Note", style.color.green))
+            builder.append_line(result_builder, `: {state.note}`)
         end
 
         --> Finish building report
-        result_builder.append_line(GRAY("    │"))
-        result_builder.append(GRAY("────╯"))
+        builder.append_line(result_builder, GRAY("    │"))
+        builder.append(result_builder, GRAY("────╯"))
 
-        local report_result = result_builder.finish()
+        local report_result = builder.to_string(result_builder)
 
         return {
             print = function()
