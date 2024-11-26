@@ -1,4 +1,4 @@
-local span = require("../../util/span")
+local span = require("@util/span")
 
 type Span = span.Span
 

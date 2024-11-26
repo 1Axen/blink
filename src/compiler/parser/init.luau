@@ -21,9 +21,9 @@
 -- SOFTWARE.
 
 local ast = require("./ast")
-local lexer = require("../lexer")
-local span = require("../../util/span")
-local diagnostics = require("../../util/diagnostics")
+local lexer = require("@compiler/lexer")
+local span = require("@util/span")
+local diagnostics = require("@util/diagnostics")
 
 type Token = lexer.Token
 

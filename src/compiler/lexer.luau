@@ -21,8 +21,8 @@
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
-local span = require("../util/span")
-local location = require("../util/location")
+local span = require("@util/span")
+local location = require("@util/location")
 
 type Span = span.Span
 type Location = location.Location
