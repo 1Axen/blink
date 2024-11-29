@@ -1,5 +1,6 @@
 --!strict
 --!native
+--!optimize 2
 
 export type Builder = {
 	buffer: buffer,

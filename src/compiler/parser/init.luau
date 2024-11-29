@@ -1,4 +1,6 @@
 --!strict
+--!native
+--!optimize 2
 
 local ast = require("./ast")
 local lexer = require("@compiler/lexer")

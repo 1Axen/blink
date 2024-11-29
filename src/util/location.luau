@@ -1,5 +1,6 @@
 --!strict
 --!native
+--!optimize 2
 
 --- x: line
 --- y: character in line
