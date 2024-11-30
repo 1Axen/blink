@@ -27,7 +27,7 @@ local function length(self: Span): number
 end
 
 local function value(self: Span, text: buffer): string
-    return buffer.readstring(text, location.position(self.start), length(self) - 1)
+    return buffer.readstring(text, location.position(self.start), length(self))
 end
 
 local function contains(self: Span, position: number): boolean
