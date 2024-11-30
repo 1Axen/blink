@@ -8,6 +8,7 @@ local span = require("@util/span")
 local diagnostics = require("@util/diagnostics")
 
 type Token = lexer.Token
+type TokenAny = lexer.TokenBase<any, any>
 
 type Parser = {
     file: string,
@@ -57,9 +58,12 @@ local function report_expect_one_of_ident(parser: Parser, span: span.Span, got: 
     .error()
 end
 
-
 local function peek(parser: Parser): Token
     return parser.token
+end
+
+local function lookahead(parser: Parser): Token
+    return parser.lookahead
 end
 
 local function consume(parser: Parser): Token
@@ -126,6 +130,38 @@ local function any_identifier(parser: Parser): ast.Identifier
         span = token.span,
         kind = "identifier",
         value = token.value or token.kind
+    }
+end
+
+--- Parses word + dot as identifier (foo.bar)
+local function path_identifier(parser: Parser): ast.Identifier
+    local first = expect(parser, "word")
+    local last: TokenAny = first
+
+    while true do
+        local current = peek(parser)
+        local following = lookahead(parser)
+
+        if 
+            current.kind ~= "." 
+            or following.kind ~= "word" 
+        then
+            break
+        end
+
+        --> consume dot & word
+        consume(parser)
+        last = consume(parser)
+    end
+
+    --> get full identifier
+    local full_span = span.merge(first.span, last.span)
+    local full_value = span.value(full_span, parser.text)
+
+    return {
+        kind = "identifier",
+        span = full_span,
+        value = full_value
     }
 end
 
@@ -292,10 +328,10 @@ local function expr_range(parser: Parser, delimiter: "(" | "["): ast.ExprRange
 end
 
 local function expr_reference(parser: Parser): ast.ExprReference
-    local name = identifier(parser)
+    local name = path_identifier(parser)
     local range: ast.ExprRange?
     local ref_span = name.span
-   
+    
     --> generics
     local generics = {}
     if peek(parser).kind == "<" then
@@ -314,7 +350,7 @@ local function expr_reference(parser: Parser): ast.ExprReference
     return {
         span = ref_span,
         kind = "reference",
-        name = name.value,
+        name = name,
         range = range,
         generics = generics
     }
@@ -461,9 +497,28 @@ local function expr_enum(parser: Parser): ast.ExprEnum | ast.ExprTaggedEnum
     return unit()
 end
 
+local function expr_pack_parameter(parser: Parser): ast.ExprPackParameter
+    local name: ast.Identifier?
+    local following = lookahead(parser)
+    if following.kind == ":" then
+        name = any_identifier(parser)
+        local _ = expect(parser, ":")
+    end
+
+    local value = expression(parser)
+    local full_span = name and span.merge(name.span, value.span) or value.span
+
+    return {
+        span = full_span,
+        kind = "parameter",
+        name = name,
+        value = value
+    }
+end
+
 local function expr_pack(parser: Parser): ast.ExprPack
     local open = expect(parser, "(")
-    local values = seperated(parser, expression, ",", ")")
+    local values = seperated(parser, expr_pack_parameter, ",", ")")
     local close = expect(parser, ")")
 
     return {
@@ -729,12 +784,12 @@ function block(parser: Parser, is_scope: boolean?): ast.Block
             parser.parsed_options = true
         end
 
-        diagnostics.report.create("Warning", parser.file, parser.text)
-            .with_label(diagnostics.label.create(stat.span)
-                .with_message(`This is a {stat.kind} statement`)
-            )
-            .finish()
-            .print()
+        -- diagnostics.report.create("Warning", parser.file, parser.text)
+        --     .with_label(diagnostics.label.create(stat.span)
+        --         .with_message(`This is a {stat.kind} statement`)
+        --     )
+        --     .finish()
+        --     .print()
 
         table.insert(statements, stat)
     end

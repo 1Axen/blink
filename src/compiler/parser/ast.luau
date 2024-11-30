@@ -57,10 +57,18 @@ export type ExprMap = {
     value: Expression,
 }
 
+export type ExprPackParameter = {
+    span: Span,
+    kind: "parameter",
+
+    name: Identifier?,
+    value: Expression
+}
+
 export type ExprPack = {
     span: Span,
     kind: "pack",
-    values: { Expression }
+    values: { ExprPackParameter }
 }
 
 --- enum { text }
@@ -122,7 +130,7 @@ export type ExprReference = {
     span: Span,
     kind: "reference",
 
-    name: string,
+    name: Identifier,
     range: ExprRange?,
     generics: { Expression }
 }

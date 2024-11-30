@@ -29,7 +29,7 @@ event g {
     from: Server,
     type: Reliable,
     call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+    data: (a, foo: b, c, bar: d, d_tagged<unknown>, e<u8, u8>, f)
 }
 
 function h {
@@ -40,3 +40,5 @@ function h {
 scope foo {
     type bar = u8
 }
+
+type foo_bar = foo.bar
