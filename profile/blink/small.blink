@@ -1,12 +1,16 @@
-type num = u8[-0.0..255]
-type dict = map {[string]: u8}
+option types_output = "../out/types"
+
+import "./large.blink" as external
+
+type a = u8[0.0..255]
+type b = map {[string]: u8}
 
 type c = struct {
-    field: u8
+    field: u8(0..0)
 }
 
 type d = enum {
-    "option"
+    "option",
 }
 
 type d_tagged<T> = enum "Type" {
@@ -38,7 +42,7 @@ function h {
 }
 
 scope foo {
-    type bar = u8
+    type bar = u8(0..1)
 }
 
 type foo_bar = foo.bar

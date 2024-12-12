@@ -2,13 +2,17 @@
 
 --> A fancy diagnostics & error reporting library based on zesterer/ariadne
 
-local span = require("./span")
-local style = require("./style")
-local builder = require("./builder")
-local location = require("./location")
+local file = require("@util/file")
+local span = require("@util/span")
+local style = require("@util/style")
+local builder = require("@util/builder")
 
 type Span = span.Span
-type Location = location.Location
+
+type LabelKind = "Inline" | "Multiline"
+type ReportKind = "Warning" | "Error"
+
+type ErrorFn = (string) -> never
 
 type Line = {
     span: Span,
@@ -17,278 +21,147 @@ type Line = {
 
 type Group = {
     span: Span,
-    labels: {LabelState}
+    labels: {Label}
 }
 
-type LabelKind = "Inline" | "Multiline"
-
-type LabelState = {
+type Label = {
     kind: LabelKind,
     span: Span,
     color: style.Styler,
     message: string,
 }
 
-type ReportState = {
-    note: string?,
-    labels: {LabelState},
-    message: string,
-    report_code: number,
+export type Report = {
+    print: () -> (),
+    error: () -> never
 }
 
-export type ReportKind = "Warning" | "Error"
-type ErrorFunction = (string) -> never
+export type LabelBuilder = {
+    with_color: (style.Styler) -> LabelBuilder,
+    with_message: (string) -> LabelBuilder,
+    finish: () -> Label
+}
+
+export type ReportBuilder = {
+    with_code: (number) -> ReportBuilder,
+    with_note: (string) -> ReportBuilder,
+    with_label: (LabelBuilder) -> ReportBuilder,
+    with_message: (string) -> ReportBuilder,
+    finish: () -> Report
+}
 
 local GRAY = style.color.gray
 local BREAK = GRAY("┆")
-local default_error: ErrorFunction = error
 
-local function get_lines_in_span(text: buffer, lines: {string}, group_span: Span): {Line}
-    local result: {Line} = {}
+local error_fn: ErrorFn = error
 
-    local group_start = group_span.start
-    local group_finish = group_span.finish
-    local position = (location.position(group_start) - location.character(group_start))
+local function create_label_builder(label_span: Span): LabelBuilder
+    local color = style.color.white
+    local message = "Something happened"
 
-    for line_number = location.line(group_start), location.line(group_finish) do
-        local line = lines[line_number]
-        local length = #line
-        local stripped_len = #string.gsub(line, "[\n\r]+", "")
+    local label_builder = {}
+    function label_builder.with_color(color: style.Styler)
+        color = color
+        return label_builder
+    end
 
-        local start = location.create(position, line_number, 0)
-        local finish = location.create(position + stripped_len, line_number, stripped_len)
-        position += length + 1
+    function label_builder.with_message(text: string)
+        message = text
+        return label_builder
+    end
 
-        table.insert(result, {
-            span = span.create(start, finish),
-            index = line_number,
+    function label_builder.finish(): Label
+        return table.freeze({
+            kind = "Inline" :: any,
+            span = label_span,
+            color = color,
+            message = message
         })
     end
 
-    return result
+    return table.freeze(label_builder)
 end
 
-local label = {}
+local function create_report_builder(kind: ReportKind): ReportBuilder
+    --> builder state
+    local code = 0
+    local notes = {}
+    local labels = {}
+    local message = "Something happened"
 
-function label.create(label_span: Span): Label
-    local kind = (span.is_multiline(label_span) and "Multiline" or "Inline")
-    local state: LabelState = {
-        kind = kind :: LabelKind,
-        span = label_span,
-        order = 1,
-        color = style.color.white,
-        message = "Something happened"
-    }
-
-    local prototype = {}
-    function prototype.with_color(color: style.Styler)
-        state.color = color
-        return prototype
+    local report_builder = {}
+    function report_builder.with_code(report_code: number)
+        code = report_code
+        return report_builder
     end
 
-    function prototype.with_message(message: string)
-        state.message = message
-        return prototype
+    function report_builder.with_note(note: string)
+        table.insert(notes, note)
+        return report_builder
     end
 
-    function prototype.finish(): LabelState
-        return table.freeze(state)
+    function report_builder.with_message(text: string)
+        message = text
+        return report_builder
     end
 
-    return prototype
-end
-
-local report = {}
-
-function report.create(kind: ReportKind, file: string, input: buffer): Report
-    local state: ReportState = {
-        note = nil,
-        labels = {},
-        message = "Something happened",
-        report_code = 0
-    }
-
-    local prototype = {}
-    function prototype.with_code(report_code: number)
-        state.report_code = report_code
-        return prototype
+    function report_builder.with_label(label: LabelBuilder)
+        table.insert(labels, label.finish())
+        return report_builder
     end
 
-    function prototype.with_note(note: string)
-        state.note = note
-        return prototype
-    end
+    function report_builder.finish()
+        local report = builder.create()
+        builder.append_line(report, `[{kind} {string.format("%04i", code)}] {message}`)
+        builder.indent(report)
 
-    function prototype.with_message(message: string)
-        state.message = message
-        return prototype
-    end
-
-    function prototype.with_label(label: Label)
-        table.insert(state.labels, label.finish())
-        return prototype
-    end
-
-    function prototype.finish()
-        --> Prevent state from being altered
-        table.freeze(state)
-
-        local lines = string.split(buffer.tostring(input), "\n")
-        local result_builder = builder.create()
-
-        --> Build report header
-        local kind_header: string
-        if kind == "Error" then
-            kind_header = style.color.red(string.format("[E%02i] Error:", state.report_code))
-        elseif kind == "Warning" then
-            kind_header = style.color.yellow(string.format("[W%02i] Warning:", state.report_code))
-        end
-
-        builder.append_line(result_builder, `{kind_header} {state.message}`)
-        builder.append_line(result_builder, `    {GRAY("╭─")}[{file}:1:{#lines}]`)
-        builder.append_line(result_builder, `    {GRAY("│")}`)
-                                              
-        --> Build labels
-        table.sort(state.labels, function(a, b)
-            return location.position(a.span.start) < location.position(b.span.start)
-        end)
-
-        local groups: {Group} = {}
-        for _, label in state.labels do
-            local matched = false
-            local label_span = label.span
-            local label_start = label_span.start
-            local label_finish = label_span.finish
-
-            for _, group in groups do
-                local group_span = group.span
-                if span.intersects(group_span, label_span) then
-                    local group_start = group_span.start
-                    local group_finish = group_span.finish
-
-                    local start = location.position(group_start) < location.position(label_start) 
-                        and group_start 
-                        or label_start
-
-                    local finish = location.position(group_finish) > location.position(label_finish) 
-                        and group_finish 
-                        or label_finish
-                    
-                    matched = true
-                    group.span = span.create(start, finish)
-                    table.insert(group.labels, label)
-                end
+        for _, label in labels do
+            local value = span.value(label.span)
+            builder.append_line(report, style.modifer.dim(`({label.span.x}..{label.span.y}:{label.span.z}) `))
+            
+            if string.find(value, "\n") then
+                local lines = string.split(value, "\n")
+                builder.append_lines(report, lines)
+            else
+                builder.append_line(report, value)
             end
 
-            if matched then
-                continue
-            end
-
-            table.insert(groups, {
-                span = table.clone(label_span),
-                labels = {label}
-            })
+            builder.append_line(report, label.color(`─▸ {label.message}`))
         end
 
-        for _, group in groups do
-            local group_lines = get_lines_in_span(input, lines, group.span)
-            local group_labels = group.labels
-
-            for _, line in group_lines do
-                local labels: {LabelState} = {}
-                local line_span = line.span
-                local line_start = location.position(line_span.start)
-                local line_finish = location.position(line_span.finish)
-                local multiline_indent = ""
-
-                for _, label in group_labels do
-                    local label_span = label.span
-                    local label_start = location.position(label_span.start)
-                    local label_finish = location.position(label_span.finish)
-
-                    if label.kind == "Multiline" and span.intersects(line_span, label_span) then
-                        local indent = "│ "
-                        if label_start >= line_start then
-                            indent = "╭─▸"
-                        elseif label_finish <= line_finish then
-                            indent = "├─▸"
-                            table.insert(labels, label)
-                        end
-
-                        multiline_indent = label.color(indent)
-                    elseif label_start >= line_start and label_finish <= line_finish then
-                        table.insert(labels, label)
-                    end
-                end
-
-                builder.append(result_builder, `{style.color.gray(string.format("% 3i", line.index))} {GRAY("│")} {multiline_indent} `)
-                builder.append_line(result_builder, span.value(line_span, input))
-
-                for _, label in labels do
-                    local color = label.color
-                    if label.kind == "Multiline" then
-                        builder.append_line(result_builder, `    {BREAK} {color("│")}`)
-                        builder.append_line(result_builder, `    {BREAK} {color("╰────")} {label.message}`)
-                    elseif label.kind == "Inline" then
-                        local label_span = label.span
-                        local label_start = location.position(label_span.start)
-
-                        local spaces = (label_start - line_start)
-                        local underlines = span.length(label_span)
-
-                        local first_half = (underlines - 1) // 2
-                        local second_half = (underlines - 1) - first_half
-
-                        builder.append_line(result_builder, `    {BREAK} {multiline_indent} {string.rep(" ", spaces)}{color(string.rep("─", first_half))}{color("┬")}{color(string.rep("─", second_half))}`)
-                        builder.append_line(result_builder, `    {BREAK} {multiline_indent} {string.rep(" ", spaces + first_half)}{color("╰──")} {label.message}`)
-                    end
-                end
-            end
+        for _, note in notes do
+            builder.append(report, style.color.green("Note"))
+            builder.append(report, ": ")
+            builder.append_line(report, note)
         end
 
-        --> Build note
-        if state.note then
-            builder.append_line(result_builder, `    {BREAK}`)
-            builder.append(result_builder, `    {BREAK}    `)
-            builder.append(result_builder, style.combine("Note", style.color.green))
-            builder.append_line(result_builder, `: {state.note}`)
-        end
-
-        --> Finish building report
-        builder.append_line(result_builder, GRAY("    │"))
-        builder.append(result_builder, GRAY("────╯"))
-
-        local report_result = builder.to_string(result_builder)
+        local display = builder.to_string(report)
 
         return {
             print = function()
-                print(report_result)
+                print(display)
             end,
-            error = function(custom_error: ErrorFunction?): never
-                if custom_error then
-                    return custom_error(report_result)
+            error = function(custom_error_fn: ErrorFn?): never
+                if custom_error_fn then
+                    return custom_error_fn(display)
                 end
 
-                return default_error(report_result)
+                return error_fn(display)
             end
         }
     end
 
-    return prototype
+    return table.freeze(report_builder)
 end
 
-local function set_default_error(error_function: ErrorFunction)
-    default_error = error_function
+local function set_error_fn(new_error_fn: ErrorFn)
+    error_fn = new_error_fn
 end
-
-local any: any
-export type Label = typeof(label.create(any))
-export type Report = typeof(report.create(any, any, any))
 
 return table.freeze({
     style = style,
-    report = report,
-    label = label,
+    label = table.freeze({ create = create_label_builder }),
+    report = table.freeze({ create = create_report_builder }),
 
-    set_default_error = set_default_error
+    set_error_fn = set_error_fn
 })

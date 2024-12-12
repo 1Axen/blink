@@ -3,7 +3,11 @@
 --!optimize 2
 
 local ast = require("./ast")
+
 local lexer = require("@compiler/lexer")
+local codes = require("@compiler/config/codes")
+local primitives = require("@compiler/config/primitives")
+
 local span = require("@util/span")
 local diagnostics = require("@util/diagnostics")
 
@@ -11,14 +15,11 @@ type Token = lexer.Token
 type TokenAny = lexer.TokenBase<any, any>
 
 type Parser = {
-    file: string,
-    text: buffer,
     tokens: {Token},
 
     index: number,
     token: Token,
-    lookahead: Token,
-    parsed_options: boolean,
+    lookahead: Token
 }
 
 local block: (Parser, boolean) -> ast.Block;
@@ -26,7 +27,8 @@ local statement: (Parser) -> ast.Statement;
 local expression: (Parser) -> ast.Expression;
 
 local function report_expect(parser: Parser, token: Token, kind: typeof((({} :: any) :: Token).kind)): never
-    return diagnostics.report.create("Error", parser.file, parser.text)
+    return diagnostics.report.create("Error")
+        .with_code(codes.parser.UnexpectedToken)
         .with_message(`Expected "{kind}", got "{token.kind}" instead`)
         .with_label(diagnostics.label.create(token.span)
             .with_message("Here")
@@ -37,8 +39,9 @@ local function report_expect(parser: Parser, token: Token, kind: typeof((({} :: 
 end
 
 local function report_expect_one_of(parser: Parser, token: Token, kinds: {typeof((({} :: any) :: Token).kind)}): never
-    return diagnostics.report.create("Error", parser.file, parser.text)
-        .with_message(`Expected one of "{table.concat(kinds, "\", ")}", got "{token.kind}" instead`)
+    return diagnostics.report.create("Error")
+        .with_code(codes.parser.UnexpectedToken)
+        .with_message(`Expected one of "{table.concat(kinds, "\", \"")}", got "{token.kind}" instead`)
         .with_label(diagnostics.label.create(token.span)
             .with_message("Here")
             .with_color(diagnostics.style.color.red)
@@ -48,8 +51,9 @@ local function report_expect_one_of(parser: Parser, token: Token, kinds: {typeof
 end
 
 local function report_expect_one_of_ident(parser: Parser, span: span.Span, got: string, expected: {string}): never
-    return diagnostics.report.create("Error", parser.file, parser.text)
-        .with_message(`Expected one of "{table.concat(expected, "\", ")}", got "{got}" instead`)
+    return diagnostics.report.create("Error")
+        .with_code(codes.parser.UnexpectedToken)
+        .with_message(`Expected one of "{table.concat(expected, "\", \"")}", got "{got}" instead`)
         .with_label(diagnostics.label.create(span)
             .with_message("Here")
             .with_color(diagnostics.style.color.red)
@@ -94,12 +98,7 @@ end
 local function seperated<T>(parser: Parser, t: (Parser) -> T, seperator: typeof((({} :: any) :: Token).kind), delimiter: "}" | ")" | "]" | ">"): {T}
     local list: {T} = {}
 
-    --> empty list
-    if peek(parser).kind == delimiter then
-        return list
-    end
-
-    while true do
+    while peek(parser).kind ~= delimiter do
         table.insert(list, t(parser))
 
         --> if the next token isn't the seperator assume the list ended
@@ -156,7 +155,7 @@ local function path_identifier(parser: Parser): ast.Identifier
 
     --> get full identifier
     local full_span = span.merge(first.span, last.span)
-    local full_value = span.value(full_span, parser.text)
+    local full_value = span.value(full_span)
 
     return {
         kind = "identifier",
@@ -182,7 +181,6 @@ local function escaped_identifier(parser: Parser): ast.Identifier
     }
 end
 
-
 local function structure(parser: Parser, fields: {[string]: {expr: (parser: Parser) -> any, optional: boolean}}, open: lexer.TokenBase<any, any>): {[string]: any}
     --> key - required
     local all_keys: {string} = {}
@@ -204,7 +202,8 @@ local function structure(parser: Parser, fields: {[string]: {expr: (parser: Pars
         local key = name.value
 
         if parsed_keys[key] then
-            return diagnostics.report.create("Error", parser.file, parser.text)
+            return diagnostics.report.create("Error")
+                .with_code(codes.parser.DuplicateEntry)
                 .with_message(`Duplicate entry "{key}" in struct`)
                 .with_label(diagnostics.label.create(parsed_keys[key])
                     .with_color(diagnostics.style.color.cyan)
@@ -245,7 +244,8 @@ local function structure(parser: Parser, fields: {[string]: {expr: (parser: Pars
     local close = peek(parser)
     if #required_keys ~= 0 then
         local struct_span = span.merge(open.span, close.span)
-        return diagnostics.report.create("Error", parser.file, parser.text)
+        return diagnostics.report.create("Error")
+            .with_code(codes.parser.MissingEntry)
             .with_message(`Expected struct to contain "{table.concat(required_keys, "\", ")}"`)
             .with_label(diagnostics.label.create(struct_span)
                 .with_color(diagnostics.style.color.red)
@@ -256,6 +256,39 @@ local function structure(parser: Parser, fields: {[string]: {expr: (parser: Pars
     end
 
     return result
+end
+
+local function generic(parser: Parser): ast.Generic
+    local name = identifier(parser)
+    local node_span = name.span
+
+    local default: ast.Expression?;
+    if peek(parser).kind == "=" then
+        local _assign = expect(parser, "=")
+        local expr = expression(parser)
+
+        default = expr
+        node_span = span.merge(name.span, expr.span)
+    end
+
+    return {
+        kind = "generic",
+        span = node_span,
+        name = name,
+        optional = default,
+    }
+end
+
+local function generics(parser: Parser): ast.Generics
+    local open = expect(parser, "<")
+    local values: {ast.Generic} = seperated(parser, generic, ",", ">")
+    local close = expect(parser, ">")
+
+    return {
+        kind = "generics",
+        span = span.merge(open.span, close.span),
+        values = values
+    }
 end
 
 local function expr_boolean(parser: Parser): ast.ExprBoolean
@@ -295,7 +328,7 @@ local function expr_string(parser: Parser): ast.ExprString
     }
 end
 
-local function expr_range(parser: Parser, delimiter: "(" | "["): ast.ExprRange
+local function expr_range(parser: Parser, delimiter: "(" | "["): ast.Range
     local min: ast.ExprNumber?
     local max: ast.ExprNumber?
 
@@ -327,31 +360,54 @@ local function expr_range(parser: Parser, delimiter: "(" | "["): ast.ExprRange
     }
 end
 
-local function expr_reference(parser: Parser): ast.ExprReference
-    local name = path_identifier(parser)
-    local range: ast.ExprRange?
-    local ref_span = name.span
-    
+local function expr_primitive(parser: Parser): ast.ExprPrimitive
+    local name = identifier(parser)
+    local node_span = name.span
+
     --> generics
     local generics = {}
     if peek(parser).kind == "<" then
-        expect(parser, "<")
+        local _open = expect(parser, "<")
         generics = seperated(parser, expression, ",", ">")
 
         local close = expect(parser, ">")
-        ref_span = span.merge(name.span, close.span)
+        node_span = span.merge(name.span, close.span)
     end
-
+    
     --> range
+    local range: ast.Range?
     if peek(parser).kind == "(" then
         range = expr_range(parser, "(")
     end
 
     return {
-        span = ref_span,
-        kind = "reference",
+        span = node_span,
+        kind = "primitive",
+
         name = name,
         range = range,
+        generics = generics
+    }
+end
+
+local function expr_reference(parser: Parser): ast.ExprReference
+    local name = path_identifier(parser)
+    local node_span = name.span
+    
+    --> generics
+    local generics = {}
+    if peek(parser).kind == "<" then
+        local _open = expect(parser, "<")
+        generics = seperated(parser, expression, ",", ">")
+
+        local close = expect(parser, ">")
+        node_span = span.merge(name.span, close.span)
+    end
+
+    return {
+        span = node_span,
+        kind = "reference",
+        name = name,
         generics = generics
     }
 end
@@ -538,12 +594,12 @@ local function expr_array(parser: Parser, previous: ast.Expression): ast.ExprArr
     }
 end
 
-local function expr_optional(parser: Parser, previous: ast.Expression): ast.ExprOptional
+local function expr_optional(parser: Parser, value: ast.Expression): ast.ExprOptional
     local optional = expect(parser, "?")
     return {
-        span = span.merge(previous.span, optional.span),
+        span = span.merge(value.span, optional.span),
         kind = "optional",
-        value = previous
+        value = value
     }
 end
 
@@ -561,12 +617,10 @@ local function stat_type(parser: Parser): ast.StatType
     local keyword = expect(parser, "type")
     local name = identifier(parser)
 
-    local generics = {}
-    if peek(parser).kind == "<" then
-        expect(parser, "<")
-        generics = seperated(parser, identifier, ",", ">")
-        expect(parser, ">")
-    end
+    local generics = 
+        if peek(parser).kind == "<" 
+        then generics(parser) 
+        else nil
 
     local _assign = expect(parser, "=")
     local value = expression(parser)
@@ -635,17 +689,6 @@ local function stat_option(parser: Parser): ast.StatOption
     local value = expression(parser)
     local stat_span = span.merge(keyword.span, value.span)
 
-    if parser.parsed_options then
-        diagnostics.report.create("Warning", parser.file, parser.text)
-            .with_message("Option will be ignored because it is after the first non option statement")
-            .with_label(diagnostics.label.create(stat_span)
-                .with_message("Move this")
-                .with_color(diagnostics.style.color.cyan)
-            )
-            .finish()
-            .print()
-    end
-
     return {
         span = stat_span,
         kind = "option",
@@ -679,12 +722,42 @@ local function stat_function(parser: Parser): ast.StatFunction
     }
 end
 
+local function stat_import(parser: Parser): ast.StatImport
+    local keyword = expect(parser, "import")
+    local path = expr_string(parser)
+
+    local name: ast.Identifier = {
+        span = path.span,
+        kind = "identifier",
+        value = path.value
+    }
+
+    local token = peek(parser)
+    if token.kind == "as" then
+        expect(parser, "as")
+        name = identifier(parser)
+    end
+
+    return {
+        span = name and span.merge(keyword.span, name.span) or span.merge(keyword.span, path.span),
+        kind = "import",
+        
+        name = name,
+        path = path
+    }
+end
+
 function expression(parser: Parser): ast.Expression
     local token = peek(parser)
     local expr: ast.Expression?
     
     if token.kind == "word" then
-        expr = expr_reference(parser)
+        local word = token.value
+        if primitives[word] then
+            expr = expr_primitive(parser)
+        else
+            expr = expr_reference(parser)
+        end
     elseif token.kind == "map" then
         expr = expr_map(parser)
     elseif token.kind == "set" then
@@ -752,6 +825,8 @@ function statement(parser: Parser): ast.Statement
     local token = peek(parser)
     if token.kind == "type" then
         return stat_type(parser)
+    elseif token.kind == "import" then
+        return stat_import(parser)
     elseif token.kind == "scope" then
         return stat_scope(parser)
     elseif token.kind == "event" then
@@ -778,20 +853,8 @@ function block(parser: Parser, is_scope: boolean?): ast.Block
         if is_scope and token.kind == "}" then
             break
         end
-
-        local stat = statement(parser)
-        if stat.kind ~= "option" then
-            parser.parsed_options = true
-        end
-
-        -- diagnostics.report.create("Warning", parser.file, parser.text)
-        --     .with_label(diagnostics.label.create(stat.span)
-        --         .with_message(`This is a {stat.kind} statement`)
-        --     )
-        --     .finish()
-        --     .print()
-
-        table.insert(statements, stat)
+        
+        table.insert(statements, statement(parser))
     end
 
     return {
@@ -801,16 +864,16 @@ function block(parser: Parser, is_scope: boolean?): ast.Block
 end
 
 --- Returns an AST constructed from `tokens`, errors if invalid syntax is encountered
-local function parse(text: buffer, tokens: {lexer.Token}): ast.Ast
+local function parse(tokens: {lexer.Token}): ast.Ast
+    assert(#tokens > 0, "Tokens are empty")
+    assert(tokens[#tokens] and tokens[#tokens].kind == "eof", "Final token should be eof")
+
     local parser: Parser = {
-        file = "input",
-        text = text,
         tokens = tokens,
         
         index = 1,
         token = tokens[1],
         lookahead = tokens[2] or tokens[1],
-        parsed_options = false,
     }
 
     return {
@@ -820,7 +883,7 @@ local function parse(text: buffer, tokens: {lexer.Token}): ast.Ast
 end
 
 --TODO: Remove
-diagnostics.set_default_error(function(text: string)
+diagnostics.set_error_fn(function(text: string)
     require("@lune/stdio").ewrite(`{text}\n`)
     return error("something went wrong")
 end)

@@ -4,7 +4,8 @@
 local fs = require("@lune/fs")
 local date_time = require("@lune/datetime")
 
-local lexer = require("../src/compiler/lexer")
+local file = require("@util/file")
+local lexer = require("@compiler/lexer")
 
 local function fs_append(path: string, text: string)
     local contents = fs.isFile(path) and fs.readFile(path) or ""
@@ -47,22 +48,18 @@ local function benchmark_closure(name: string, closure: () -> ()): number
     return average_time
 end
 
-local small_code = fs.readFile("blink/small.blink")
-local large_code = fs.readFile("blink/large.blink")
-local outdated_large_code = fs.readFile("blink/outdated_large.blink")
-
-local small_code_buffer = buffer.fromstring(small_code)
-local large_code_buffer = buffer.fromstring(large_code)
-local outdated_large_code_buffer = buffer.fromstring(outdated_large_code)
+local small_code = file.from_source(fs.readFile("blink/small.blink"))
+local large_code = file.from_source(fs.readFile("blink/large.blink"))
+local outdated_large_code = file.from_source(fs.readFile("blink/outdated_large.blink"))
 
 benchmark_closure("lexer (buffer) small.blink", function()
-    lexer.tokenize(small_code_buffer)
+    lexer.tokenize(small_code)
 end)
 
 benchmark_closure("lexer (buffer) large.blink", function()
-    lexer.tokenize(large_code_buffer)
+    lexer.tokenize(large_code)
 end)
 
 benchmark_closure("lexer (buffer) outdated_large.blink", function()
-    lexer.tokenize(outdated_large_code_buffer)
+    lexer.tokenize(outdated_large_code)
 end)

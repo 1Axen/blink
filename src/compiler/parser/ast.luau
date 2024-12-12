@@ -2,18 +2,33 @@ local span = require("@util/span")
 
 type Span = span.Span
 
+export type Range = {
+    span: Span,
+    kind: "range",
+    min: ExprNumber?,
+    max: ExprNumber?,
+}
+
 export type Identifier = {
     span: Span,
     kind: "identifier",
     value: string,
 }
 
-export type ExprRange = {
+--- A in <A = u8, B, C>
+export type Generic = {
     span: Span,
-    kind: "range",
-    
-    min: ExprNumber?,
-    max: ExprNumber?
+    kind: "generic",
+
+    name: Identifier,
+    default: Expression?,
+}
+
+--- <A = u8, B, C>
+export type Generics = {
+    span: Span,
+    kind: "generics",
+    values: {Generic}
 }
 
 export type ExprNumber = {
@@ -82,7 +97,7 @@ export type ExprArray = {
     span: Span,
     kind: "array",
     value: Expression,
-    range: ExprRange
+    range: Range
 }
 
 export type ExprOptional = {
@@ -125,13 +140,22 @@ export type ExprTaggedEnum = {
     variants: { ExprTaggedEnumVariant }
 }
 
+--- [u8/CFrame/vector]<[generics]>([range])
+export type ExprPrimitive = {
+    span: Span,
+    kind: "primitive",
+
+    name: Identifier,
+    range: Range?,
+    generics: { Expression }
+}
+
 --- [name]<[generics]>
 export type ExprReference = {
     span: Span,
     kind: "reference",
 
     name: Identifier,
-    range: ExprRange?,
     generics: { Expression }
 }
 
@@ -147,6 +171,7 @@ export type Expression =
     | ExprString
     | ExprBoolean
     | ExprOptional
+    | ExprPrimitive
     | ExprReference
 ;
 
@@ -157,7 +182,7 @@ export type StatType = {
 
     name: Identifier,
     value: Expression,
-    generics: { Identifier },
+    generics: Generics?,
 
     export: boolean,
 }
@@ -188,7 +213,7 @@ export type StatImport = {
     span: Span,
     kind: "import",
 
-    as: ExprString?,
+    name: Identifier,
     path: ExprString,
 }
 
@@ -230,4 +255,118 @@ export type Ast = {
     block: Block,
 }
 
-return {}
+local fmt_statement;
+local fmt_expression;
+
+local function value_of_expr(expr: Expression): ...unknown
+    if expr.kind == "array" then
+        return expr.value
+    elseif expr.kind == "set" then
+        return expr.values
+    elseif expr.kind == "map" then
+        return expr.value
+    elseif expr.kind == "enum" then
+        return expr.variants
+    elseif expr.kind == "union" then
+        return expr.left, expr.right
+    elseif expr.kind == "string" then
+        return expr.value
+    elseif expr.kind == "optional" then
+        return expr.value
+    elseif expr.kind == "struct" then
+        return expr.fields
+    elseif expr.kind == "boolean" then
+        return expr.value
+    elseif expr.kind == "number" then
+        return expr.value
+    elseif expr.kind == "reference" then
+        return expr.name
+    elseif expr.kind == "tag_enum" then
+        return expr.variants
+    end
+
+    return expr
+end
+
+local function fmt_range(node: Range): string
+    local expr_min = node.min
+    local expr_max = node.max
+
+    local min = expr_min and tostring(expr_min.value) or ""
+    local max = expr_max and tostring(expr_max.value) or ""
+
+    return `({min}..{max})`
+end
+
+local function fmt_generic(node: Generic): string
+    local name = node.name
+    if node.default then
+        return `{name.value} = {fmt_expression(node.default)}`
+    end
+
+    return `{name.value}`
+end
+
+local function fmt_generics(node: Generics): string
+    local strings = {}
+    for _, generic in node.values do
+        table.insert(strings, fmt_generic(generic))
+    end
+
+    return `<{table.concat(strings, ", ")}>`
+end
+
+local function fmt_identifier(node: Identifier): string
+    return node.value
+end
+
+function fmt_expression(expr: Expression): string
+    if expr.kind == "set" then
+        return "set { ... }"
+    elseif expr.kind == "map" then
+        return "map { ... }"
+    elseif expr.kind == "enum" then
+        return "enum { ... }"
+    elseif expr.kind == "union" then
+        return `{fmt_expression(expr.left)} & {fmt_expression(expr.right)}`
+    elseif expr.kind == "struct" then
+        return "struct { ... }"
+    elseif expr.kind == "string" then
+        return `"{expr.value}"`
+    elseif expr.kind == "number" then
+        return tostring(expr.value)
+    elseif expr.kind == "array" then
+        return `{fmt_expression(expr.value)}[]`
+    elseif expr.kind == "boolean" then
+        return tostring(expr.value)
+    elseif expr.kind == "optional" then
+        return `{fmt_expression(expr.value)}?`
+    elseif expr.kind == "tag_enum" then
+        return `enum "{fmt_expression(expr.tag)}" \{ ... \}`
+    elseif expr.kind == "primitive" then
+        return fmt_identifier(expr.name)
+    elseif expr.kind == "reference" then
+        return fmt_identifier(expr.name)
+    end
+
+    error("unreachable")
+end
+
+function fmt_statement(stat: Statement): string
+    if stat.kind == "type" then
+        local name = stat.name
+        local generics = stat.generics
+        return `{name.value}{if generics then fmt_generics(generics) else ""}`
+    end
+
+    error("unreachable")
+end
+
+return table.freeze({
+    value_of_expr = value_of_expr,
+    fmt_range = fmt_range,
+    fmt_generics = fmt_generics,
+    fmt_statement = fmt_statement,
+    fmt_expression = fmt_expression,
+    fmt_identifier = fmt_identifier,
+})

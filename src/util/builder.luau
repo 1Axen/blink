@@ -2,13 +2,16 @@
 --!native
 --!optimize 2
 
+
 export type Builder = {
-	buffer: buffer,
 	indent: number,
+	buffer: buffer,
 	length: number,
-	position: number
+	position: number,
+	tab_width: number,
 }
 
+local TAB_WIDTH = 4
 local GROWTH_FACTOR = 1.5
 local DEFAULT_LENGTH = 1024
 
@@ -29,11 +32,13 @@ end
 
 local function create(): Builder
     local recycled_buffer = borrow_buffer()
+
 	return {
 		indent = 0,
 		buffer = recycled_buffer,
 		length = buffer.len(recycled_buffer),
 		position = 0,
+		tab_width = TAB_WIDTH
 	}
 end
 
@@ -75,12 +80,12 @@ local function dedent(builder: Builder)
 end
 
 local function append(builder: Builder, str: string)
-	write(builder, string.rep("\t", builder.indent))
+	write(builder, string.rep(" ", builder.tab_width * builder.indent))
 	write(builder, str)
 end
 
 local function append_line(builder: Builder, str: string)
-	write(builder, str)
+	append(builder, str)
 	write(builder, "\n")
 end
 
@@ -88,6 +93,10 @@ local function append_lines(builder: Builder, lines: {string})
 	for _, line in lines do
 		append_line(builder, line)
 	end
+end
+
+local function set_tab_width(builder: Builder, width: number)
+	builder.tab_width = width
 end
 
 local function to_string(builder: Builder): string
@@ -103,5 +112,6 @@ return table.freeze({
 	append = append,
 	append_line = append_line,
 	append_lines = append_lines,
+	set_tab_width = set_tab_width,
 	to_string = to_string,
 })

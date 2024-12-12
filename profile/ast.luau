@@ -2,14 +2,15 @@
 
 local fs = require("@lune/fs")
 local serde = require("@lune/serde")
-local lexer = require("../src/compiler/lexer")
-local parser = require("../src/compiler/parser")
 
-local code = fs.readFile("./blink/small.blink")
-local input = buffer.fromstring(code)
+local file = require("@util/file")
+local lexer = require("@compiler/lexer")
+local parser = require("@compiler/parser")
+
+local input = file.from_source(fs.readFile("./blink/small.blink"))
 
 local tokens = lexer.tokenize(input)
-local ast = parser.parse(input, tokens)
+local ast = parser.parse(tokens)
 
 local function clean(tbl, cache)
     for key, value in tbl do

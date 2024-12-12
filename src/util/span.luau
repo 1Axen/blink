@@ -2,47 +2,44 @@
 --!native
 --!optimize 2
 
-local location = require("./location")
+local file = require("@util/file")
 
-type Location = location.Location
-export type Span = {
-    start: Location,
-    finish: Location,
-}
+--- A span stores the start and finish offset of a token or node
+--- * x: start offset
+--- * y: finish offset
+--- * z: file id
+-- TODO: Replace with vector
+export type Span = {x: number, y: number, z: number}
 
-local function create(start: Location, finish: Location): Span
-    return {
-        start = start,
-        finish = finish
-    }
+local function create(start: number, finish: number, file_id: number): Span
+    return {x = start, y = finish, z = file_id}
 end
 
 --- creates a span from a to b
 local function merge(a: Span, b: Span): Span
-    return create(a.start, b.finish)
+    assert(a.z == b.z, "Spans must belong to the same file")
+    return create(a.x, b.y, a.z)
 end
 
-local function length(self: Span): number
-    return (location.position(self.finish) - location.position(self.start)) + 1
+local function length(span: Span): number
+    return (span.y - span.x) + 1
 end
 
-local function value(self: Span, text: buffer): string
-    return buffer.readstring(text, location.position(self.start), length(self))
+local function value(span: Span): string
+    local span_file = file.from_id(span.z)
+    assert(span_file, "Span should belong to a file")
+
+    local content = file.content(span_file)
+    return buffer.readstring(content, span.x, length(span))
 end
 
-local function contains(self: Span, position: number): boolean
-    return location.position(self.start) <= position and location.position(self.finish) >= position
+local function contains(span: Span, position: number): boolean
+    return span.x <= position and span.y >= position
 end
 
 --- checks if two spans are intersecting, assumes `a.start` <= `b.start`
 local function intersects(a: Span, b: Span): boolean
-    return (location.position(a.finish) >= location.position(b.start))
-end
-
-local function is_multiline(self: Span): boolean
-    local start_line = location.line(self.start)
-    local finish_line = location.line(self.finish)
-    return start_line ~= finish_line
+    return (a.y >= b.x)
 end
 
 return table.freeze({
@@ -51,6 +48,5 @@ return table.freeze({
     merge = merge,
     length = length,
     contains = contains,
-    intersects = intersects,
-    is_multiline = is_multiline,
+    intersects = intersects
 })
