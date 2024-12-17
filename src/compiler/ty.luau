@@ -18,7 +18,7 @@ export type Int = {
 }
 
 export type Uint = {
-    read kind: "Uint",
+    read kind: "uint",
     read size: UintSize,
     read range: Range?,
 }
@@ -31,9 +31,9 @@ export type Float = {
 
 export type Vector = {
     read kind: "vector",
-    read x: Numeral?,
-    read y: Numeral?,
-    read z: Numeral?,
+    read x: TyId<Numeral>?,
+    read y: TyId<Numeral>?,
+    read z: TyId<Numeral>?,
     read magnitude: Range?,
 }
 
@@ -53,9 +53,9 @@ export type Boolean = {
 
 -- ROBLOX Datatypes
 
-export type RobloxEnum = {
+export type Enum = {
     read kind: "roblox_enum",
-    read type: String?,
+    read type: string?,
 }
 
 export type Color3 = {
@@ -64,20 +64,20 @@ export type Color3 = {
 
 export type CFrame = {
     read kind: "cframe",
-    read position: Numeral?,
-    read rotation: Numeral?,
+    read position: TyId<Numeral>?,
+    read rotation: TyId<Numeral>?,
 }
 
 export type DateTime = {
-    read kind: "datetime",
+    read kind: "date_time",
 }
 
 export type DateTimeMillis = {
-    read kind: "datetimemillis",
+    read kind: "date_time_millis",
 }
 
-export type BrickColor3 = {
-    read kind: "brickcolor3",
+export type BrickColor = {
+    read kind: "brick_color",
 }
 
 export type Instance = {
@@ -86,6 +86,12 @@ export type Instance = {
 }
 
 -- Blink primitives
+
+export type Field = {
+    read kind: "field",
+    read name: string,
+    read value: TyId
+}
 
 export type Set = {
     read kind: "set",
@@ -98,44 +104,55 @@ export type Map = {
     read value: TyId
 }
 
-export type UnitEnum = {
-    read kind: "enum",
-    read variants: {string}
-}
-
-export type TaggedEnumVariant = {
-    read kind: "enum_variant",
-    read key: string | boolean,
-    read value: GenericDataType<Struct>
-}
-
-export type TaggedEnum = {
-    read kind: "tagged_enum",
-    read tag: string,
-    read variants: {string}
-}
-
-export type Field = {
-    read kind: "field",
-    read name: string,
-    read value: TyId
-}
-
 export type Struct = {
     read kind: "struct",
     read fields: {Field}
 }
 
-export type Union = {
-    read kind: "union",
-    read left: TyId,
-    read right: TyId
+export type Array<T = Ty> = {
+    read kind: "array",
+    read of: TyId<T>,
+    read size: Range
 }
 
-export type GenericDataType<T = Map | Union | Struct | TaggedEnum> = {
-    read kind: "GDT",
+type UnionSide = TyId<
+    | GenericDataType<Union>
+    | GenericDataType<Struct> 
+    | Optional<GenericDataType<Union>>
+    | Optional<GenericDataType<Struct>> 
+>
+
+export type Union = {
+    read kind: "union",
+    read left: UnionSide,
+    read right: UnionSide
+}
+
+export type Optional<T = Ty> = {
+    read kind: "optional",
+    read of: TyId<T>,
+}
+
+export type UnitEnum = {
+    read kind: "enum",
+    read variants: {string}
+}
+
+export type TaggedEnum = {
+    read kind: "tagged_enum",
+    read tag: string,
+    read variants: {Field}
+}
+
+export type Placeholder = {
+    read kind: "placeholder",
+    read name: string,
+}
+
+export type GenericDataType<T = Map | Union | Struct | TaggedEnum | Placeholder> = {
+    read kind: "generic_data_type",
     read def: TyId<T>,
-    read args: {Ty}
+    read args: {TyId}
 }
 
 export type Unknown = {
@@ -152,7 +169,28 @@ export type Ty =
     | Uint
     | Float
     | String
+    | Vector
+    | Buffer
     | Boolean
+
+    | Enum
+    | CFrame
+    | Color3
+    | Instance
+    | BrickColor
+    | DateTime
+    | DateTimeMillis
+
+    | Set
+    | Map
+    | Array
+    | Struct
+    | Optional
+    | UnitEnum
+    | TaggedEnum
+    | Placeholder
+    | GenericDataType
+    | Unknown
 
 export type TyKind = index<Ty, "kind">
 

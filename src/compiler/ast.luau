@@ -1,6 +1,6 @@
 local symbols = require("@util/symbols")
 
-export type NodeId = number
+export type NodeId<T = Node> = number & { __T: T }
 
 export type PathSegment = {
     read span: vector,
