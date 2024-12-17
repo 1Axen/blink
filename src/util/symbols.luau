@@ -2,26 +2,24 @@
 --!native
 --!optimize 2
 
-export type Symbols<T, L> = {
+export type Symbols<T> = {
     name: string,
-    parent: Symbols<T, L>?,
+    parent: Symbols<T>?,
     values: {[string]: T},
-    locals: {[string]: L},
-    children: {[string]: Symbols<T, L>},
+    children: {[string]: Symbols<T>},
 }
 
-local function create<T, L>(name: string): Symbols<T, L>
+local function create<T>(name: string): Symbols<T>
     return {
         name = name,
-        parent = nil,
+        parent = nil :: any,
         values = {},
-        locals = {},
-        children = {},
+        children = {}
     }
 end
 
-local function inner<T, L>(self: Symbols<T, L>, name: string): Symbols<T, L>
-    assert(self[name] == nil, `Symbols struct "{self.name}" already has a child "{name}"`)
+local function inner<T>(self: Symbols<T>, name: string): Symbols<T>
+    assert(self.children[name] == nil, `Symbols struct "{self.name}" already has a child "{name}"`)
 
     local symbols = create(name)
     self.children[name] = symbols
@@ -30,13 +28,13 @@ local function inner<T, L>(self: Symbols<T, L>, name: string): Symbols<T, L>
     return symbols
 end
 
-local function set<T, L>(self: Symbols<T, L>, key: string, value: T)
+local function set<T>(self: Symbols<T>, key: string, value: T)
     self.values[key] = value
 end
 
-local function search<T, L>(self: Symbols<T, L>, path: string): (T | L)?
-    local node: Symbols<T, L>? = self
-    local segments = string.split(path, ".")
+local function search<T>(self: Symbols<T>, path: {string}): T?
+    local node: Symbols<T>? = self
+    local segments = table.clone(path)
 
     while node ~= nil do
         local segment = table.remove(segments, 1)
@@ -50,11 +48,6 @@ local function search<T, L>(self: Symbols<T, L>, path: string): (T | L)?
             continue
         end
 
-        local loc = node.locals[segment]
-        if loc ~= nil then
-            return loc
-        end
-
         local value = node.values[segment]
         if value ~= nil then
             return value
@@ -66,20 +59,9 @@ local function search<T, L>(self: Symbols<T, L>, path: string): (T | L)?
     return nil
 end
 
-local function set_local<T, V>(self: Symbols<T, V>, key: string, value: V)
-    self.locals[key] = value
-end
-
-local function clear_locals<T, V>(self: Symbols<T, V>, key: string, value: V)
-    table.clear(self.locals)
-end
-
 return table.freeze({
     create = create,
     inner = inner,
     set = set,
-    search = search,
-
-    set_local = set_local,
-    clear_locals = clear_locals
+    search = search
 })

@@ -5,21 +5,19 @@
 local file = require("@util/file")
 local span = require("@util/span")
 
-type Span = span.Span
 type File = file.File
 
-export type TokenBase<Kind, Value = nil> = {
+export type TokenBase<Kind> = {
     kind: Kind,
-    span: span.Span,
-    value: Value
+    span: vector,
 }
 
 export type Token = 
     --> trivia
-    | TokenBase<"attribute", string>
+    | TokenBase<"attribute">
 
     --> words
-    | TokenBase<"word", string>
+    | TokenBase<"word">
     | TokenBase<"as">
     | TokenBase<"set">
     | TokenBase<"map">
@@ -36,8 +34,8 @@ export type Token =
     --> literals
     | TokenBase<"true">
     | TokenBase<"false">
-    | TokenBase<"number", string>
-    | TokenBase<"string", string>
+    | TokenBase<"number">
+    | TokenBase<"string">
 
     --> symbols
     | TokenBase<".">
@@ -58,8 +56,10 @@ export type Token =
     | TokenBase<")">
     | TokenBase<"]">
 
-    | TokenBase<"error", string>
+    | TokenBase<"error">
     | TokenBase<"eof">
+
+export type TokenKind = index<Token, "kind">
 
 local DOT = string.byte(".")
 local QOUTE = string.byte("\"")
@@ -179,11 +179,7 @@ local function tokenize(input: File): {Token}
                 return {kind = value :: any, span = value_span}
             end
 
-            return {
-                kind = "word",
-                span = value_span,
-                value = value
-            }
+            return { kind = "word", span = value_span }
         elseif is_digit(first) or first == string.byte("-") then
             local char = first
             local decimal = false
@@ -205,13 +201,7 @@ local function tokenize(input: File): {Token}
             until not (is_digit(char) or char == UNDERSCORE or (char == DOT and decimal == false))
 
             local finish = last_position()
-            local value = to_string(start)
-
-            return {
-                kind = "number",
-                span = span.create(start, finish, id),
-                value = value
-            }
+            return { kind = "number", span = span.create(start, finish, id) }
         elseif first == QOUTE then
             local char = advance_peek()
             while char ~= 0 and char ~= QOUTE do
@@ -221,13 +211,7 @@ local function tokenize(input: File): {Token}
             advance()
 
             local finish = last_position()
-            local value = to_string(start)
-            
-            return {
-                kind = "string",
-                span = span.create(start, finish, id),
-                value = value
-            }
+            return { kind = "string", span = span.create(start, finish, id) }
         end
 
         advance()
@@ -268,11 +252,7 @@ local function tokenize(input: File): {Token}
             return { kind = "&", span = value_span }
         end
 
-        return {
-            kind = "error",
-            span = value_span,
-            value = to_string(start)
-        }
+        return { kind = "error", span = value_span }
     end
 
     while true do

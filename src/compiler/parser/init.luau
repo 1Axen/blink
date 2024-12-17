@@ -2,17 +2,19 @@
 --!native
 --!optimize 2
 
-local ast = require("./ast")
+local validator = require("./validator")
 
+local ast = require("@compiler/ast")
 local lexer = require("@compiler/lexer")
 local codes = require("@compiler/config/codes")
-local primitives = require("@compiler/config/primitives")
 
 local span = require("@util/span")
+local symbols = require("@util/symbols")
 local diagnostics = require("@util/diagnostics")
 
 type Token = lexer.Token
-type TokenAny = lexer.TokenBase<any, any>
+type TokenAny = lexer.TokenBase<any>
+type TokenKind = lexer.TokenKind
 
 type Parser = {
     tokens: {Token},
@@ -22,11 +24,14 @@ type Parser = {
     lookahead: Token
 }
 
+local DUMMY_ID = -1
+local ROOT_SYMBOLS = ""
+
 local block: (Parser, boolean) -> ast.Block;
 local statement: (Parser) -> ast.Statement;
 local expression: (Parser) -> ast.Expression;
 
-local function report_expect(parser: Parser, token: Token, kind: typeof((({} :: any) :: Token).kind)): never
+local function report_expect(parser: Parser, token: Token, kind: TokenKind): never
     return diagnostics.report.create("Error")
         .with_code(codes.parser.UnexpectedToken)
         .with_message(`Expected "{kind}", got "{token.kind}" instead`)
@@ -38,7 +43,7 @@ local function report_expect(parser: Parser, token: Token, kind: typeof((({} :: 
     .error()
 end
 
-local function report_expect_one_of(parser: Parser, token: Token, kinds: {typeof((({} :: any) :: Token).kind)}): never
+local function report_expect_one_of(parser: Parser, token: Token, kinds: {TokenKind}): never
     return diagnostics.report.create("Error")
         .with_code(codes.parser.UnexpectedToken)
         .with_message(`Expected one of "{table.concat(kinds, "\", \"")}", got "{token.kind}" instead`)
@@ -86,7 +91,7 @@ local function consume(parser: Parser): Token
     return token
 end
 
-local function expect<T>(parser: Parser, kind: T & typeof((({} :: any) :: Token).kind)): lexer.TokenBase<T, any>
+local function expect<T>(parser: Parser, kind: T & TokenKind): lexer.TokenBase<T>
     local token = peek(parser)
     if token.kind == kind :: any then
         return consume(parser) :: any
@@ -95,7 +100,7 @@ local function expect<T>(parser: Parser, kind: T & typeof((({} :: any) :: Token)
     return report_expect(parser, token, kind)
 end
 
-local function seperated<T>(parser: Parser, t: (Parser) -> T, seperator: typeof((({} :: any) :: Token).kind), delimiter: "}" | ")" | "]" | ">"): {T}
+local function seperated<T>(parser: Parser, t: (Parser) -> T, seperator: TokenKind, delimiter: "}" | ")" | "]" | ">"): {T}
     local list: {T} = {}
 
     while peek(parser).kind ~= delimiter do
@@ -113,12 +118,47 @@ local function seperated<T>(parser: Parser, t: (Parser) -> T, seperator: typeof(
     return list
 end
 
-local function identifier(parser: Parser): ast.Identifier
-    local token = expect(parser, "word")
+local function path_segment(parser: Parser): ast.PathSegment
+    local word = expect(parser, "word")
     return {
-        span = token.span,
+        kind = "segment",
+        span = word.span,
+        value = span.value(word.span)
+    }
+end
+
+--- Parses word + dot as identifier (foo.bar)
+local function path(parser: Parser): ast.Path
+    local segments: {ast.PathSegment} = {}
+    local path_span: span.Span?
+
+    while true do
+        local segment = path_segment(parser)
+        table.insert(segments, segment)
+        path_span = if path_span then span.merge(path_span, segment.span) else segment.span
+
+        --> end of path
+        if peek(parser).kind ~= "." then
+            break
+        end
+
+        --> consume dot
+        expect(parser, ".")
+    end
+
+    return {
+        kind = "path",
+        span = path_span :: vector,
+        segments = segments
+    }
+end
+
+local function identifier(parser: Parser): ast.Identifier
+    local word = expect(parser, "word")
+    return {
+        span = word.span,
         kind = "identifier",
-        value = token.value
+        value = span.value(word.span)
     }
 end
 
@@ -128,39 +168,7 @@ local function any_identifier(parser: Parser): ast.Identifier
     return {
         span = token.span,
         kind = "identifier",
-        value = token.value or token.kind
-    }
-end
-
---- Parses word + dot as identifier (foo.bar)
-local function path_identifier(parser: Parser): ast.Identifier
-    local first = expect(parser, "word")
-    local last: TokenAny = first
-
-    while true do
-        local current = peek(parser)
-        local following = lookahead(parser)
-
-        if 
-            current.kind ~= "." 
-            or following.kind ~= "word" 
-        then
-            break
-        end
-
-        --> consume dot & word
-        consume(parser)
-        last = consume(parser)
-    end
-
-    --> get full identifier
-    local full_span = span.merge(first.span, last.span)
-    local full_value = span.value(full_span)
-
-    return {
-        kind = "identifier",
-        span = full_span,
-        value = full_value
+        value = span.value(token.span)
     }
 end
 
@@ -177,11 +185,11 @@ local function escaped_identifier(parser: Parser): ast.Identifier
     return {
         span = token.span,
         kind = "identifier",
-        value = token.value
+        value = span.value(token.span)
     }
 end
 
-local function structure(parser: Parser, fields: {[string]: {expr: (parser: Parser) -> any, optional: boolean}}, open: lexer.TokenBase<any, any>): {[string]: any}
+local function structure(parser: Parser, fields: {[string]: {expr: (parser: Parser) -> any, optional: boolean}}, open: lexer.TokenBase<any>): {[string]: any}
     --> key - required
     local all_keys: {string} = {}
     local parsed_keys: {[string]: span.Span} = {}
@@ -258,7 +266,7 @@ local function structure(parser: Parser, fields: {[string]: {expr: (parser: Pars
     return result
 end
 
-local function generic(parser: Parser): ast.Generic
+local function generic(parser: Parser): ast.GenericDef
     local name = identifier(parser)
     local node_span = name.span
 
@@ -272,21 +280,25 @@ local function generic(parser: Parser): ast.Generic
     end
 
     return {
+        id = DUMMY_ID,
         kind = "generic",
         span = node_span,
+
         name = name,
-        optional = default,
+        default = default,
     }
 end
 
-local function generics(parser: Parser): ast.Generics
+local function generics(parser: Parser): ast.GenericsDef
     local open = expect(parser, "<")
-    local values: {ast.Generic} = seperated(parser, generic, ",", ">")
+    local values: {ast.GenericDef} = seperated(parser, generic, ",", ">")
     local close = expect(parser, ">")
 
     return {
+        id = DUMMY_ID,
         kind = "generics",
         span = span.merge(open.span, close.span),
+
         values = values
     }
 end
@@ -295,14 +307,18 @@ local function expr_boolean(parser: Parser): ast.ExprBoolean
     local token = consume(parser)
     if token.kind == "true" then
         return {
+            id = DUMMY_ID,
             span = token.span,
             kind = "boolean",
+
             value = true
         }
     elseif token.kind == "false" then
         return {
+            id = DUMMY_ID,
             span = token.span,
             kind = "boolean",
+
             value = false
         }
     end
@@ -311,20 +327,38 @@ local function expr_boolean(parser: Parser): ast.ExprBoolean
 end
 
 local function expr_number(parser: Parser): ast.ExprNumber
-    local token = expect(parser, "number")
+    local number = expect(parser, "number")
+    local value = span.value(number.span)
+    local literal = tonumber(value)
+
+    if literal == nil then
+        return diagnostics.report.create("Error")
+            .with_message(`Unable to cast "{value}" to number literal`)
+            .with_label(diagnostics.label.create(number.span)
+                .with_color(diagnostics.style.color.red)
+                .with_message(`Number literal is malformed`)
+            )
+        .finish()
+        .error()
+    end
+
     return {
-        span = token.span,
+        id = DUMMY_ID,
+        span = number.span,
         kind = "number",
-        value = tonumber(token.value) :: number
+
+        value = literal
     }
 end
 
 local function expr_string(parser: Parser): ast.ExprString
-    local token = expect(parser, "string")
+    local str = expect(parser, "string")
     return {
-        span = token.span,
+        id = DUMMY_ID,
+        span = str.span,
         kind = "string",
-        value = token.value
+
+        value = span.value(str.span)
     }
 end
 
@@ -360,54 +394,42 @@ local function expr_range(parser: Parser, delimiter: "(" | "["): ast.Range
     }
 end
 
-local function expr_primitive(parser: Parser): ast.ExprPrimitive
-    local name = identifier(parser)
-    local node_span = name.span
-
+local function expr_reference(parser: Parser): ast.ExprReference
+    local path = path(parser)
+    local node_span = path.span
+    
     --> generics
-    local generics = {}
+    local generics: ast.GenericsArgs?
     if peek(parser).kind == "<" then
-        local _open = expect(parser, "<")
-        generics = seperated(parser, expression, ",", ">")
+        local open = expect(parser, "<")
+        local values = seperated(parser, expression, ",", ">")
 
         local close = expect(parser, ">")
-        node_span = span.merge(name.span, close.span)
+        node_span = span.merge(path.span, close.span)
+
+        generics = {
+            id = DUMMY_ID,
+            span = span.merge(open.span, close.span),
+            kind = "generics",
+
+            values = values
+        }
     end
-    
+
     --> range
     local range: ast.Range?
     if peek(parser).kind == "(" then
         range = expr_range(parser, "(")
+        node_span = span.merge(node_span, range.span)
     end
 
     return {
-        span = node_span,
-        kind = "primitive",
-
-        name = name,
-        range = range,
-        generics = generics
-    }
-end
-
-local function expr_reference(parser: Parser): ast.ExprReference
-    local name = path_identifier(parser)
-    local node_span = name.span
-    
-    --> generics
-    local generics = {}
-    if peek(parser).kind == "<" then
-        local _open = expect(parser, "<")
-        generics = seperated(parser, expression, ",", ">")
-
-        local close = expect(parser, ">")
-        node_span = span.merge(name.span, close.span)
-    end
-
-    return {
+        id = DUMMY_ID,
         span = node_span,
         kind = "reference",
-        name = name,
+
+        path = path,
+        range = range,
         generics = generics
     }
 end
@@ -418,8 +440,10 @@ local function expr_field(parser: Parser): ast.ExprField
     local value = expression(parser)
 
     return {
+        id = DUMMY_ID,
         span = span.merge(name.span, value.span),
         kind = "field",
+
         name = name,
         value = value
     }
@@ -433,8 +457,10 @@ local function expr_struct(parser: Parser): ast.ExprStruct
     local close = expect(parser, "}")
 
     return {
+        id = DUMMY_ID,
         span = span.merge(keyword.span, close.span),
         kind = "struct",
+
         fields = fields
     }
 end
@@ -446,8 +472,10 @@ local function expr_inlined_struct(parser: Parser): ast.ExprStruct
     local close = expect(parser, "}")
 
     return {
+        id = DUMMY_ID,
         span = span.merge(open.span, close.span),
         kind = "struct",
+
         fields = fields
     }
 end
@@ -471,8 +499,10 @@ local function expr_map(parser: Parser): ast.ExprMap
     expect(parser, "}")
 
     return {
+        id = DUMMY_ID,
         span = span.merge(keyword.span, value.span),
         kind = "map",
+        
         index = indexer,
         value = value
     }
@@ -486,8 +516,10 @@ local function expr_set(parser: Parser): ast.ExprSet
     local close = expect(parser, "}")
 
     return {
+        id = DUMMY_ID,
         span = span.merge(keyword.span, close.span),
         kind = "set",
+
         values = values
     }
 end
@@ -506,8 +538,10 @@ local function expr_enum_tag_variant(parser: Parser): ast.ExprTaggedEnumVariant
     local value = expr_inlined_struct(parser)
 
     return {
+        id = DUMMY_ID,
         span = span.merge(name.span, value.span),
         kind = "variant",
+
         name = name,
         value = value
     }
@@ -523,8 +557,10 @@ local function expr_enum(parser: Parser): ast.ExprEnum | ast.ExprTaggedEnum
         local close = expect(parser, "}")
 
         return {
+            id = DUMMY_ID,
             span = span.merge(keyword.span, close.span),
             kind = "enum",
+
             variants = variants
         }
     end
@@ -537,6 +573,7 @@ local function expr_enum(parser: Parser): ast.ExprEnum | ast.ExprTaggedEnum
         local close = expect(parser, "}")
 
         return {
+            id = DUMMY_ID,
             span = span.merge(keyword.span, close.span),
             kind = "tag_enum",
             
@@ -565,8 +602,10 @@ local function expr_pack_parameter(parser: Parser): ast.ExprPackParameter
     local full_span = name and span.merge(name.span, value.span) or value.span
 
     return {
+        id = DUMMY_ID,
         span = full_span,
         kind = "parameter",
+
         name = name,
         value = value
     }
@@ -578,28 +617,33 @@ local function expr_pack(parser: Parser): ast.ExprPack
     local close = expect(parser, ")")
 
     return {
+        id = DUMMY_ID,
         span = span.merge(open.span, close.span),
         kind = "pack",
+
         values = values
     }
 end
 
-local function expr_array(parser: Parser, previous: ast.Expression): ast.ExprArray
+local function expr_array(parser: Parser, of: ast.Expression): ast.ExprArray
     local range = expr_range(parser, "[")
     return {
-        span = span.merge(previous.span, range.span),
+        id = DUMMY_ID,
+        span = span.merge(of.span, range.span),
         kind = "array",
+
         range = range,
-        value = previous,
+        value = of,
     }
 end
 
-local function expr_optional(parser: Parser, value: ast.Expression): ast.ExprOptional
+local function expr_optional(parser: Parser, of: ast.Expression): ast.ExprOptional
     local optional = expect(parser, "?")
     return {
-        span = span.merge(value.span, optional.span),
+        id = DUMMY_ID,
+        span = span.merge(of.span, optional.span),
         kind = "optional",
-        value = value
+        value = of
     }
 end
 
@@ -626,6 +670,7 @@ local function stat_type(parser: Parser): ast.StatType
     local value = expression(parser)
 
     return {
+        id = DUMMY_ID,
         span = span.merge(keyword.span, value.span),
         kind = "type",
 
@@ -653,6 +698,7 @@ local function stat_event(parser: Parser): ast.StatEvent
     local close = expect(parser, "}")
 
     return {
+        id = DUMMY_ID,
         span = span.merge(keyword.span, close.span),
         kind = "event",
 
@@ -674,10 +720,12 @@ local function stat_scope(parser: Parser): ast.StatScope
     local close = expect(parser, "}")
 
     return {
+        id = DUMMY_ID,
         span = span.merge(keyword.span, close.span),
         kind = "scope",
+
         name = name,
-        block = scope_block
+        body = scope_block
     }
 end
 
@@ -690,6 +738,7 @@ local function stat_option(parser: Parser): ast.StatOption
     local stat_span = span.merge(keyword.span, value.span)
 
     return {
+        id = DUMMY_ID,
         span = stat_span,
         kind = "option",
 
@@ -712,6 +761,7 @@ local function stat_function(parser: Parser): ast.StatFunction
     local close = expect(parser, "}")
 
     return {
+        id = DUMMY_ID,
         span = span.merge(keyword.span, close.span),
         kind = "function",
 
@@ -739,6 +789,7 @@ local function stat_import(parser: Parser): ast.StatImport
     end
 
     return {
+        id = DUMMY_ID,
         span = name and span.merge(keyword.span, name.span) or span.merge(keyword.span, path.span),
         kind = "import",
         
@@ -749,15 +800,10 @@ end
 
 function expression(parser: Parser): ast.Expression
     local token = peek(parser)
-    local expr: ast.Expression?
+    local expr: ast.Expression
     
     if token.kind == "word" then
-        local word = token.value
-        if primitives[word] then
-            expr = expr_primitive(parser)
-        else
-            expr = expr_reference(parser)
-        end
+        expr = expr_reference(parser)
     elseif token.kind == "map" then
         expr = expr_map(parser)
     elseif token.kind == "set" then
@@ -810,6 +856,7 @@ function expression(parser: Parser): ast.Expression
 
             --> return a union
             expr = {
+                id = DUMMY_ID,
                 span = span.merge(left.span, right.span),
                 kind = "union",
                 left = left,
@@ -870,16 +917,21 @@ local function parse(tokens: {lexer.Token}): ast.Ast
 
     local parser: Parser = {
         tokens = tokens,
-        
+
         index = 1,
         token = tokens[1],
         lookahead = tokens[2] or tokens[1],
     }
 
-    return {
+    local ast: ast.Ast = {
         kind = "ast",
-        block = block(parser)
+        body = block(parser),
+        symbols = symbols.create(ROOT_SYMBOLS) :: symbols.Symbols<ast.Statement>
     }
+
+    validator.validate(ast)
+
+    return ast
 end
 
 --TODO: Remove
@@ -889,5 +941,6 @@ diagnostics.set_error_fn(function(text: string)
 end)
 
 return table.freeze({
-    parse = parse
+    parse = parse,
+    DUMMY_ID = DUMMY_ID
 })

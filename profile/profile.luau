@@ -7,6 +7,8 @@ local date_time = require("@lune/datetime")
 local file = require("@util/file")
 local lexer = require("@compiler/lexer")
 
+local OUT_PATH = "./out/performance.txt"
+
 local function fs_append(path: string, text: string)
     local contents = fs.isFile(path) and fs.readFile(path) or ""
     fs.writeFile(path, contents .. text)
@@ -43,7 +45,7 @@ local function benchmark_closure(name: string, closure: () -> ()): number
     local text_result = `{date_time.now():formatLocalTime()} - {name} - {format_seconds(average_time)}`
     
     print(text_result)
-    fs_append("./out/performance.txt", `\n{text_result}`)
+    fs_append(OUT_PATH, `\n{text_result}`)
 
     return average_time
 end
@@ -51,6 +53,8 @@ end
 local small_code = file.from_source(fs.readFile("blink/small.blink"))
 local large_code = file.from_source(fs.readFile("blink/large.blink"))
 local outdated_large_code = file.from_source(fs.readFile("blink/outdated_large.blink"))
+
+fs_append(OUT_PATH, `\n{string.rep("-", 16)}`)
 
 benchmark_closure("lexer (buffer) small.blink", function()
     lexer.tokenize(small_code)

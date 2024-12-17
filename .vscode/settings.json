@@ -7,9 +7,8 @@
     "@compiler/": "src/compiler/"
   },
   "luau-lsp.sourcemap.rojoProjectFile": "default.project.json",
-  "luau-lsp.fflags.override": {
-    "LuauSolverV2": "false"
-  },
   "luau-lsp.completion.imports.enabled": true,
-  "stylua.targetReleaseVersion": "latest"
+  "stylua.targetReleaseVersion": "latest",
+  "luau-lsp.fflags.enableNewSolver": true,
+  "luau-lsp.fflags.enableByDefault": true
 }
