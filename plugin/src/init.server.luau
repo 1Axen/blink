@@ -7,6 +7,7 @@
 ---- Services ----
 
 local ServerStorage = game:GetService("ServerStorage")
+local ScriptEditorService = game:GetService("ScriptEditorService")
 local StudioService = game:GetService("StudioService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -182,8 +183,12 @@ end
 local function CreateModuleScript(Name: string, Source: string, Parent: Instance)
     local ModuleScript = Instance.new("ModuleScript")
     ModuleScript.Name = Name
-    ModuleScript.Source = Source
     ModuleScript.Parent = Parent
+
+    --> Update source after parenting to DM
+    ScriptEditorService:UpdateSourceAsync(ModuleScript, function()
+        return Source
+    end)
 end
 
 local function RequestScriptPermissions(): boolean
