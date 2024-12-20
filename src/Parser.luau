@@ -5,7 +5,6 @@
 local Lexer = require("./Lexer")
 local Table = require("./Modules/Table")
 local Error = require("./Modules/Error")
-local Format = require("./Modules/Format")
 local PathParser = require("./Modules/Path")
 
 local Settings = require("./Settings")
