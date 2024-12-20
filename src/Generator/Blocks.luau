@@ -5,6 +5,7 @@ type Method = "Read" | "Allocate" | "None"
 type Operation = {
     Method: Method,
     Bytes: number,
+    Counts: number,
     Variable: string?
 }
 
@@ -45,7 +46,8 @@ function Block.new<Parent>(Parent: Block?, Unique: string?): Block
         Content = table.create(64),
         Operation = {
             Method = "None",
-            Bytes = 0
+            Bytes = 0,
+            Counts = 0
         },
         Variables = {}
     }, Block)
@@ -57,14 +59,19 @@ function Block.DisableOperationOptimisations(self: Block): Block
 end
 
 function Block._operation(self: Block, Method: Method, Bytes: number): string
-    if self.Unsafe then
-        self:Line(`local OFFSET = {Method}({Bytes})`)
-        return `OFFSET`
-    end
-
     local Operation = self.Operation
     if Operation.Method ~= "None" and Operation.Method ~= Method then
         error(`Block can't both Allocate and Read`)
+    end
+
+    if self.Unsafe then
+        local Counts = Operation.Counts 
+        local Variable = `OFFSET_{Counts}`
+
+        Operation.Counts += 1
+        self:Line(`local {Variable} = {Method}({Bytes})`)
+
+        return Variable
     end
 
     local Offset = Operation.Bytes
