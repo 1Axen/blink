@@ -207,6 +207,10 @@ local function UpdateColors()
     local Source = Input.Text
     local RichText = {}
 
+    --> Render text immediately
+    Display.Text = Source
+    Display.TextColor3 = THEME.Text
+
     --> Initiialize lexer
     SourceLexer:Initialize(Source)
 
@@ -260,8 +264,8 @@ local function UpdateColors()
         Token = SourceLexer:GetNextToken()
     end
 
+    --> Render highlighted text
     Display.Text = table.concat(RichText)
-    Display.TextColor3 = THEME.Text
 end
 
 local function UpdateAnalysis()
