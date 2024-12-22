@@ -90,7 +90,7 @@ end
 
 type Benchmark = {
     Sent: number,
-    Recieve: number,
+    Receive: number,
     Bandwidth: {number},
     Framerate: {number}
 }
@@ -117,7 +117,7 @@ local function WriteBenchResults(Name: string, Results: {[string]: Benchmark})
         Output ..= `|Tool ({Metric.Label})|Median|P0|P80|P90|P95|P100|Loss (%)|`
         Output ..= `\n|---|---|---|---|---|---|---|---|`
         for Tool, Result in Results do
-            local Loss = math.floor((1 - (Result.Recieve / Result.Sent)) * 100)
+            local Loss = math.floor((1 - (Result.Receive / Result.Sent)) * 100)
             if Loss > 50 then
                 Output ..= `\n|{Tool}|-|-|-|-|-|-|{Loss}%`
                 continue

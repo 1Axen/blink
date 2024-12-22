@@ -223,18 +223,18 @@ end
 local function InvokeAndExpect(Name: string, ClientFunction: any, ServerFunction: any, Data: any, Return: boolean?)
     PrettyPrint("cyan", `Testing: {Name}...`, true)
 
-    local ServerRecieve: unknown;
-    ServerFunction.On(function(Player, Recieve: any)
+    local ServerReceive: unknown;
+    ServerFunction.On(function(Player, Receive: any)
         if tostring(Player) ~= "Player" then
             ErrorPrint(`Expected argument #1 to {Name} to be Player, got {Player} instead.`)
         end
 
-        ServerRecieve = Recieve
+        ServerReceive = Receive
         if not Return then
             error("Expects fail")
         end
 
-        return Recieve
+        return Receive
     end)
 
     local Success, Result = pcall(function()
@@ -246,12 +246,12 @@ local function InvokeAndExpect(Name: string, ClientFunction: any, ServerFunction
     elseif not Success and Return then
         ErrorPrint(`Expected {Name} to succeed but it encountered an error, {Result}.`)
     elseif Success and Return then
-        if ServerRecieve ~= Data then
-            ErrorPrint(`Expected server {Name} to recieve {Data}, got {ServerRecieve} instead.`)
+        if ServerReceive ~= Data then
+            ErrorPrint(`Expected server {Name} to receive {Data}, got {ServerReceive} instead.`)
         end
     
         if not Equals(Result, Data) then
-            ErrorPrint(`Expected client {Name} to recieve {Data}, got {Result} instead.`)
+            ErrorPrint(`Expected client {Name} to receive {Data}, got {Result} instead.`)
         end
     end
 
@@ -390,30 +390,30 @@ end
 local function InvokeAndExpectTuple(Name: string, ClientFunction: any, ServerFunction: any, Data: {any}, Return: {any})
     PrettyPrint("cyan", `Testing: {Name}...`, true)
 
-    local ServerRecieve: {unknown};
+    local ServerReceive: {unknown};
     ServerFunction.On(function(Player, ...)
         if tostring(Player) ~= "Player" then
             ErrorPrint(`Expected argument #1 to {Name} to be Player, got {Player} instead.`)
         end
         
-        ServerRecieve = {...}
+        ServerReceive = {...}
         return table.unpack(Return)
     end)
  
-    local ClientRecieve: {unknown};
+    local ClientReceive: {unknown};
     local Success, Error = pcall(function()
-        ClientRecieve = {ClientFunction.Invoke(table.unpack(Data))}
+        ClientReceive = {ClientFunction.Invoke(table.unpack(Data))}
     end)
 
     if not Success then
         ErrorPrint(`Expected {Name} to succeed but it encountered an error, {Error}.`)
     elseif Success and Return then
-        if not Equals(ServerRecieve, Data) then
-            ErrorPrint(`Expected server {Name} to recieve {Data}, got {ServerRecieve} instead.`)
+        if not Equals(ServerReceive, Data) then
+            ErrorPrint(`Expected server {Name} to receive {Data}, got {ServerReceive} instead.`)
         end
     
-        if not Equals(ClientRecieve, Return) then
-            ErrorPrint(`Expected client {Name} to recieve {Data}, got {ClientRecieve} instead.`)
+        if not Equals(ClientReceive, Return) then
+            ErrorPrint(`Expected client {Name} to receive {Data}, got {ClientReceive} instead.`)
         end
     end
 
@@ -456,7 +456,7 @@ local function FireManyAndExpectMany(Name: string, Count: number, OutgoingEvent:
     task.wait(1 / 30)
 
     if #Results ~= Count then
-        ErrorPrint(`Failed "{Name}", expected to recieve {Count} events, got {#Results} instead.`)
+        ErrorPrint(`Failed "{Name}", expected to receive {Count} events, got {#Results} instead.`)
     end
 
     for _, Result in Results do
@@ -718,29 +718,29 @@ RunClosure("Disconnect & Queue", function()
         local Outgoing = Server[Event]
         local Incoming = Client[Event]
         
-        local NeverRecieve: never;
+        local NeverReceive: never;
         Incoming.On(function(Value: never)
-            NeverRecieve = Value
+            NeverReceive = Value
         end)()
 
-        local Recieve: typeof(Expect);
-        local RecieveDisconnect = Incoming.On(function(Value: typeof(Expect))
-            Recieve = Value
+        local Receive: typeof(Expect);
+        local ReceiveDisconnect = Incoming.On(function(Value: typeof(Expect))
+            Receive = Value
         end)
 
         Outgoing.FireAll(Expect)
 
         task.wait(0.5)
 
-        if Recieve ~= Expect then
-            error(`Failed queue test on {Event}, expected "{Expect}", got "{Recieve}"`)
+        if Receive ~= Expect then
+            error(`Failed queue test on {Event}, expected "{Expect}", got "{Receive}"`)
         end
 
-        if NeverRecieve ~= nil then
+        if NeverReceive ~= nil then
             error(`Failed disconnect test on {Event}, disconnected listener still recieving.`)
         end
 
-        RecieveDisconnect()
+        ReceiveDisconnect()
     end
 end)
 
