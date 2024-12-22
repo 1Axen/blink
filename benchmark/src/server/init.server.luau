@@ -42,26 +42,26 @@ local function CompareValues(a, b): boolean
     return (a == b)
 end
 
-local Recieved = {}
+local Received = {}
 for Name, Data in Benches do
-    local BenchRecieved = {}
-    Recieved[Name] = BenchRecieved
+    local BenchReceived = {}
+    Received[Name] = BenchReceived
 
-    local function OnRecieve(Tool: string)
-        BenchRecieved[Tool] = 0
+    local function OnReceive(Tool: string)
+        BenchReceived[Tool] = 0
 
-		return function(Player, Recieve)
-            BenchRecieved[Tool] += 1
-            if BenchRecieved[Tool] > 1 then
+		return function(Player, Receive)
+            BenchReceived[Tool] += 1
+            if BenchReceived[Tool] > 1 then
                 return
             end
 
             if Tool == "bytenet" then
-                Player, Recieve = Recieve, Player
+                Player, Receive = Receive, Player
             end
 
-			if not CompareValues(Data, Recieve) then
-				warn(`Recieved incorrect data with {Tool} for {Name}`)
+			if not CompareValues(Data, Receive) then
+				warn(`Received incorrect data with {Tool} for {Name}`)
 			else
                 print(`> {Tool} passed {Name} validation!`)
             end
@@ -70,7 +70,7 @@ for Name, Data in Benches do
     
     for Tool, Events in Modes  do
         local Event = Events[Name]
-        local Callback = OnRecieve(Tool)
+        local Callback = OnReceive(Tool)
 
         if Tool == "warp" then
             Event:Connect(Callback)
@@ -85,8 +85,8 @@ for Name, Data in Benches do
     end
 end
 
-ReplicatedStorage.Shared.GetRecieved.OnServerInvoke = function()
-    return Recieved
+ReplicatedStorage.Shared.GetReceived.OnServerInvoke = function()
+    return Received
 end
 
 ReplicatedStorage.Shared.Generate.OnServerEvent:Connect(function(Player, JSON)

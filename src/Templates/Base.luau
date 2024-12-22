@@ -6,11 +6,11 @@ local SendCursor = 0
 local SendBuffer = buffer.create(64)
 local SendInstances = {}
 
-local RecieveCursor = 0
-local RecieveBuffer = buffer.create(64)
+local ReceiveCursor = 0
+local ReceiveBuffer = buffer.create(64)
 
-local RecieveInstances = {}
-local RecieveInstanceCursor = 0
+local ReceiveInstances = {}
+local ReceiveInstanceCursor = 0
 
 type Entry = {
     value: any,
@@ -30,8 +30,8 @@ type BufferSave = {
 }
 
 local function Read(Bytes: number)
-    local Offset = RecieveCursor
-    RecieveCursor += Bytes
+    local Offset = ReceiveCursor
+    ReceiveCursor += Bytes
     return Offset
 end
 
