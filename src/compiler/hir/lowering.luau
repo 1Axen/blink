@@ -15,7 +15,7 @@ local fmt_range = require("@format/range")
 
 local span = require("@util/span")
 local range = require("@util/range")
-local panic = require("@util/panic")("ast->hir lowering")
+local panic = require("@util/panic")("AST to HIR lowering")
 local symbols = require("@util/symbols")
 local diagnostics = require("@util/diagnostics")
 
@@ -42,8 +42,6 @@ type Context = {
     scope: ScopeId,
     node_id: number,
     symbols: ast.Symbols,
-
-    read nodes: {[NodeId<Node>]: Node},
     generics: {
         args: {TyId<ty.Placeholder>},
         values: {[string]: TyId<ty.Placeholder>}
@@ -206,7 +204,7 @@ local function decl_from_id(ctx: Context, decl_id: DeclId): Decl
 end
 
 local function node_from_id(ctx: Context, node_id: NodeId): Node
-    local node = ctx.nodes[node_id]
+    local node = ctx.hir.nodes[node_id]
     if node == nil then
         return panic("Expected node_id to point to a node")
     end
@@ -228,7 +226,7 @@ end
 local function assign_node_id(ctx: Context, node: Node): NodeId
     local node_id = next_node_id(ctx)
     node.id = node_id
-    ctx.nodes[node_id] = node
+    ctx.hir.nodes[node_id] = node
     return node_id
 end
 
@@ -938,7 +936,8 @@ local function lower_ast_to_hir(ast: Ast): Hir
     local hir: Hir = {
         tys = {},
         decls = {},
-        scopes = {}
+        nodes = {},
+        scopes = {},
     }
 
     local context: Context = {

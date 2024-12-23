@@ -1,8 +1,10 @@
 --!strict
 
 local ty = require("@compiler/types/ty")
+local ast = require("@compiler/types/ast")
 
 type TyId<T = ty.Ty> = ty.TyId<T>
+type NodeId<T = ast.Node> = ast.NodeId<T>
 export type DeclId<T = Decl> = number & { __kind: "decl", __T: T}
 export type ScopeId = number & { __kind: "scope" }
 
@@ -49,9 +51,10 @@ export type Decl =
 ;
 
 export type Hir = {
-    tys: {[TyId]: ty.Ty},
-    decls: {[DeclId]: Decl},
-    scopes: {[ScopeId]: string}
+    read tys: {[TyId]: ty.Ty},
+    read decls: {[DeclId]: Decl},
+    read nodes: {[NodeId]: ast.Node},
+    read scopes: {[ScopeId]: string},
 }
 
 return table.freeze({})
