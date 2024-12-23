@@ -219,32 +219,6 @@ local function path_to_string(path: ast.Path): string
     return table.concat(path_to_array(path), ".")
 end
 
-local function is_same_scope(path: ast.Path): boolean
-    return #path.segments == 1
-end
-
-local function ty_id_to_ty_kind(ctx: Context, ty_id: TyId): TyKind
-    return ty_from_id(ctx, ty_id).kind
-end
-
-local function assert_ty_kind(ctx: Context, ty_id: TyId, kind: TyKind)
-    local ty_kind = ty_id_to_ty_kind(ctx, ty_id)
-    if ty_kind ~= kind then
-        local node = node_from_ty_id(ctx, ty_id)
-        --TODO: Remove cast when Luau solver bug is fixed
-        report_expect(node :: any, kind, ty_kind)
-    end
-end
-
-local function assert_ty_kinds(ctx: Context, ty_id: TyId, kinds: {TyKind})
-    local ty_kind = ty_id_to_ty_kind(ctx, ty_id)
-    if table.find(kinds, ty_kind) == nil then
-        local node = node_from_ty_id(ctx, ty_id)
-        --TODO: Remove cast when Luau solver bug is fixed
-        report_expect_one_of(node :: any, kinds :: {string}, ty_kind)
-    end
-end
-
 local function assert_identifier_one_of(ctx: Context, ident: ast.Identifier, valid: {string}): ast.Identifier
     local value = ident.value
     if table.find(valid, value) == nil then
