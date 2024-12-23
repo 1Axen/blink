@@ -8,8 +8,8 @@ local span = require("@util/span")
 type File = file.File
 
 export type TokenBase<Kind> = {
-    kind: Kind,
-    span: vector,
+    read kind: Kind,
+    read span: vector,
 }
 
 export type Token = 
@@ -121,7 +121,7 @@ local function tokenize(input: File): {Token}
         return buffer.readstring(content, start_position, position - start_position)
     end
     
-    local function last_position()
+    local function last_position(): number
         return (position - 1)
     end
 
@@ -211,7 +211,9 @@ local function tokenize(input: File): {Token}
             advance()
 
             local finish = last_position()
-            return { kind = "string", span = span.create(start, finish, id) }
+            
+            -- we don't care about the quotation marks
+            return { kind = "string", span = span.create(start + 1, finish - 1, id) }
         end
 
         advance()

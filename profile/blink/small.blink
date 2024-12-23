@@ -29,15 +29,17 @@ type f = c & struct {
     some_field: u8
 }
 
-event g {
+type g = e<u8, string>
+
+event send {
     from: Server,
     type: Reliable,
     call: SingleSync,
     data: (a, foo: b, c, bar: d, d_tagged<unknown>, e<u8, u8>, f)
 }
 
-function h {
-    yield: Server,
+function request {
+    yield: Coroutine,
     data: u8
 }
 

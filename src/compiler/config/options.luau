@@ -1,14 +1,14 @@
-local ast = require("@compiler/parser/ast")
+local ast = require("@compiler/types/ast")
 
 export type Option = {
-    kind: typeof(({} :: ast.Expression).kind),
+    kind: ast.ExprKind,
     values: {any}?
 }
 
 local options: {[string]: Option} = {
     casing = {
         kind = "string",
-        values = {"PascalCase", "camelCase", "snake_case"},
+        values = {"PascalCase", "camelCase", "snake_case"} :: any,
     },
 
     remote_folder = { kind = "string" },

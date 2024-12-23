@@ -2,6 +2,8 @@
 	"languageMode": "strict",
     "aliases": {
         "util": "src/util",
-        "compiler": "src/compiler/"
+        "format": "src/util/format",
+        "compiler": "src/compiler/",
+        "lune": "~/.lune/.typedefs/0.8.9/"
     }
 }

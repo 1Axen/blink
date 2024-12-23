@@ -1,7 +1,7 @@
 local DEFAULT_NAME = "file.blink"
 
 export type File = {
-    id: number,
+    read id: number,
     name: string?,
     lines: {string}?,
     content: buffer,
@@ -14,7 +14,9 @@ local function create(): File
     local index = (#files + 1)
     local file: File = {
         id = index,
-        content = buffer.create(1)
+        name = nil :: any,
+        lines = nil :: any,
+        content = buffer.create(1),
     }
 
     table.insert(files, file)

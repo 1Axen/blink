@@ -18,6 +18,10 @@ local function create<T>(name: string): Symbols<T>
     }
 end
 
+local function child<T>(self: Symbols<T>, name: string): Symbols<T>?
+    return self.children[name]
+end
+
 local function inner<T>(self: Symbols<T>, name: string): Symbols<T>
     assert(self.children[name] == nil, `Symbols struct "{self.name}" already has a child "{name}"`)
 
@@ -42,7 +46,7 @@ local function search<T>(self: Symbols<T>, path: {string}): T?
             break
         end
 
-        local child = node.children[segment]
+        local child = node.children[segment] :: any
         if child then
             node = child
             continue
@@ -53,7 +57,7 @@ local function search<T>(self: Symbols<T>, path: {string}): T?
             return value
         end
 
-        node = node.parent
+        node = node.parent :: any
     end
 
     return nil
@@ -63,5 +67,6 @@ return table.freeze({
     create = create,
     inner = inner,
     set = set,
+    child = child,
     search = search
 })

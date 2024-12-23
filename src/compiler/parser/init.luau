@@ -4,8 +4,8 @@
 
 local validator = require("./validator")
 
-local ast = require("@compiler/ast")
 local lexer = require("@compiler/lexer")
+local ast = require("@compiler/types/ast")
 local codes = require("@compiler/config/codes")
 
 local span = require("@util/span")
@@ -24,7 +24,7 @@ type Parser = {
     lookahead: Token
 }
 
-local DUMMY_ID = -1
+local DUMMY_ID = ast.DUMMY_ID :: any
 local ROOT_SYMBOLS = ""
 
 local block: (Parser, boolean) -> ast.Block;
@@ -270,14 +270,14 @@ local function generic(parser: Parser): ast.GenericDef
     local name = identifier(parser)
     local node_span = name.span
 
-    local default: ast.Expression?;
+    --[[local default: ast.Expression?;
     if peek(parser).kind == "=" then
         local _assign = expect(parser, "=")
         local expr = expression(parser)
 
         default = expr
         node_span = span.merge(name.span, expr.span)
-    end
+    end]]
 
     return {
         id = DUMMY_ID,
@@ -285,7 +285,7 @@ local function generic(parser: Parser): ast.GenericDef
         span = node_span,
 
         name = name,
-        default = default,
+        --default = default,
     }
 end
 
@@ -295,7 +295,6 @@ local function generics(parser: Parser): ast.GenericsDef
     local close = expect(parser, ">")
 
     return {
-        id = DUMMY_ID,
         kind = "generics",
         span = span.merge(open.span, close.span),
 
@@ -357,7 +356,6 @@ local function expr_string(parser: Parser): ast.ExprString
         id = DUMMY_ID,
         span = str.span,
         kind = "string",
-
         value = span.value(str.span)
     }
 end
@@ -408,12 +406,10 @@ local function expr_reference(parser: Parser): ast.ExprReference
         node_span = span.merge(path.span, close.span)
 
         generics = {
-            id = DUMMY_ID,
             span = span.merge(open.span, close.span),
             kind = "generics",
-
             values = values
-        }
+        } :: any
     end
 
     --> range
@@ -486,9 +482,9 @@ local function expr_map(parser: Parser): ast.ExprMap
     --> open "{" delim
     expect(parser, "{")
 
-    --> indexer
+    --> index
     expect(parser, "[")
-    local indexer = expression(parser)
+    local index = expression(parser)
     expect(parser, "]")
 
     --> value
@@ -498,13 +494,19 @@ local function expr_map(parser: Parser): ast.ExprMap
     --> close delim
     expect(parser, "}")
 
+    local range: ast.Range?;
+    if peek(parser).kind == "(" then
+        range = expr_range(parser, "(")
+    end
+
     return {
         id = DUMMY_ID,
         span = span.merge(keyword.span, value.span),
         kind = "map",
         
-        index = indexer,
-        value = value
+        index = index,
+        value = value,
+        range = range
     }
 end
 
@@ -526,12 +528,17 @@ end
 
 local function expr_enum_tag_variant(parser: Parser): ast.ExprTaggedEnumVariant
     --> variant name
-    local name: ast.ExprBoolean | ast.Identifier
+    local key;
     local token = peek(parser)
+    
     if token.kind == "true" or token.kind == "false" then
-        name = expr_boolean(parser)
+        key = expr_boolean(parser)
+    elseif token.kind == "string" then
+        key = expr_string(parser)
+    elseif token.kind == "number" then
+        key = expr_number(parser)
     else
-        name = escaped_identifier(parser)
+        key = escaped_identifier(parser)
     end
 
     --> struct
@@ -539,10 +546,10 @@ local function expr_enum_tag_variant(parser: Parser): ast.ExprTaggedEnumVariant
 
     return {
         id = DUMMY_ID,
-        span = span.merge(name.span, value.span),
+        span = span.merge(key.span, value.span),
         kind = "variant",
 
-        name = name,
+        key = key,
         value = value
     }
 end
@@ -625,6 +632,24 @@ local function expr_pack(parser: Parser): ast.ExprPack
     }
 end
 
+local function expr_pack_single(parser: Parser): ast.ExprPack
+    local value = expression(parser)
+    local parameter: ast.ExprPackParameter = {
+        id = DUMMY_ID,
+        span = value.span,
+        kind = "parameter",
+        name = nil,
+        value = value,
+    }
+    
+    return {
+        id = DUMMY_ID,
+        span = value.span,
+        kind = "pack",
+        values = {parameter}
+    }
+end
+
 local function expr_array(parser: Parser, of: ast.Expression): ast.ExprArray
     local range = expr_range(parser, "[")
     return {
@@ -645,16 +670,16 @@ local function expr_optional(parser: Parser, of: ast.Expression): ast.ExprOption
         kind = "optional",
         value = of
     }
-end
+end 
 
 --- Parses a single expression or a pack of expressions
-local function expr_pack_or_single(parser: Parser): ast.Expression | ast.ExprPack
+local function expr_pack_or_single(parser: Parser): ast.ExprPack
     local token = peek(parser)
     if token.kind == "(" then
         return expr_pack(parser)
     end
 
-    return expression(parser)
+    return expr_pack_single(parser)
 end
 
 local function stat_type(parser: Parser): ast.StatType
@@ -855,13 +880,15 @@ function expression(parser: Parser): ast.Expression
             local right = expression(parser)
 
             --> return a union
-            expr = {
+            local union: ast.ExprUnion = {
                 id = DUMMY_ID,
                 span = span.merge(left.span, right.span),
                 kind = "union",
                 left = left,
                 right = right
             }
+
+            expr = union
         end
     end
 

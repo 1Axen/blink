@@ -25,15 +25,21 @@ analysis.Shadow = next_category()
 analysis.InvalidUnion = next_id()
 analysis.InvalidRange = next_id()
 analysis.InvalidOption = next_id()
-analysis.OptionalInMap = next_id()
 analysis.DuplicateEntry = next_id()
 analysis.UnknownOption = next_id()
-analysis.UnknownReference = next_id()
-analysis.GenericsParameters = next_id()
 analysis.ReservedIdentifier = next_id()
-analysis.UnrepresentableRange = next_id()
+
+local type_checking = {}
+type_checking.InvalidType = next_category()
+type_checking.OptionalInMap = next_id()
+type_checking.UnknownReference = next_id()
+type_checking.UnrepresentableRange = next_id()
+type_checking.LessGenericsParameters = next_id()
+type_checking.ExtraGenericsParameters = next_id()
+type_checking.InvalidGenericParameter = next_id()
 
 return table.freeze({
     parser = parser,
-    analysis = analysis
+    analysis = analysis,
+    type_checking = type_checking
 })

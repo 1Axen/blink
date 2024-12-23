@@ -2,7 +2,6 @@
 --!native
 --!optimize 2
 
-
 export type Builder = {
 	indent: number,
 	buffer: buffer,
@@ -79,12 +78,16 @@ local function dedent(builder: Builder)
 	builder.indent -= 1
 end
 
-local function append(builder: Builder, str: string)
+local function append_indent(builder: Builder)
 	write(builder, string.rep(" ", builder.tab_width * builder.indent))
+end
+
+local function append(builder: Builder, str: string)
 	write(builder, str)
 end
 
 local function append_line(builder: Builder, str: string)
+	append_indent(builder)
 	append(builder, str)
 	write(builder, "\n")
 end
@@ -112,6 +115,7 @@ return table.freeze({
 	append = append,
 	append_line = append_line,
 	append_lines = append_lines,
+	append_indent = append_indent,
 	set_tab_width = set_tab_width,
 	to_string = to_string,
 })

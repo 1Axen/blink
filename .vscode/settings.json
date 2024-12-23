@@ -1,11 +1,6 @@
 {
   "luau-lsp.plugin.enabled": false,
   "luau-lsp.require.mode": "relativeToFile",
-  "luau-lsp.require.directoryAliases": {
-    "@util/": "src/util/",
-    "@lune/": "~/.lune/.typedefs/0.8.9/",
-    "@compiler/": "src/compiler/"
-  },
   "luau-lsp.sourcemap.rojoProjectFile": "default.project.json",
   "luau-lsp.completion.imports.enabled": true,
   "stylua.targetReleaseVersion": "latest",

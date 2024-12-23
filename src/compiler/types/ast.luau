@@ -1,6 +1,14 @@
+--!strict
+
 local symbols = require("@util/symbols")
 
-export type NodeId<T = Node> = number & { __T: T }
+export type NodeId<T = Node> = number & { __kind: "node", __T: T }
+
+export type NodeKind = index<Node, "kind">
+export type StatKind = index<Statement, "kind">
+export type ExprKind = index<Expression, "kind">
+
+export type Symbols = symbols.Symbols<Statement>
 
 export type PathSegment = {
     read span: vector,
@@ -34,23 +42,19 @@ export type GenericDef = {
     read kind: "generic",
 
     read name: Identifier,
-    read default: Expression?,
+    --read default: Expression?,
 }
 
 --- <A = u8, B, C>
 export type GenericsDef = {
-    id: NodeId,
     read span: vector,
     read kind: "generics",
-
     read values: { GenericDef }
 }
 
 export type GenericsArgs = {
-    id: NodeId,
     read span: vector,
     read kind: "generics",
-
     read values: { Expression }
 }
 
@@ -103,8 +107,9 @@ export type ExprMap = {
     read span: vector,
     read kind: "map",
 
-    index: Expression,
+    read index: Expression,
     read value: Expression,
+    read range: Range?,
 }
 
 export type ExprPackParameter = {
@@ -116,6 +121,8 @@ export type ExprPackParameter = {
     read value: Expression
 }
 
+--- (expr...)
+--- or single expr (syntax sugar)
 export type ExprPack = {
     id: NodeId,
     read span: vector,
@@ -175,7 +182,11 @@ export type ExprTaggedEnumVariant = {
     read span: vector,
     read kind: "variant",
 
-    read name: Identifier | ExprBoolean,
+    read key: 
+        | Identifier 
+        | ExprNumber 
+        | ExprString 
+        | ExprBoolean,
     read value: ExprStruct
 }
 
@@ -237,8 +248,8 @@ export type StatEvent = {
     read from: Identifier,
     read type: Identifier,
     read call: Identifier,
-    read poll: ExprBoolean,
-    read data: (Expression | ExprPack)?,
+    read poll: ExprBoolean?,
+    read data: ExprPack?,
 }
 
 export type StatScope = {
@@ -278,8 +289,8 @@ export type StatFunction = {
 
     read name: Identifier,
     read yield: Identifier,
-    read data: (Expression | ExprPack)?,
-    read ret: (Expression | ExprPack)?
+    read data: ExprPack?,
+    read ret: ExprPack?
 }
 
 export type Statement =
@@ -294,6 +305,7 @@ export type Statement =
 export type Node = 
     | Statement
     | Expression
+    | GenericDef
 
 export type Block = {
     read kind: "block",
@@ -303,107 +315,11 @@ export type Block = {
 export type Ast = {
     read kind: "ast",
     read body: Block,
-    read symbols: symbols.Symbols<Statement>
+    read symbols: Symbols
 }
 
-local fmt_statement;
-local fmt_expression;
-
-local function fmt_range(node: Range): string
-    local expr_min = node.min
-    local expr_max = node.max
-
-    local min = expr_min and tostring(expr_min.value) or ""
-    local max = expr_max and tostring(expr_max.value) or ""
-
-    return `({min}..{max})`
-end
-
-local function fmt_generic(node: GenericDef): string
-    local name = node.name
-    if node.default then
-        return `{name.value} = {fmt_expression(node.default)}`
-    end
-
-    return `{name.value}`
-end
-
-local function fmt_generics(node: GenericsDef): string
-    local strings = {}
-    for _, generic in node.values do
-        table.insert(strings, fmt_generic(generic))
-    end
-
-    return `<{table.concat(strings, ", ")}>`
-end
-
-local function fmt_segment(node: PathSegment): string
-    return node.value
-end
-
-local function fmt_path(node: Path): string
-    local path = ""
-    local indices = #node.segments
-
-    for index, segment in node.segments do
-        path ..= fmt_segment(segment)
-        if index < indices then
-            path ..= "."
-        end
-    end
-
-    return path
-end
-
-local function fmt_identifier(node: Identifier): string
-    return node.value
-end
-
-function fmt_expression(expr: Expression): string
-    if expr.kind == "set" then
-        return "set { ... }"
-    elseif expr.kind == "map" then
-        return "map { ... }"
-    elseif expr.kind == "enum" then
-        return "enum { ... }"
-    elseif expr.kind == "union" then
-        return `{fmt_expression(expr.left)} & {fmt_expression(expr.right)}`
-    elseif expr.kind == "struct" then
-        return "struct { ... }"
-    elseif expr.kind == "string" then
-        return `"{expr.value}"`
-    elseif expr.kind == "number" then
-        return tostring(expr.value)
-    elseif expr.kind == "array" then
-        return `{fmt_expression((expr :: ExprArray).value)}[]`
-    elseif expr.kind == "boolean" then
-        return tostring((expr :: ExprBoolean).value)
-    elseif expr.kind == "optional" then
-        return `{fmt_expression((expr :: ExprOptional).value)}?`
-    elseif expr.kind == "tag_enum" then
-        return `enum "{fmt_expression((expr :: ExprTaggedEnum).tag)}" \{ ... \}`
-    elseif expr.kind == "reference" then
-        return fmt_path(expr.path)
-    end
-
-    error("unreachable")
-end
-
-function fmt_statement(stat: Statement): string
-    if stat.kind == "type" then
-        local name = stat.name
-        local generics = stat.generics
-        return `{fmt_identifier(name)}{if generics then fmt_generics(generics) else ""}`
-    end
-
-    error("unreachable")
-end
+local DUMMY_ID = -1
 
 return table.freeze({
-    fmt_path = fmt_path,
-    fmt_range = fmt_range,
-    fmt_generics = fmt_generics,
-    fmt_statement = fmt_statement,
-    fmt_expression = fmt_expression,
-    fmt_identifier = fmt_identifier,
+    DUMMY_ID = DUMMY_ID
 })

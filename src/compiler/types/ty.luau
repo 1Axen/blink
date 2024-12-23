@@ -1,39 +1,30 @@
+--!strict
+
 local span = require("@util/span")
 local range = require("@util/range")
 
 type Span = span.Span
 type Range = range.Range
 
-export type TyId<T = TyKind> = number & { __T: T }
-export type IntSize = "8" | "16" | "24" | "32" | "48"
-export type UintSize = "8" | "16" | "24" | "32" | "48"
-export type FloatSize = "16" | "32" | "64"
+export type TyId<T = TyKind> = number & { __kind: "ty", __T: T }
+
+export type NumFormat = "u" | "i" | "f"
+export type NumSize = "8" | "16" | "24" | "32" | "48" | "64"
 
 -- Luau Primitives
 
-export type Int = {
-    read kind: "int",
-    read size: IntSize,
-    read range: Range?,
-}
-
-export type Uint = {
-    read kind: "uint",
-    read size: UintSize,
-    read range: Range?,
-}
-
-export type Float = {
-    read kind: "float",
-    read size: FloatSize,
-    read range: Range?,
+export type Numeral = {
+    read kind: "numeral",
+    read size: NumSize,
+    read format: NumFormat,
+    read bounds: Range?,
 }
 
 export type Vector = {
     read kind: "vector",
-    read x: TyId<Numeral>?,
-    read y: TyId<Numeral>?,
-    read z: TyId<Numeral>?,
+    read x: TyId<Numeral | NumberLiteral>?,
+    read y: TyId<Numeral | NumberLiteral>?,
+    read z: TyId<Numeral | NumberLiteral>?,
     read magnitude: Range?,
 }
 
@@ -51,11 +42,28 @@ export type Boolean = {
     read kind: "boolean"
 }
 
+-- Luau Literals
+
+export type StringLiteral = {
+    read kind: "string_literal",
+    read value: string
+}
+
+export type NumberLiteral = {
+    read kind: "number_literal",
+    read value: number
+}
+
+export type BooleanLiteral = {
+    read kind: "boolean_literal",
+    read value: boolean
+}
+
 -- ROBLOX Datatypes
 
 export type Enum = {
     read kind: "roblox_enum",
-    read type: string?,
+    read type: TyId<StringLiteral>?,
 }
 
 export type Color3 = {
@@ -82,7 +90,7 @@ export type BrickColor = {
 
 export type Instance = {
     read kind: "instance",
-    read class: String?,
+    read class: TyId<StringLiteral>?,
 }
 
 -- Blink primitives
@@ -93,6 +101,12 @@ export type Field = {
     read value: TyId
 }
 
+export type Variant = {
+    read kind: "variant",
+    read key: number | string | boolean,
+    read value: Struct
+}
+
 export type Set = {
     read kind: "set",
     read items: {string}
@@ -101,7 +115,8 @@ export type Set = {
 export type Map = {
     read kind: "map",
     read index: TyId,
-    read value: TyId
+    read value: TyId,
+    read range: Range?
 }
 
 export type Struct = {
@@ -116,10 +131,10 @@ export type Array<T = Ty> = {
 }
 
 type UnionSide = TyId<
-    | GenericDataType<Union>
-    | GenericDataType<Struct> 
-    | Optional<GenericDataType<Union>>
-    | Optional<GenericDataType<Struct>> 
+    | GenericType<Union>
+    | GenericType<Struct> 
+    | Optional<GenericType<Union>>
+    | Optional<GenericType<Struct>> 
 >
 
 export type Union = {
@@ -141,17 +156,18 @@ export type UnitEnum = {
 export type TaggedEnum = {
     read kind: "tagged_enum",
     read tag: string,
-    read variants: {Field}
+    read variants: {Variant}
 }
 
 export type Placeholder = {
     read kind: "placeholder",
     read name: string,
+    read index: number,
 }
 
-export type GenericDataType<T = Map | Union | Struct | TaggedEnum | Placeholder> = {
-    read kind: "generic_data_type",
-    read def: TyId<T>,
+export type GenericType<T = Ty> = {
+    read kind: "generic_type",
+    read ty: T,
     read args: {TyId}
 }
 
@@ -159,19 +175,16 @@ export type Unknown = {
     read kind: "unknown"
 }
 
-type Numeral =
-    | Int
-    | Uint
-    | Float
-
 export type Ty =
-    | Int
-    | Uint
-    | Float
+    | Numeral
     | String
     | Vector
     | Buffer
     | Boolean
+
+    | StringLiteral
+    | NumberLiteral
+    | BooleanLiteral
 
     | Enum
     | CFrame
@@ -189,7 +202,7 @@ export type Ty =
     | UnitEnum
     | TaggedEnum
     | Placeholder
-    | GenericDataType
+    | GenericType
     | Unknown
 
 export type TyKind = index<Ty, "kind">

@@ -2,7 +2,7 @@
 --!native
 --!optimize 2
 
-local ast = require("@compiler/ast")
+local ast = require("@compiler/types/ast")
 local codes = require("@compiler/config/codes")
 local options = require("@compiler/config/options")
 local primitives = require("@compiler/config/primitives")
@@ -74,7 +74,7 @@ local function report_invalid_range(range: ast.Range): never
     .error()
 end
 
-type Entry = ast.Identifier | ast.ExprString | ast.ExprBoolean
+type Entry = ast.Identifier | ast.ExprNumber | ast.ExprString | ast.ExprBoolean
 
 local function report_duplicate_entry(expr: ast.Expression, original: Entry, duplicate: Entry): never
     local kind = expr.kind
@@ -203,17 +203,17 @@ local function expr_optional(validator: Validator, expr: ast.ExprOptional)
 end
 
 local function expr_tag_enum(validator: Validator, expr: ast.ExprTaggedEnum): never?
-    local variants: {[string]: ast.Identifier | ast.ExprBoolean} = {}
+    local variants = {}
     for _, variant in expr.variants do
-        local name = variant.name
-        local str_name = tostring(name.value)
+        local key = variant.key
+        local str_name = tostring(key.value)
 
         local previous = variants[str_name]
         if previous ~= nil then
-            return report_duplicate_entry(expr, previous, name)
+            return report_duplicate_entry(expr, previous, key)
         end
 
-        variants[str_name] = name
+        variants[str_name] = key
         expr_struct(validator, variant.value)
     end
 
@@ -231,7 +231,7 @@ end
 local function stat_type(validator: Validator, stat: ast.StatType): never?
     local name = stat.name
     local value = stat.value
-    local primitive = primitives[name.value]
+    local primitive = (primitives :: any)[name.value]
 
     if primitive ~= nil then
         return diagnostics.report.create("Error")
@@ -334,7 +334,7 @@ function expression(validator: Validator, expr: ast.Expression)
     elseif expr.kind == "optional" then
         expr_optional(validator, expr)
     elseif expr.kind == "reference" then
-        expr_reference(validator, expr :: ast.ExprReference)
+        expr_reference(validator, expr :: any)
     end
 end
 
