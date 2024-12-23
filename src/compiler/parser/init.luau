@@ -5,7 +5,7 @@
 local validator = require("./validator")
 
 local lexer = require("@compiler/lexer")
-local ast = require("@compiler/types/ast")
+local ast = require("@compiler/structures/ast")
 local codes = require("@compiler/config/codes")
 
 local span = require("@util/span")

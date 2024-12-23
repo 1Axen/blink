@@ -3,14 +3,14 @@
 --!optimize 2
 
 local id = require("@compiler/id")
-local ty = require("@compiler/types/ty")
-local hir = require("@compiler/types/hir")
-local ast = require("@compiler/types/ast")
+local ty = require("@compiler/structures/ty")
+local hir = require("@compiler/structures/hir")
+local ast = require("@compiler/structures/ast")
 
 local codes = require("@compiler/config/codes")
 
 local span = require("@util/span")
-local panic = require("@util/panic")("type checking")
+local panic = require("@util/panic")
 local diagnostics = require("@util/diagnostics")
 
 type Ty = ty.Ty

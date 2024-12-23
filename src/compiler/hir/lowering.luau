@@ -3,9 +3,9 @@
 --!optimize 2
 
 local id = require("@compiler/id")
-local ty = require("@compiler/types/ty")
-local hir = require("@compiler/types/hir")
-local ast = require("@compiler/types/ast")
+local ty = require("@compiler/structures/ty")
+local hir = require("@compiler/structures/hir")
+local ast = require("@compiler/structures/ast")
 
 local codes = require("@compiler/config/codes")
 local bounds = require("@compiler/config/bounds")
@@ -15,7 +15,7 @@ local fmt_range = require("@format/range")
 
 local span = require("@util/span")
 local range = require("@util/range")
-local panic = require("@util/panic")("AST to HIR lowering")
+local panic = require("@util/panic")
 local symbols = require("@util/symbols")
 local diagnostics = require("@util/diagnostics")
 

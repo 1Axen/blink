@@ -1,4 +1,4 @@
-local ast = require("@compiler/types/ast")
+local ast = require("@compiler/structures/ast")
 
 local fmt_statement;
 local fmt_expression;

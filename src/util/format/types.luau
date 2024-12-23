@@ -1,5 +1,5 @@
 local style = require("@util/style")
-local panic = require("@util/panic")("format types")
+local panic = require("@util/panic")
 
 local function fmt_number(number: number): string
     local stringified = tostring(number)

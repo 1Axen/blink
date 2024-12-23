@@ -1,5 +1,5 @@
-local ty = require("@compiler/types/ty")
-local hir = require("@compiler/types/hir")
+local ty = require("@compiler/structures/ty")
+local hir = require("@compiler/structures/hir")
 
 local fmt_ty = require("@format/ty")
 local fmt_id = require("@format/id")

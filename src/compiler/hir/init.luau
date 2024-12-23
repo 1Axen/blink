@@ -2,9 +2,9 @@
 --!native
 --!optimize 2
 
-local ty = require("@compiler/types/ty")
-local hir = require("@compiler/types/hir")
-local ast = require("@compiler/types/ast")
+local ty = require("@compiler/structures/ty")
+local hir = require("@compiler/structures/hir")
+local ast = require("@compiler/structures/ast")
 
 local lowering = require("./lowering")
 local type_checking = require("./type_checking")

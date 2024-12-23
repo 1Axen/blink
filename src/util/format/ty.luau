@@ -1,5 +1,5 @@
-local ty = require("@compiler/types/ty")
-local hir = require("@compiler/types/hir")
+local ty = require("@compiler/structures/ty")
+local hir = require("@compiler/structures/hir")
 
 local fmt_id = require("@format/id")
 local fmt_types = require("@format/types")
@@ -9,7 +9,7 @@ local id = require("@compiler/id")
 
 local style = require("@util/style")
 local range = require("@util/range")
-local panic = require("@util/panic")("format ty")
+local panic = require("@util/panic")
 
 local fmt_ty: (ty: ty.Ty) -> string
 

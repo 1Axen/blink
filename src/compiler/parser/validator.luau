@@ -2,7 +2,7 @@
 --!native
 --!optimize 2
 
-local ast = require("@compiler/types/ast")
+local ast = require("@compiler/structures/ast")
 local codes = require("@compiler/config/codes")
 local options = require("@compiler/config/options")
 local primitives = require("@compiler/config/primitives")

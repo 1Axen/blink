@@ -1,7 +1,7 @@
-local ty = require("@compiler/types/ty")
-local hir = require("@compiler/types/hir")
-local ast = require("@compiler/types/ast")
-local panic = require("@util/panic")("ids util")
+local ty = require("@compiler/structures/ty")
+local hir = require("@compiler/structures/hir")
+local ast = require("@compiler/structures/ast")
+local panic = require("@util/panic")
 
 type TyId = ty.TyId
 type DeclId = hir.DeclId
