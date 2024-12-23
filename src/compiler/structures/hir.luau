@@ -62,22 +62,4 @@ export type Hir = {
     read scopes: {[ScopeId]: string},
 }
 
-local function ty_from_id(hir: Hir, ty_id: TyId): Ty
-    local ty = hir.tys[ty_id]
-    if ty == nil then
-        return panic("Expected ty_id to point to a ty")
-    end
-
-    return ty
-end
-
-local function node_from_id(hir: Hir, node_id: NodeId): Node
-    local node = hir.nodes[node_id]
-    if node == nil then
-        return panic("Expected node_id to point to a node")
-    end
-
-    return node
-end
-
 return table.freeze({})
