@@ -56,7 +56,7 @@ local block: (ctx: Context, node: ast.Block) -> ()
 local statement: (ctx: Context, stat: ast.Statement) -> DeclId?
 local expression: (ctx: Context, expr: ast.Expression) -> TyId
 
-local function path_to_array(path: ast.Path): {string}
+local function path_to_segments(path: ast.Path): {string}
     local segments: {string} = {}
     for _, segment in path.segments do
         table.insert(segments, segment.value)
@@ -66,7 +66,7 @@ local function path_to_array(path: ast.Path): {string}
 end
 
 local function path_to_string(path: ast.Path): string
-    return table.concat(path_to_array(path), ".")
+    return table.concat(path_to_segments(path), ".")
 end
 
 local function report_expect(node: {span: span.Span}, expected: string, got: string): never
@@ -609,14 +609,15 @@ end
 
 local function expr_reference(ctx: Context, expr: ast.ExprReference): TyId
     if ctx.generics then
-        local path = path_to_string(expr.path)
-        local placeholder = ctx.generics.values[path]
+        local path_string = path_to_string(expr.path)
+        local placeholder = ctx.generics.values[path_string]
         if placeholder then
             return placeholder
         end
     end
 
-    local node = symbols.search(ctx.ast.symbols, path_to_array(expr.path))
+    local path_segments = path_to_segments(expr.path)
+    local node = symbols.search(ctx.ast.symbols, path_segments)
     if node == nil or node.kind ~= "type" then
         return report_unknown_reference(expr)
     end
@@ -625,12 +626,29 @@ local function expr_reference(ctx: Context, expr: ast.ExprReference): TyId
     local decl_id = id.node_id.to_decl_id(node_id)
     local decl_opt = decl_from_id_option(ctx, decl_id)
 
+    --> process generics
+    local generic_args: {TyId} = {}
+    local expr_generics = expr.generics
+    if expr_generics then
+        for index, value in expr_generics.values do
+            generic_args[index] = expression(ctx, value)
+        end
+    end
+
+    --> recursive type
     if decl_opt.has_value == false then
-        return report_unknown_reference(expr)
+        local ty_id = id.node_id.to_ty_id(node_id)
+        local placeholder: ty.Placeholder = {
+            kind = "placeholder",
+            path = path_segments,
+            args = generic_args
+        }
+
+        ctx.hir.tys[ty_id] = placeholder
+        return ty_id
     end
 
     local decl = decl_opt.value
-    local expr_generics = expr.generics
     local decl_generics = decl.generics
 
     if decl_generics then
@@ -648,14 +666,8 @@ local function expr_reference(ctx: Context, expr: ast.ExprReference): TyId
 
         local ty_id = id.node_id.to_ty_id(node_id)
         local decl_ty = ty_from_id(ctx, decl.ty) :: ty.GenericType
-
-        local args: {TyId} = {}
-        for index, generic in expr_generics.values do
-            args[index] = expression(ctx, generic)
-        end
-        
-        local ty: ty.GenericType = expr_generic_type(ctx, decl_ty.ty, args)
-        ctx.hir.tys[ty_id] = ty
+        local generic_type: ty.GenericType = expr_generic_type(ctx, decl_ty.ty, generic_args)
+        ctx.hir.tys[ty_id] = generic_type
 
         return ty_id
     elseif expr_generics then

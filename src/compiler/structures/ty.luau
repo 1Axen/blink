@@ -168,7 +168,7 @@ export type Generic = {
 --- Represents a variable which hasn't been typed yet
 export type Placeholder = {
     read kind: "placeholder",
-    read path: string,
+    read path: {string},
     read args: {TyId}?
 }
 
@@ -208,9 +208,11 @@ export type Ty =
     | Optional
     | UnitEnum
     | TaggedEnum
+    | Unknown
+
     | Generic
     | GenericType
-    | Unknown
+    | Placeholder
 
 export type TyKind = index<Ty, "kind">
 
