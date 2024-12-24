@@ -37,9 +37,9 @@ local function fmt_vector(ty: ty.Vector): string
     local range = fmt_opt_range(ty.magnitude)
 
     if ty.z and ty.y and ty.x then
-        return `vector<{fmt_id(ty.x)},{fmt_id(ty.y)},{fmt_id(ty.z)}>{range}`
+        return `vector<{fmt_id(ty.x)},{fmt_id(ty.y)},{fmt_id((ty :: any).z)}>{range}`
     elseif ty.y and ty.x then
-        return `vector<{fmt_id(ty.x)},{fmt_id(ty.y)}>{range}`
+        return `vector<{fmt_id(ty.x)},{fmt_id((ty :: any).y :: any)}>{range}`
     elseif ty.x then
         return `vector<{fmt_id(ty.x)}>{range}`
     end
@@ -84,8 +84,8 @@ local function fmt_color3(ty: ty.Color3): string
 end
 
 local function fmt_cframe(ty: ty.CFrame): string
-    if ty.rotation and ty.position then
-        return `CFrame<{fmt_id(ty.position)},{fmt_id(ty.rotation)}>`
+    if ty.position and ty.rotation then
+        return `CFrame<{fmt_id((ty :: any).position)},{fmt_id(ty.rotation)}>`
     elseif ty.position then
         return `CFrame<{fmt_id(ty.position)}>`
     end
@@ -146,7 +146,7 @@ local function fmt_optional(ty: ty.Optional): string
     return `optional {fmt_id(ty.of)}`
 end
 
-local function fmt_placeholder(ty: ty.Placeholder): string
+local function fmt_generic(ty: ty.Generic): string
     return `{style.color.cyan(ty.name)}@{fmt_types.number(ty.index)}`
 end
 
@@ -165,6 +165,15 @@ end
 
 local function fmt_unknown(ty: ty.Unknown): string
     return `unknwon`
+end
+
+local function fmt_placeholder(ty: ty.Placeholder): string
+    local args: {string} = {}
+    for _, arg in ty.args or {} do
+        table.insert(args, fmt_id(arg))
+    end
+
+    return `{ty.path}<{table.concat(args, ", ")}>`
 end
 
 local function fmt_generic_type(ty: ty.GenericType): string
@@ -193,34 +202,36 @@ function fmt_ty(ty: ty.Ty): string
 		return fmt_unit_enum(ty)
 	elseif ty.kind == "tagged_enum" then
 		return fmt_tagged_enum(ty)
-	elseif ty.kind == "placeholder" then
-		return fmt_placeholder(ty)
+	elseif ty.kind == "generic" then
+		return fmt_generic(ty :: ty.Generic)
+    elseif ty.kind == "placeholder" then
+        return fmt_placeholder(ty)
 	elseif ty.kind == "generic_type" then
-		return fmt_generic_type(ty)
+		return fmt_generic_type(ty :: ty.GenericType)
 	elseif ty.kind == "numeral" then
 		return fmt_numeral(ty)
 	elseif ty.kind == "string" then
-		return fmt_string(ty)
+		return fmt_string(ty :: ty.String)
 	elseif ty.kind == "buffer" then
 		return fmt_buffer(ty)
     elseif ty.kind == "vector" then
-        return fmt_vector(ty)
+        return fmt_vector(ty :: ty.Vector)
     elseif ty.kind == "boolean" then
         return fmt_boolean(ty)
     elseif ty.kind == "string_literal" then
-        return fmt_string_literal(ty)
+        return fmt_string_literal(ty :: ty.StringLiteral)
     elseif ty.kind == "number_literal" then
 		return fmt_number_literal(ty)
     elseif ty.kind == "boolean_literal" then
-		return fmt_boolean_literal(ty)
+		return fmt_boolean_literal(ty :: ty.BooleanLiteral)
     elseif ty.kind == "roblox_enum" then
         return fmt_enum(ty)
     elseif ty.kind == "cframe" then
-        return fmt_cframe(ty)
+        return fmt_cframe(ty :: ty.CFrame)
     elseif ty.kind == "color3" then
         return fmt_color3(ty)
     elseif ty.kind == "instance" then
-        return fmt_instance(ty)
+        return fmt_instance(ty :: ty.Instance)
     elseif ty.kind == "date_time" then
         return fmt_date_time(ty)
     elseif ty.kind == "date_time_millis" then
