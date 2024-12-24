@@ -100,13 +100,17 @@ local function create_styler(opener: number, closer: number): Styler
         or create_lune_styler(opener, closer)
 end
 
-local function combine_styles(text: string, ...: Styler): string
-    local result = text
-    for _, style in {...} do
-        result = style(result)
-    end
+local function combine_styles(...: Styler): Styler
+    local styles = {...}
+    
+    return function(text: string): string
+        local result = text
+        for _, style in styles do
+            result = style(result)
+        end
 
-    return result
+        return result
+    end
 end
 
 return table.freeze({
