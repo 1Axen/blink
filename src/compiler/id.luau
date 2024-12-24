@@ -44,8 +44,12 @@ local function get_kind(id: Id): IdKind
     return panic(`Can't get kind of id: "{id}"`)
 end
 
+local function get_unique(id: Id): number
+    return bit32.extract(id, 0, 30)
+end
+
 local function set_flag(id: Id, flag: number): Id
-    return bit32.replace(id, flag, 30, 2)
+    return bit32.replace(id, flag, 30, 2) :: any
 end
 
 local function node_id_to_ty_id(node_id: NodeId): TyId
@@ -74,6 +78,7 @@ end
 
 return table.freeze({
     kind = get_kind,
+    unique = get_unique,
 
     ty_id = table.freeze({
         to_node_id = ty_id_to_node_id,
