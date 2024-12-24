@@ -24,7 +24,7 @@ export type Type<T = ty.Ty> = {
     read scope: ScopeId,
 
     read ty: TyId<T>,
-    read generics: {TyId<ty.Placeholder>}?
+    read generics: {TyId<ty.Generic>}?
 } 
 
 export type Event = {

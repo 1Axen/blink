@@ -16,6 +16,7 @@ local fmt_range = require("@format/range")
 local span = require("@util/span")
 local range = require("@util/range")
 local panic = require("@util/panic")
+local option = require("@util/option")
 local symbols = require("@util/symbols")
 local diagnostics = require("@util/diagnostics")
 
@@ -43,8 +44,8 @@ type Context = {
     node_id: number,
     symbols: ast.Symbols,
     generics: {
-        args: {TyId<ty.Placeholder>},
-        values: {[string]: TyId<ty.Placeholder>}
+        args: {TyId<ty.Generic>},
+        values: {[string]: TyId<ty.Generic>}
     }?,
 }
 
@@ -54,6 +55,19 @@ local ROOT_SCOPE = id.node_id.to_scope_id(DUMMY_ID :: any)
 local block: (ctx: Context, node: ast.Block) -> ()
 local statement: (ctx: Context, stat: ast.Statement) -> DeclId?
 local expression: (ctx: Context, expr: ast.Expression) -> TyId
+
+local function path_to_array(path: ast.Path): {string}
+    local segments: {string} = {}
+    for _, segment in path.segments do
+        table.insert(segments, segment.value)
+    end
+
+    return segments
+end
+
+local function path_to_string(path: ast.Path): string
+    return table.concat(path_to_array(path), ".")
+end
 
 local function report_expect(node: {span: span.Span}, expected: string, got: string): never
     return diagnostics.report.create("Error")
@@ -122,11 +136,12 @@ local function report_extra_generics(node: ast.GenericsArgs, maximum: number): n
 end
 
 local function report_unknown_reference(expr: ast.ExprReference): never
-    local name = expr.name
+    local path = expr.path
+    local path_str = path_to_string(expr.path)
     return diagnostics.report.create("Error")
         .with_code(codes.type_checking.UnknownReference)
-        .with_message(`Unknown reference "{name.value}"`)
-        .with_label(diagnostics.label.create(name.span)
+        .with_message(`Unknown reference "{path_str}"`)
+        .with_label(diagnostics.label.create(path.span)
             .with_color(diagnostics.style.color.red)
             .with_message(`Unknown reference`)
         )
@@ -173,6 +188,15 @@ local function node_from_id(ctx: Context, node_id: NodeId): Node
     return node
 end
 
+local function decl_from_id_option(ctx: Context, decl_id: DeclId): option.Option<Decl>
+    local decl = ctx.hir.decls[decl_id]
+    if decl == nil then
+        return option.none()
+    end
+
+    return option.some(decl)
+end
+
 local function node_from_ty_id(ctx: Context, ty_id: TyId): Node
     local node_id = id.ty_id.to_node_id(ty_id)
     return node_from_id(ctx, node_id)
@@ -204,19 +228,6 @@ local function inner_scope(ctx: Context, scope_id: ScopeId, scope_name: string):
     hir.scopes[scope_id] = scope_name
 
     return prev
-end
-
-local function path_to_array(path: ast.Path): {string}
-    local segments: {string} = {}
-    for _, segment in path.segments do
-        table.insert(segments, segment.value)
-    end
-
-    return segments
-end
-
-local function path_to_string(path: ast.Path): string
-    return table.concat(path_to_array(path), ".")
 end
 
 local function assert_identifier_one_of(ctx: Context, ident: ast.Identifier, valid: {string}): ast.Identifier
@@ -588,7 +599,7 @@ local function expr_tagged_enum(ctx: Context, expr: ast.ExprTaggedEnum): ty.Tagg
     }
 end
 
-local function expr_generic_type(ctx: Context, ty: Ty, args: {ty.TyId<ty.Placeholder>}): ty.GenericType
+local function expr_generic_type(ctx: Context, ty: Ty, args: {ty.TyId<ty.Generic>}): ty.GenericType
     return {
         kind = "generic_type",
         ty = ty,
@@ -612,8 +623,13 @@ local function expr_reference(ctx: Context, expr: ast.ExprReference): TyId
 
     local node_id = node.id
     local decl_id = id.node_id.to_decl_id(node_id)
-    local decl: hir.Type = decl_from_id(ctx, decl_id) :: any
+    local decl_opt = decl_from_id_option(ctx, decl_id)
 
+    if decl_opt.has_value == false then
+        return report_unknown_reference(expr)
+    end
+
+    local decl = decl_opt.value
     local expr_generics = expr.generics
     local decl_generics = decl.generics
 
@@ -727,25 +743,25 @@ local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
     local scope = ctx.scope
 
     --> set generics
-    local args: {TyId<ty.Placeholder>}?;
+    local args: {TyId<ty.Generic>}?;
     local generics = stat.generics
 
     if generics then
-        local values: {[string]: TyId<ty.Placeholder>} = {}
+        local values: {[string]: TyId<ty.Generic>} = {}
         args = {}
 
-        for index, generic in generics.values do
-            local name = generic.name
-            local node_id = assign_node_id(ctx, generic)
+        for index, value in generics.values do
+            local name = value.name
+            local node_id = assign_node_id(ctx, value)
             local ty_id = id.node_id.to_ty_id(node_id)
 
-            local placeholder: ty.Placeholder = {
-                kind = "placeholder",
+            local generic: ty.Generic = {
+                kind = "generic",
                 name = name.value,
                 index = index
             }
 
-            ctx.hir.tys[ty_id] = placeholder
+            ctx.hir.tys[ty_id] = generic
 
             args[index] = ty_id
             values[name.value] = ty_id

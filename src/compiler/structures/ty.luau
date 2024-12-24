@@ -159,10 +159,17 @@ export type TaggedEnum = {
     read variants: {Variant}
 }
 
-export type Placeholder = {
-    read kind: "placeholder",
+export type Generic = {
+    read kind: "generic",
     read name: string,
     read index: number,
+}
+
+--- Represents a variable which hasn't been typed yet
+export type Placeholder = {
+    read kind: "placeholder",
+    read path: string,
+    read args: {TyId}?
 }
 
 export type GenericType<T = Ty> = {
@@ -201,7 +208,7 @@ export type Ty =
     | Optional
     | UnitEnum
     | TaggedEnum
-    | Placeholder
+    | Generic
     | GenericType
     | Unknown
 
