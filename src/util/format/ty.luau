@@ -12,6 +12,7 @@ local range = require("@util/range")
 local panic = require("@util/panic")
 
 local fmt_ty: (ty: ty.Ty) -> string
+local PRIMITIVE_STYLE = style.color.bright_purple
 
 local function fmt_opt_id(opt_id: id.Id?): string
     if opt_id == nil then
@@ -30,33 +31,45 @@ local function fmt_opt_range(range: range.Range?): string
 end
 
 local function fmt_numeral(ty: ty.Numeral): string
-    return `{ty.format}{ty.size}{fmt_opt_range(ty.bounds)}`
+    return PRIMITIVE_STYLE(`{ty.format}{ty.size}`) .. fmt_opt_range(ty.bounds)
 end
 
 local function fmt_vector(ty: ty.Vector): string
-    local range = fmt_opt_range(ty.magnitude)
+    local result = PRIMITIVE_STYLE("vector")
+    if ty.x or ty.y or ty.z then
+        result ..= "<"
 
-    if ty.z and ty.y and ty.x then
-        return `vector<{fmt_id(ty.x)},{fmt_id(ty.y)},{fmt_id((ty :: any).z)}>{range}`
-    elseif ty.y and ty.x then
-        return `vector<{fmt_id(ty.x)},{fmt_id((ty :: any).y :: any)}>{range}`
-    elseif ty.x then
-        return `vector<{fmt_id(ty.x)}>{range}`
+        if ty.x then
+            result ..= `{fmt_id(ty.x)}, `
+        end
+
+        if ty.y then
+            result ..= `{fmt_id((ty :: any).y :: any)}, `
+        end
+
+        if ty.z then
+            result ..= `{fmt_id((ty :: any).z :: any)}`
+        end
+
+         result ..= ">"
     end
 
-    return `vector{range}`
+    local range = fmt_opt_range(ty.magnitude)
+    result ..= range
+
+    return result
 end
 
 local function fmt_buffer(ty: ty.Buffer): string
-    return `buffer{fmt_opt_range(ty.length)}`
+    return `{PRIMITIVE_STYLE("buffer")}{fmt_opt_range(ty.length)}`
 end
 
 local function fmt_string(ty: ty.String): string
-    return `string{fmt_opt_range(ty.length)}`
+    return `{PRIMITIVE_STYLE("string")}{fmt_opt_range(ty.length)}`
 end
 
 local function fmt_boolean(ty: ty.Boolean): string
-    return `boolean`
+    return PRIMITIVE_STYLE(`boolean`)
 end
 
 local function fmt_string_literal(ty: ty.StringLiteral): string
@@ -72,45 +85,56 @@ local function fmt_boolean_literal(ty: ty.BooleanLiteral): string
 end
 
 local function fmt_enum(ty: ty.Enum): string
+    local result = PRIMITIVE_STYLE("Enum")
     if ty.type then
-        return `Enum<{fmt_id(ty.type)}>`
+        result ..= `<{fmt_id(ty.type)}>`
     end
 
-    return `Enum`
+    return result
 end
 
 local function fmt_color3(ty: ty.Color3): string
-    return `Color3`
+    return PRIMITIVE_STYLE("Color3")
 end
 
 local function fmt_cframe(ty: ty.CFrame): string
-    if ty.position and ty.rotation then
-        return `CFrame<{fmt_id((ty :: any).position)},{fmt_id(ty.rotation)}>`
-    elseif ty.position then
-        return `CFrame<{fmt_id(ty.position)}>`
+    local result = PRIMITIVE_STYLE("CFrame")
+    if ty.position or ty.rotation then
+        result ..= "<"
+
+        if ty.position then
+            result ..= `{fmt_id(ty.position)}, `
+        end
+
+        if ty.rotation then
+            result ..= fmt_id((ty :: any).rotation :: any)
+        end
+
+        result ..= ">"
     end
 
-    return `CFrame`
+    return result
 end
 
 local function fmt_date_time(ty: ty.DateTime): string
-    return `DateTime`
+    return PRIMITIVE_STYLE("DateTime")
 end
 
 local function fmt_date_time_millis(ty: ty.DateTimeMillis): string
-    return `DateTimeMillis`
+    return PRIMITIVE_STYLE("DateTimeMillis")
 end
 
 local function fmt_brick_color(ty: ty.BrickColor): string
-    return `BrickColor`
+    return PRIMITIVE_STYLE("BrickColor")
 end
 
 local function fmt_instance(ty: ty.Instance): string
+    local result = PRIMITIVE_STYLE("Instance")
     if ty.class then
-        return `Instance<{fmt_id(ty.class)}>`
+        result ..= `<{fmt_id(ty.class)}>`
     end
 
-    return `Instance`
+    return result
 end
 
 local function fmt_field(ty: ty.Field): string
@@ -118,19 +142,19 @@ local function fmt_field(ty: ty.Field): string
 end
 
 local function fmt_set(ty: ty.Set): string
-    return `set \{"{table.concat(ty.items, "\", ")}"\}`
+    return `{PRIMITIVE_STYLE("set")} \{"{table.concat(ty.items, "\", ")}"\}`
 end
 
 local function fmt_map(ty: ty.Map): string
-    return `map \{[{fmt_id(ty.index)}]: {fmt_id(ty.value)}\}{fmt_opt_range(ty.range)}`
+    return `{PRIMITIVE_STYLE("map")} \{[{fmt_id(ty.index)}]: {fmt_id(ty.value)}\}{fmt_opt_range(ty.range)}`
 end
 
 local function fmt_array(ty: ty.Array): string
-    return `array {fmt_id(ty.of)} {fmt_range(ty.size)}`
+    return `\{{fmt_id(ty.of)}\}{fmt_range(ty.size)}`
 end
 
 local function fmt_union(ty: ty.Union): string
-    return `union {fmt_id(ty.left)} & {fmt_id(ty.right)}`
+    return `{fmt_id(ty.left)} & {fmt_id(ty.right)}`
 end
 
 local function fmt_struct(ty: ty.Struct): string
@@ -139,19 +163,19 @@ local function fmt_struct(ty: ty.Struct): string
         table.insert(fields, fmt_field(field))
     end
 
-    return `struct \{{table.concat(fields, ", ")}\}`
+    return `{PRIMITIVE_STYLE("struct")} \{{table.concat(fields, ", ")}\}`
 end
 
 local function fmt_optional(ty: ty.Optional): string
-    return `optional {fmt_id(ty.of)}`
+    return `{fmt_id(ty.of)}?`
 end
 
 local function fmt_generic(ty: ty.Generic): string
-    return `{style.color.cyan(ty.name)}@{fmt_types.number(ty.index)}`
+    return `{`@{style.color.black(ty.name)}`}:{fmt_types.number(ty.index)}`
 end
 
 local function fmt_unit_enum(ty: ty.UnitEnum): string
-    return `enum \{"{table.concat(ty.variants, "\", ")}"\}`
+    return `{PRIMITIVE_STYLE("enum")} \{{table.concat(ty.variants, ", ")}\}`
 end
 
 local function fmt_tagged_enum(ty: ty.TaggedEnum): string
@@ -160,11 +184,11 @@ local function fmt_tagged_enum(ty: ty.TaggedEnum): string
         table.insert(variants, `{fmt_types.any(variant.key)}: {fmt_struct(variant.value)}`)
     end
 
-    return `enum {fmt_types.string(ty.tag)} \{{table.concat(variants, ", ")}\}`
+    return `{PRIMITIVE_STYLE("enum")} {fmt_types.string(ty.tag)} \{{table.concat(variants, ", ")}\}`
 end
 
 local function fmt_unknown(ty: ty.Unknown): string
-    return `unknwon`
+    return PRIMITIVE_STYLE("unknown")
 end
 
 local function fmt_placeholder(ty: ty.Placeholder): string
@@ -173,7 +197,7 @@ local function fmt_placeholder(ty: ty.Placeholder): string
         table.insert(args, fmt_id(arg))
     end
 
-    return `{ty.path}<{table.concat(args, ", ")}>`
+    return `{style.color.black(`@{table.concat(ty.path, ".")}`)}<{table.concat(args, ", ")}>`
 end
 
 local function fmt_generic_type(ty: ty.GenericType): string
@@ -182,7 +206,7 @@ local function fmt_generic_type(ty: ty.GenericType): string
         table.insert(args, fmt_id(arg))
     end
 
-    return `generic ({style.modifer.dim(fmt_ty(ty.ty))}) <{table.concat(args, ", ")}>`
+    return `{PRIMITIVE_STYLE("GT")} ({style.modifer.dim(fmt_ty(ty.ty))}, \{{table.concat(args, ", ")}\})`
 end
 
 function fmt_ty(ty: ty.Ty): string

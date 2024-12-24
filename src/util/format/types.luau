@@ -3,7 +3,7 @@ local panic = require("@util/panic")
 
 local function fmt_number(number: number): string
     local stringified = tostring(number)
-    return style.color.yellow(stringified)
+    return style.color.cyan(stringified)
 end
 
 local function fmt_string(str: string): string
@@ -13,7 +13,7 @@ end
 
 local function fmt_boolean(boolean: boolean): string
     local stringified = tostring(boolean)
-    return style.color.purple(stringified)
+    return style.color.bright_yellow(stringified)
 end
 
 local function fmt_any(any: number | string | boolean): string
@@ -27,7 +27,6 @@ local function fmt_any(any: number | string | boolean): string
 
     return panic(`Unhandled primitive {type(any)}`)
 end
-
 
 return table.freeze({
     any = fmt_any,
