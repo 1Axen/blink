@@ -33,7 +33,7 @@ local function fmt_parameters(parameters: {hir.Parameter}, fmt_builder: Builder)
 end
 
 local function fmt_type(decl: hir.Type, fmt_builder: Builder)
-    builder.append(fmt_builder, `{FIELD_STYLE("Type")} \{\n`)
+    builder.append(fmt_builder, `{CATEGORY_STYLE("Type")} \{\n`)
     builder.indent(fmt_builder)
 
     builder.append_line(fmt_builder, `{FIELD_STYLE("name:")} {fmt_types.string(decl.name)},`)
@@ -60,7 +60,7 @@ local function fmt_type(decl: hir.Type, fmt_builder: Builder)
 end
 
 local function fmt_event(decl: hir.Event, fmt_builder: Builder)
-    builder.append(fmt_builder, `{FIELD_STYLE("Event")} \{\n`)
+    builder.append(fmt_builder, `{CATEGORY_STYLE("Event")} \{\n`)
     builder.indent(fmt_builder)
 
     builder.append_line(fmt_builder, `{FIELD_STYLE("name:")} {decl.name}`)
@@ -81,7 +81,7 @@ local function fmt_event(decl: hir.Event, fmt_builder: Builder)
 end
 
 local function fmt_function(decl: hir.Function, fmt_builder: Builder)
-    builder.append(fmt_builder, `{FIELD_STYLE("Function")} \{\n`)
+    builder.append(fmt_builder, `{CATEGORY_STYLE("Function")} \{\n`)
     builder.indent(fmt_builder)
 
     builder.append_line(fmt_builder, `{FIELD_STYLE("name:")} {decl.name}`)
