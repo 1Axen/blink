@@ -161,6 +161,18 @@ local function report_unrepresentable_range(node: ast.Range, bounds: Range): nev
     .error()
 end
 
+local function report_self_recursive_type(node: ast.StatType): never
+    return diagnostics.report.create("Error")
+        .with_code(codes.type_checking.SelfRecursiveType)
+        .with_message("Self-recursive type cannot be resolved")
+        .with_label(diagnostics.label.create(node.span)
+            .with_color(diagnostics.style.color.red)
+            .with_message("Remove self-recursion")
+        )
+    .finish()
+    .error()
+end
+
 local function ty_from_id(ctx: Context, ty_id: TyId): Ty
     local ty = ctx.hir.tys[ty_id]
     if ty == nil then
@@ -254,6 +266,14 @@ local function range_node_to_range_class(node: ast.Range, bounds: Range): Range
     end
 
     return range.create(min, max)
+end
+
+local function generic_type(ctx: Context, ty: Ty, args: {ty.TyId<ty.Generic>}): ty.GenericType
+    return {
+        kind = "generic_type",
+        ty = ty,
+        args = args
+    }
 end
 
 --> Luau Primitives
@@ -599,14 +619,6 @@ local function expr_tagged_enum(ctx: Context, expr: ast.ExprTaggedEnum): ty.Tagg
     }
 end
 
-local function expr_generic_type(ctx: Context, ty: Ty, args: {ty.TyId<ty.Generic>}): ty.GenericType
-    return {
-        kind = "generic_type",
-        ty = ty,
-        args = args
-    }
-end
-
 local function expr_reference(ctx: Context, expr: ast.ExprReference): TyId
     if ctx.generics then
         local path_string = path_to_string(expr.path)
@@ -666,7 +678,7 @@ local function expr_reference(ctx: Context, expr: ast.ExprReference): TyId
 
         local ty_id = id.node_id.to_ty_id(node_id)
         local decl_ty = ty_from_id(ctx, decl.ty) :: ty.GenericType
-        local generic_type: ty.GenericType = expr_generic_type(ctx, decl_ty.ty, generic_args)
+        local generic_type: ty.GenericType = generic_type(ctx, decl_ty.ty, generic_args)
         ctx.hir.tys[ty_id] = generic_type
 
         return ty_id
@@ -726,7 +738,7 @@ function expression(ctx: Context, expr: ast.Expression): TyId
     end
 
     if ctx.generics then
-        ty = expr_generic_type(ctx, ty, ctx.generics.args)
+        ty = generic_type(ctx, ty, ctx.generics.args)
     end
 
     --> store ty
@@ -895,6 +907,64 @@ function block(ctx: Context, block: ast.Block)
     end
 end
 
+local function substitute_placeholders(ctx: Context): never?
+    local hir = ctx.hir
+    local tys = hir.tys
+
+    for ty_id, placeholder in tys do
+        if placeholder.kind ~= "placeholder" then
+            continue
+        end
+
+        local path = placeholder.path
+        local args = placeholder.args
+
+        local expr_node: ast.ExprReference = node_from_id(ctx, id.ty_id.to_node_id(ty_id)) :: any
+        local expr_generics = expr_node.generics
+
+        local node: ast.StatType = symbols.search(ctx.ast.symbols, path) :: any
+        local node_id = node.id
+        local decl_id = id.node_id.to_decl_id(node_id)
+
+        local decl: hir.Type = decl_from_id(ctx, decl_id) :: any
+        local decl_ty = ty_from_id(ctx, decl.ty)
+        local decl_generics = decl.generics
+
+        --> check for self recursion
+        do
+            if decl_ty == placeholder then
+                return report_self_recursive_type(node)
+            elseif decl_ty.kind == "optional" and decl_ty.of == ty_id then
+                return report_self_recursive_type(node)
+            end
+        end
+
+        if decl_generics then
+            local n_decl_generics = #decl_generics
+            if args == nil then
+                return report_few_none_generics(expr_node.path, n_decl_generics)
+            end
+
+            if expr_generics == nil then
+                return panic("placeholder has args but origin node doesn't")
+            end
+
+            local n_args = #args
+            if n_args < n_decl_generics then
+                return report_few_generics(expr_generics, n_decl_generics)
+            elseif n_args > n_decl_generics then
+                return report_extra_generics(expr_generics, n_decl_generics)
+            end
+
+            decl_ty = generic_type(ctx, decl_ty, args)
+        end
+
+        tys[ty_id] = decl_ty
+    end
+
+    return nil
+end
+
 local function lower_ast_to_hir(ast: Ast): Hir
     local hir: Hir = {
         tys = {},
@@ -917,6 +987,9 @@ local function lower_ast_to_hir(ast: Ast): Hir
 
     --> traverse the ast
     block(context, ast.body)
+
+    --> substitute placeholders with their final values
+    substitute_placeholders(context)
 
     return hir
 end

@@ -2,22 +2,23 @@ option types_output = "../out/types"
 
 import "./large.blink" as external
 
-type a = u8[0.0..255]
-type b = map {[string]: u8}
+type health = u8[0.0..100]
+type hash_map = map {[string]: u8}
+type byte_vector = vector<u8, u8, u8>
 
 type c = struct {
     field: u8(0..0)
 }
 
-type d = enum {
+type keywords = enum {
     "option",
 }
 
-type d_tagged<T> = enum "Type" {
-    Some {
-        Value: T
+type Option<T> = enum "has_value" {
+    true {
+        value: T
     },
-    None {}
+    false {}
 }
 
 type e<K, V> = struct {
@@ -31,11 +32,18 @@ type f = c & struct {
 
 type g = e<u8, string>
 
+type node<T> = struct {
+    value: T,
+    next: node<T>?
+}
+
+type byte_linked_list = node<u8>
+
 event send {
     from: Server,
     type: Reliable,
     call: SingleSync,
-    data: (a, foo: b, c, bar: d, d_tagged<unknown>, e<u8, u8>, f)
+    data: (health, hash_map: hash_map, c, words: keywords, input: Option<unknown>, e<u8, u8>, f)
 }
 
 function request {

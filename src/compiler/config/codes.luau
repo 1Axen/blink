@@ -37,6 +37,7 @@ type_checking.UnrepresentableRange = next_id()
 type_checking.LessGenericsParameters = next_id()
 type_checking.ExtraGenericsParameters = next_id()
 type_checking.InvalidGenericParameter = next_id()
+type_checking.SelfRecursiveType = next_id()
 
 return table.freeze({
     parser = parser,
