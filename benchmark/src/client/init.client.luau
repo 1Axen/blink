@@ -31,7 +31,7 @@ end
 
 type Benchmark = {
     Sent: number,
-    Recieve: number,
+    Receive: number,
     Bandwidth: {number},
     Framerate: {number}
 }
@@ -121,7 +121,7 @@ local function RunBenchmark(Tool: string, Bench: string): Benchmark
 
     return {
         Sent = Sent,
-        Recieve = 0,
+        Receive = 0,
         Bandwidth = BandwidthPercentiles,
         Framerate = FrameratePercentiles
     }
@@ -145,10 +145,10 @@ local function RunBenchmarks()
         WaitForPacketsToProcess()
     end
     
-    local Recieved = ReplicatedStorage.Shared.GetRecieved:InvokeServer()
-    for Bench, Tools in Recieved do
-        for Tool, Recieve in Tools do
-            Results[Bench][Tool].Recieve = Recieve
+    local Received = ReplicatedStorage.Shared.GetReceived:InvokeServer()
+    for Bench, Tools in Received do
+        for Tool, Receive in Tools do
+            Results[Bench][Tool].Receive = Receive
         end
     end
 

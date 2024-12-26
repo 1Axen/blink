@@ -16,7 +16,7 @@
           "Packages": {
             "$path": "packages"
           },
-          "GetRecieved": {
+          "GetReceived": {
             "$className": "RemoteFunction"
           },
           "Generate": {

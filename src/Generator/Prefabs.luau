@@ -23,7 +23,7 @@ type AssertPrefab = {
 type AssertGenerator = ((Variable: string, ...any) -> AssertPrefab)
 
 local SEND_BUFFER = "SendBuffer"
-local RECIEVE_BUFFER = "RecieveBuffer"
+local RECEIVE_BUFFER = "ReceivBuffer"
 local SEND_POSITION = "SendOffset"
 
 local BYTE = 1
@@ -166,7 +166,7 @@ end
 local function GenerateNumberGenerator(Type: string, Size: number): (TypePrefab, {Type: string, Generate: Generate})
 	local Prefab = {
 		Read = function(Variable: string, Block: Block)
-			Block:Line(`{Block:Declare(Variable)} = buffer.read{Type}({RECIEVE_BUFFER}, {Block:Read(Size)})`)
+			Block:Line(`{Block:Declare(Variable)} = buffer.read{Type}({RECEIVE_BUFFER}, {Block:Read(Size)})`)
 		end,
 		Write = function(Value: string, Block: Block)
 			Block:Line(`buffer.write{Type}({SEND_BUFFER}, {Block:Allocate(Size)}, {Value})`)
@@ -262,7 +262,7 @@ Primitives.f16 = {
 do
 	Types.boolean = {
 		Read = function(Variable: string, Block: Block)
-			Block:Line(`{Block:Declare(Variable)} = (buffer.readu8({RECIEVE_BUFFER}, {Block:Read(BYTE)}) == 1)`)
+			Block:Line(`{Block:Declare(Variable)} = (buffer.readu8({RECEIVE_BUFFER}, {Block:Read(BYTE)}) == 1)`)
 		end,
 		Write = function(Value: string, Block: Block)
 			Block:Line(`buffer.writeu8({SEND_BUFFER}, {Block:Allocate(BYTE)}, {Value} and 1 or 0)`)
@@ -281,7 +281,7 @@ do
 		Read = function(Variable: string, Block: Block, Range: NumberRange?)
 			--> Fixed size string
 			if Range and Range.Min == Range.Max then
-				Block:Line(`{Block:Declare(Variable)} = buffer.readstring({RECIEVE_BUFFER}, {Block:Read(Range.Min)}, {Range.Min})`)
+				Block:Line(`{Block:Declare(Variable)} = buffer.readstring({RECEIVE_BUFFER}, {Block:Read(Range.Min)}, {Range.Min})`)
 				return
 			end
 	
@@ -289,7 +289,7 @@ do
 			local LengthType = GetTypeToUse(Upper)
 
 			LengthType.Read("Length", Block)
-			Block:Line(`{Block:Declare(Variable)} = buffer.readstring({RECIEVE_BUFFER}, Read(Length), Length)`)
+			Block:Line(`{Block:Declare(Variable)} = buffer.readstring({RECEIVE_BUFFER}, Read(Length), Length)`)
 		end,
 		Write = function(Value: string, Block: Block, Range: NumberRange?)
 			if Range and Range.Min == Range.Max then
@@ -351,7 +351,7 @@ do
 	Types.buffer = {
 		Read = function(Variable: string, Block: Block, Range: NumberRange?)
 			if Range and Range.Min == Range.Max then
-				Block:Line(`buffer.copy({Variable}, 0, {RECIEVE_BUFFER}, {Block:Read(Range.Max)}, {Range.Max})`)
+				Block:Line(`buffer.copy({Variable}, 0, {RECEIVE_BUFFER}, {Block:Read(Range.Max)}, {Range.Max})`)
 				return
 			end
 			
@@ -359,7 +359,7 @@ do
 			local LengthType = GetTypeToUse(Upper)
 			LengthType.Read("Length", Block)
 			Block:Line(`{Block:Declare(Variable)} = buffer.create(Length)`)
-			Block:Line(`buffer.copy({Variable}, 0, {RECIEVE_BUFFER}, Read(Length), Length)`)
+			Block:Line(`buffer.copy({Variable}, 0, {RECEIVE_BUFFER}, Read(Length), Length)`)
 		end,
 		Write = function(Value: string, Block: Block, Range: NumberRange?)
 			if Range and Range.Min == Range.Max then
@@ -424,7 +424,7 @@ do
 			local R = Block:Read(BYTE)
 			local G = Block:Read(BYTE)
 			local B = Block:Read(BYTE)
-			Block:Line(`{Block:Declare(Variable)} = Color3.fromRGB(buffer.readu8({RECIEVE_BUFFER}, {R}), buffer.readu8({RECIEVE_BUFFER}, {G}), buffer.readu8({RECIEVE_BUFFER}, {B}))`)
+			Block:Line(`{Block:Declare(Variable)} = Color3.fromRGB(buffer.readu8({RECEIVE_BUFFER}, {R}), buffer.readu8({RECEIVE_BUFFER}, {G}), buffer.readu8({REceive_BUFFER}, {B}))`)
 		end,
 		Write = function(Value: string, Block: Block)
 			Block:Line(`local Color = {Value}`)
@@ -444,8 +444,8 @@ end
 do
 	Types.Instance = {
 		Read = function(Variable: string, Block: Block)
-			--Block:Line("RecieveInstanceCursor += 1")
-			Block:Line(`{Block:Declare(Variable)} = RecieveInstances[RecieveInstanceCursor]`)
+			--Block:Line("ReceiveInstanceCursor += 1")
+			Block:Line(`{Block:Declare(Variable)} = ReceiveInstances[ReceiveInstanceCursor]`)
 		end,
 		Write = function(Value: string, Block: Block)
 			Block:Line(`table.insert(SendInstances, {Value} or false :: any)`)
@@ -464,8 +464,8 @@ end
 do
 	Types.unknown = {
 		Read = function(Variable: string, Block: Block)
-			Block:Line("RecieveInstanceCursor += 1")
-			Block:Line(`{Block:Declare(Variable)} = RecieveInstances[RecieveInstanceCursor]`)
+			Block:Line("ReceiveInstanceCursor += 1")
+			Block:Line(`{Block:Declare(Variable)} = ReceiveInstances[ReceiveInstanceCursor]`)
 		end,
 		Write = function(Value: string, Block: Block)
 			Block:Line(`table.insert(SendInstances, {Value})`)

@@ -224,7 +224,7 @@ event Command {
 }
 ```
 
-In the code above we have a simple packet transmission protocol which contains the current packets identifier (Sequence), the last recieved packet (Ack) and a generic data field. Instead of repeating the contents of `Packet` everytime we need to send something over the wire we can take advantage of generics to automatically fill the `Data` field with whatever we need to transmit.
+In the code above we have a simple packet transmission protocol which contains the current packets identifier (Sequence), the last received packet (Ack) and a generic data field. Instead of repeating the contents of `Packet` everytime we need to send something over the wire we can take advantage of generics to automatically fill the `Data` field with whatever we need to transmit.
 ### Merging
 Structs can merge other structs into themselves, this is equivalent to a table union in Luau. When merging avoid duplicate fields as they will result in a compilation error.
 
