@@ -7,8 +7,8 @@ Options go at the top of a source file and are used to configure the output of B
 option [OPTION] = [VALUE]
 ```
 ### `Casing`
-Default: `Pascal`  
-Options: `Pascal`, `Camel`, `Snake`  
+Default: `Pascal`
+Options: `Pascal`, `Camel`, `Snake`
 Controls the casing with which event/function methods generate.
 ```ts copy
 option Casing = Camel
@@ -21,8 +21,8 @@ option ServerOutput = "../Network/Server.luau"
 option ClientOutput = "../Network/Client.luau"
 ```
 ### `Typescript`
-Default: `false`  
-Tells Blink whether to generate TypeScript definition files alongside Luau files.  
+Default: `false`
+Tells Blink whether to generate TypeScript definition files alongside Luau files.
 The generated `d.ts` files are placed in the same path as your output files.
 ```ts copy
 option Typescript = true
@@ -34,7 +34,7 @@ Instructs the compiler to automatically output all events with a polling API.
 option UsePolling = true
 ```
 ### `FutureLibrary` and `PromiseLibrary`
-In order to use future and promise yield types with functions a path to each library used must be specified  
+In order to use future and promise yield types with functions a path to each library used must be specified
 ```ts copy
 option FutureLibrary = "ReplicatedStorage.Packages.Future"
 option PromiseLibrary = "ReplicatedStorage.Packages.Promise"
@@ -46,14 +46,14 @@ Controls if Blink will check types when writing them (firing an event/invoking a
     Blink only checks for builtin primitives. For example if a number was passed. More complicated types like structs, maps and enums cannot be validated.
 </Callout>
 ### `ManualReplication`
-Default: `false`  
-Controls if Blink will replicate events and functions automatically at the end of every frame.  
+Default: `false`
+Controls if Blink will replicate events and functions automatically at the end of every frame.
 When set to `true` automatic replication will be disabled and a `StepReplication` function will be exposed instead.
 ## Primitives
-You can define a primitive using the `type` keyword  
-Blink supports the following primitives:  
+You can define a primitive using the `type` keyword
+Blink supports the following primitives:
 
-|Name    |Size (Bytes)|Supports ranges  |Minimum        |Maximum      |Components| 
+|Name    |Size (Bytes)|Supports ranges  |Minimum        |Maximum      |Components|
 |--------|------------|-----------------|---------------|-------------|----------|
 |u8      |1 Byte      |Yes              |0              |255          |No        |
 |u16     |2 Bytes     |Yes              |0              |65,535       |No        |
@@ -76,12 +76,12 @@ Blink supports the following primitives:
 ## Attributes
 A type can be marked optional by appending `?` at the end.
 
-Arrays can be defined by appending `[SIZE]` or `[[MIN]..[MAX]]` after the type declaration.  
+Arrays can be defined by appending `[SIZE]` or `[[MIN]..[MAX]]` after the type declaration.
 
-Primitives can be constrained to ranges by writing `([MIN]..[MAX])` after the primitive type. Ranges are inclusive.  
+Primitives can be constrained to ranges by writing `([MIN]..[MAX])` after the primitive type. Ranges are inclusive.
 
-Components can be specified using the angled brackets `<>`, they allow you to specify what numerical type (`u8`, `u16`, `u32`, `i8`, `i16`, `i32`, `f16`, `f32`, `f64`) to use for `vector` and `CFrame` axes.  
-For example `vector<i16>` will define a vector that represents its axes using `i16`.  
+Components can be specified using the angled brackets `<>`, they allow you to specify what numerical type (`u8`, `u16`, `u32`, `i8`, `i16`, `i32`, `f16`, `f32`, `f64`) to use for `vector` and `CFrame` axes.
+For example `vector<i16>` will define a vector that represents its axes using `i16`.
 CFrames take two components `CFrame<f32, f32>`, one representing position and one representing rotation in order.
 <Callout>
     Using non float types for CFrame will result in the rotation being reset to 0.
@@ -100,12 +100,12 @@ struct Dictionary {
 }[0..255]
 ```
 ## Sets
-You can define a set using the `set` keyword.  
-Sets are a string and boolean key value pair dictionary, they can be used to send a set of flags over the network more efficiently than can be done with other data types like structs.  
+You can define a set using the `set` keyword.
+Sets are a string and boolean key value pair dictionary, they can be used to send a set of flags over the network more efficiently than can be done with other data types like structs.
 <Callout type="info">
-    Sets with up to 32 flags are bit-packed to reduce bandwidth usage.  
-    Going over the limit will cause flags to be encoded using 1 byte per flag.  
-    It is recommended to split sets containing over 32 flags into multiple sets instead of using one.  
+    Sets with up to 32 flags are bit-packed to reduce bandwidth usage.
+    Going over the limit will cause flags to be encoded using 1 byte per flag.
+    It is recommended to split sets containing over 32 flags into multiple sets instead of using one.
 </Callout>
 ```ts copy
 set GameFlags = {
@@ -132,18 +132,18 @@ local GameFlags: Blink.GameFlags = {
 Blink.SetGameFlags.FireAll(GameFlags)
 ```
 ## Enums
-You can define enums using the `enum` keyword.  
+You can define enums using the `enum` keyword.
 Blink has two type of enums, unit and tagged enums.
 ### Unit Enums
-Unit enums represent a set of possible values.  
+Unit enums represent a set of possible values.
 For example, a unit enum representing the state of a car engine:
 ```ts copy
 enum State = { Starting, Started, Stopping, Stopped }
 ```
 ### Tagged Enums
-Tagged enums represent a set of possible variants with some data attached to each.  
-They are defined using a string which represents the tag field name.  
-Each variant is defined by a tag, followed by a struct.  
+Tagged enums represent a set of possible variants with some data attached to each.
+They are defined using a string which represents the tag field name.
+Each variant is defined by a tag, followed by a struct.
 ```ts copy
 struct Vector2 {
     X: u16,
@@ -167,7 +167,7 @@ enum MouseEvent = "Type" {
 }
 ```
 ## Structs
-You can define structs using the `struct` keyword  
+You can define structs using the `struct` keyword
 Structs can also hold structs within:
 
 ```ts copy
@@ -224,7 +224,7 @@ event Command {
 }
 ```
 
-In the code above we have a simple packet transmission protocol which contains the current packets identifier (Sequence), the last recieved packet (Ack) and a generic data field. Instead of repeating the contents of `Packet` everytime we need to send something over the wire we can take advantage of generics to automatically fill the `Data` field with whatever we need to transmit.
+In the code above we have a simple packet transmission protocol which contains the current packets identifier (Sequence), the last received packet (Ack) and a generic data field. Instead of repeating the contents of `Packet` everytime we need to send something over the wire we can take advantage of generics to automatically fill the `Data` field with whatever we need to transmit.
 ### Merging
 Structs can merge other structs into themselves, this is equivalent to a table union in Luau. When merging avoid duplicate fields as they will result in a compilation error.
 
@@ -241,7 +241,7 @@ struct c<A, B, C> {
     a: A,
     b: b,
     c: C
-} 
+}
 
 struct merge {
     ..a,
@@ -263,7 +263,7 @@ type merge = {
 ```
 
 ## Maps
-You can define maps using the `map` keyword   
+You can define maps using the `map` keyword
 <Callout type="info">
     Maps cannot have optional keys or values as there is no way to represent those in Luau.
 </Callout>
@@ -273,7 +273,7 @@ map Example = {[string]: u8}
 ```
 
 ## Instances
-Instances are another type of Primitive and as such they can be defined using the `type` keyword  
+Instances are another type of Primitive and as such they can be defined using the `type` keyword
 
 ```ts copy
 type Example = Instance
@@ -281,13 +281,13 @@ type Example = Instance(ClassName) -- You can also specify instance class
 ```
 
 <Callout>
-    If a non optional instance results in nil on the recieving side it will result in an error, this may be caused by various things like streaming, players leaving etc.  
+    If a non optional instance results in nil on the recieving side it will result in an error, this may be caused by various things like streaming, players leaving etc.
     In order to get around this you must mark instances as **optional**.
 </Callout>
 
 ## Tuples
-Tuples can be defined using brackets `()`.  
-**Tuples can only be defined within the data field of an event/function.** 
+Tuples can be defined using brackets `()`.
+**Tuples can only be defined within the data field of an event/function.**
 
 ```ts copy
 event Example {
@@ -299,12 +299,12 @@ event Example {
 
 ```
 ## Events
-You can define events using the `event` keyword  
-Events have 4 fields:  
-`From` - `Client` or `Server`  
-`Type` - `Reliable` or `Unreliable`  
+You can define events using the `event` keyword
+Events have 4 fields:
+`From` - `Client` or `Server`
+`Type` - `Reliable` or `Unreliable`
 `Poll` - `true` or `false` - Controls whether the event will generate using the polling API
-`Call` - `SingleSync`, `SingleAsync`, `ManySync`, `ManyAsync` - `Many` refers to multiple connections 
+`Call` - `SingleSync`, `SingleAsync`, `ManySync`, `ManyAsync` - `Many` refers to multiple connections
 `Data` - Can hold either a type definition or a reference to an already defined type, omit for events with no data.
 ```ts copy
 event Simple {
@@ -347,12 +347,12 @@ for Index, EntityMap in Blink.ReplicateEntities.Iter() do
 end
 ```
 ## Functions
-You can define functions using the `function` keyword  
-Functions have 3 fields:  
-`Yield` - `Coroutine` or `Future` or `Promise`    
-Deifnes what library will be used to handle invocations  
-`Data` - Can hold either a type definition or a reference to an already defined type, omit for functions with no data. 
-`Return` - Can hold either a type definition or a reference to an already defined type, omit for functions with no return. 
+You can define functions using the `function` keyword
+Functions have 3 fields:
+`Yield` - `Coroutine` or `Future` or `Promise`
+Deifnes what library will be used to handle invocations
+`Data` - Can hold either a type definition or a reference to an already defined type, omit for functions with no data.
+`Return` - Can hold either a type definition or a reference to an already defined type, omit for functions with no return.
 ```ts copy
 function Example {
     Yield: Coroutine,
@@ -373,10 +373,10 @@ function ExamplePromise {
 }
 ```
 ## Scopes (Namespaces)
-You can define a scope (namespace) using the `scope` keyword  
-Scopes allow you to group similiar types together for further organization  
+You can define a scope (namespace) using the `scope` keyword
+Scopes allow you to group similiar types together for further organization
 
-Defining scopes:  
+Defining scopes:
 ```ts copy
 scope ExampleScope {
     type InScopeType = u8
@@ -393,7 +393,7 @@ struct Example {
 }
 ```
 ---
-Scopes automatically inherit any declarations made within their parent scopes (including main)  
+Scopes automatically inherit any declarations made within their parent scopes (including main)
 ```ts copy
 type Example = u8
 scope ExampleScope {
@@ -404,9 +404,9 @@ scope ExampleScope {
         map ExampleMap = {[Example]: TypeInScope}
     }
 }
-```  
+```
 ---
-Using scopes in code:  
+Using scopes in code:
 ```lua copy
 local Blink = require(PATH_TO_BLINK)
 Blink.ExampleScope.InScopeEvent.FireAll(0)
@@ -417,8 +417,8 @@ local Number: Blink.ExampleScope_InScopeEvent = 0
 <Callout>
     Imports are not currently supported when compiling using the Studio Plugin.
 </Callout>
-Blink allows you to use multiple definition files through importing.  
-Imports will pull all declarations (events, functions, scopes and types) from the target file and load them into the importing scope as a new scope using either the file name or a user provided name through the `as` keyword.  
+Blink allows you to use multiple definition files through importing.
+Imports will pull all declarations (events, functions, scopes and types) from the target file and load them into the importing scope as a new scope using either the file name or a user provided name through the `as` keyword.
 ```ts copy
 import "../path/File.blink" --> Imports as a new scope "File"
 type a = File.b

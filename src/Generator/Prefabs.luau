@@ -23,7 +23,7 @@ type AssertPrefab = {
 type AssertGenerator = ((Variable: string, ...any) -> AssertPrefab)
 
 local SEND_BUFFER = "SendBuffer"
-local RECIEVE_BUFFER = "RecieveBuffer"
+local RECIEVE_BUFFER = "ReceiveBuffer"
 local SEND_POSITION = "SendOffset"
 
 local BYTE = 1
@@ -444,8 +444,8 @@ end
 do
 	Types.Instance = {
 		Read = function(Variable: string, Block: Block)
-			--Block:Line("RecieveInstanceCursor += 1")
-			Block:Line(`{Block:Declare(Variable)} = RecieveInstances[RecieveInstanceCursor]`)
+			--Block:Line("ReceiveInstanceCursor += 1")
+			Block:Line(`{Block:Declare(Variable)} = ReceiveInstances[ReceiveInstanceCursor]`)
 		end,
 		Write = function(Value: string, Block: Block)
 			Block:Line(`table.insert(SendInstances, {Value} or false :: any)`)
@@ -464,8 +464,8 @@ end
 do
 	Types.unknown = {
 		Read = function(Variable: string, Block: Block)
-			Block:Line("RecieveInstanceCursor += 1")
-			Block:Line(`{Block:Declare(Variable)} = RecieveInstances[RecieveInstanceCursor]`)
+			Block:Line("ReceiveInstanceCursor += 1")
+			Block:Line(`{Block:Declare(Variable)} = ReceiveInstances[ReceiveInstanceCursor]`)
 		end,
 		Write = function(Value: string, Block: Block)
 			Block:Line(`table.insert(SendInstances, {Value})`)
