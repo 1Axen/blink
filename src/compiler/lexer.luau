@@ -13,9 +13,6 @@ export type TokenBase<Kind> = {
 }
 
 export type Token = 
-    --> trivia
-    | TokenBase<"attribute">
-
     --> words
     | TokenBase<"word">
     | TokenBase<"as">
@@ -38,6 +35,7 @@ export type Token =
     | TokenBase<"string">
 
     --> symbols
+    | TokenBase<"@">
     | TokenBase<".">
     | TokenBase<"=">
     | TokenBase<":">
@@ -252,6 +250,8 @@ local function tokenize(input: File): {Token}
             return { kind = ".", span = value_span }
         elseif first == string.byte("&") then
             return { kind = "&", span = value_span }
+        elseif first == string.byte("@") then
+            return { kind = "@", span = value_span }
         end
 
         return { kind = "error", span = value_span }

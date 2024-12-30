@@ -254,5 +254,5 @@ local function type_check_hir(hir: Hir)
 end
 
 return table.freeze({
-    type_check_hir = type_check_hir
+    hir = type_check_hir
 })

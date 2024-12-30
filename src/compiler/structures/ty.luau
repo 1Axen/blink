@@ -59,6 +59,11 @@ export type BooleanLiteral = {
     read value: boolean
 }
 
+export type Literal =
+    | StringLiteral
+    | NumberLiteral
+    | BooleanLiteral
+
 -- ROBLOX Datatypes
 
 export type Enum = {

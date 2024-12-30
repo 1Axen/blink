@@ -47,6 +47,8 @@ type Context = {
         args: {TyId<ty.Generic>},
         values: {[string]: TyId<ty.Generic>}
     }?,
+
+    hashed_tys: {[string]: Ty},
 }
 
 local DUMMY_ID = ast.DUMMY_ID
@@ -763,6 +765,29 @@ local function expr_pack(ctx: Context, expr: ast.ExprPack): {hir.Parameter}
     return parameters
 end
 
+local function attribute(ctx: Context, node: ast.Attribute): hir.Attribute
+    local name = node.name.value
+
+    local args = {}
+    for _, arg in node.args do
+        table.insert(args, arg.value)
+    end
+
+    return {
+        name = name,
+        args = args
+    }
+end
+
+local function attributes(ctx: Context, list: {ast.Attribute}): {hir.Attribute}
+    local attributes: {hir.Attribute} = {}
+    for _, node in list do
+        table.insert(attributes, attribute(ctx, node))
+    end
+
+    return attributes
+end
+
 local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
     local scope = ctx.scope
 
@@ -807,6 +832,7 @@ local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
         kind = "type",
         name = stat.name.value,
         scope = scope,
+        attributes = attributes(ctx, stat.attributes),
 
         ty = ty_id,
         generics = args
@@ -848,6 +874,7 @@ local function stat_event(ctx: Context, stat: ast.StatEvent): hir.Event
     return {
         kind = "event",
         scope = ctx.scope,
+        attributes = attributes(ctx, stat.attributes),
 
         name = name,
         from = from :: any,
@@ -867,6 +894,7 @@ local function stat_function(ctx: Context, stat: ast.StatFunction): hir.Function
     return {
         kind = "function",
         scope = ctx.scope,
+        attributes = attributes(ctx, stat.attributes),
 
         name = name,
         yield = yield :: any,
@@ -965,7 +993,7 @@ local function substitute_placeholders(ctx: Context): never?
     return nil
 end
 
-local function lower_ast_to_hir(ast: Ast): Hir
+local function build_hir(ast: Ast): Hir
     local hir: Hir = {
         tys = {},
         decls = {},
@@ -982,7 +1010,9 @@ local function lower_ast_to_hir(ast: Ast): Hir
         symbols = ast.symbols,
 
         nodes = {},
-        generics = nil :: any
+        generics = nil :: any,
+        
+        hashed_tys = {}
     }
 
     --> traverse the ast
@@ -995,5 +1025,5 @@ local function lower_ast_to_hir(ast: Ast): Hir
 end
 
 return table.freeze({
-    lower_ast_to_hir = lower_ast_to_hir
+    hir = build_hir
 })

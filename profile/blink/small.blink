@@ -6,32 +6,36 @@ type health = u8[0.0..100]
 type hash_map = map {[string]: u8}
 type byte_vector = vector<u8, u8, u8>
 
-type c = struct {
-    field: u8(0..0)
-}
-
 type keywords = enum {
     "option",
 }
 
-type Option<T> = enum "has_value" {
+type opt<T> = enum "exists" {
     true {
         value: T
     },
     false {}
 }
 
-type e<K, V> = struct {
-    key: K,
+type entity<C, V> = struct {
+    id: u8,
+    class: C,
+    health: health,
     value: V
 }
 
-type f = c & struct {
-    some_field: u8
+type cat = entity<"cat", struct {meows: u8}>
+
+type weapon = struct {
+    ammo: u8(0..0)
 }
 
-type g = e<u8, string>
+type shotgun = weapon & struct {
+    pellets: u8
+}
 
+@stable
+@bitpack
 type node<T> = struct {
     value: T,
     next: node<T>?
@@ -39,11 +43,18 @@ type node<T> = struct {
 
 type byte_linked_list = node<u8>
 
+type invalid_map = map {[u8]: u8}
+
+type vector2 = vector<f32, f32, 0>
+
+type class = "Part"
+type part = Instance<class>
+
 event send {
     from: Server,
     type: Reliable,
     call: SingleSync,
-    data: (health, hash_map: hash_map, c, words: keywords, input: Option<unknown>, e<u8, u8>, f)
+    data: (target: cat, weapon: shotgun)
 }
 
 function request {

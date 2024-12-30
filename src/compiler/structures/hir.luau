@@ -13,6 +13,11 @@ type NodeId<T = Node> = ast.NodeId<T>
 export type DeclId<T = Decl> = number & { __kind: "decl", __T: T}
 export type ScopeId = number & { __kind: "scope" }
 
+export type Attribute = {
+    name: string,
+    args: {number | boolean | string}
+}
+
 export type Parameter = {
     name: string?,
     value: TyId
@@ -22,6 +27,7 @@ export type Type<T = ty.Ty> = {
     read kind: "type",
     read name: string,
     read scope: ScopeId,
+    read attributes: {Attribute},
 
     read ty: TyId<T>,
     read generics: {TyId<ty.Generic>}?
@@ -31,6 +37,7 @@ export type Event = {
     read kind: "event",
     read name: string,
     read scope: ScopeId,
+    read attributes: {Attribute},
 
     read from: "Server" | "Client" | "Both",
     read type: "Reliable" | "Unreliable",
@@ -43,6 +50,7 @@ export type Function = {
     read kind: "function",
     read name: string,
     read scope: ScopeId,
+    read attributes: {Attribute},
 
     read yield: "Coroutine" | "Promise" | "Future",
     read data: {Parameter}?,

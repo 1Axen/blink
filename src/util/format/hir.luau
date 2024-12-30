@@ -11,8 +11,31 @@ local builder = require("@util/builder")
 local FIELD_STYLE = style.modifer.dim
 local IDENT_STYLE = style.color.yellow
 local CATEGORY_STYLE = style.combine(style.color.bright_white, style.modifer.bold)
+local ATTRIBUTE_STYLE = style.color.bright_purple
 
 type Builder = builder.Builder
+
+local function fmt_attribute(attribute: hir.Attribute, fmt_builder: Builder)
+    builder.append(fmt_builder, ATTRIBUTE_STYLE(`@{attribute.name}`))
+
+    if #attribute.args > 0 then
+        builder.append(fmt_builder, ATTRIBUTE_STYLE(")"))
+        for index, arg in attribute.args do
+            builder.append(fmt_builder, fmt_types.any(arg))
+            if index < #attribute.args then
+                builder.append(fmt_builder, ",")
+            end
+        end
+        builder.append(fmt_builder, ATTRIBUTE_STYLE(")"))
+    end
+end
+
+local function fmt_attributes(attributes: {hir.Attribute}, fmt_builder: Builder)
+    for index, attribute in attributes do
+        fmt_attribute(attribute, fmt_builder)
+        builder.append(fmt_builder, " ")
+    end
+end
 
 local function fmt_parameters(parameters: {hir.Parameter}, fmt_builder: Builder)
     builder.append(fmt_builder, "(")
@@ -33,6 +56,8 @@ local function fmt_parameters(parameters: {hir.Parameter}, fmt_builder: Builder)
 end
 
 local function fmt_type(decl: hir.Type, fmt_builder: Builder)
+    fmt_attributes(decl.attributes, fmt_builder)
+
     builder.append(fmt_builder, `{CATEGORY_STYLE("Type")} \{\n`)
     builder.indent(fmt_builder)
 
@@ -60,6 +85,8 @@ local function fmt_type(decl: hir.Type, fmt_builder: Builder)
 end
 
 local function fmt_event(decl: hir.Event, fmt_builder: Builder)
+    fmt_attributes(decl.attributes, fmt_builder)
+
     builder.append(fmt_builder, `{CATEGORY_STYLE("Event")} \{\n`)
     builder.indent(fmt_builder)
 
@@ -81,6 +108,8 @@ local function fmt_event(decl: hir.Event, fmt_builder: Builder)
 end
 
 local function fmt_function(decl: hir.Function, fmt_builder: Builder)
+    fmt_attributes(decl.attributes, fmt_builder)
+
     builder.append(fmt_builder, `{CATEGORY_STYLE("Function")} \{\n`)
     builder.indent(fmt_builder)
 

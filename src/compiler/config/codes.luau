@@ -19,6 +19,7 @@ local parser = {}
 parser.UnexpectedToken = next_id()
 parser.DuplicateEntry = next_id()
 parser.MissingEntry = next_id()
+parser.SyntaxError = next_id()
 
 local analysis = {}
 analysis.Shadow = next_category()

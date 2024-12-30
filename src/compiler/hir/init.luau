@@ -6,12 +6,12 @@ local ty = require("@compiler/structures/ty")
 local hir = require("@compiler/structures/hir")
 local ast = require("@compiler/structures/ast")
 
-local lowering = require("./lowering")
-local type_checking = require("./type_checking")
+local build = require("./build")
+local type_check = require("./type_check")
 
 local function hir_from_ast(ast: ast.Ast): hir.Hir
-    local hir = lowering.lower_ast_to_hir(ast)
-    type_checking.type_check_hir(hir)
+    local hir = build.hir(ast)
+    type_check.hir(hir)
     return hir
 end
 

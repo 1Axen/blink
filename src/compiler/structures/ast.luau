@@ -82,6 +82,11 @@ export type ExprBoolean = {
     read value: boolean
 }
 
+export type ExprLiteral =
+    | ExprNumber
+    | ExprString
+    | ExprBoolean
+
 --- [name]: value
 export type ExprField = {
     id: NodeId,
@@ -226,6 +231,14 @@ export type Expression =
     | ExprReference
 ;
 
+--- @attr(1, "meow")
+export type Attribute = {
+    read span: vector,
+    read kind: "attribute",
+    read name: Identifier,
+    read args: {ExprLiteral}
+}
+
 --- type [name]<Generics> = [value]
 export type StatType = {
     id: NodeId,
@@ -235,6 +248,7 @@ export type StatType = {
     read name: Identifier,
     read value: Expression,
     read generics: GenericsDef?,
+    read attributes: {Attribute},
 
     read export: boolean,
 }
@@ -243,6 +257,7 @@ export type StatEvent = {
     id: NodeId,
     read span: vector,
     read kind: "event",
+    read attributes: {Attribute},
 
     read name: Identifier,
     read from: Identifier,
@@ -286,6 +301,7 @@ export type StatFunction = {
     id: NodeId,
     read span: vector,
     read kind: "function",
+    read attributes: {Attribute},
 
     read name: Identifier,
     read yield: Identifier,
