@@ -98,6 +98,10 @@ local function append_lines(builder: Builder, lines: {string})
 	end
 end
 
+local function set_indent(builder: Builder, indent: number)
+	builder.indent = indent
+end
+
 local function set_tab_width(builder: Builder, width: number)
 	builder.tab_width = width
 end
@@ -116,6 +120,7 @@ return table.freeze({
 	append_line = append_line,
 	append_lines = append_lines,
 	append_indent = append_indent,
+	set_indent = set_indent,
 	set_tab_width = set_tab_width,
 	to_string = to_string,
 })
