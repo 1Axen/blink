@@ -6,11 +6,13 @@ local validator = require("./validator")
 
 local lexer = require("@compiler/lexer")
 local ast = require("@compiler/structures/ast")
-local codes = require("@compiler/config/codes")
 
 local span = require("@util/span")
+local panic = require("@util/panic")
 local symbols = require("@util/symbols")
 local diagnostics = require("@util/diagnostics")
+
+local report = require("./report")
 
 type Token = lexer.Token
 type TokenAny = lexer.TokenBase<any>
@@ -32,54 +34,6 @@ local ROOT_SYMBOLS = ""
 local block: (Parser, boolean) -> ast.Block;
 local statement: (Parser) -> ast.Statement;
 local expression: (Parser) -> ast.Expression;
-
-local function report_expect(parser: Parser, token: Token, kind: TokenKind): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.parser.UnexpectedToken)
-        .with_message(`Expected "{kind}", got "{token.kind}" instead`)
-        .with_label(diagnostics.label.create(token.span)
-            .with_message("Here")
-            .with_color(diagnostics.style.color.red)
-        )
-        .finish()
-    .error()
-end
-
-local function report_expect_one_of(parser: Parser, token: Token, kinds: {TokenKind}): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.parser.UnexpectedToken)
-        .with_message(`Expected one of "{table.concat(kinds, "\", \"")}", got "{token.kind}" instead`)
-        .with_label(diagnostics.label.create(token.span)
-            .with_message("Here")
-            .with_color(diagnostics.style.color.red)
-        )
-        .finish()
-    .error()
-end
-
-local function report_expect_one_of_ident(parser: Parser, span: span.Span, got: string, expected: {string}): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.parser.UnexpectedToken)
-        .with_message(`Expected one of "{table.concat(expected, "\", \"")}", got "{got}" instead`)
-        .with_label(diagnostics.label.create(span)
-            .with_message("Here")
-            .with_color(diagnostics.style.color.red)
-        )
-        .finish()
-    .error()
-end
-
-local function report_invalid_attribute_placement(parser: Parser, stat: ast.Statement): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.parser.SyntaxError)
-        .with_message('Expected a "type", "event" or "function" declaration after attribute')
-        .with_label(diagnostics.label.create(stat.span)
-            .with_color(diagnostics.style.color.red)
-            .with_message('Expected a "type", "event" or "function" declaration')
-        )
-    .finish()
-    .error()
-end
 
 local function peek(parser: Parser): Token
     return parser.token
@@ -121,7 +75,7 @@ local function expect<T>(parser: Parser, kind: T & TokenKind): lexer.TokenBase<T
         return consume(parser) :: any
     end
 
-    return report_expect(parser, token, kind)
+    return report.expect(token, kind)
 end
 
 local function seperated<T>(parser: Parser, t: (Parser) -> T, seperator: TokenKind, delimiter: "}" | ")" | "]" | ">"): {T}
@@ -200,7 +154,7 @@ end
 local function escaped_identifier(parser: Parser): ast.Identifier
     local token = peek(parser)
     if token.kind ~= "word" and token.kind ~= "string" then
-        return report_expect_one_of(parser, token, {"word", "string"})
+        return report.expect_one_of(token, {"word", "string"})
     end
 
     --> consume identifier
@@ -216,7 +170,7 @@ end
 local function structure(parser: Parser, fields: {[string]: {expr: (parser: Parser) -> any, optional: boolean}}, open: lexer.TokenBase<any>): {[string]: any}
     --> key - required
     local all_keys: {string} = {}
-    local parsed_keys: {[string]: span.Span} = {}
+    local parsed_keys: {[string]: report.Entry} = {}
     local required_keys: {string} = {}
 
     for key, value in fields do
@@ -233,32 +187,21 @@ local function structure(parser: Parser, fields: {[string]: {expr: (parser: Pars
         local name = any_identifier(parser)
         local key = name.value
 
-        if parsed_keys[key] then
-            return diagnostics.report.create("Error")
-                .with_code(codes.parser.DuplicateEntry)
-                .with_message(`Duplicate entry "{key}" in struct`)
-                .with_label(diagnostics.label.create(parsed_keys[key])
-                    .with_color(diagnostics.style.color.cyan)
-                    .with_message("Previously found here")
-                )
-                .with_label(diagnostics.label.create(name.span)
-                    .with_color(diagnostics.style.color.red)
-                    .with_message("Duplicate entry here")
-                )
-                .finish()
-                .error()
+        local previous = parsed_keys[key]
+        if previous ~= nil then
+            return report.duplicate_entry_early(previous, name)
         end
 
         local field = fields[key]
         if field == nil then
-            report_expect_one_of_ident(parser, name.span, key, all_keys)
+            report.expect_one_of_ident(name.span, key, all_keys)
         end
 
         local _assign = expect(parser, ":")
         local value = field.expr(parser)
 
         result[key] = value
-        parsed_keys[key] = name.span
+        parsed_keys[key] = name
 
         local index = table.find(required_keys, key)
         if index then
@@ -275,16 +218,10 @@ local function structure(parser: Parser, fields: {[string]: {expr: (parser: Pars
 
     local close = peek(parser)
     if #required_keys ~= 0 then
-        local struct_span = span.merge(open.span, close.span)
-        return diagnostics.report.create("Error")
-            .with_code(codes.parser.MissingEntry)
-            .with_message(`Expected struct to contain "{table.concat(required_keys, "\", ")}"`)
-            .with_label(diagnostics.label.create(struct_span)
-                .with_color(diagnostics.style.color.red)
-                .with_message("Add missing keys in struct")
-            )
-            .finish()
-            .error()
+        return report.missing_entries(
+            span.merge(open.span, close.span), 
+            required_keys
+        )
     end
 
     return result
@@ -346,7 +283,7 @@ local function expr_boolean(parser: Parser): ast.ExprBoolean
         }
     end
 
-    return report_expect_one_of(parser, token, {"true", "false"})
+    return report.expect_one_of(token, {"true", "false"})
 end
 
 local function expr_number(parser: Parser): ast.ExprNumber
@@ -355,14 +292,7 @@ local function expr_number(parser: Parser): ast.ExprNumber
     local literal = tonumber(value)
 
     if literal == nil then
-        return diagnostics.report.create("Error")
-            .with_message(`Unable to cast "{value}" to number literal`)
-            .with_label(diagnostics.label.create(number.span)
-                .with_color(diagnostics.style.color.red)
-                .with_message(`Number literal is malformed`)
-            )
-        .finish()
-        .error()
+        return panic(`Unable to cast "{value}" to number`)
     end
 
     return {
@@ -394,7 +324,7 @@ local function expr_literal(parser: Parser): ast.ExprLiteral
         return expr_boolean(parser)
     end
 
-    return report_expect_one_of(parser, token, {"string", "number", "true", "false"})
+    return report.expect_one_of(token, {"string", "number", "true", "false"})
 end
 
 local function expr_range(parser: Parser, delimiter: "(" | "["): ast.Range
@@ -416,7 +346,7 @@ local function expr_range(parser: Parser, delimiter: "(" | "["): ast.Range
         expect(parser, "..")
         max = expr_number(parser)
     else
-        report_expect_one_of(parser, first, {"..", "number"})
+        report.expect_one_of(first, {"..", "number"})
     end
 
     local close = expect(parser, delimiter == "(" and ")" or "]" :: any)
@@ -726,7 +656,7 @@ local function attribute(parser: Parser): ast.Attribute
 
     local args: {ast.ExprLiteral} = {}
     if peek_kind(parser) == "(" then
-        local open = expect(parser, "(")
+        local _open = expect(parser, "(")
         args = seperated(parser, expr_literal, ",", ")")
 
         local close = expect(parser, ")")
@@ -914,7 +844,7 @@ function expression(parser: Parser): ast.Expression
     end
     
     if expr == nil then
-        return report_expect_one_of(parser, token, {"word", "string", "number", "true", "false"})
+        return report.expect_one_of(token, {"word", "string", "number", "true", "false"})
     end
 
     while peek_kind(parser) == "[" do
@@ -982,14 +912,14 @@ function statement(parser: Parser): ast.Statement
     end
 
     if stat == nil then
-        return report_expect_one_of(parser, token, { "type", "scope", "event", "struct", "function" })
+        return report.expect_one_of(token, { "type", "scope", "event", "struct", "function" })
     end
 
     --TODO: Remove
     assert(stat, "luau type solver issue")
 
 	if #parser.attributes > 0 then
-        return report_invalid_attribute_placement(parser, stat)
+        return report.invalid_attribute_placement(stat)
 	end
 
     --TODO: Remove cast

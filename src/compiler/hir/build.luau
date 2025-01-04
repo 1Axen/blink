@@ -7,18 +7,15 @@ local ty = require("@compiler/structures/ty")
 local hir = require("@compiler/structures/hir")
 local ast = require("@compiler/structures/ast")
 
-local codes = require("@compiler/config/codes")
 local bounds = require("@compiler/config/bounds")
 local primitives = require("@compiler/config/primitives")
 
-local fmt_range = require("@format/range")
-
-local span = require("@util/span")
 local range = require("@util/range")
 local panic = require("@util/panic")
 local option = require("@util/option")
 local symbols = require("@util/symbols")
-local diagnostics = require("@util/diagnostics")
+
+local report = require("./report")
 
 type Ty = ty.Ty
 type Decl = hir.Decl
@@ -69,110 +66,6 @@ end
 
 local function path_to_string(path: ast.Path): string
     return table.concat(path_to_segments(path), ".")
-end
-
-local function report_expect(node: {span: span.Span}, expected: string, got: string): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.InvalidType)
-        .with_message(`Expected "{expected}", got "{got}" instead`)
-        .with_label(diagnostics.label.create(node.span)
-            .with_message(`Expected "{expected}"`)
-            .with_color(diagnostics.style.color.red)
-        )
-        .finish()
-    .error()
-end
-
-local function report_expect_one_of(node: {span: span.Span}, expected: {string}, got: string): never
-    local fmted_expected = `"{table.concat(expected, "\", \"")}"`
-    return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.InvalidType)
-        .with_message(`Expected one of {fmted_expected}, got "{got}" instead`)
-        .with_label(diagnostics.label.create(node.span)
-            .with_message(`Expected one of {fmted_expected}`)
-            .with_color(diagnostics.style.color.red)
-        )
-        .finish()
-    .error()
-end
-
-local function report_few_none_generics(node: ast.Path, expected: number): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.ExtraGenericsParameters)
-        .with_message(`Type expects {expected} generic parameter(s), but none are specified`)
-        .with_label(diagnostics.label.create(node.span)
-            .with_message(`Add missing generic parameters list`)
-            .with_color(diagnostics.style.color.red)
-        )
-        .finish()
-    .error()
-end
-
-local function report_few_generics(node: ast.GenericsArgs, expected: number): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.ExtraGenericsParameters)
-        .with_message(`Type expects {expected} generic parameter(s), but {#node.values} are specified`)
-        .with_label(diagnostics.label.create(node.span)
-            .with_message(`Add missing generic parameters`)
-            .with_color(diagnostics.style.color.red)
-        )
-        .finish()
-    .error()
-end
-
-local function report_extra_generics(node: ast.GenericsArgs, maximum: number): never
-    local values = node.values
-    local first_extra = values[maximum + 1]
-    local final_extra = values[#values]
-    local extras_span = span.merge(first_extra.span, final_extra.span)
-
-    return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.ExtraGenericsParameters)
-        .with_message(`Type expects {maximum} generic parameter(s), but {#values} are specified`)
-        .with_label(diagnostics.label.create(extras_span)
-            .with_message(`Remove extra generic parameters`)
-            .with_color(diagnostics.style.color.red)
-        )
-        .finish()
-    .error()
-end
-
-local function report_unknown_reference(expr: ast.ExprReference): never
-    local path = expr.path
-    local path_str = path_to_string(expr.path)
-    return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.UnknownReference)
-        .with_message(`Unknown reference "{path_str}"`)
-        .with_label(diagnostics.label.create(path.span)
-            .with_color(diagnostics.style.color.red)
-            .with_message(`Unknown reference`)
-        )
-    .finish()
-    .error()
-end
-
-local function report_unrepresentable_range(node: ast.Range, bounds: Range): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.UnrepresentableRange)
-        .with_message("Range cannot be represented by the type")
-        .with_label(diagnostics.label.create(node.span)
-            .with_color(diagnostics.style.color.red)
-            .with_message(`Range should be within {fmt_range(bounds)}`)
-        )
-    .finish()
-    .error()
-end
-
-local function report_self_recursive_type(node: ast.StatType): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.SelfRecursiveType)
-        .with_message("Self-recursive type cannot be resolved")
-        .with_label(diagnostics.label.create(node.span)
-            .with_color(diagnostics.style.color.red)
-            .with_message("Remove self-recursion")
-        )
-    .finish()
-    .error()
 end
 
 local function ty_from_id(ctx: Context, ty_id: TyId): Ty
@@ -248,7 +141,7 @@ local function assert_identifier_one_of(ctx: Context, ident: ast.Identifier, val
     local value = ident.value
     if table.find(valid, value) == nil then
         --TODO: Remove cast when Luau solver bug is fixed
-        return report_expect_one_of(ident :: any, valid, value)
+        return report.expect_one_of(ident :: any, valid, value)
     end
 
     return ident
@@ -264,7 +157,7 @@ local function range_node_to_range_class(node: ast.Range, bounds: Range): Range
     local min = min_node and min_node.value or bounds.min
 
     if max > bounds.max or min < bounds.min then
-        return report_unrepresentable_range(node, bounds)
+        return report.unrepresentable_range(node, bounds)
     end
 
     return range.create(min, max)
@@ -335,7 +228,7 @@ local function prim_vector(ctx: Context, expr: ast.ExprReference): ty.Vector
     if expr_generics then
         local values = expr_generics.values
         if #values > 3 then
-            return report_extra_generics(expr_generics, 3)
+            return report.extra_generics(expr_generics, 3)
         end
 
         for index, value in values do
@@ -371,7 +264,7 @@ local function prim_enum(ctx: Context, expr_generics: ast.GenericsArgs?): ty.Enu
     if expr_generics then
         local values = expr_generics.values
         if #values > 1 then
-            return report_extra_generics(expr_generics, 1)
+            return report.extra_generics(expr_generics, 1)
         end
 
         local generic = values[1]
@@ -395,7 +288,7 @@ local function prim_cframe(ctx: Context, expr_generics: ast.GenericsArgs?): ty.C
     if expr_generics then
         local values = expr_generics.values
         if #values > 2 then
-            return report_extra_generics(expr_generics, 2)
+            return report.extra_generics(expr_generics, 2)
         end
 
         for index, value in values do
@@ -434,7 +327,7 @@ local function prim_instance(ctx: Context, expr_generics: ast.GenericsArgs?): ty
     if expr_generics then
         local values = expr_generics.values
         if #values > 1 then
-            return report_extra_generics(expr_generics, 1)
+            return report.extra_generics(expr_generics, 1)
         end
 
         class_name = expression(ctx, values[1])
@@ -633,7 +526,7 @@ local function expr_reference(ctx: Context, expr: ast.ExprReference): TyId
     local path_segments = path_to_segments(expr.path)
     local node = symbols.search(ctx.ast.symbols, path_segments)
     if node == nil or node.kind ~= "type" then
-        return report_unknown_reference(expr)
+        return report.unknown_reference(expr)
     end
 
     local node_id = node.id
@@ -668,14 +561,14 @@ local function expr_reference(ctx: Context, expr: ast.ExprReference): TyId
     if decl_generics then
         local n_decl_generics = #decl_generics
         if expr_generics == nil then
-            return report_few_none_generics(expr.path, n_decl_generics)
+            return report.few_none_generics(expr.path, n_decl_generics)
         end
 
         local n_expr_generics = #expr_generics.values
         if n_expr_generics > n_decl_generics then
-            return report_extra_generics(expr_generics, n_decl_generics)
+            return report.extra_generics(expr_generics, n_decl_generics)
         elseif n_expr_generics < n_decl_generics then
-            return report_few_generics(expr_generics, n_decl_generics)
+            return report.few_generics(expr_generics, n_decl_generics)
         end
 
         local ty_id = id.node_id.to_ty_id(node_id)
@@ -685,7 +578,7 @@ local function expr_reference(ctx: Context, expr: ast.ExprReference): TyId
 
         return ty_id
     elseif expr_generics then
-        return report_extra_generics(expr_generics, 0)
+        return report.extra_generics(expr_generics, 0)
     end
     
     return decl.ty
@@ -961,16 +854,16 @@ local function substitute_placeholders(ctx: Context): never?
         --> check for self recursion
         do
             if decl_ty == placeholder then
-                return report_self_recursive_type(node)
+                return report.self_recursive_type(node)
             elseif decl_ty.kind == "optional" and decl_ty.of == ty_id then
-                return report_self_recursive_type(node)
+                return report.self_recursive_type(node)
             end
         end
 
         if decl_generics then
             local n_decl_generics = #decl_generics
             if args == nil then
-                return report_few_none_generics(expr_node.path, n_decl_generics)
+                return report.few_none_generics(expr_node.path, n_decl_generics)
             end
 
             if expr_generics == nil then
@@ -979,9 +872,9 @@ local function substitute_placeholders(ctx: Context): never?
 
             local n_args = #args
             if n_args < n_decl_generics then
-                return report_few_generics(expr_generics, n_decl_generics)
+                return report.few_generics(expr_generics, n_decl_generics)
             elseif n_args > n_decl_generics then
-                return report_extra_generics(expr_generics, n_decl_generics)
+                return report.extra_generics(expr_generics, n_decl_generics)
             end
 
             decl_ty = generic_type(ctx, decl_ty, args)

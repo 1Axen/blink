@@ -11,6 +11,8 @@ local range = require("@util/range")
 local symbols = require("@util/symbols")
 local diagnostics = require("@util/diagnostics")
 
+local report = require("./report")
+
 type Ast = ast.Ast
 type Range = range.Range
 type Literal = string | number | boolean
@@ -34,64 +36,11 @@ local function as_literal(expr: ast.Expression): Literal | never
     end
 
     return diagnostics.report.create("Error")
+        .with_code(codes.parser.SyntaxError)
         .with_message(`Expected one of string, number, boolean; got "{expr.kind}" instead`)
         .with_label(diagnostics.label.create((expr :: ast.Expression).span)
             .with_color(diagnostics.style.color.red)
             .with_message("Expected one of string, number, boolean")
-        )
-    .finish()
-    .error()
-end
-
-local function report_shadow(caster: ast.Identifier, shaded: ast.Identifier): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.analysis.Shadow)
-        .with_message(`"{caster.value}" shadows previous declaration`)
-        .with_label(diagnostics.label.create(caster.span)
-            .with_color(diagnostics.style.color.red)
-            .with_message("Duplicate declaration here")
-        )
-        .with_label(diagnostics.label.create(shaded.span)
-            .with_color(diagnostics.style.color.cyan)
-            .with_message("Previously declared here")
-        )
-    .finish()
-    .error()
-end
-
-local function report_invalid_range(range: ast.Range): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.analysis.InvalidRange)
-        .with_message("Invalid range")
-        .with_label(diagnostics.label.create(range.span)
-            .with_color(diagnostics.style.color.red)
-            .with_message("Invalid range")
-        )
-        .with_note("Ranges must be in the format \"min..max\"")
-        .with_note("Ranges must have a min smaller than or equal to it's max")
-        .with_note("Ranges can only be placed on supported built-in values (numerals, strings, buffers, vectors etc.) and arrays")
-    .finish()
-    .error()
-end
-
-type Entry = ast.Identifier | ast.ExprNumber | ast.ExprString | ast.ExprBoolean
-
-local function report_duplicate_entry(expr: ast.Expression, original: Entry, duplicate: Entry): never
-    local kind = expr.kind
-    return diagnostics.report.create("Error")
-        .with_code(codes.analysis.DuplicateEntry)
-        .with_message(`Duplicate entry "{original.value}" in {kind}`)
-        .with_label(diagnostics.label.create(original.span)
-            .with_color(diagnostics.style.color.cyan)
-            .with_message(`Original entry`)
-        )
-        .with_label(diagnostics.label.create(duplicate.span)
-            .with_color(diagnostics.style.color.red)
-            .with_message(`Duplicate entry`)
-        )
-        .with_label(diagnostics.label.create(expr.span)
-            .with_color(diagnostics.style.color.bright_purple)
-            .with_message(`The duplicate entry was found in {diagnostics.style.color.bright_purple("this")} {kind}`)
         )
     .finish()
     .error()
@@ -105,7 +54,7 @@ local function expr_range(validator: Validator, range: ast.Range): ast.Range
     local min_value = min and min.value or max_value
 
     if min_value > max_value then
-        return report_invalid_range(range)
+        return report.invalid_range(range)
     end
 
     return range
@@ -133,7 +82,7 @@ local function expr_set(validator: Validator, expr: ast.ExprSet): never?
     for _, entry in expr.values do
         local previous = entries[entry.value]
         if previous then
-            return report_duplicate_entry(expr, previous :: Entry, entry)
+            return report.duplicate_entry(expr, previous, entry)
         end
 
         entries[entry.value] = entry
@@ -162,7 +111,7 @@ local function expr_enum(validator: Validator, expr: ast.ExprEnum): never?
         local value = variant.value
         local previous = variants[value]
         if previous ~= nil then
-            return report_duplicate_entry(expr, previous, variant)
+            return report.duplicate_entry(expr, previous, variant)
         end
 
         variants[value] = variant
@@ -179,7 +128,7 @@ local function expr_struct(validator: Validator, expr: ast.ExprStruct): never?
         local previous = fields[value]
 
         if previous ~= nil then
-            return report_duplicate_entry(expr, previous, name)
+            return report.duplicate_entry(expr, previous, name)
         end
 
         fields[value] = name
@@ -210,7 +159,7 @@ local function expr_tag_enum(validator: Validator, expr: ast.ExprTaggedEnum): ne
 
         local previous = variants[str_name]
         if previous ~= nil then
-            return report_duplicate_entry(expr, previous, key)
+            return report.duplicate_entry(expr, previous, key)
         end
 
         variants[str_name] = key
@@ -354,7 +303,7 @@ function statement(validator: Validator, stat: ast.Statement)
 
     local existing = symbols.search(validator.symbols, {name.value})
     if existing ~= nil then
-        report_shadow(name, existing.name)
+        report.shadow(name, existing.name)
     end
 
     symbols.set(validator.symbols, name.value, stat)

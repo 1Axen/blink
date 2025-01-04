@@ -7,11 +7,8 @@ local ty = require("@compiler/structures/ty")
 local hir = require("@compiler/structures/hir")
 local ast = require("@compiler/structures/ast")
 
-local codes = require("@compiler/config/codes")
-
-local span = require("@util/span")
 local panic = require("@util/panic")
-local diagnostics = require("@util/diagnostics")
+local report = require("./report")
 
 type Ty = ty.Ty
 type Hir = hir.Hir
@@ -21,82 +18,6 @@ type TyId<T = Ty> = ty.TyId
 type NodeId<T = Node> = ast.NodeId<T>
 
 type TyKind = ty.TyKind
-
-local function report_expect(node: {span: span.Span}, expected: string, got: string): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.InvalidType)
-        .with_message(`Expected "{expected}", got "{got}" instead`)
-        .with_label(diagnostics.label.create(node.span)
-            .with_message(`Expected "{expected}"`)
-            .with_color(diagnostics.style.color.red)
-        )
-        .finish()
-    .error()
-end
-
-local function report_expect_one_of(node: {span: span.Span}, expected: {string}, got: string): never
-    local fmted_expected = `"{table.concat(expected, "\", \"")}"`
-    return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.InvalidType)
-        .with_message(`Expected one of {fmted_expected}, got "{got}" instead`)
-        .with_label(diagnostics.label.create(node.span)
-            .with_message(`Expected one of {fmted_expected}`)
-            .with_color(diagnostics.style.color.red)
-        )
-        .finish()
-    .error()
-end
-
-local function report_optional_value(expr: ast.Expression): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.OptionalInMap)
-        .with_message(`Optional value in map type`)
-        .with_label(diagnostics.label.create(expr.span)
-            .with_color(diagnostics.style.color.red)
-            .with_message(`Make value non optional`)
-        )
-        .with_note("Optionals in maps aren't representable in Luau")
-    .finish()
-    .error()
-end
-
-local function report_optional_indexer(expr: ast.Expression): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.OptionalInMap)
-        .with_message(`Optional indexer in map type`)
-        .with_label(diagnostics.label.create(expr.span)
-            .with_color(diagnostics.style.color.red)
-            .with_message(`Make indexer non optional`)
-        )
-        .with_note("Optionals in maps aren't representable in Luau")
-    .finish()
-    .error()
-end
-
-local function report_invalid_union(expr: ast.Expression, got: TyKind, left: TyKind, right: TyKind): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.InvalidType)
-        .with_message(`Cannot union type "{left}" and type "{right}"`)
-        .with_label(diagnostics.label.create(expr.span)
-            .with_color(diagnostics.style.color.red)
-            .with_message(`Expected type "struct", got type "{got}" instead`)
-        )
-        .with_note("Unions can only be created between two structs")
-    .finish()
-    .error()
-end
-
-local function report_cannot_convert_type(expr: ast.Expression, expected: TyKind, got: TyKind): never
-    return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.InvalidType)
-        .with_message(`Cannot convert type "{got}" to type "{expected}"`)
-        .with_label(diagnostics.label.create(expr.span)
-            .with_color(diagnostics.style.color.red)
-            .with_message(`Expected type "{expected}"`)
-        )
-    .finish()
-    .error()
-end
 
 local function ty_from_id(hir: Hir, ty_id: TyId): Ty
     local ty = hir.tys[ty_id]
@@ -144,7 +65,7 @@ local function assert_ty_kind(hir: Hir, ty_id: TyId, kind: TyKind)
     if ty_kind ~= kind then
         local node = node_from_ty_id(hir, ty_id)
         --TODO: Remove cast when Luau solver bug is fixed
-        report_expect(node :: any, kind, ty_kind)
+        report.expect(node :: any, kind, ty_kind)
     end
 end
 
@@ -153,7 +74,7 @@ local function assert_ty_kinds(hir: Hir, ty_id: TyId, kinds: {TyKind})
     if table.find(kinds, ty_kind) == nil then
         local node = node_from_ty_id(hir, ty_id)
         --TODO: Remove cast when Luau solver bug is fixed
-        report_expect_one_of(node :: any, kinds :: {string}, ty_kind)
+        report.expect_one_of(node :: any, kinds :: {string}, ty_kind)
     end
 end
 
@@ -163,7 +84,7 @@ local function ty_map(hir: Hir, ty: ty.Map)
         local node_id = id.ty_id.to_node_id(ty.index)
         local node = node_from_id(hir, node_id)
         --TODO: Remove cast (Luau bug)
-        report_optional_indexer(node :: any)
+        report.optional_indexer(node :: any)
     end
 
     local value = ty_from_id(hir, ty.value)
@@ -171,7 +92,7 @@ local function ty_map(hir: Hir, ty: ty.Map)
         local node_id = id.ty_id.to_node_id(ty.value)
         local node = node_from_id(hir, node_id)
         --TODO: Remove cast (Luau bug)
-        report_optional_value(node :: any)
+        report.optional_value(node :: any)
     end
 end
 
@@ -186,12 +107,12 @@ local function ty_union(hir: Hir, ty: ty.Union)
         local node_id = id.ty_id.to_node_id(ty.left)
         local node = node_from_id(hir, node_id)
         --TODO: Remove cast (Luau bug)
-        report_invalid_union(node :: any, left_kind, left_kind, right_kind)
+        report.invalid_union(node :: any, left_kind, left_kind, right_kind)
     elseif right_kind ~= "struct" then
         local node_id = id.ty_id.to_node_id(ty.right)
         local node = node_from_id(hir, node_id)
         --TODO: Remove cast (Luau bug)
-        report_invalid_union(node :: any, right_kind, left_kind, right_kind)
+        report.invalid_union(node :: any, right_kind, left_kind, right_kind)
     end
 end
 
