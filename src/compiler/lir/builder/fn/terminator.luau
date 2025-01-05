@@ -2,6 +2,7 @@
 
 local lir = require("@compiler/structures/lir")
 
+type TermIf = lir.TermIf
 type TermNone = lir.TermNone
 type TermGoto = lir.TermGoto
 type TermLoop = lir.TermLoop
@@ -10,7 +11,17 @@ type TermReturn = lir.TermReturn
 
 type Loop = lir.Loop
 type Value = lir.Value
+type Condition = lir.Condition
 type BasicBlock = lir.BasicBlock
+
+local function term_if(condition: Condition, truthy: BasicBlock, falsey: BasicBlock): TermIf
+    return {
+        kind = "if",
+        cond = condition,
+        truthy = truthy,
+        falsey = falsey
+    }
+end
 
 local function term_none(): TermNone
     return {
@@ -25,11 +36,11 @@ local function term_goto(destination: BasicBlock): TermGoto
     }
 end
 
-local function term_loop(loop: Loop, entry: BasicBlock): TermLoop
+local function term_loop(loop: Loop, destination: BasicBlock): TermLoop
     return {
         kind = "loop",
         loop = loop,
-        entry = entry
+        destination = entry
     }
 end
 
@@ -50,6 +61,7 @@ local function term_return(values: {Value}): TermReturn
 end
 
 return table.freeze({
+    ifbr = term_if,
     none = term_none,
     goto = term_goto,
     loop = term_loop,

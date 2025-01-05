@@ -14,6 +14,10 @@ type BufferDataFormat =
 ;
 
 type Axis = lir.Constant<number> | lir.RegisterId
+
+type Value = lir.Value
+
+type Call = lir.ProjCall
 type Advance = lir.CtrlAdvance
 type Allocate = lir.CtrlAllocate
 
@@ -23,10 +27,17 @@ local function index(library: string, method: string): lir.ProjIndex
     return projection.index(library_const, method_const)
 end
 
+local function luau_error(message: string)
+    return projection.call(
+        constant.from_value("error"),
+        {message}
+    )
+end
+
 local function table_create(size: number)
     return projection.call(
         index("table", "create"), 
-        {constant.from_value(size) :: lir.Value}
+        {constant.from_value(size) :: Value}
     )
 end
 
@@ -44,27 +55,43 @@ local function vector_magnitude(vec: lir.RegisterId | lir.ArgumentId)
     )
 end
 
-local function buffer_read_ctor(format: BufferDataFormat): (advance: Advance) -> lir.ProjCall
+local function buffer_read_ctor(format: BufferDataFormat): (advance: Advance) -> Call
     return function(advance: Advance)
         return projection.call(
             index("buffer", `read{format}`),
-            {advance} :: {lir.Value}
+            {advance} :: {Value}
         )
     end
 end
 
-local function buffer_write_ctor(format: BufferDataFormat): (allocate: Allocate) -> lir.ProjCall
+local function buffer_write_ctor(format: BufferDataFormat): (allocate: Allocate) -> Call
     return function(allocate: Allocate)
         return projection.call(
             index("buffer", `write{format}`),
-            {allocate} :: {lir.Value}
+            {allocate} :: {Value}
         )
     end
+end
+
+local function buffer_readstring(advance: Advance, bytes: lir.LRValue): Call
+    return projection.call(
+        index("buffer", `write`),
+        {advance, bytes} :: {Value}
+    )
+end
+
+local function buffer_writestring(allocate: Allocate, bytes: lir.LRValue): Call
+    return projection.call(
+        index("buffer", `write`),
+        {allocate, bytes} :: {Value}
+    )
 end
 
 -- cached library methods
 
 return table.freeze({
+    error = luau_error,
+
     table = {
         create = table_create
     },
@@ -108,8 +135,8 @@ return table.freeze({
             write = buffer_write_ctor("f64"),
         },
         string = {
-            read = buffer_read_ctor("string"),
-            write = buffer_write_ctor("string"),
+            read = buffer_readstring,
+            write = buffer_writestring,
         },
     }
 })

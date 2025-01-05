@@ -143,6 +143,12 @@ export type Value =
     | Condition
 ;
 
+--- call
+export type StatCall = {
+    kind: "call",
+    call: ProjCall
+}
+
 --- %into = value
 export type StatAssign = {
     kind: "assign",
@@ -151,6 +157,7 @@ export type StatAssign = {
 }
 
 export type Statement = 
+    | StatCall
     | StatAssign
 ;
 
@@ -195,12 +202,12 @@ export type TermGoto = {
 export type TermLoop = {
     kind: "loop",
     loop: Loop,
-    entry: BasicBlock,
+    destination: BasicBlock,
 }
 
 export type TermCall = {
     kind: "call",
-    fn: Fn,
+    fn: FnId,
     args: {Value},
     destination: BasicBlock,
 }
@@ -215,6 +222,7 @@ export type Terminator =
     | TermLoop
     | TermCall
     | TermGoto
+    | TermNone
     | TermReturn
 
 export type BasicBlock = {
@@ -233,12 +241,14 @@ export type Fn = {
     blocks: {BasicBlock},
 }
 
+export type FnId = number & { __fn: true }
+
 export type Type = {
     kind: "type",
     decl: hir.DeclId<hir.Type>,
 
-    read: Fn,
-    write: Fn,
+    read: FnId,
+    write: FnId,
     exported: boolean,
 }
 
@@ -246,19 +256,20 @@ export type Event = {
     kind: "event",
     decl: hir.DeclId<hir.Event>,
 
-    read: Fn,
-    write: Fn,
+    read: FnId,
+    write: FnId,
 }
 
 export type Function = {
     kind: "function",
     decl: hir.DeclId<hir.Function>,
     
-    read: Fn,
-    write: Fn,
+    read: FnId,
+    write: FnId,
 }
 
 export type Lir = {
+    fns: {Fn},
     types: {Type},
     events: {Event},
     functions: {Function}

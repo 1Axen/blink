@@ -1,6 +1,7 @@
 --!strict
 
-local block = require("./block")
+local fn = require("./fn")
+local loop = require("./loop")
 local control = require("./control")
 local library = require("./library")
 local constant = require("./constant")
@@ -11,7 +12,8 @@ local unary = require("./operation/unary")
 local binary = require("./operation/binary")
 
 return table.freeze({
-    block = block,
+    fn = fn,
+    loop = loop,
     control = control,
     library = library,
     constant = constant,
