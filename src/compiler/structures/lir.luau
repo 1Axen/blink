@@ -5,12 +5,12 @@ local hir = require("@compiler/structures/hir")
 
 export type Return = {
     kind: "return",
-    ty: hir.DeclId<hir.Type>,
+    ty: ty.Ty,
 }
 
 export type Argument = {
     kind: "argument",
-    ty: hir.DeclId<hir.Type>,
+    ty: ty.Ty,
     name: string?,
 }
 
@@ -245,25 +245,21 @@ export type FnId = number & { __fn: true }
 
 export type Type = {
     kind: "type",
-    decl: hir.DeclId<hir.Type>,
-
+    decl: hir.Type,
     read: FnId,
     write: FnId,
-    exported: boolean,
 }
 
 export type Event = {
     kind: "event",
-    decl: hir.DeclId<hir.Event>,
-
+    decl: hir.Event,
     read: FnId,
     write: FnId,
 }
 
 export type Function = {
     kind: "function",
-    decl: hir.DeclId<hir.Function>,
-    
+    decl: hir.Function,
     read: FnId,
     write: FnId,
 }
