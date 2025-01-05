@@ -1,6 +1,5 @@
 --!strict
 
-local ty = require("@compiler/structures/ty")
 local lir = require("@compiler/structures/lir")
 
 local constant = require("./constant")
@@ -29,8 +28,8 @@ end
 
 local function luau_error(message: string)
     return projection.call(
-        constant.from_value("error"),
-        {message}
+        constant.from_value("error") :: lir.Constant<string>,
+        {message} :: {Value}
     )
 end
 

@@ -1,8 +1,6 @@
 --!strict
 
 local lir = require("@compiler/structures/lir")
-
-local loop = require("./loop")
 local terminator = require("./terminator")
 
 type Terminator = lir.Terminator

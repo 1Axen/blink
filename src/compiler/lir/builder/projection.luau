@@ -1,6 +1,5 @@
 --!strict
 
-local ty = require("@compiler/structures/ty")
 local lir = require("@compiler/structures/lir")
 
 type ProjCall = lir.ProjCall
