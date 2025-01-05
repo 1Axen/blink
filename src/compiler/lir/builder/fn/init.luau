@@ -121,7 +121,7 @@ type Builder = {
     store: typeof(store),
     
     call_fn: typeof(call_fn),
-    call_lib: typeof(call_lib)
+    call_lib: typeof(call_lib),
 
     loop: typeof(loop),
     rtrn: typeof(rtrn),
