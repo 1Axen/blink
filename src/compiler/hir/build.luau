@@ -68,33 +68,6 @@ local function path_to_string(path: ast.Path): string
     return table.concat(path_to_segments(path), ".")
 end
 
-local function ty_from_id(ctx: Context, ty_id: TyId): Ty
-    local ty = ctx.hir.tys[ty_id]
-    if ty == nil then
-        return panic("Expected ty_id to point to a ty")
-    end
-
-    return ty
-end
-
-local function decl_from_id(ctx: Context, decl_id: DeclId): Decl
-    local decl = ctx.hir.decls[decl_id]
-    if decl == nil then
-        return panic("Expected decl_id to point to a decl")
-    end
-
-    return decl
-end
-
-local function node_from_id(ctx: Context, node_id: NodeId): Node
-    local node = ctx.hir.nodes[node_id]
-    if node == nil then
-        return panic("Expected node_id to point to a node")
-    end
-
-    return node
-end
-
 local function decl_from_id_option(ctx: Context, decl_id: DeclId): option.Option<Decl>
     local decl = ctx.hir.decls[decl_id]
     if decl == nil then
@@ -106,7 +79,7 @@ end
 
 local function node_from_ty_id(ctx: Context, ty_id: TyId): Node
     local node_id = id.ty_id.to_node_id(ty_id)
-    return node_from_id(ctx, node_id)
+    return hir.node_from_id(ctx.hir, node_id)
 end
 
 local function next_node_id<T>(ctx: Context): NodeId<T>
@@ -572,7 +545,7 @@ local function expr_reference(ctx: Context, expr: ast.ExprReference): TyId
         end
 
         local ty_id = id.node_id.to_ty_id(node_id)
-        local decl_ty = ty_from_id(ctx, decl.ty) :: ty.GenericType
+        local decl_ty = hir.ty_from_id(ctx.hir, decl.ty) :: ty.GenericType
         local generic_type: ty.GenericType = generic_type(ctx, decl_ty.ty, generic_args)
         ctx.hir.tys[ty_id] = generic_type
 
@@ -829,8 +802,7 @@ function block(ctx: Context, block: ast.Block)
 end
 
 local function substitute_placeholders(ctx: Context): never?
-    local hir = ctx.hir
-    local tys = hir.tys
+    local tys = ctx.hir.tys
 
     for ty_id, placeholder in tys do
         if placeholder.kind ~= "placeholder" then
@@ -840,15 +812,15 @@ local function substitute_placeholders(ctx: Context): never?
         local path = placeholder.path
         local args = placeholder.args
 
-        local expr_node: ast.ExprReference = node_from_id(ctx, id.ty_id.to_node_id(ty_id)) :: any
+        local expr_node: ast.ExprReference = hir.node_from_id(ctx.hir, id.ty_id.to_node_id(ty_id)) :: any
         local expr_generics = expr_node.generics
 
         local node: ast.StatType = symbols.search(ctx.ast.symbols, path) :: any
         local node_id = node.id
         local decl_id = id.node_id.to_decl_id(node_id)
 
-        local decl: hir.Type = decl_from_id(ctx, decl_id) :: any
-        local decl_ty = ty_from_id(ctx, decl.ty)
+        local decl: hir.Type = hir.decl_from_id(ctx.hir, decl_id) :: any
+        local decl_ty = hir.ty_from_id(ctx.hir, decl.ty)
         local decl_generics = decl.generics
 
         --> check for self recursion

@@ -7,7 +7,6 @@ local ty = require("@compiler/structures/ty")
 local hir = require("@compiler/structures/hir")
 local ast = require("@compiler/structures/ast")
 
-local panic = require("@util/panic")
 local report = require("./report")
 
 type Ty = ty.Ty
@@ -19,23 +18,8 @@ type NodeId<T = Node> = ast.NodeId<T>
 
 type TyKind = ty.TyKind
 
-local function ty_from_id(hir: Hir, ty_id: TyId): Ty
-    local ty = hir.tys[ty_id]
-    if ty == nil then
-        return panic("Expected ty_id to point to a ty")
-    end
-
-    return ty
-end
-
-local function node_from_id(hir: Hir, node_id: NodeId): Node
-    local node = hir.nodes[node_id]
-    if node == nil then
-        return panic("Expected node_id to point to a node")
-    end
-
-    return node
-end
+local ty_from_id = hir.ty_from_id
+local node_from_id = hir.node_from_id
 
 local function node_from_ty_id(hir: Hir, ty_id: TyId): Node
     local node_id = id.ty_id.to_node_id(ty_id)

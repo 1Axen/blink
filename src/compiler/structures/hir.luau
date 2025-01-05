@@ -70,4 +70,35 @@ export type Hir = {
     read scopes: {[ScopeId]: string},
 }
 
-return table.freeze({})
+local function ty_from_id(hir: Hir, ty_id: TyId): Ty
+    local ty = hir.tys[ty_id]
+    if ty == nil then
+        return panic("Expected ty_id to point to a ty")
+    end
+
+    return ty
+end
+
+local function decl_from_id(hir: Hir, decl_id: DeclId): Decl
+    local decl = hir.decls[decl_id]
+    if decl == nil then
+        return panic("Expected decl_id to point to a decl")
+    end
+
+    return decl
+end
+
+local function node_from_id(hir: Hir, node_id: NodeId): Node
+    local node = hir.nodes[node_id]
+    if node == nil then
+        return panic("Expected node_id to point to a node")
+    end
+
+    return node
+end
+
+return table.freeze({
+    ty_from_id = ty_from_id,
+    decl_from_id = decl_from_id,
+    node_from_id = node_from_id,
+})
