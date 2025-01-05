@@ -40,11 +40,11 @@ local function term_loop(loop: Loop, destination: BasicBlock): TermLoop
     return {
         kind = "loop",
         loop = loop,
-        destination = entry
+        destination = destination
     }
 end
 
-local function term_call(fn: lir.Fn, args: {Value}, destination: BasicBlock): TermCall
+local function term_call(fn: lir.FnId, args: {Value}, destination: BasicBlock): TermCall
     return {
         kind = "call",
         fn = fn,
