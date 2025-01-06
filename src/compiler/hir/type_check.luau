@@ -34,7 +34,7 @@ local function ty_to_base_ty_kind(ty: Ty): TyKind
     if ty.kind == "optional" then
         return ty_to_base_ty_kind(ty.of)
     elseif ty.kind == "generic_type" then
-        return ty_to_base_ty_kind(ty.ty)
+        return ty_to_base_ty_kind(ty.def)
     end
 
     return ty.kind

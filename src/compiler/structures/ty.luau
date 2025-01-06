@@ -179,7 +179,7 @@ export type Placeholder = {
 
 export type GenericType<T = Ty> = {
     read kind: "generic_type",
-    read ty: T,
+    read def: T,
     read args: {TyId}
 }
 
