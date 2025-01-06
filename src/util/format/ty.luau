@@ -206,7 +206,7 @@ local function fmt_generic_type(ty: ty.GenericType): string
         table.insert(args, fmt_id(arg))
     end
 
-    return `{PRIMITIVE_STYLE("GT")} ({style.modifer.dim(fmt_ty(ty.ty))}, \{{table.concat(args, ", ")}\})`
+    return `{PRIMITIVE_STYLE("GT")} ({style.modifer.dim(fmt_ty(ty.def))}, \{{table.concat(args, ", ")}\})`
 end
 
 function fmt_ty(ty: ty.Ty): string
