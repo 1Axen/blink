@@ -62,14 +62,19 @@ export type TokenKind = index<Token, "kind">
 local DOT = string.byte(".")
 local QOUTE = string.byte("\"")
 local HYPHEN = string.byte("-")
-local NEW_LINE = string.byte("\n")
 local UNDERSCORE = string.byte("_")
+
+local NEW_LINE = string.byte("\n")
+local CARRIAGE_RETURN = string.byte("\r")
+
+local SQUARE_OPEN = string.byte("[")
+local SQUARE_CLOSE = string.byte("]")
 
 local function is_whitespace(byte: number): boolean
     return byte == string.byte(" ") 
         or byte == string.byte("\t")
         or byte == NEW_LINE
-        or byte == string.byte("\r")
+        or byte == CARRIAGE_RETURN
         or byte == string.byte("\v")
         or byte == string.byte("\f")
 end
@@ -99,12 +104,14 @@ local function tokenize(input: File): {Token}
         return buffer.readu8(content, position)
     end
 
-    local function lookahead(): number
-        if position >= (length - 1) then
+    local function lookahead(amount: number?): number
+        local amount = amount or 1
+        local offset = (position + amount)
+        if offset >= (length - 1) then
             return 0
         end
 
-        return buffer.readu8(content, position + 1)
+        return buffer.readu8(content, offset)
     end
     
     local function advance()
@@ -145,6 +152,31 @@ local function tokenize(input: File): {Token}
             repeat
                 char = advance_peek()
             until not (is_whitespace(char))
+
+            return nil
+        --> comments are also lost when lexed, double lossy lexer :((
+        elseif first == HYPHEN and lookahead() == HYPHEN then
+            local char = peek()
+            if lookahead(2) == SQUARE_OPEN and lookahead(3) == SQUARE_OPEN then
+                -- keep track of how many consecutive closing square brackets we encounter
+                local counter = 0
+
+                repeat
+                    if char == SQUARE_CLOSE then
+                        counter += 1
+                    else
+                        counter = 0
+                    end
+
+                    char = advance_peek()
+                until (counter == 2)
+
+                return nil
+            end
+
+            repeat
+                char = advance_peek()
+            until (char == NEW_LINE or char == CARRIAGE_RETURN)
 
             return nil
         --> word, can't start with numeral
