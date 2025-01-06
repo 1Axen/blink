@@ -5,8 +5,6 @@
 local file = require("@util/file")
 local span = require("@util/span")
 
-type File = file.File
-
 export type TokenBase<Kind> = {
     read kind: Kind,
     read span: vector,
@@ -88,7 +86,7 @@ local function is_digit(byte: number): boolean
     return string.byte("0") <= byte and byte <= string.byte("9")
 end
 
-local function tokenize(input: File): {Token}
+local function tokenize(input: file.File): {Token}
     local id = file.id(input)
     local length = file.length(input)
     local content = file.content(input)
@@ -132,6 +130,10 @@ local function tokenize(input: File): {Token}
     end
 
     local tokens: {Token} = table.create(64) :: any
+
+    local function create_token(kind: TokenKind, span: span.Span): Token
+        return { kind = kind, span = span } :: Token
+    end
     
     local function next_token(): Token?
         local first = peek()
@@ -139,10 +141,7 @@ local function tokenize(input: File): {Token}
 
         --> eof
         if first == 0 then
-            return {
-                kind = "eof",
-                span = span.create(start, start, id)
-            } :: Token
+            return create_token("eof" :: "eof", span.create(start, start, id))
         end
 
         --> whitespace is lost when lexed, lossy lexer :(
@@ -207,10 +206,10 @@ local function tokenize(input: File): {Token}
                 or value == "import"
                 or value == "function"
             then
-                return {kind = value :: TokenKind, span = value_span} :: Token
+                return create_token(value :: TokenKind, value_span)
             end
 
-            return { kind = "word", span = value_span } :: Token
+            return create_token("word" :: "word", value_span)
         elseif is_digit(first :: number) or first == HYPHEN then
             local char = first :: number
             local decimal = false
@@ -232,7 +231,7 @@ local function tokenize(input: File): {Token}
             until not (is_digit(char) or char == UNDERSCORE or (char == DOT and decimal == false))
 
             local finish = last_position()
-            return { kind = "number", span = span.create(start, finish, id) } :: Token
+            return create_token("number" :: "number", span.create(start, finish, id))
         elseif first == QOUTE then
             local char = advance_peek()
             while char ~= 0 and char ~= QOUTE do
@@ -244,50 +243,50 @@ local function tokenize(input: File): {Token}
             local finish = last_position()
             
             -- we don't care about the quotation marks
-            return { kind = "string", span = span.create(start + 1, finish - 1, id) } :: Token
+            return create_token("string" :: "string", span.create(start + 1, finish - 1, id))
         end
 
         advance()
         
         local value_span = span.create(start, start, id)
         if first == string.byte("{") then
-            return { kind = "{", span = value_span } :: Token
+            return create_token("{" :: "{", value_span)
         elseif first == string.byte("<") then
-            return { kind = "<", span = value_span } :: Token
+            return create_token("<" :: "<", value_span)
         elseif first == string.byte("(") then
-            return { kind = "(", span = value_span } :: Token
+            return create_token("(" :: "(", value_span)
         elseif first == string.byte("[") then
-            return { kind = "[", span = value_span } :: Token
+            return create_token("[" :: "[", value_span)
         elseif first == string.byte("}") then
-            return { kind = "}", span = value_span } :: Token
+            return create_token("}" :: "}", value_span)
         elseif first == string.byte(">") then
-            return { kind = ">", span = value_span } :: Token
+            return create_token(">" :: ">", value_span)
         elseif first == string.byte(")") then
-            return { kind = ")", span = value_span } :: Token
+            return create_token(")" :: ")", value_span)
         elseif first == string.byte("]") then
-            return { kind = "]", span = value_span } :: Token
+            return create_token("]" :: "]", value_span)
         elseif first == string.byte(":") then
-            return { kind = ":", span = value_span } :: Token
+            return create_token(":" :: ":", value_span)
         elseif first == string.byte(",") then
-            return { kind = ",", span = value_span } :: Token
+            return create_token("," :: ",", value_span)
         elseif first == string.byte("?") then
-            return { kind = "?", span = value_span } :: Token
+            return create_token("?" :: "?", value_span)
         elseif first == string.byte("=") then
-            return { kind = "=", span = value_span } :: Token
+            return create_token("=" :: "=", value_span)
         elseif first == DOT then
             if peek() == DOT then
                 advance()
-                return { kind = "..", span = span.create(start, last_position(), id) } :: Token
+                return create_token(".." :: "..", span.create(start, last_position(), id))
             end
 
-            return { kind = ".", span = value_span } :: Token
+            return create_token("." :: ".", value_span)
         elseif first == string.byte("&") then
-            return { kind = "&", span = value_span } :: Token
+            return create_token("&" :: "&", value_span)
         elseif first == string.byte("@") then
-            return { kind = "@", span = value_span } :: Token
+            return create_token("@" :: "@", value_span)
         end
 
-        return { kind = "error", span = value_span } :: Token
+        return create_token("error" :: "error", value_span)
     end
 
     while true do
