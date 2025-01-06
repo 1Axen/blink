@@ -61,6 +61,7 @@ export type TokenKind = index<Token, "kind">
 
 local DOT = string.byte(".")
 local QOUTE = string.byte("\"")
+local HYPHEN = string.byte("-")
 local NEW_LINE = string.byte("\n")
 local UNDERSCORE = string.byte("_")
 
@@ -107,7 +108,7 @@ local function tokenize(input: File): {Token}
     end
     
     local function advance()
-        position = math.min(position + 1, length)
+        position = math.min(position + 1, length) :: number
     end
 
     local function advance_peek(): number
@@ -134,25 +135,25 @@ local function tokenize(input: File): {Token}
             return {
                 kind = "eof",
                 span = span.create(start, start, id)
-            }
+            } :: Token
         end
 
         --> whitespace is lost when lexed, lossy lexer :(
         if is_whitespace(first) then
             --> keep clearing whitespace
-            local char = first
+            local char = first :: number
             repeat
                 char = advance_peek()
             until not (is_whitespace(char))
 
-            return
+            return nil
         --> word, can't start with numeral
-        elseif is_letter(first) or first == UNDERSCORE then
+        elseif is_letter(first :: number) or first == UNDERSCORE then
             --> consume full word
-            local char = first
+            local char = first :: number
             repeat
                 char = advance_peek()
-            until not (is_letter(char) or is_digit(char) or char == UNDERSCORE)
+            until not (is_letter(char) or is_digit(char :: number) or char == UNDERSCORE)
             
             local finish = last_position()
             local value = to_string(start)
@@ -174,15 +175,15 @@ local function tokenize(input: File): {Token}
                 or value == "import"
                 or value == "function"
             then
-                return {kind = value :: any, span = value_span}
+                return {kind = value :: TokenKind, span = value_span} :: Token
             end
 
-            return { kind = "word", span = value_span }
-        elseif is_digit(first) or first == string.byte("-") then
-            local char = first
+            return { kind = "word", span = value_span } :: Token
+        elseif is_digit(first :: number) or first == HYPHEN then
+            local char = first :: number
             local decimal = false
 
-            if char == string.byte("-") then
+            if char == HYPHEN then
                 char = advance_peek()
             end
 
@@ -199,7 +200,7 @@ local function tokenize(input: File): {Token}
             until not (is_digit(char) or char == UNDERSCORE or (char == DOT and decimal == false))
 
             local finish = last_position()
-            return { kind = "number", span = span.create(start, finish, id) }
+            return { kind = "number", span = span.create(start, finish, id) } :: Token
         elseif first == QOUTE then
             local char = advance_peek()
             while char ~= 0 and char ~= QOUTE do
@@ -211,50 +212,50 @@ local function tokenize(input: File): {Token}
             local finish = last_position()
             
             -- we don't care about the quotation marks
-            return { kind = "string", span = span.create(start + 1, finish - 1, id) }
+            return { kind = "string", span = span.create(start + 1, finish - 1, id) } :: Token
         end
 
         advance()
         
         local value_span = span.create(start, start, id)
         if first == string.byte("{") then
-            return { kind = "{", span = value_span }
+            return { kind = "{", span = value_span } :: Token
         elseif first == string.byte("<") then
-            return { kind = "<", span = value_span }
+            return { kind = "<", span = value_span } :: Token
         elseif first == string.byte("(") then
-            return { kind = "(", span = value_span }
+            return { kind = "(", span = value_span } :: Token
         elseif first == string.byte("[") then
-            return { kind = "[", span = value_span }
+            return { kind = "[", span = value_span } :: Token
         elseif first == string.byte("}") then
-            return { kind = "}", span = value_span }
+            return { kind = "}", span = value_span } :: Token
         elseif first == string.byte(">") then
-            return { kind = ">", span = value_span }
+            return { kind = ">", span = value_span } :: Token
         elseif first == string.byte(")") then
-            return { kind = ")", span = value_span }
+            return { kind = ")", span = value_span } :: Token
         elseif first == string.byte("]") then
-            return { kind = "]", span = value_span }
+            return { kind = "]", span = value_span } :: Token
         elseif first == string.byte(":") then
-            return { kind = ":", span = value_span }
+            return { kind = ":", span = value_span } :: Token
         elseif first == string.byte(",") then
-            return { kind = ",", span = value_span }
+            return { kind = ",", span = value_span } :: Token
         elseif first == string.byte("?") then
-            return { kind = "?", span = value_span }
+            return { kind = "?", span = value_span } :: Token
         elseif first == string.byte("=") then
-            return { kind = "=", span = value_span }
-        elseif first == string.byte(".") then
-            if peek() == string.byte(".") then
+            return { kind = "=", span = value_span } :: Token
+        elseif first == DOT then
+            if peek() == DOT then
                 advance()
-                return { kind = "..", span = span.create(start, last_position(), id) }
+                return { kind = "..", span = span.create(start, last_position(), id) } :: Token
             end
 
-            return { kind = ".", span = value_span }
+            return { kind = ".", span = value_span } :: Token
         elseif first == string.byte("&") then
-            return { kind = "&", span = value_span }
+            return { kind = "&", span = value_span } :: Token
         elseif first == string.byte("@") then
-            return { kind = "@", span = value_span }
+            return { kind = "@", span = value_span } :: Token
         end
 
-        return { kind = "error", span = value_span }
+        return { kind = "error", span = value_span } :: Token
     end
 
     while true do
