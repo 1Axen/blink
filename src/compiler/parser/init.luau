@@ -80,7 +80,7 @@ end
 
 local function seperated<T>(parser: Parser, t: (Parser) -> T, seperator: TokenKind, delimiter: "}" | ")" | "]" | ">"): {T}
     local list: {T} = {}
-
+    
     while peek_kind(parser) ~= delimiter do
         table.insert(list, t(parser))
 
@@ -315,7 +315,7 @@ local function expr_string(parser: Parser): ast.ExprString
 end
 
 local function expr_literal(parser: Parser): ast.ExprLiteral
-    local token = consume(parser)
+    local token = peek(parser)
     if token.kind == "string" then
         return expr_string(parser)
     elseif token.kind == "number" then
