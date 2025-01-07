@@ -19,7 +19,7 @@ local function fmt_attribute(attribute: hir.Attribute, fmt_builder: Builder)
     builder.append(fmt_builder, ATTRIBUTE_STYLE(`@{attribute.name}`))
 
     if #attribute.args > 0 then
-        builder.append(fmt_builder, ATTRIBUTE_STYLE(")"))
+        builder.append(fmt_builder, ATTRIBUTE_STYLE("("))
         for index, arg in attribute.args do
             builder.append(fmt_builder, fmt_types.any(arg))
             if index < #attribute.args then
