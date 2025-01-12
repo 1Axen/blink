@@ -3,6 +3,8 @@
 local ty = require("@compiler/structures/ty")
 local hir = require("@compiler/structures/hir")
 
+local panic = require("@util/panic")
+
 export type Return = {
     kind: "return",
     ty: ty.Ty,
@@ -265,10 +267,21 @@ export type Function = {
 }
 
 export type Lir = {
-    fns: {Fn},
-    types: {Type},
-    events: {Event},
-    functions: {Function}
+    fns: {[FnId]: Fn},
+    types: {[hir.DeclId]: Type},
+    events: {[hir.DeclId]: Event},
+    functions: {[hir.DeclId]: Function}
 }
 
-return nil
+local function fn_from_id(lir: Lir, fn_id: FnId): Fn
+    local fn = lir.fns[fn_id]
+    if fn == nil then
+        return panic("Expected fn_id to point to a fn")
+    end
+
+    return fn
+end
+
+return table.freeze({
+    fn_from_id = fn_from_id,
+})
