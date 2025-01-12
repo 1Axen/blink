@@ -42,6 +42,7 @@ type node<T> = struct {
 }
 
 type byte_linked_list = node<u8>
+type dword_linked_list = node<u32>
 
 type invalid_map = map {[u8]: u8}
 
