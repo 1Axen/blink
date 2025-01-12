@@ -62,7 +62,7 @@ local function assert_ty_kinds(hir: Hir, ty_id: TyId, kinds: {TyKind})
     end
 end
 
-local function ty_map(hir: Hir, ty: ty.Map)
+local function check_map(hir: Hir, ty: ty.Map)
     local index = ty_from_id(hir, ty.index)
     if index.kind == "optional" then
         local node_id = id.ty_id.to_node_id(ty.index)
@@ -80,7 +80,7 @@ local function ty_map(hir: Hir, ty: ty.Map)
     end
 end
 
-local function ty_union(hir: Hir, ty: ty.Union)
+local function check_union(hir: Hir, ty: ty.Union)
     local left = ty_from_id(hir, ty.left)
     local right = ty_from_id(hir, ty.right)
 
@@ -100,7 +100,7 @@ local function ty_union(hir: Hir, ty: ty.Union)
     end
 end
 
-local function ty_vector(hir: Hir, ty: ty.Vector)
+local function check_vector(hir: Hir, ty: ty.Vector)
     if ty.x then
         assert_ty_kinds(hir, ty.x, {"numeral", "number_literal"})
     end
@@ -114,7 +114,7 @@ local function ty_vector(hir: Hir, ty: ty.Vector)
     end
 end
 
-local function ty_cframe(hir: Hir, ty: ty.CFrame)
+local function check_cframe(hir: Hir, ty: ty.CFrame)
     if ty.position then
         assert_ty_kind(hir, ty.position, "numeral")
     end
@@ -124,13 +124,13 @@ local function ty_cframe(hir: Hir, ty: ty.CFrame)
     end
 end
 
-local function ty_instance(hir: Hir, ty: ty.Instance)
+local function check_instance(hir: Hir, ty: ty.Instance)
     if ty.class then
         assert_ty_kind(hir, ty.class, "string_literal")
     end
 end
 
-local function ty_roblox_enum(hir: Hir, ty: ty.Enum)
+local function check_roblox_enum(hir: Hir, ty: ty.Enum)
     if ty.type then
         assert_ty_kind(hir, ty.type, "string_literal")
     end
@@ -138,17 +138,17 @@ end
 
 local function check_ty(hir: Hir, ty: ty.Ty)
     if ty.kind == "map" then
-        ty_map(hir, ty)
+        check_map(hir, ty)
     elseif ty.kind == "union" then
-        ty_union(hir, ty)
+        check_union(hir, ty)
     elseif ty.kind == "vector" then
-        ty_vector(hir, ty)
+        check_vector(hir, ty)
     elseif ty.kind == "cframe" then
-        ty_cframe(hir, ty)
+        check_cframe(hir, ty)
     elseif ty.kind == "instance" then
-        ty_instance(hir, ty)
+        check_instance(hir, ty)
     elseif ty.kind == "roblox_enum" then
-        ty_roblox_enum(hir, ty)
+        check_roblox_enum(hir, ty)
     end
 end
 
