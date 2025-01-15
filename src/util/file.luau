@@ -11,15 +11,14 @@ local files: {File} = {}
 
 --- creates an empty `file`
 local function create(): File
-    local index = (#files + 1)
     local file: File = {
-        id = index,
+        id = #files,
         name = nil :: any,
         lines = nil :: any,
         content = buffer.create(1),
     }
 
-    table.insert(files, file)
+    files[file.id] = file
     return file
 end
 
