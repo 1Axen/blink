@@ -8,14 +8,25 @@ type DeclId = hir.DeclId
 type NodeId = ast.NodeId
 type ScopeId = hir.ScopeId
 
---- Ids are 32 bit integers
---- All ids (except NodeId) originate from a `NodeId`
---- The 2 most significant bits indicate the id type:
---- * 0b00 - Node
---- * 0b01 - Scope
---- * 0b10 - Def
---- * 0b11 - Ty
---- The remaining 30 bits are used for the actual identifying portion
+--[[
+    Ids are 32 bit integers
+    All ids (except NodeId) originate from a `NodeId`
+
+    The format of an Id looks like this
+    XX   XXXXXXXX XXXXXXXXXXXXXXXXXXXX
+    TYPE MODULE   INDEX (UNIQUE)
+    0-3  0-255    0-4,194,303
+
+    The 2 most significant bits hold the id type:
+    * 0b00 - Node
+    * 0b01 - Scope
+    * 0b10 - Def
+    * 0b11 - Ty
+
+    The following 8 bits hold the module index
+    The remaining 22 bits are used for the actual identifying portion
+--]]
+
 export type Id = 
     | TyId
     | DeclId
@@ -44,12 +55,21 @@ local function get_kind(id: Id): IdKind
     return panic(`Can't get kind of id: "{id}"`)
 end
 
-local function get_unique(id: Id): number
-    return bit32.extract(id, 0, 30)
+local function get_module(id: Id): number
+    return bit32.extract(id, 22, 8)
+end
+
+local function get_index(id: Id): number
+    return bit32.extract(id, 0, 22)
 end
 
 local function set_flag(id: Id, flag: number): Id
     return bit32.replace(id, flag, 30, 2) :: any
+end
+
+--- Returns a NodeId with `module` and `index`
+local function create_node_id(module: number, index: number): NodeId
+    return bit32.replace(index, module, 22, 8) :: any
 end
 
 local function node_id_to_ty_id(node_id: NodeId): TyId
@@ -78,7 +98,8 @@ end
 
 return table.freeze({
     kind = get_kind,
-    unique = get_unique,
+    index = get_index,
+    module = get_module,
 
     ty_id = table.freeze({
         to_node_id = ty_id_to_node_id,
@@ -90,6 +111,7 @@ return table.freeze({
         to_node_id = scope_id_to_node_id,
     }),
     node_id = table.freeze({
+        create = create_node_id,
         to_ty_id = node_id_to_ty_id,
         to_decl_id = node_id_to_decl_id,
         to_scope_id = node_id_to_scope_id,
