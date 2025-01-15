@@ -2,6 +2,7 @@
 
 local ty = require("@compiler/structures/ty")
 local ast = require("@compiler/structures/ast")
+local options = require("@compiler/config/options")
 
 local panic = require("@util/panic")
 
@@ -68,9 +69,11 @@ export type Hir = {
     read decls: {[DeclId]: Decl},
     read nodes: {[NodeId]: Node},
     read scopes: {[ScopeId]: string},
+    --- [file_id]: FileOptions
+    read options: {[number]: options.FileOptions}
 }
 
-local function ty_from_id(hir: Hir, ty_id: TyId): Ty
+local function ty_from_id<T>(hir: Hir, ty_id: TyId<T>): T
     local ty = hir.tys[ty_id]
     if ty == nil then
         return panic("Expected ty_id to point to a ty")
