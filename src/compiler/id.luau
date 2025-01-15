@@ -14,7 +14,7 @@ type ScopeId = hir.ScopeId
 
     The format of an Id looks like this
     XX   XXXXXXXX XXXXXXXXXXXXXXXXXXXX
-    TYPE MODULE   INDEX (UNIQUE)
+    TYPE FILE   INDEX (UNIQUE)
     0-3  0-255    0-4,194,303
 
     The 2 most significant bits hold the id type:
@@ -23,7 +23,7 @@ type ScopeId = hir.ScopeId
     * 0b10 - Def
     * 0b11 - Ty
 
-    The following 8 bits hold the module index
+    The following 8 bits hold the file index
     The remaining 22 bits are used for the actual identifying portion
 --]]
 
@@ -55,7 +55,7 @@ local function get_kind(id: Id): IdKind
     return panic(`Can't get kind of id: "{id}"`)
 end
 
-local function get_module(id: Id): number
+local function get_file(id: Id): number
     return bit32.extract(id, 22, 8)
 end
 
@@ -67,9 +67,9 @@ local function set_flag(id: Id, flag: number): Id
     return bit32.replace(id, flag, 30, 2) :: any
 end
 
---- Returns a NodeId with `module` and `index`
-local function create_node_id(module: number, index: number): NodeId
-    return bit32.replace(index, module, 22, 8) :: any
+--- Returns a NodeId with `file` and `index`
+local function create_node_id(file: number, index: number): NodeId
+    return bit32.replace(index, file, 22, 8) :: any
 end
 
 local function node_id_to_ty_id(node_id: NodeId): TyId
@@ -98,8 +98,8 @@ end
 
 return table.freeze({
     kind = get_kind,
+    file = get_file,
     index = get_index,
-    module = get_module,
 
     ty_id = table.freeze({
         to_node_id = ty_id_to_node_id,

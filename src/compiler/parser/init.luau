@@ -22,7 +22,7 @@ type TokenKind = lexer.TokenKind
 type Parser = {
     read tokens: {Token},
 
-    read module: number,
+    read file: number,
     read node_index: number,
 
     index: number,
@@ -42,7 +42,7 @@ local expression: (Parser) -> ast.Expression;
 local function next_node_id(parser: Parser): ast.NodeId
     local index = parser.node_index
     parser.node_index += 1
-    return id.node_id.create(parser.module, index)
+    return id.node_id.create(parser.file, index)
 end
 
 local function peek(parser: Parser): Token
@@ -966,7 +966,7 @@ local function parse(file_id: number, tokens: {lexer.Token}): ast.Ast
     local parser: Parser = {
         tokens = tokens,
 
-        module = file_id,
+        file = file_id,
         node_index = 0,
 
         index = 1,
