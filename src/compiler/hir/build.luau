@@ -32,24 +32,26 @@ type ScopeId = hir.ScopeId
 type TyKind = ty.TyKind
 
 type Range = range.Range
+type Symbols = ast.Symbols
 
-type Context = {
+type HirContext = {
     read hir: Hir,
-    read ast: Ast,
+}
+
+type FileContext = {
+    read hir: Hir,
+    read file_id: number,
 
     scope: ScopeId,
-    symbols: ast.Symbols,
     generics: {
         args: {TyId<ty.Generic>},
         values: {[string]: TyId<ty.Generic>}
     }?,
-
-    hashed_tys: {[string]: Ty},
 }
 
-local block: (ctx: Context, node: ast.Block) -> ()
-local statement: (ctx: Context, stat: ast.Statement) -> DeclId?
-local expression: (ctx: Context, expr: ast.Expression) -> TyId
+local block: (ctx: FileContext, node: ast.Block) -> ()
+local statement: (ctx: FileContext, stat: ast.Statement) -> DeclId?
+local expression: (ctx: FileContext, expr: ast.Expression) -> TyId
 
 local function path_to_segments(path: ast.Path): {string}
     local segments: {string} = {}
@@ -64,7 +66,7 @@ local function path_to_string(path: ast.Path): string
     return table.concat(path_to_segments(path), ".")
 end
 
-local function decl_from_id_option(ctx: Context, decl_id: DeclId): option.Option<Decl>
+local function decl_from_id_option(ctx: FileContext, decl_id: DeclId): option.Option<Decl>
     local decl = ctx.hir.decls[decl_id]
     if decl == nil then
         return option.none()
@@ -73,13 +75,13 @@ local function decl_from_id_option(ctx: Context, decl_id: DeclId): option.Option
     return option.some(decl)
 end
 
-local function store_node(ctx: Context, node: Node): NodeId
+local function store_node(ctx: FileContext, node: Node): NodeId
     ctx.hir.nodes[node.id] = node
     return node.id
 end
 
 --- Creates an inner scope and returns the `scope_id` of the previous scope
-local function inner_scope(ctx: Context, scope_id: ScopeId, scope_name: string): ScopeId
+local function inner_scope(ctx: FileContext, scope_id: ScopeId, scope_name: string): ScopeId
     local hir = ctx.hir
     local prev = ctx.scope
     local name = hir.scopes[prev]
@@ -93,7 +95,7 @@ local function inner_scope(ctx: Context, scope_id: ScopeId, scope_name: string):
     return prev
 end
 
-local function assert_identifier_one_of(ctx: Context, ident: ast.Identifier, valid: {string}): ast.Identifier
+local function assert_identifier_one_of(ctx: FileContext, ident: ast.Identifier, valid: {string}): ast.Identifier
     local value = ident.value
     if table.find(valid, value) == nil then
         --TODO: Remove cast when Luau solver bug is fixed
@@ -121,7 +123,7 @@ end
 
 --> Luau Primitives
 
-local function ty_numerla(ctx: Context, identifier: string, expr_range: ast.Range?): ty.Numeral
+local function ty_numerla(ctx: FileContext, identifier: string, expr_range: ast.Range?): ty.Numeral
     local numeral: primitives.Primitive = (primitives :: any)[identifier]
 
     local size: ty.NumSize = string.sub(identifier, 2, 3) :: ty.NumSize
@@ -138,19 +140,19 @@ local function ty_numerla(ctx: Context, identifier: string, expr_range: ast.Rang
     return ty.numeral(size, format, range)
 end
 
-local function ty_string(ctx: Context, expr_range: ast.Range?): ty.String
+local function ty_string(ctx: FileContext, expr_range: ast.Range?): ty.String
     local bounds = primitives.string.range
     local length = if expr_range then range_node_to_range_class(expr_range, bounds) else nil
     return ty.string(length)
 end
 
-local function prim_buffer(ctx: Context, expr_range: ast.Range?): ty.Buffer
+local function prim_buffer(ctx: FileContext, expr_range: ast.Range?): ty.Buffer
     local bounds = primitives.buffer.range
     local length = if expr_range then range_node_to_range_class(expr_range, bounds) else nil
     return ty.buffer(length)
 end
 
-local function ty_vector(ctx: Context, expr: ast.ExprReference): ty.Vector
+local function ty_vector(ctx: FileContext, expr: ast.ExprReference): ty.Vector
     local expr_range = expr.range
     local expr_generics = expr.generics
 
@@ -174,17 +176,17 @@ local function ty_vector(ctx: Context, expr: ast.ExprReference): ty.Vector
     return ty.vector(axes, magnitude)
 end
 
-local function ty_boolean(ctx: Context): ty.Boolean
+local function ty_boolean(ctx: FileContext): ty.Boolean
     return ty.boolean()
 end
 
-local function ty_unknown(ctx: Context): ty.Unknown
+local function ty_unknown(ctx: FileContext): ty.Unknown
     return ty.unknown()
 end
 
 --> ROBLOX Primitives
 
-local function ty_roblox_enum(ctx: Context, expr_generics: ast.GenericsArgs?): ty.Enum
+local function ty_roblox_enum(ctx: FileContext, expr_generics: ast.GenericsArgs?): ty.Enum
     local enum_type: TyId<ty.StringLiteral>?
     if expr_generics then
         local values = expr_generics.values
@@ -199,11 +201,11 @@ local function ty_roblox_enum(ctx: Context, expr_generics: ast.GenericsArgs?): t
     return ty.roblox_enum(enum_type)
 end
 
-local function ty_color3(ctx: Context): ty.Color3
+local function ty_color3(ctx: FileContext): ty.Color3
     return ty.color3()
 end
 
-local function ty_cframe(ctx: Context, expr_generics: ast.GenericsArgs?): ty.CFrame
+local function ty_cframe(ctx: FileContext, expr_generics: ast.GenericsArgs?): ty.CFrame
     local generics: {TyId<ty.Numeral>} = {}
     if expr_generics then
         local values = expr_generics.values
@@ -220,19 +222,19 @@ local function ty_cframe(ctx: Context, expr_generics: ast.GenericsArgs?): ty.CFr
     return ty.cframe(generics[1], generics[2])
 end
 
-local function ty_date_time(ctx: Context): ty.DateTime
+local function ty_date_time(ctx: FileContext): ty.DateTime
     return ty.date_time()
 end
 
-local function ty_date_time_millis(ctx: Context): ty.DateTimeMillis
+local function ty_date_time_millis(ctx: FileContext): ty.DateTimeMillis
     return ty.date_time_millis()
 end
 
-local function ty_brick_color(ctx: Context): ty.BrickColor
+local function ty_brick_color(ctx: FileContext): ty.BrickColor
     return ty.brick_color()
 end
 
-local function ty_instance(ctx: Context, expr_generics: ast.GenericsArgs?): ty.Instance
+local function ty_instance(ctx: FileContext, expr_generics: ast.GenericsArgs?): ty.Instance
     local class: TyId<ty.StringLiteral>?
     if expr_generics then
         local values = expr_generics.values
@@ -247,7 +249,7 @@ local function ty_instance(ctx: Context, expr_generics: ast.GenericsArgs?): ty.I
 end
 
 --- Returns a `ty` from a `reference` **to a primitive (u8, string, buffer, etc.)**
-local function ty_from_reference(ctx: Context, expr: ast.ExprReference, path: string): Ty
+local function ty_from_reference(ctx: FileContext, expr: ast.ExprReference, path: string): Ty
     if 
         path == "u8" or path == "u16" or path == "u32" or path == "u48" 
         or path == "i8" or path == "i16" or path == "i32" or path == "i48" 
@@ -283,7 +285,7 @@ local function ty_from_reference(ctx: Context, expr: ast.ExprReference, path: st
     return panic(`Unhandled primitive "{path}"`)
 end
 
-local function ty_set(ctx: Context, expr: ast.ExprSet): ty.Set
+local function ty_set(ctx: FileContext, expr: ast.ExprSet): ty.Set
     local items: {string} = {}
     for _, value in expr.values do
         table.insert(items, value.value)
@@ -292,7 +294,7 @@ local function ty_set(ctx: Context, expr: ast.ExprSet): ty.Set
     return ty.set(items)
 end
 
-local function ty_map(ctx: Context, expr: ast.ExprMap): ty.Map
+local function ty_map(ctx: FileContext, expr: ast.ExprMap): ty.Map
     local index = expression(ctx, expr.index)
     local value = expression(ctx, expr.value)
 
@@ -307,7 +309,7 @@ local function ty_map(ctx: Context, expr: ast.ExprMap): ty.Map
     return ty.map(index, value, range)
 end
 
-local function ty_enum(ctx: Context, expr: ast.ExprEnum): ty.UnitEnum
+local function ty_enum(ctx: FileContext, expr: ast.ExprEnum): ty.UnitEnum
     local variants: {string} = {}
     for _, variant in expr.variants do
         table.insert(variants, variant.value)
@@ -316,25 +318,25 @@ local function ty_enum(ctx: Context, expr: ast.ExprEnum): ty.UnitEnum
     return ty.unit_enum(variants)
 end
 
-local function ty_array(ctx: Context, expr: ast.ExprArray): ty.Array
+local function ty_array(ctx: FileContext, expr: ast.ExprArray): ty.Array
     local of = expression(ctx, expr.value)
     local size = range_node_to_range_class(expr.range, bounds.array)
     return ty.array(of, size)
 end
 
-local function ty_union(ctx: Context, expr: ast.ExprUnion): ty.Union
+local function ty_union(ctx: FileContext, expr: ast.ExprUnion): ty.Union
     local left = expression(ctx, expr.left)
     local right = expression(ctx, expr.right)
     return ty.union(left, right)
 end
 
-local function ty_field(ctx: Context, expr: ast.ExprField): ty.Field
+local function ty_field(ctx: FileContext, expr: ast.ExprField): ty.Field
     local name = expr.name.value
     local value = expression(ctx, expr.value)
     return ty.field(name, value)
 end
 
-local function ty_struct(ctx: Context, expr: ast.ExprStruct): ty.Struct
+local function ty_struct(ctx: FileContext, expr: ast.ExprStruct): ty.Struct
     local fields: {ty.Field} = {}
     for index, field in expr.fields do
         fields[index] = ty_field(ctx, field)
@@ -343,24 +345,24 @@ local function ty_struct(ctx: Context, expr: ast.ExprStruct): ty.Struct
     return ty.struct(fields)
 end
 
-local function ty_string_literal(ctx: Context, expr: ast.ExprString): ty.StringLiteral
+local function ty_string_literal(ctx: FileContext, expr: ast.ExprString): ty.StringLiteral
     return ty.string_literal(expr.value)
 end
 
-local function ty_number_literal(ctx: Context, expr: ast.ExprNumber): ty.NumberLiteral
+local function ty_number_literal(ctx: FileContext, expr: ast.ExprNumber): ty.NumberLiteral
     return ty.number_literal(expr.value)
 end
 
-local function ty_boolean_literal(ctx: Context, expr: ast.ExprBoolean): ty.BooleanLiteral
+local function ty_boolean_literal(ctx: FileContext, expr: ast.ExprBoolean): ty.BooleanLiteral
     return ty.boolean_literal(expr.value)
 end
 
-local function ty_optional(ctx: Context, expr: ast.ExprOptional): ty.Optional
+local function ty_optional(ctx: FileContext, expr: ast.ExprOptional): ty.Optional
     local of = expression(ctx, expr.value)
     return ty.optional(of)
 end
 
-local function ty_tagged_enum(ctx: Context, expr: ast.ExprTaggedEnum): ty.TaggedEnum
+local function ty_tagged_enum(ctx: FileContext, expr: ast.ExprTaggedEnum): ty.TaggedEnum
     local tag = expr.tag.value
     local variants: {ty.Variant} = {}
     for index, variant in expr.variants do
@@ -373,7 +375,7 @@ local function ty_tagged_enum(ctx: Context, expr: ast.ExprTaggedEnum): ty.Tagged
 end
 
 --- Returns the `ty_id` of the `ty` referenced
-local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference): TyId
+local function ty_id_from_reference(ctx: FileContext, expr: ast.ExprReference): TyId
     --[[
         Phases:
         1 - Check if the reference is a generic parameter, return the generic parameter if it is, otherwise Continue
@@ -396,7 +398,7 @@ local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference): TyId
 
     -- Phase 2:
     local path_segments = path_to_segments(expr.path)
-    local ref_node = symbols.search(ctx.ast.symbols, path_segments)
+    local ref_node = symbols.search(ctx.symbols, path_segments)
     if ref_node == nil or ref_node.kind ~= "type" then
         return report.unknown_reference(expr)
     end
@@ -455,7 +457,7 @@ local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference): TyId
     return ref_decl.ty
 end
 
-function expression(ctx: Context, expr: ast.Expression): TyId
+function expression(ctx: FileContext, expr: ast.Expression): TyId
     --> assign node_id
     local node_id = store_node(ctx, expr)
     local ty_id = id.node_id.to_ty_id(node_id)
@@ -513,7 +515,7 @@ function expression(ctx: Context, expr: ast.Expression): TyId
     return ty_id
 end
 
-local function expr_pack(ctx: Context, expr: ast.ExprPack): {hir.Parameter}
+local function expr_pack(ctx: FileContext, expr: ast.ExprPack): {hir.Parameter}
     local parameters: {hir.Parameter} = {}
     for index, expr in expr.values do
         local name = if expr.name then expr.name.value else nil
@@ -529,7 +531,7 @@ local function expr_pack(ctx: Context, expr: ast.ExprPack): {hir.Parameter}
     return parameters
 end
 
-local function attribute(ctx: Context, node: ast.Attribute): hir.Attribute
+local function attribute(ctx: FileContext, node: ast.Attribute): hir.Attribute
     local name = node.name.value
 
     local args = {}
@@ -543,7 +545,7 @@ local function attribute(ctx: Context, node: ast.Attribute): hir.Attribute
     }
 end
 
-local function attributes(ctx: Context, list: {ast.Attribute}): {hir.Attribute}
+local function attributes(ctx: FileContext, list: {ast.Attribute}): {hir.Attribute}
     local attributes: {hir.Attribute} = {}
     for _, node in list do
         table.insert(attributes, attribute(ctx, node))
@@ -552,7 +554,7 @@ local function attributes(ctx: Context, list: {ast.Attribute}): {hir.Attribute}
     return attributes
 end
 
-local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
+local function stat_type(ctx: FileContext, stat: ast.StatType): hir.Type
     local scope = ctx.scope
 
     --> set generics
@@ -597,7 +599,7 @@ local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
     }
 end
 
-local function stat_scope(ctx: Context, stat: ast.StatScope)
+local function stat_scope(ctx: FileContext, stat: ast.StatScope)
     local name = stat.name.value
     local scope_id = id.node_id.to_scope_id(stat.id)
 
@@ -621,7 +623,7 @@ local function stat_scope(ctx: Context, stat: ast.StatScope)
     ctx.symbols = parent
 end
 
-local function stat_event(ctx: Context, stat: ast.StatEvent): hir.Event
+local function stat_event(ctx: FileContext, stat: ast.StatEvent): hir.Event
     local name = stat.name.value
     local from = assert_identifier_one_of(ctx, stat.from, {"Client", "Server", "Both"}).value
     local call = assert_identifier_one_of(ctx, stat.call, {"ManySync", "SingleSync", "ManyAsync", "SingleAsync"}).value
@@ -643,7 +645,7 @@ local function stat_event(ctx: Context, stat: ast.StatEvent): hir.Event
     }
 end
 
-local function stat_function(ctx: Context, stat: ast.StatFunction): hir.Function
+local function stat_function(ctx: FileContext, stat: ast.StatFunction): hir.Function
     local name = stat.name.value
     local yield = assert_identifier_one_of(ctx, stat.yield, {"Coroutine", "Promise", "Future"}).value
     local data = if stat.data then expr_pack(ctx, stat.data) else nil
@@ -661,7 +663,7 @@ local function stat_function(ctx: Context, stat: ast.StatFunction): hir.Function
     }
 end
 
-function statement(ctx: Context, stat: ast.Statement): DeclId?
+function statement(ctx: FileContext, stat: ast.Statement): DeclId?
     --> assign node_id
     local node_id = store_node(ctx, stat)
 
@@ -687,13 +689,13 @@ function statement(ctx: Context, stat: ast.Statement): DeclId?
     return decl_id
 end
 
-function block(ctx: Context, block: ast.Block)
+function block(ctx: FileContext, block: ast.Block)
     for _, stat in block.statements do
         statement(ctx, stat)
     end
 end
 
-local function substitute_placeholders(ctx: Context): never?
+local function substitute_placeholders(ctx: FileContext): never?
     --[[
         Phases:
         1: Get the AST node of the placeholder ty
@@ -705,7 +707,6 @@ local function substitute_placeholders(ctx: Context): never?
     --]]
 
     local tys = ctx.hir.tys
-
     for ty_id, placeholder in tys do
         if placeholder.kind ~= "placeholder" then
             continue
@@ -719,7 +720,7 @@ local function substitute_placeholders(ctx: Context): never?
         local expr_generics = expr_node.generics
 
         -- Phase 2:
-        local decl_node: ast.StatType = symbols.search(ctx.ast.symbols, path) :: any
+        local decl_node: ast.StatType = symbols.search(ctx.symbols, path) :: any
         local decl_node_id = decl_node.id
         local decl_id = id.node_id.to_decl_id(decl_node_id)
         local decl: hir.Type = hir.decl_from_id(ctx.hir, decl_id) :: any
@@ -763,36 +764,54 @@ local function substitute_placeholders(ctx: Context): never?
     return nil
 end
 
-local function build_hir(ast: Ast): Hir
-    local hir: Hir = {
+local function ast(new_hir: Hir, file_id: number, ast: Ast)
+    local ast_context: FileContext = {
+        hir = new_hir,
+        symbols = ast.symbols,
+        file_id = file_id,
+
+        scope = id.node_id.to_scope_id(ast.body.id),
+        generics = nil :: any,
+    }
+
+    --> traverse the ast
+    block(ast_context, ast.body)
+
+    -- substitute placeholders with their final values
+    substitute_placeholders(ast_context)
+end
+
+local function populate_import_symbols(files: {[number]: Ast}): Symbols
+    for file_id, ast in files do
+        if file_id == 0 then
+            continue
+        end
+    end
+
+    return files[0].symbols
+end
+
+--[=[
+    Constructs a HIR from the provided files ASTs.
+    @param `files` - A map of `file_id` to an `AST`. A `file_id` of **0** must always correspond to the **entry file**.
+]=]
+local function build_hir(files: {[number]: Ast}): Hir
+    local new_hir: Hir = {
         tys = {},
         decls = {},
         nodes = {},
         scopes = {},
+        options = {}
     }
 
-    print(id.kind(ast.body.id), id.module(ast.body.id), id.index(ast.body.id))
-
-    local context: Context = {
-        hir = hir,
-        ast = ast,
-
-        scope = id.node_id.to_scope_id(ast.body.id),
-        symbols = ast.symbols,
-
-        nodes = {},
-        generics = nil :: any,
-        
-        hashed_tys = {}
-    }
-
-    --> traverse the ast
-    block(context, ast.body)
-
-    --> substitute placeholders with their final values
-    substitute_placeholders(context)
-
-    return hir
+    populate_import_symbols(files)
+    
+    -- traverse file asts
+    for file_id, file_ast in files do
+        ast(new_hir, file_id, file_ast)
+    end
+    
+    return new_hir
 end
 
 return table.freeze({

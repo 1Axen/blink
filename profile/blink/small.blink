@@ -1,4 +1,4 @@
-option types_output = "../out/types"
+option output = "../out/small"
 
 import "./large.blink" as external
 

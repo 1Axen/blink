@@ -23,13 +23,19 @@ local function child<T>(self: Symbols<T>, name: string): Symbols<T>?
 end
 
 local function inner<T>(self: Symbols<T>, name: string): Symbols<T>
-    assert(self.children[name] == nil, `Symbols struct "{self.name}" already has a child "{name}"`)
+    assert(self.children[name] == nil, `Symbols object "{self.name}" already has a child "{name}"`)
 
     local symbols = create(name)
     self.children[name] = symbols
     symbols.parent = self
 
     return symbols
+end
+
+--- Adds the `target` symbols object to `self`'s children without setting `target`'s parent.
+local function reference<T>(self: Symbols<T>, target: Symbols<T>, name: string)
+    assert(self.children[name] == nil, `Symbols object "{self.name}" already has a child "{name}"`)
+    self.children[name] = target
 end
 
 local function set<T>(self: Symbols<T>, key: string, value: T)
@@ -68,5 +74,6 @@ return table.freeze({
     inner = inner,
     set = set,
     child = child,
-    search = search
+    search = search,
+    reference = reference,
 })

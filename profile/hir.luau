@@ -16,7 +16,7 @@ local input = file.from_source(fs.readFile("./blink/small.blink"))
 
 local tokens = lexer.tokenize(input)
 local ast = parser.parse(file.id(input), tokens)
-local hir = hir.from_ast(ast)
+local hir = hir.from_files({[input.id] = ast})
 
 local function clean(t: any): any
     local replaced = {}
