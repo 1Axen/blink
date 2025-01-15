@@ -2,14 +2,14 @@
 
 local fs = require("@lune/fs")
 
-local span = require("../src/util/span")
-local style = require("../src/util/style")
-local lexer = require("../src/compiler/lexer")
-local location = require("../src/util/location")
-local diagnostics = require("../src/util/diagnostics")
+local file = require("@util/file")
+local span = require("@util/span")
+local style = require("@util/style")
+local lexer = require("@compiler/lexer")
+local diagnostics = require("@util/diagnostics")
 
 local code = fs.readFile("./blink/diagnostics.blink")
-local input = buffer.fromstring(code)
+local input = file.from_source(code)
 local tokens = lexer.tokenize(input)
 
 diagnostics.report.create("Error", "diagnostics.blink", input)

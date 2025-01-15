@@ -324,6 +324,7 @@ export type Node =
     | GenericDef
 
 export type Block = {
+    read id: NodeId,
     read kind: "block",
     read statements: {Statement}
 }
@@ -334,8 +335,4 @@ export type Ast = {
     read symbols: Symbols
 }
 
-local DUMMY_ID = -1
-
-return table.freeze({
-    DUMMY_ID = DUMMY_ID
-})
+return table.freeze({})

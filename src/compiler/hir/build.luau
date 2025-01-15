@@ -38,7 +38,6 @@ type Context = {
     read ast: Ast,
 
     scope: ScopeId,
-    node_id: number,
     symbols: ast.Symbols,
     generics: {
         args: {TyId<ty.Generic>},
@@ -47,9 +46,6 @@ type Context = {
 
     hashed_tys: {[string]: Ty},
 }
-
-local DUMMY_ID = ast.DUMMY_ID
-local ROOT_SCOPE = id.node_id.to_scope_id(DUMMY_ID :: any)
 
 local block: (ctx: Context, node: ast.Block) -> ()
 local statement: (ctx: Context, stat: ast.Statement) -> DeclId?
@@ -77,22 +73,9 @@ local function decl_from_id_option(ctx: Context, decl_id: DeclId): option.Option
     return option.some(decl)
 end
 
-local function node_from_ty_id(ctx: Context, ty_id: TyId): Node
-    local node_id = id.ty_id.to_node_id(ty_id)
-    return hir.node_from_id(ctx.hir, node_id)
-end
-
-local function next_node_id<T>(ctx: Context): NodeId<T>
-    local id = ctx.node_id
-    ctx.node_id += 1
-    return id :: any
-end
-
-local function assign_node_id(ctx: Context, node: Node): NodeId
-    local node_id = next_node_id(ctx)
-    node.id = node_id
-    ctx.hir.nodes[node_id] = node
-    return node_id
+local function store_node(ctx: Context, node: Node): NodeId
+    ctx.hir.nodes[node.id] = node
+    return node.id
 end
 
 --- Creates an inner scope and returns the `scope_id` of the previous scope
@@ -474,7 +457,7 @@ end
 
 function expression(ctx: Context, expr: ast.Expression): TyId
     --> assign node_id
-    local node_id = assign_node_id(ctx, expr)
+    local node_id = store_node(ctx, expr)
     local ty_id = id.node_id.to_ty_id(node_id)
 
     --> process node
@@ -582,7 +565,7 @@ local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
 
         for index, value in generics.values do
             local name = value.name
-            local node_id = assign_node_id(ctx, value)
+            local node_id = store_node(ctx, value)
             local ty_id = id.node_id.to_ty_id(node_id)
             local generic = ty.generic(name.value, index)
 
@@ -680,7 +663,7 @@ end
 
 function statement(ctx: Context, stat: ast.Statement): DeclId?
     --> assign node_id
-    local node_id = assign_node_id(ctx, stat)
+    local node_id = store_node(ctx, stat)
 
     --> process node
     local decl: Decl?;
@@ -788,12 +771,13 @@ local function build_hir(ast: Ast): Hir
         scopes = {},
     }
 
+    print(id.kind(ast.body.id), id.module(ast.body.id), id.index(ast.body.id))
+
     local context: Context = {
         hir = hir,
         ast = ast,
 
-        scope = ROOT_SCOPE,
-        node_id = (DUMMY_ID + 1),
+        scope = id.node_id.to_scope_id(ast.body.id),
         symbols = ast.symbols,
 
         nodes = {},

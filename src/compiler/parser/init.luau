@@ -4,6 +4,7 @@
 
 local validator = require("./validator")
 
+local id = require("@compiler/id")
 local lexer = require("@compiler/lexer")
 local ast = require("@compiler/structures/ast")
 
@@ -19,7 +20,10 @@ type TokenAny = lexer.TokenBase<any>
 type TokenKind = lexer.TokenKind
 
 type Parser = {
-    tokens: {Token},
+    read tokens: {Token},
+
+    read module: number,
+    read node_index: number,
 
     index: number,
     token: Token,
@@ -28,12 +32,18 @@ type Parser = {
     attributes: {ast.Attribute}
 }
 
-local DUMMY_ID = ast.DUMMY_ID :: any
+local DUMMY_ID = id.node_id.create(2^8 - 1, 2^22 - 1)
 local ROOT_SYMBOLS = ""
 
 local block: (Parser, boolean) -> ast.Block;
 local statement: (Parser) -> ast.Statement;
 local expression: (Parser) -> ast.Expression;
+
+local function next_node_id(parser: Parser): ast.NodeId
+    local index = parser.node_index
+    parser.node_index += 1
+    return id.node_id.create(parser.module, index)
+end
 
 local function peek(parser: Parser): Token
     return parser.token
@@ -231,22 +241,11 @@ local function generic(parser: Parser): ast.GenericDef
     local name = identifier(parser)
     local node_span = name.span
 
-    --[[local default: ast.Expression?;
-    if peek_kind(parser) == "=" then
-        local _assign = expect(parser, "=")
-        local expr = expression(parser)
-
-        default = expr
-        node_span = span.merge(name.span, expr.span)
-    end]]
-
     return {
         id = DUMMY_ID,
         kind = "generic",
         span = node_span,
-
         name = name,
-        --default = default,
     }
 end
 
@@ -258,7 +257,6 @@ local function generics(parser: Parser): ast.GenericsDef
     return {
         kind = "generics",
         span = span.merge(open.span, close.span),
-
         values = values
     }
 end
@@ -270,7 +268,6 @@ local function expr_boolean(parser: Parser): ast.ExprBoolean
             id = DUMMY_ID,
             span = token.span,
             kind = "boolean",
-
             value = true
         }
     elseif token.kind == "false" then
@@ -278,7 +275,6 @@ local function expr_boolean(parser: Parser): ast.ExprBoolean
             id = DUMMY_ID,
             span = token.span,
             kind = "boolean",
-
             value = false
         }
     end
@@ -299,7 +295,6 @@ local function expr_number(parser: Parser): ast.ExprNumber
         id = DUMMY_ID,
         span = number.span,
         kind = "number",
-
         value = literal
     }
 end
@@ -353,7 +348,6 @@ local function expr_range(parser: Parser, delimiter: "(" | "["): ast.Range
     return {
         span = span.merge(open.span, close.span),
         kind = "range",
-
         max = max,
         min = min
     }
@@ -371,12 +365,11 @@ local function expr_reference(parser: Parser): ast.ExprReference
 
         local close = expect(parser, ">")
         node_span = span.merge(path.span, close.span)
-
         generics = {
             span = span.merge(open.span, close.span),
             kind = "generics",
             values = values
-        } :: any
+        }
     end
 
     --> range
@@ -390,7 +383,6 @@ local function expr_reference(parser: Parser): ast.ExprReference
         id = DUMMY_ID,
         span = node_span,
         kind = "reference",
-
         path = path,
         range = range,
         generics = generics
@@ -406,7 +398,6 @@ local function expr_field(parser: Parser): ast.ExprField
         id = DUMMY_ID,
         span = span.merge(name.span, value.span),
         kind = "field",
-
         name = name,
         value = value
     }
@@ -423,7 +414,6 @@ local function expr_struct(parser: Parser): ast.ExprStruct
         id = DUMMY_ID,
         span = span.merge(keyword.span, close.span),
         kind = "struct",
-
         fields = fields
     }
 end
@@ -438,7 +428,6 @@ local function expr_inlined_struct(parser: Parser): ast.ExprStruct
         id = DUMMY_ID,
         span = span.merge(open.span, close.span),
         kind = "struct",
-
         fields = fields
     }
 end
@@ -470,7 +459,6 @@ local function expr_map(parser: Parser): ast.ExprMap
         id = DUMMY_ID,
         span = span.merge(keyword.span, value.span),
         kind = "map",
-        
         index = index,
         value = value,
         range = range
@@ -488,7 +476,6 @@ local function expr_set(parser: Parser): ast.ExprSet
         id = DUMMY_ID,
         span = span.merge(keyword.span, close.span),
         kind = "set",
-
         values = values
     }
 end
@@ -626,6 +613,16 @@ local function expr_array(parser: Parser, of: ast.Expression): ast.ExprArray
 
         range = range,
         value = of,
+    }
+end
+
+local function expr_union(parser: Parser, left: ast.Expression, right: ast.Expression): ast.ExprUnion
+    return {
+        id = DUMMY_ID,
+        span = span.merge(left.span, right.span),
+        kind = "union",
+        left = left,
+        right = right
     }
 end
 
@@ -821,9 +818,23 @@ local function stat_import(parser: Parser): ast.StatImport
     }
 end
 
+local function try_wrap_in_optional(parser: Parser, expr: ast.Expression): ast.Expression
+    local token = peek(parser)
+    if token.kind ~= "?" then
+        return expr
+    end
+
+    local node_id = next_node_id(parser)
+    expr = expr_optional(parser, expr)
+    expr.id = node_id
+
+    return expr
+end
+
 function expression(parser: Parser): ast.Expression
     local token = peek(parser)
     local expr: ast.Expression
+    local node_id = next_node_id(parser)
     
     if token.kind == "word" then
         expr = expr_reference(parser)
@@ -847,47 +858,32 @@ function expression(parser: Parser): ast.Expression
         return report.expect_one_of(token, {"word", "string", "number", "true", "false"})
     end
 
+    -- assign node id
+    expr.id = node_id
+
     while peek_kind(parser) == "[" do
         --> array
+        local array_node_id = next_node_id(parser)
         expr = expr_array(parser, expr)
+        expr.id = array_node_id
 
         --> optional
-        local current = peek(parser)
-        if current.kind == "?" then
-            expr = expr_optional(parser, expr)
-        end
+        expr = try_wrap_in_optional(parser, expr)
     end
 
     --> optional
-    do
-        local current = peek(parser)
-        if current.kind == "?" then
-            expr = expr_optional(parser, expr)
-        end
-    end
+    expr = try_wrap_in_optional(parser, expr)
 
     --> merge
-    do
-        local current = peek(parser)
-        if current.kind == "&" then
-            --> consume union symbol
-            consume(parser)
+    if peek_kind(parser) == "&" then
+        consume(parser)
 
-            --> get left & right side
-            local left = expr
-            local right = expression(parser)
-
-            --> return a union
-            local union: ast.ExprUnion = {
-                id = DUMMY_ID,
-                span = span.merge(left.span, right.span),
-                kind = "union",
-                left = left,
-                right = right
-            }
-
-            expr = union
-        end
+        -- reserve node id
+        local union_node_id = next_node_id(parser)
+        
+        local right = expression(parser)
+        expr = expr_union(parser, expr, right)
+        expr.id = union_node_id
     end
 
     return expr
@@ -896,6 +892,7 @@ end
 function statement(parser: Parser): ast.Statement
     local stat: ast.Statement?
     local token = peek(parser)
+    local node_id = next_node_id(parser)
 
     if token.kind == "type" then
         stat = stat_type(parser)
@@ -918,6 +915,10 @@ function statement(parser: Parser): ast.Statement
     --TODO: Remove
     assert(stat, "luau type solver issue")
 
+    -- assign node id
+    stat.id = node_id
+
+    -- validate attributes
 	if #parser.attributes > 0 then
         return report.invalid_attribute_placement(stat)
 	end
@@ -927,6 +928,7 @@ function statement(parser: Parser): ast.Statement
 end
 
 function block(parser: Parser, is_scope: boolean?): ast.Block
+    local node_id = next_node_id(parser)
     local statements: {ast.Statement} = {}
 
     while true do
@@ -950,18 +952,22 @@ function block(parser: Parser, is_scope: boolean?): ast.Block
     end
 
     return {
+        id = node_id,
         kind = "block",
         statements = statements
     }
 end
 
 --- Returns an AST constructed from `tokens`, errors if invalid syntax is encountered
-local function parse(tokens: {lexer.Token}): ast.Ast
+local function parse(file_id: number, tokens: {lexer.Token}): ast.Ast
     assert(#tokens > 0, "Tokens are empty")
     assert(tokens[#tokens] and tokens[#tokens].kind == "eof", "Final token should be eof")
 
     local parser: Parser = {
         tokens = tokens,
+
+        module = file_id,
+        node_index = 0,
 
         index = 1,
         token = tokens[1],
@@ -988,6 +994,5 @@ diagnostics.set_error_fn(function(text: string)
 end)
 
 return table.freeze({
-    parse = parse,
-    DUMMY_ID = DUMMY_ID
+    parse = parse
 })
