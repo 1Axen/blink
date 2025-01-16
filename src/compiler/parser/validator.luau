@@ -18,13 +18,13 @@ type Range = range.Range
 type Literal = string | number | boolean
 export type Symbols = symbols.Symbols<ast.Statement>
 
-type Validator = {
+type Context = {
     symbols: Symbols
 }
 
-local block: (validator: Validator, block: ast.Block, name: string) -> ();
-local statement: (validator: Validator, statement: ast.Statement) -> ();
-local expression: (validator: Validator, expression: ast.Expression) -> ();
+local block: (ctx: Context, block: ast.Block, name: string) -> ();
+local statement: (ctx: Context, statement: ast.Statement) -> ();
+local expression: (ctx: Context, expression: ast.Expression) -> ();
 
 local function as_literal(expr: ast.Expression): Literal | never
     if expr.kind == "string" then
@@ -46,7 +46,7 @@ local function as_literal(expr: ast.Expression): Literal | never
     .error()
 end
 
-local function expr_range(validator: Validator, range: ast.Range): ast.Range
+local function expr_range(ctx: Context, range: ast.Range): ast.Range
     local min = range.min
     local max = range.max
 
@@ -60,24 +60,24 @@ local function expr_range(validator: Validator, range: ast.Range): ast.Range
     return range
 end
 
-local function expr_reference(validator: Validator, expr: ast.ExprReference): never?
+local function expr_reference(ctx: Context, expr: ast.ExprReference): never?
     local range = expr.range
     local generics = expr.generics
     
     if generics then
         for index, generic in generics.values do
-            expression(validator, generic)
+            expression(ctx, generic)
         end
     end
 
     if range then
-        range = expr_range(validator, range)
+        range = expr_range(ctx, range)
     end
 
     return nil
 end
 
-local function expr_set(validator: Validator, expr: ast.ExprSet): never?
+local function expr_set(ctx: Context, expr: ast.ExprSet): never?
     local entries: {[string]: ast.Identifier} = {}
     for _, entry in expr.values do
         local previous = entries[entry.value]
@@ -91,21 +91,21 @@ local function expr_set(validator: Validator, expr: ast.ExprSet): never?
     return nil
 end
 
-local function expr_map(validator: Validator, expr: ast.ExprMap): never?
-    expression(validator, expr.index)
-    expression(validator, expr.value)
+local function expr_map(ctx: Context, expr: ast.ExprMap): never?
+    expression(ctx, expr.index)
+    expression(ctx, expr.value)
     return nil
 end
 
-local function expr_pack(validator: Validator, expr: ast.ExprPack): never?
+local function expr_pack(ctx: Context, expr: ast.ExprPack): never?
     for _, value in expr.values do
-        expression(validator, value.value)
+        expression(ctx, value.value)
     end
 
     return nil
 end
 
-local function expr_enum(validator: Validator, expr: ast.ExprEnum): never?
+local function expr_enum(ctx: Context, expr: ast.ExprEnum): never?
     local variants: {[string]: ast.Identifier} = {}
     for _, variant in expr.variants do
         local value = variant.value
@@ -120,7 +120,7 @@ local function expr_enum(validator: Validator, expr: ast.ExprEnum): never?
     return nil
 end
 
-local function expr_struct(validator: Validator, expr: ast.ExprStruct): never?
+local function expr_struct(ctx: Context, expr: ast.ExprStruct): never?
     local fields: {[string]: ast.Identifier} = {}
     for _, field in expr.fields do
         local name = field.name
@@ -132,26 +132,26 @@ local function expr_struct(validator: Validator, expr: ast.ExprStruct): never?
         end
 
         fields[value] = name
-        expression(validator, field.value)
+        expression(ctx, field.value)
     end
 
     return nil
 end
 
-local function expr_union(validator: Validator, expr: ast.ExprUnion)
-    expression(validator, expr.left)
-    expression(validator, expr.right)
+local function expr_union(ctx: Context, expr: ast.ExprUnion)
+    expression(ctx, expr.left)
+    expression(ctx, expr.right)
 end
 
-local function expr_array(validator: Validator, expr: ast.ExprArray)
-    expression(validator, expr.value)
+local function expr_array(ctx: Context, expr: ast.ExprArray)
+    expression(ctx, expr.value)
 end
 
-local function expr_optional(validator: Validator, expr: ast.ExprOptional)
-    expression(validator, expr.value)
+local function expr_optional(ctx: Context, expr: ast.ExprOptional)
+    expression(ctx, expr.value)
 end
 
-local function expr_tag_enum(validator: Validator, expr: ast.ExprTaggedEnum): never?
+local function expr_tag_enum(ctx: Context, expr: ast.ExprTaggedEnum): never?
     local variants = {}
     for _, variant in expr.variants do
         local key = variant.key
@@ -163,21 +163,21 @@ local function expr_tag_enum(validator: Validator, expr: ast.ExprTaggedEnum): ne
         end
 
         variants[str_name] = key
-        expr_struct(validator, variant.value)
+        expr_struct(ctx, variant.value)
     end
 
     return nil
 end
 
-local function expr_pack_or_single(validator: Validator, expr: ast.Expression | ast.ExprPack)
+local function expr_pack_or_single(ctx: Context, expr: ast.Expression | ast.ExprPack)
     if expr.kind == "pack" then
-        expr_pack(validator, expr)
+        expr_pack(ctx, expr)
     else
-        expression(validator, expr)
+        expression(ctx, expr)
     end
 end
 
-local function stat_type(validator: Validator, stat: ast.StatType): never?
+local function stat_type(ctx: Context, stat: ast.StatType): never?
     local name = stat.name
     local value = stat.value
     local primitive = (primitives :: any)[name.value]
@@ -195,19 +195,19 @@ local function stat_type(validator: Validator, stat: ast.StatType): never?
     end
 
     --> replace expression if needed (resolved reference)
-    expression(validator, value)
+    expression(ctx, value)
 
     return nil
 end
 
-local function stat_event(validator: Validator, stat: ast.StatEvent)
+local function stat_event(ctx: Context, stat: ast.StatEvent)
     local data = stat.data
     if data ~= nil then
-        expr_pack_or_single(validator, data)
+        expr_pack_or_single(ctx, data)
     end
 end
 
-local function stat_option(validator: Validator, stat: ast.StatOption): never?
+local function stat_option(ctx: Context, stat: ast.StatOption): never?
     local name = stat.name
     local value = stat.value
 
@@ -253,83 +253,83 @@ local function stat_option(validator: Validator, stat: ast.StatOption): never?
     return nil
 end
 
-local function stat_function(validator: Validator, stat: ast.StatFunction)
+local function stat_function(ctx: Context, stat: ast.StatFunction)
     local data = stat.data
     if data ~= nil then
-        expr_pack_or_single(validator, data)
+        expr_pack_or_single(ctx, data)
     end
 
     local ret = stat.ret
     if ret ~= nil then
-        expr_pack_or_single(validator, ret)
+        expr_pack_or_single(ctx, ret)
     end
 end
 
-function expression(validator: Validator, expr: ast.Expression)
+function expression(ctx: Context, expr: ast.Expression)
     if expr.kind == "map" then
-        expr_map(validator, expr)
+        expr_map(ctx, expr)
     elseif expr.kind == "set" then
-        expr_set(validator, expr)
+        expr_set(ctx, expr)
     elseif expr.kind == "array" then
-        expr_array(validator, expr)
+        expr_array(ctx, expr)
     elseif expr.kind == "enum" then
-        expr_enum(validator, expr)
+        expr_enum(ctx, expr)
     elseif expr.kind == "struct" then
-        expr_struct(validator, expr)
+        expr_struct(ctx, expr)
     elseif expr.kind == "union" then
-        expr_union(validator, expr)
+        expr_union(ctx, expr)
     elseif expr.kind == "tag_enum" then
-        expr_tag_enum(validator, expr)
+        expr_tag_enum(ctx, expr)
     elseif expr.kind == "optional" then
-        expr_optional(validator, expr)
+        expr_optional(ctx, expr)
     elseif expr.kind == "reference" then
-        expr_reference(validator, expr :: any)
+        expr_reference(ctx, expr :: any)
     end
 end
 
-function statement(validator: Validator, stat: ast.Statement)
+function statement(ctx: Context, stat: ast.Statement)
     local name = stat.name
     if stat.kind == "type" then
-        stat_type(validator, stat)
+        stat_type(ctx, stat)
     elseif stat.kind == "event" then
-        stat_event(validator, stat)
+        stat_event(ctx, stat)
     elseif stat.kind == "scope" then
-        block(validator, stat.body, stat.name.value)
+        block(ctx, stat.body, stat.name.value)
     elseif stat.kind == "option" then
-        stat_option(validator, stat)
+        stat_option(ctx, stat)
     elseif stat.kind == "function" then
-        stat_function(validator, stat)
+        stat_function(ctx, stat)
     end
 
-    local existing = symbols.search(validator.symbols, {name.value})
+    local existing = symbols.search(ctx.symbols, {name.value})
     if existing ~= nil then
         report.shadow(name, existing.name)
     end
 
-    symbols.set(validator.symbols, name.value, stat)
+    symbols.set(ctx.symbols, name.value, stat)
 end
 
-function block(validator: Validator, block: ast.Block, name: string?)
+function block(ctx: Context, block: ast.Block, name: string?)
     --> inner symbols
-    local parent = validator.symbols
+    local parent = ctx.symbols
     if name then
-        validator.symbols = symbols.inner(parent, name)
+        ctx.symbols = symbols.inner(parent, name)
     end
 
     for _, stat in block.statements do
-        statement(validator, stat)
+        statement(ctx, stat)
     end
 
     --> restore symbols
-    validator.symbols = parent
+    ctx.symbols = parent
 end
 
 local function validate(ast: Ast)
-    local validator: Validator = {
+    local ctx: Context = {
         symbols = ast.symbols
     }
 
-    block(validator, ast.body)
+    block(ctx, ast.body)
 end
 
 return table.freeze({
