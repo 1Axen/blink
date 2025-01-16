@@ -29,6 +29,7 @@ analysis.InvalidOption = next_id()
 analysis.DuplicateEntry = next_id()
 analysis.UnknownOption = next_id()
 analysis.ReservedIdentifier = next_id()
+analysis.InvalidImport = next_id()
 
 local type_checking = {}
 type_checking.InvalidType = next_category()
