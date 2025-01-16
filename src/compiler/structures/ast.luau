@@ -283,7 +283,7 @@ export type StatImport = {
     read span: vector,
     read kind: "import",
 
-    read name: Identifier,
+    read name: Identifier?,
     read path: ExprString,
 }
 

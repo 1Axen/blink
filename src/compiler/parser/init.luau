@@ -797,14 +797,9 @@ local function stat_import(ctx: Context): ast.StatImport
     local keyword = expect(ctx, "import")
 
     local path = expr_string(ctx)
-    local full_span = path.span
+    local full_span = span.merge(keyword.span, path.span)
 
-    local name: ast.Identifier = {
-        span = path.span,
-        kind = "identifier",
-        value = path.value
-    }
-
+    local name: ast.Identifier?;
     local token = peek(ctx)
     if token.kind == "as" then
         expect(ctx, "as")
