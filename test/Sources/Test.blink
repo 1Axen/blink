@@ -520,3 +520,29 @@ scope ExampleScope {
         Data: AnotherScope.ScopeWithinAnotherScope.ExampleType
     }
 }
+
+scope Issue33 {
+    enum Foo = {
+        One,
+        Two
+    }
+
+    map Map<T> = {[Foo]: f64}
+
+    enum Enum<T> = "Tag" {
+        Variant {
+            field: Foo
+        }
+    }
+
+    struct Struct<T> {
+        field: Foo
+    }
+
+    event Event {
+        From: Server,
+        Type: Reliable,
+        Call: SingleSync,
+        Data: (Map<u8>, Enum<u8>, Struct<u8>)
+    }
+}

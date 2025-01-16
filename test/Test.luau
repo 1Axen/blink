@@ -521,6 +521,12 @@ local function RunClosure(Name: string, Closure: () -> ())
     end
 
     OkPrint(`Test "{Name}" passed!`)
+
+    -- cleanup
+    pcall(function()
+        Client.StepReplication()
+        Server.StepReplication()
+    end)
 end
 
 --> Tests
@@ -924,6 +930,20 @@ RunClosure("Multi Dimensional Array", function()
         ErrorPrint(`Expected: {Format(Array)}, got: {Format(Deserialized)} instead`)
     end
 end)
+
+do
+    local foo: Client.Issue33_Foo = "One"
+    local map: Client.Issue33_Map<number> = {[foo] = 0}
+    local enum: Client.Issue33_Enum<number> = {Tag = "Variant", field = foo}
+    local struct: Client.Issue33_Struct<number> = {field = foo}
+    
+    FireAndExpectTuple(
+        "Generics containing a unit enum value", 
+        Server.Issue33.Event, 
+        Client.Issue33.Event, 
+        map, enum, struct
+    )
+end
 
 PrettyPrint("green", `All tests passed successfully!`)
 
