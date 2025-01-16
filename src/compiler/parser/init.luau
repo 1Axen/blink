@@ -811,7 +811,6 @@ local function stat_import(ctx: Context): ast.StatImport
         id = DUMMY_ID,
         span = full_span,
         kind = "import",
-        
         name = name,
         path = path
     }
