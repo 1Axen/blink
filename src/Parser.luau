@@ -765,8 +765,8 @@ function Parser.ReplaceGenerics(self: Parser, Of: TypeNode, Previous: {[string]:
     local function Traverse(Type: TypeNode)
         if Type.Type == "Array" or Type.Type == "Optional" then
             Traverse(Type.Value.Of)
-        elseif (Type :: Struct).Value.Values ~= nil then
-            for _, Type in (Type :: Struct).Value.Values do
+        elseif Type.Type == "TagEnum" or Type.Type == "Struct" or Type.Type == "Map" then
+            for _, Type in Type.Value.Values :: {any} do
                 Traverse(Type)
             end
         elseif Type.Type == "Generic" then
