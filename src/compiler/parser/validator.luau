@@ -207,6 +207,37 @@ local function stat_event(ctx: Context, stat: ast.StatEvent)
     end
 end
 
+local function stat_import(ctx: Context, stat: ast.StatImport): never?
+    local path = stat.path
+    local path_string = path.value
+
+    do
+        -- @ or ./
+        local prefix_first = string.sub(path_string, 1, 1)
+        if prefix_first ~= "@" and prefix_first ~= "." then
+            return report.import_prefix(path, prefix_first)
+        end
+
+        -- ../ or ./
+        if prefix_first == "." then
+            local prefix_second = string.sub(path_string, 2, 2)
+            if prefix_second ~= "." and prefix_second ~= "/" then
+                return report.import_prefix(path, prefix_second)
+            end
+        end
+    end
+
+    do
+        -- name.*
+        local path_extension: string = string.match(path_string, "%..$") :: string
+        if path_extension then
+            return report.import_extension(path, path_extension)
+        end
+    end
+
+    return nil
+end
+
 local function stat_option(ctx: Context, stat: ast.StatOption): never?
     local name = stat.name
     local value = stat.value
@@ -297,6 +328,8 @@ function statement(ctx: Context, stat: ast.Statement)
         block(ctx, stat.body, stat.name.value)
     elseif stat.kind == "option" then
         stat_option(ctx, stat)
+    elseif stat.kind == "import" then
+        stat_import(ctx, stat)
     elseif stat.kind == "function" then
         stat_function(ctx, stat)
     end

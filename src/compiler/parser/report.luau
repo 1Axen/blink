@@ -133,8 +133,32 @@ local function report_missing_entries(struct: span.Span, entries: {string}): nev
             .with_color(diagnostics.style.color.red)
             .with_message("Add missing entries to struct")
         )
-        .finish()
-        .error()
+    .finish()
+    .error()
+end
+
+local function report_import_prefix(path: ast.ExprString, prefix: string): never
+    return diagnostics.report.create("Error")
+        .with_code(codes.analysis.InvalidImport)
+        .with_message(`Import path should start with one of "@", "." or ".."`)
+        .with_label(diagnostics.label.create(path.span)
+            .with_color(diagnostics.style.color.red)
+            .with_message(`Invalid path prefix: "{prefix}"`)
+        )
+    .finish()
+    .error()
+end
+
+local function report_import_extension(path: ast.ExprString, extension: string): never
+    return diagnostics.report.create("Error")
+        .with_code(codes.analysis.InvalidImport)
+        .with_message(`Import path shouldn't contain an extension`)
+        .with_label(diagnostics.label.create(path.span)
+            .with_color(diagnostics.style.color.red)
+            .with_message(`Remove file extension: "{extension}"`)
+        )
+    .finish()
+    .error()
 end
 
 return table.freeze({
@@ -149,4 +173,7 @@ return table.freeze({
 
     invalid_range = report_invalid_range,
     invalid_attribute_placement = report_invalid_attribute_placement,
+
+    import_prefix = report_import_prefix,
+    import_extension = report_import_extension,
 })
