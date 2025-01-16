@@ -49,27 +49,4 @@ export type FileOptions = {
     manual_replication: boolean?
 }
 
---[=[
-    * dev
-        - Debug info
-        - Tooling support
-        - Write validations
-    * release
---]=]
-export type CompileProfile = "dev" | "release"
-
-export type CompilerOptions = {
-    --- Types only output
-    output: string?,
-    --- Generate typescript declaration files?
-    typescript: boolean?,
-    --- Client events + types output
-    client_output: string?,
-    --- Server events + types output
-    server_output: string?,
-
-    --- Controls various compiler behaviours, for more information about each profile take a look at `CompileProfile`
-    profile: CompileProfile,
-}
-
 return table.freeze(options)

@@ -1,0 +1,19 @@
+local ast = require("@compiler/structures/ast")
+
+export type Profile = "dev" | "test" | "release"
+export type CompilerOptions = {
+    --- Track how long each step took and report it to the standard out
+    time: boolean,
+    --- Controls whether the compiler will report internal information to the standard out
+    verbose: boolean,
+    profile: Profile,
+}
+
+--[=[
+    Map of `file id` to `AST`.
+    Since file id's are contigous the map also works as an array.
+    Index 0 into the map *must* always be the entry file of the compilation.
+]=] 
+export type FilesMap = {[number]: ast.Ast}
+
+return nil
