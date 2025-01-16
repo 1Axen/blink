@@ -8,6 +8,7 @@ local id = require("@compiler/id")
 local lexer = require("@compiler/lexer")
 local ast = require("@compiler/structures/ast")
 
+local file = require("@util/file")
 local span = require("@util/span")
 local panic = require("@util/panic")
 local symbols = require("@util/symbols")
@@ -22,7 +23,7 @@ type TokenKind = lexer.TokenKind
 type Parser = {
     read tokens: {Token},
 
-    read file: number,
+    read file: file.File,
     read node_index: number,
 
     index: number,
@@ -42,7 +43,7 @@ local expression: (Parser) -> ast.Expression;
 local function next_node_id(parser: Parser): ast.NodeId
     local index = parser.node_index
     parser.node_index += 1
-    return id.node_id.create(parser.file, index)
+    return id.node_id.create(parser.file.id, index)
 end
 
 local function peek(parser: Parser): Token
@@ -959,14 +960,14 @@ function block(parser: Parser, is_scope: boolean?): ast.Block
 end
 
 --- Returns an AST constructed from `tokens`, errors if invalid syntax is encountered
-local function parse(file_id: number, tokens: {lexer.Token}): ast.Ast
+local function parse(file: file.File, tokens: {lexer.Token}): ast.Ast
     assert(#tokens > 0, "Tokens are empty")
     assert(tokens[#tokens] and tokens[#tokens].kind == "eof", "Final token should be eof")
 
     local parser: Parser = {
         tokens = tokens,
 
-        file = file_id,
+        file = file,
         node_index = 0,
 
         index = 1,
