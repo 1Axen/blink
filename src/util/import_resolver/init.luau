@@ -48,7 +48,7 @@ local function resolve_fs_import(directory: string, path: string): Option<File>
         path = `{replacement}{string.sub(path, slash_index, #path)}`
     end
 
-    local final_path = `{directory}/{path}`
+    local final_path = `{directory}/{path}.blink`
     if fs.isFile(final_path) == false then
         return option.none()
     end
@@ -58,7 +58,7 @@ local function resolve_fs_import(directory: string, path: string): Option<File>
     end)
 
     if io_success == false then
-        return panic(`Encountered an IOError while trying to read "{final_path}": {source}`)
+        return panic(`IOError while trying to read import "{final_path}": {source}`)
     end
 
     local resolved_file = reuse_or_create_file(source)
