@@ -1,17 +1,12 @@
 local result = require("@util/result")
+local option = require("@util/option")
 
 -- lune
 local fs: typeof(require("@lune/fs"));
-local serde: typeof(require("@lune/serde"))
+local luaurc: typeof(require("@util/luaurc"));
 
 export type Aliases = {[string]: string}
-
 type Result<T, E> = result.Result<T, E>
-type LuaurcSchema = {
-    aliases: Aliases
-}
-
-local LUAURC_CONFIG = ".luaurc"
 
 type IOError = "IOError"
 type ParseError = "ParseError"
@@ -26,27 +21,27 @@ local function import_std()
     end
 
     fs = require("@lune/fs")
-    serde = require("@lune/serde")
+    luaurc = require("@util/luaurc")
 end
 
-local function get_aliases(config_path: string): Result<Aliases, ConfigError>
-    local io_success, json = pcall(function()
-        return fs.readFile(config_path)
+local function aliases_from_path(path: string): Result<Aliases, ConfigError>
+    local io_success, json_contents = pcall(function()
+        return fs.readFile(path)
     end)
 
     if io_success == false then
         return result.err("IOError" :: IOError)
     end
 
-    local parse_success, schema = pcall(function()
-        return serde.decode("json", json) :: LuaurcSchema
-    end)
-
-    if parse_success == false then
+    local luaurc_result = luaurc.from_json(json_contents)
+    if luaurc_result.error then
         return result.err("ParseError" :: ParseError)
     end
 
-    return result.ok(schema.aliases)
+    local aliases_opt = luaurc.aliases(luaurc_result.value)
+    local aliases = option.unwrap_or(aliases_opt, {}) :: Aliases
+
+    return result.ok(aliases)
 end
 
 --- Unimplemented for now
@@ -58,29 +53,33 @@ end
 local function collect_fs_aliases(directory: string): Aliases
     import_std()
 
-    local aliases: Aliases = {}
+    local all_aliases: Aliases = {}
     local current_directory = directory
 
+    local function record_unique_aliases(aliases: Aliases)
+        for alias, luaurc_relative_path in aliases do
+            if all_aliases[alias] then
+                continue
+            end
+
+            local file_relative_path = `{current_directory}/{luaurc_relative_path}`
+            all_aliases[alias] = file_relative_path 
+        end
+    end
+
     while fs.isDir(current_directory) do
-        local path = `{current_directory}/{LUAURC_CONFIG}`
+        local path = `{current_directory}/{luaurc.CONFIG_NAME}`
         if fs.isFile(path) then
-            local config_aliases = get_aliases(path)
-            if config_aliases.value then
-                for alias, config_relative_path in config_aliases.value do
-                    if aliases[alias] then
-                        continue
-                    end
-        
-                    local file_relative_path = `{current_directory}/{config_relative_path}`
-                    aliases[alias] = file_relative_path 
-                end
+            local aliases_result = aliases_from_path(path)
+            if aliases_result.value then
+                record_unique_aliases(aliases_result.value :: Aliases)
             end
         end
 
         current_directory ..= "/.."
     end
 
-    return aliases
+    return all_aliases
 end
 
 return table.freeze({
