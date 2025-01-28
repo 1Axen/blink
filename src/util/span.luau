@@ -3,6 +3,7 @@
 --!optimize 2
 
 local file = require("@util/file")
+local option = require("@util/option")
 
 --- A span stores the start and finish offset of a token or node
 --- * x: start offset
@@ -25,12 +26,9 @@ local function length(span: vector): number
     return (span.y - span.x) + 1
 end
 
-local function value(span: vector): string
-    local span_file = file.from_id(span.z)
-    assert(span_file, "Span should belong to a file")
-
-    local content = file.content(span_file)
-    return buffer.readstring(content, span.x, length(span))
+local function as_string(span: vector): string
+    local span_file = option.unwrap(file.from_id(span.z))
+    return buffer.readstring(span_file.buffer, span.x, length(span))
 end
 
 local function contains(span: vector, position: number): boolean
@@ -44,7 +42,7 @@ end
 
 return table.freeze({
     create = create,
-    value = value,
+    value = as_string,
     merge = merge,
     length = length,
     contains = contains,

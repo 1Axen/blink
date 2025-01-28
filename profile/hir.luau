@@ -4,6 +4,7 @@ local fs = require("@lune/fs")
 local serde = require("@lune/serde")
 
 local file = require("@util/file")
+local path = require('@util/path')
 local builder = require("@util/builder")
 
 local hir = require("@compiler/hir")
@@ -11,11 +12,10 @@ local lexer = require("@compiler/lexer")
 local parser = require("@compiler/parser")
 
 local fmt_hir = require("@format/hir")
-
-local input = file.from_source(fs.readFile("./blink/small.blink"))
+local input = file.from_source("small.blink", fs.readFile("./blink/small.blink"))
 
 local tokens = lexer.tokenize(input)
-local ast = parser.parse(file.id(input), tokens)
+local ast = parser.parse(input, tokens)
 local hir = hir.from_files({[input.id] = ast})
 
 local function clean(t: any): any
