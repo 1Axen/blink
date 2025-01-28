@@ -53,7 +53,7 @@ export type ReportBuilder = {
 local GRAY = style.color.gray
 local BREAK = GRAY("┆")
 
-local error_fn: ErrorFn = error
+local error_fn: ErrorFn = error :: ErrorFn
 
 local function create_label_builder(label_span: Span): LabelBuilder
     local color = style.color.white
@@ -76,10 +76,10 @@ local function create_label_builder(label_span: Span): LabelBuilder
             span = label_span,
             color = color,
             message = message
-        })
+        }) :: Label
     end
 
-    return table.freeze(label_builder)
+    return table.freeze(label_builder) :: LabelBuilder
 end
 
 local function create_report_builder(kind: ReportKind): ReportBuilder
@@ -120,10 +120,10 @@ local function create_report_builder(kind: ReportKind): ReportBuilder
             builder.append_line(report, style.modifer.dim(`({label.span.x}..{label.span.y}:{label.span.z}) `))
             
             if string.find(value, "\n") then
-                local lines = string.split(value, "\n")
+                local lines = string.split(value :: string, "\n")
                 builder.append_lines(report, lines)
             else
-                builder.append_line(report, value)
+                builder.append_line(report, value :: string)
             end
 
             builder.append_line(report, label.color(`─▸ {label.message}`))
@@ -151,7 +151,7 @@ local function create_report_builder(kind: ReportKind): ReportBuilder
         }
     end
 
-    return table.freeze(report_builder)
+    return table.freeze(report_builder) :: ReportBuilder
 end
 
 local function set_error_fn(new_error_fn: ErrorFn)
