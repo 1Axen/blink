@@ -1,4 +1,5 @@
-local serde = require("@lune/serde")
+local json = require("@util/json")
+local path = require("@util/path")
 local result = require("@util/result")
 local option = require("@util/option")
 
@@ -36,8 +37,7 @@ local LINTS = {
 
 local CONFIG_NAME = ".luaurc"
 
---- https://github.com/luau-lang/rfcs/blob/master/docs/config-luaurc.md
-type Luaurc = {
+type JSONLuaurc = {
     read languageMode: "nocheck" | "nonstrict" | "strict"?,
 
     read lint: {[keyof<typeof(LINTS)>]: boolean}?,
@@ -48,10 +48,22 @@ type Luaurc = {
     read typeErrors: boolean?,
 }
 
+--- https://github.com/luau-lang/rfcs/blob/master/docs/config-luaurc.md
+type Luaurc = {
+    read languageMode: "nocheck" | "nonstrict" | "strict"?,
+
+    read lint: {[keyof<typeof(LINTS)>]: boolean}?,
+    read aliases: {[string]: path.Path}?,
+    read globals: {string}?,
+
+    read lintErrors: boolean,
+    read typeErrors: boolean,
+}
+
 type SerdeError = "SerdeError"
 type MalformedSchema = "MalformedSchema"
 
-export type CtorErrors = 
+export type CtorError = 
     | SerdeError
     | MalformedSchema
 ;
@@ -68,7 +80,7 @@ local function is_one_of(value: any, variants: {any}): boolean
     return table.find(value, variants) ~= nil
 end
 
-local function is_valid_schema(schema: Luaurc): boolean
+local function is_valid_schema(schema: JSONLuaurc): boolean
     local language_mode = schema.languageMode
     if language_mode and is_one_of(language_mode, {"nonstrict", "strict", "nocheck"}) == false then
         return false
@@ -147,10 +159,10 @@ local function is_valid_schema(schema: Luaurc): boolean
 end
 
 --- Takes in the json contents of a `.luaurc` file and returns a result of a Luaurc struct
-local function from_json(contents: string): result.Result<Luaurc, CtorErrors>
+local function from_json(contents: string): result.Result<Luaurc, CtorError>
     -- Phase 1: Decode the file contents
     local serde_success, schema = pcall(function()
-        return serde.decode("json", contents) :: Luaurc
+        return json.decode(contents) :: JSONLuaurc
     end)
 
     if serde_success == false then
@@ -167,15 +179,24 @@ local function from_json(contents: string): result.Result<Luaurc, CtorErrors>
     end
 
     -- Phase 3: Build luaurc struct
+    local aliases: {[string]: path.Path}?;
+    if schema.aliases then
+        aliases = {}
+
+        for alias, relative_path in schema.aliases do
+            aliases[alias] = path.from_string(relative_path)
+        end
+    end
+
     local luaurc: Luaurc = table.freeze({
         languageMode = schema.languageMode,
 
         lint = schema.lint,
-        aliases = schema.aliases,
+        aliases = aliases,
         globals = schema.globals,
         
-        lintErrors = schema.lintErrors,
-        typeErrors = schema.typeErrors,
+        lintErrors = schema.lintErrors or true,
+        typeErrors = schema.typeErrors or false,
     })
 
     return result.ok(luaurc)
@@ -194,7 +215,7 @@ end
 --- Serializes the provided luaurc into a JSON formatted string.
 local function serialize(self: Luaurc): result.Result<string, SerdeError>
     local serde_success, json_string = pcall(function()
-        return serde.encode("json", self)
+        return json.encode(self)
     end)
 
     if serde_success == false then
