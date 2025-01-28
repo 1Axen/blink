@@ -1,5 +1,3 @@
-local process = require("@lune/process")
-
 local PARENT = ".."
 local SIBLING = "."
 
