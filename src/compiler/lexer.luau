@@ -87,9 +87,9 @@ local function is_digit(byte: number): boolean
 end
 
 local function tokenize(input: file.File): {Token}
-    local id = file.id(input)
+    local id = input.id
     local length = file.length(input)
-    local content = file.content(input)
+    local content = input.buffer
 
     --> lexer state
     local position = 0
