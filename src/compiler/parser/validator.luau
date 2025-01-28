@@ -319,24 +319,29 @@ function expression(ctx: Context, expr: ast.Expression)
 end
 
 function statement(ctx: Context, stat: ast.Statement)
-    local name = stat.name
     if stat.kind == "type" then
         stat_type(ctx, stat)
     elseif stat.kind == "event" then
         stat_event(ctx, stat)
     elseif stat.kind == "scope" then
-        block(ctx, stat.body, stat.name.value)
+        block(ctx, stat.body, (stat.name :: ast.Identifier).value)
     elseif stat.kind == "option" then
         stat_option(ctx, stat)
     elseif stat.kind == "import" then
         stat_import(ctx, stat)
+        return
     elseif stat.kind == "function" then
         stat_function(ctx, stat)
     end
 
+    local name = stat.name
+    if name == nil then
+        return
+    end
+
     local existing = symbols.search(ctx.symbols, {name.value})
     if existing ~= nil then
-        report.shadow(name, existing.name)
+        report.shadow(name, existing.name :: ast.Identifier)
     end
 
     symbols.set(ctx.symbols, name.value, stat)
