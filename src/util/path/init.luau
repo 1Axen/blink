@@ -151,7 +151,7 @@ local function starts_with(self: Path, slice: string): boolean
 end
 
 local function strip_file_name(self: Path): Path
-    if get_file_name(self) == nil then
+    if get_file_extension(self) == nil then
         return self 
     end
 
@@ -164,7 +164,7 @@ end
 
 local function with_file_name(self: Path, stem: string, extension: string): Path
     local new_path: Path;
-    if get_file_name(self) ~= nil then
+    if get_file_extension(self) ~= nil then
         new_path = strip_file_name(self)
     else
         new_path = from_path(self)
