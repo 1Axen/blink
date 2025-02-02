@@ -10,19 +10,23 @@ export type File = {
     lines: {string}?,
 }
 
+local next_id = 0
 local files: {File} = {}
+
 local hash_to_file: {[string]: File} = {}
 
 --- creates and returns an empty file
 local function create(name: string, buffer: buffer?): File
     local file: File = {
-        id = #files,
+        id = next_id,
         name = name,
         lines = nil :: any,
         buffer = buffer or EMPTY_BUFFER,
     }
 
+    next_id += 1
     files[file.id] = file
+
     return file
 end
 
