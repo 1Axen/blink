@@ -1043,8 +1043,11 @@ function Generators.Export(Declaration: Type)
 		"RecieveBuffer = PreviousBuffer\n",
 		"RecieveInstanceCursor = PreviousInstanceCursor\n",
 	}, 1)
+	
+	--> Trim buffer
+	Write:Line("local Result = buffer.create(SendCursor)")
+	Write:Line("buffer.copy(Result, 0, SendBuffer, 0, SendCursor)")
 
-	Write:Line("local Result = SendBuffer")
 	Write:Line(`Load(Previous)`)
 
 	--> End export

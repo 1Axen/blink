@@ -945,6 +945,13 @@ do
     )
 end
 
+RunClosure("Export buffer trimming", function()
+    local Buffer = Client.Byte.Write(0)
+    if buffer.len(Buffer) ~= 1 then
+        ErrorPrint(`Expected buffer to be trimmed to 1 byte`)
+    end
+end)
+
 PrettyPrint("green", `All tests passed successfully!`)
 
 process.exit(0)

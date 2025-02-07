@@ -19,6 +19,8 @@ type B = CFrame[10]
 type C = CFrame?
 type D = Color3
 
+export type Byte = u8
+
 export type Color = Color3
 
 export type ExactRange = f32(0)
