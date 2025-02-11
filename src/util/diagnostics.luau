@@ -5,6 +5,7 @@
 local file = require("@util/file")
 local span = require("@util/span")
 local style = require("@util/style")
+local option = require("@util/option")
 local builder = require("@util/builder")
 
 type Span = span.Span
@@ -52,6 +53,7 @@ export type ReportBuilder = {
 
 local GRAY = style.color.gray
 local BREAK = GRAY("┆")
+local DEFAULT_FILE = "input.blink"
 
 local error_fn: ErrorFn = error :: ErrorFn
 
@@ -88,6 +90,7 @@ local function create_report_builder(kind: ReportKind): ReportBuilder
     local notes = {}
     local labels = {}
     local message = "Something happened"
+    local file_name: string?;
 
     local report_builder = {}
     function report_builder.with_code(report_code: number)
@@ -106,13 +109,19 @@ local function create_report_builder(kind: ReportKind): ReportBuilder
     end
 
     function report_builder.with_label(label: LabelBuilder)
-        table.insert(labels, label.finish())
+        local built_label = label.finish()
+        if file_name == nil then
+            local label_file = option.unwrap(file.from_id(built_label.span.z))
+            file_name = label_file.name
+        end
+
+        table.insert(labels, built_label)
         return report_builder
     end
 
     function report_builder.finish()
         local report = builder.create()
-        builder.append_line(report, `[{kind} {string.format("%04i", code)}] {message}`)
+        builder.append_line(report, `[{kind} {string.format("%04i", code)}] {file_name or DEFAULT_FILE}: {message}`)
         builder.indent(report)
 
         for _, label in labels do
