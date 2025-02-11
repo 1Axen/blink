@@ -23,7 +23,7 @@ return function(final_words: string): never
     -- SOLVER BUG
     local source: string, name: string, line: number = (debug.info :: any)(2, "snl")
 
-    local panic_message = `"{source}" panicked at {name}:{line}: {final_words}`
+    local panic_message = `{source}:{line}: panicked in {name}:{line}: {final_words}`
     panic_message ..= `\n\n{HELPFUL_INFORMATION}`
     panic_message ..= `\n{NOTE} {info}`
 
