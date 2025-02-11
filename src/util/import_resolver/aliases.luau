@@ -57,8 +57,8 @@ local function collect_fs_aliases(directory: Path): Aliases
         if fs.is_directory(current_directory).value ~= true then
             break
         end
-
-        local luaurc_path = path.with_file_name(current_directory, "", "luaurc")
+        
+        local luaurc_path = path.append_file_name(current_directory, "", "luaurc")
         if fs.is_file(luaurc_path).value == true then
             local aliases_result = aliases_from_path(luaurc_path)
             if aliases_result.value then
