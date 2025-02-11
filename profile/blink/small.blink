@@ -1,6 +1,6 @@
 option output = "../out/small"
 
-import "./large.blink" as external
+import "./dependency" as external
 
 type health = u8[0.0..100]
 type hash_map = map {[string]: u8}
@@ -12,7 +12,8 @@ type keywords = enum {
 
 type opt<T> = enum "exists" {
     true {
-        value: T
+        value: T,
+        exists: "hi"
     },
     false {}
 }
@@ -68,3 +69,4 @@ scope foo {
 }
 
 type foo_bar = foo.bar
+type meow_murr = external.meow.murr<u8>

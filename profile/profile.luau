@@ -5,7 +5,11 @@ local fs = require("@lune/fs")
 local date_time = require("@lune/datetime")
 
 local file = require("@util/file")
+
+local hir = require("@compiler/hir")
+local lir = require("@compiler/lir")
 local lexer = require("@compiler/lexer")
+local parser = require("@compiler/parser")
 
 local OUT_PATH = "./out/performance.txt"
 
@@ -50,20 +54,83 @@ local function benchmark_closure(name: string, closure: () -> ()): number
     return average_time
 end
 
-local small_code = file.from_source(fs.readFile("blink/small.blink"))
-local large_code = file.from_source(fs.readFile("blink/large.blink"))
-local outdated_large_code = file.from_source(fs.readFile("blink/outdated_large.blink"))
+local small_file = file.from_source("small.blink", fs.readFile("./blink/small.blink"))
+local large_file = file.from_source("large.blink", fs.readFile("./blink/large.blink"))
+local bench_file = file.from_source("bench.blink", fs.readFile("./blink/bench.blink"))
+
+local small_tokens = lexer.tokenize(small_file)
+local large_tokens = lexer.tokenize(large_file)
+local bench_tokens = lexer.tokenize(bench_file)
+
+local large_ast = parser.parse(large_file, large_tokens)
+local bench_ast = parser.parse(bench_file, bench_tokens)
+
+local bench_files = {[bench_file.id] = bench_ast}
+local large_files = {[large_file.id] = large_ast}
+
+local large_hir = hir.from_files(bench_files)
+local bench_hir = hir.from_files(large_files)
 
 fs_append(OUT_PATH, `\n{string.rep("-", 16)}`)
 
-benchmark_closure("lexer (buffer) small.blink", function()
-    lexer.tokenize(small_code)
+benchmark_closure("lexer: small.blink", function()
+    lexer.tokenize(small_file)
 end)
 
-benchmark_closure("lexer (buffer) large.blink", function()
-    lexer.tokenize(large_code)
+benchmark_closure("lexer: large.blink", function()
+    lexer.tokenize(large_file)
 end)
 
-benchmark_closure("lexer (buffer) outdated_large.blink", function()
-    lexer.tokenize(outdated_large_code)
+benchmark_closure("lexer: bench.blink", function()
+    lexer.tokenize(bench_file)
+end)
+
+benchmark_closure("parser: small.blink", function()
+    parser.parse(small_file, small_tokens)
+end)
+
+benchmark_closure("parser: large.blink", function()
+    parser.parse(large_file, large_tokens)
+end)
+
+benchmark_closure("parser: bench.blink", function()
+    lexer.tokenize(bench_file)
+end)
+
+benchmark_closure("hir: bench.blink", function()
+    hir.from_files(bench_files)
+end)
+
+benchmark_closure("hir: large.blink", function()
+    hir.from_files(large_files)
+end)
+
+benchmark_closure("lir: bench.blink", function()
+    lir.from_hir(bench_hir)
+end)
+
+benchmark_closure("lir: large.blink", function()
+    lir.from_hir(large_hir)
+end)
+
+benchmark_closure("codegen: bench.blink", function()
+    
+end)
+
+benchmark_closure("codegen: large.blink", function()
+    
+end)
+
+benchmark_closure("full: bench.blink", function()
+    local tokens = lexer.tokenize(bench_file)
+    local ast = parser.parse(bench_file, tokens)
+    local hir = hir.from_files({[bench_file.id] = ast})
+    local lir = lir.from_hir(hir)
+end)
+
+benchmark_closure("full: large.blink", function()
+    local tokens = lexer.tokenize(large_file)
+    local ast = parser.parse(large_file, tokens)
+    local hir = hir.from_files({[large_file.id] = ast})
+    local lir = lir.from_hir(hir)
 end)

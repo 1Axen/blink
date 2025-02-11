@@ -1,0 +1,127 @@
+type vec3 = vector
+type vec2 = vector<f32, f32, 0>
+type vec1 = vector<f32, 0, 0>
+
+type u_char = u8
+type u_short = u16
+type u_int = u32
+
+type char = i8
+type short = i16
+type int = i32
+
+type u_24 = u24
+type i_24 = i24
+
+type u_48 = u48
+type i_48 = i48
+
+type blob = buffer
+type bool = boolean
+type username = string(0..20)
+
+--[[
+type alpha = Enum<"AlphaMode">
+type location = CFrame<f32, f16>
+
+type mesh = Instance<"MeshPart">
+type color = Color3
+type brick_color = BrickColor
+
+type timestamp = DateTime
+type timestamp_millis = DateTimeMillis
+
+type any = unknown
+
+type opt<T> = enum "has_value" {
+    true {
+        value: T
+    },
+    false {}
+}
+
+type entity<C, T> = struct {
+    id: u8,
+    class: C,
+    health: u8,
+    data: T
+}
+
+type cat = entity<"cat", struct {meows: u16, purrs: u16}>
+
+type weapon = struct {
+    ammo: u8,
+    reserve: u8
+}
+
+type shotgun = weapon & struct {
+    pellets: u8
+}
+
+type node<T> = struct {
+    value: T,
+    next: node<T>?
+}
+
+type byte_linked_list = node<u8>
+type dword_linked_list = node<u32>
+
+type class = enum {
+    "Tank",
+    "Healer",
+    "Assasin",
+    "Marksman",
+}
+
+@stable
+type purchase = struct {
+    price: u32,
+    product: f64,
+}
+
+@stable
+type player_data = struct {
+    class: class,
+    coins: u8,
+    purchases: map {[string]: purchase},
+    finished_levels: u8[0..100],
+}
+
+type game_flags = set {
+    FallDamage,
+    PlayerDamage,
+    FriendlyDamage,
+}
+
+event purchase_item {
+    from: Client,
+    type: Reliable,
+    call: SingleSync,
+    data: f64
+}
+
+event update_data {
+    from: Server,
+    type: Reliable,
+    call: SingleSync,
+    data: player_data
+}
+
+function request_data {
+    yield: Coroutine,
+    return: player_data
+}
+
+function request_flags {
+    yield: Coroutine,
+    return: game_flags
+}
+
+@profile("debug")
+event give_money {
+    from: Client,
+    type: Reliable,
+    call: SingleSync,
+    data: (Instance<"Player">, u32)
+}
+]]

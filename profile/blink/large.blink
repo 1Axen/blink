@@ -1,559 +1,431 @@
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
-}
-
-type a = array<u8>
-type b = map<string, u8>
-
-struct c {
-    field: u8
-}
-
-enum d = {
-    option
-}
-
-enum d_tagged<T> = "Type" {
-    Some {
-        Value: T
-    },
-    None {}
-}
-
-struct e<K, V> {
-    key: K,
-    value: V
-}
-
-struct f {
-    ..c,
-    some_field: u8
-}
-
-event g {
-    from: Server,
-    type: Reliable,
-    call: SingleSync,
-    data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+scope first {
+    type a = u8[]
+    type b = map {[string]: u8}
+
+    type c = struct {
+        field: u8
+    }
+
+    type d = enum {
+        "option"
+    }
+
+    type d_tagged<T> = enum "Type" {
+        Some {
+            Value: T
+        },
+        None {}
+    }
+
+    type e<K, V> = struct {
+        key: K,
+        value: V
+    }
+
+    type f = struct {
+        some_field: u8
+    } & c
+
+    event g {
+        from: Server,
+        type: Reliable,
+        call: SingleSync,
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+    }
+}
+
+scope second {
+    type a = u8[]
+    type b = map {[string]: u8}
+
+    type c = struct {
+        field: u8
+    }
+
+    type d = enum {
+        "option"
+    }
+
+    type d_tagged<T> = enum "Type" {
+        Some {
+            Value: T
+        },
+        None {}
+    }
+
+    type e<K, V> = struct {
+        key: K,
+        value: V
+    }
+
+    type f = struct {
+        some_field: u8
+    } & c
+
+    event g {
+        from: Server,
+        type: Reliable,
+        call: SingleSync,
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+    }
+}
+
+scope third {
+    type a = u8[]
+    type b = map {[string]: u8}
+
+    type c = struct {
+        field: u8
+    }
+
+    type d = enum {
+        "option"
+    }
+
+    type d_tagged<T> = enum "Type" {
+        Some {
+            Value: T
+        },
+        None {}
+    }
+
+    type e<K, V> = struct {
+        key: K,
+        value: V
+    }
+
+    type f = struct {
+        some_field: u8
+    } & c
+
+    event g {
+        from: Server,
+        type: Reliable,
+        call: SingleSync,
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+    }
+}
+
+scope fourth {
+    type a = u8[]
+    type b = map {[string]: u8}
+
+    type c = struct {
+        field: u8
+    }
+
+    type d = enum {
+        "option"
+    }
+
+    type d_tagged<T> = enum "Type" {
+        Some {
+            Value: T
+        },
+        None {}
+    }
+
+    type e<K, V> = struct {
+        key: K,
+        value: V
+    }
+
+    type f = struct {
+        some_field: u8
+    } & c
+
+    event g {
+        from: Server,
+        type: Reliable,
+        call: SingleSync,
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+    }
+}
+
+scope fifth {
+    type a = u8[]
+    type b = map {[string]: u8}
+
+    type c = struct {
+        field: u8
+    }
+
+    type d = enum {
+        "option"
+    }
+
+    type d_tagged<T> = enum "Type" {
+        Some {
+            Value: T
+        },
+        None {}
+    }
+
+    type e<K, V> = struct {
+        key: K,
+        value: V
+    }
+
+    type f = struct {
+        some_field: u8
+    } & c
+
+    event g {
+        from: Server,
+        type: Reliable,
+        call: SingleSync,
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+    }
+}
+
+scope sixth {
+    type a = u8[]
+    type b = map {[string]: u8}
+
+    type c = struct {
+        field: u8
+    }
+
+    type d = enum {
+        "option"
+    }
+
+    type d_tagged<T> = enum "Type" {
+        Some {
+            Value: T
+        },
+        None {}
+    }
+
+    type e<K, V> = struct {
+        key: K,
+        value: V
+    }
+
+    type f = struct {
+        some_field: u8
+    } & c
+
+    event g {
+        from: Server,
+        type: Reliable,
+        call: SingleSync,
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+    }
+}
+
+scope first_a {
+    type a = u8[]
+    type b = map {[string]: u8}
+
+    type c = struct {
+        field: u8
+    }
+
+    type d = enum {
+        "option"
+    }
+
+    type d_tagged<T> = enum "Type" {
+        Some {
+            Value: T
+        },
+        None {}
+    }
+
+    type e<K, V> = struct {
+        key: K,
+        value: V
+    }
+
+    type f = struct {
+        some_field: u8
+    } & c
+
+    event g {
+        from: Server,
+        type: Reliable,
+        call: SingleSync,
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+    }
+}
+
+scope second_a {
+    type a = u8[]
+    type b = map {[string]: u8}
+
+    type c = struct {
+        field: u8
+    }
+
+    type d = enum {
+        "option"
+    }
+
+    type d_tagged<T> = enum "Type" {
+        Some {
+            Value: T
+        },
+        None {}
+    }
+
+    type e<K, V> = struct {
+        key: K,
+        value: V
+    }
+
+    type f = struct {
+        some_field: u8
+    } & c
+
+    event g {
+        from: Server,
+        type: Reliable,
+        call: SingleSync,
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+    }
+}
+
+scope third_a {
+    type a = u8[]
+    type b = map {[string]: u8}
+
+    type c = struct {
+        field: u8
+    }
+
+    type d = enum {
+        "option"
+    }
+
+    type d_tagged<T> = enum "Type" {
+        Some {
+            Value: T
+        },
+        None {}
+    }
+
+    type e<K, V> = struct {
+        key: K,
+        value: V
+    }
+
+    type f = struct {
+        some_field: u8
+    } & c
+
+    event g {
+        from: Server,
+        type: Reliable,
+        call: SingleSync,
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+    }
+}
+
+scope fourth_a {
+    type a = u8[]
+    type b = map {[string]: u8}
+
+    type c = struct {
+        field: u8
+    }
+
+    type d = enum {
+        "option"
+    }
+
+    type d_tagged<T> = enum "Type" {
+        Some {
+            Value: T
+        },
+        None {}
+    }
+
+    type e<K, V> = struct {
+        key: K,
+        value: V
+    }
+
+    type f = struct {
+        some_field: u8
+    } & c
+
+    event g {
+        from: Server,
+        type: Reliable,
+        call: SingleSync,
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+    }
+}
+
+scope fifth_a {
+    type a = u8[]
+    type b = map {[string]: u8}
+
+    type c = struct {
+        field: u8
+    }
+
+    type d = enum {
+        "option"
+    }
+
+    type d_tagged<T> = enum "Type" {
+        Some {
+            Value: T
+        },
+        None {}
+    }
+
+    type e<K, V> = struct {
+        key: K,
+        value: V
+    }
+
+    type f = struct {
+        some_field: u8
+    } & c
+
+    event g {
+        from: Server,
+        type: Reliable,
+        call: SingleSync,
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+    }
+}
+
+scope sixth_a {
+    type a = u8[]
+    type b = map {[string]: u8}
+
+    type c = struct {
+        field: u8
+    }
+
+    type d = enum {
+        "option"
+    }
+
+    type d_tagged<T> = enum "Type" {
+        Some {
+            Value: T
+        },
+        None {}
+    }
+
+    type e<K, V> = struct {
+        key: K,
+        value: V
+    }
+
+    type f = struct {
+        some_field: u8
+    } & c
+
+    event g {
+        from: Server,
+        type: Reliable,
+        call: SingleSync,
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+    }
 }

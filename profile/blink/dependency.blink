@@ -1,0 +1,7 @@
+scope meow {
+    type murr<T> = struct {
+        field: T
+    } 
+}
+
+type foo = struct {}

@@ -4,7 +4,7 @@ local fs = require("@lune/fs")
 local serde = require("@lune/serde")
 
 local file = require("@util/file")
-local path = require('@util/path')
+local path = require("@util/path")
 local builder = require("@util/builder")
 
 local hir = require("@compiler/hir")

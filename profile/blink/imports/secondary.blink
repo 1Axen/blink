@@ -1,0 +1,3 @@
+import "@libs/common"
+
+type short_list = common.linked_list<u16>
