@@ -77,7 +77,7 @@ local function malformed_schema(): result.Error<MalformedSchema>
 end
 
 local function is_one_of(value: any, variants: {any}): boolean
-    return table.find(value, variants) ~= nil
+    return table.find(variants, value) ~= nil
 end
 
 local function is_valid_schema(schema: JSONLuaurc): boolean
