@@ -6,5 +6,6 @@
   "stylua.targetReleaseVersion": "latest",
   "luau-lsp.fflags.enableNewSolver": true,
   "luau-lsp.fflags.enableByDefault": true,
-  "luau-lsp.fflags.sync": false
+  "luau-lsp.fflags.sync": false,
+  "luau-lsp.platform.type": "standard"
 }
