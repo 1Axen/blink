@@ -1,16 +1,13 @@
 --!strict
 
-local lir = require("@compiler/structures/lir")
+local lir = require("@structures/lir")
 
 type LValue = lir.LValue
-type LRValue = lir.LRValue
-
 type Numeric = lir.LoopNumeric
 type Generic = lir.LoopGeneric
-
 type Register = lir.RegisterId
 
-local function loop_numeric(index: Register, iterations: LRValue): Numeric
+local function loop_numeric(index: Register, iterations: Register): Numeric
     return {
         kind = "numeric",
         index = index,
@@ -18,7 +15,7 @@ local function loop_numeric(index: Register, iterations: LRValue): Numeric
     }
 end
 
-local function loop_generic(index: Register?, value: Register, target: LValue): Generic
+local function loop_generic(index: Register?, value: Register, target: index<Generic, "target">): Generic
     return {
         kind = "generic",
         index = index,

@@ -2,9 +2,9 @@
 --!native
 --!optimize 2
 
-local ty = require("@compiler/structures/ty")
-local hir = require("@compiler/structures/hir")
-local ast = require("@compiler/structures/ast")
+local ty = require("@structures/ty")
+local hir = require("@structures/hir")
+local ast = require("@structures/ast")
 
 local build = require("./build")
 local type_check = require("./type_check")

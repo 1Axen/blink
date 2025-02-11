@@ -3,21 +3,24 @@
 --!optimize 2
 
 local id = require("@compiler/id")
-local types = require("@compiler/types")
+local types = require("@config/compilation")
 
-local ty = require("@compiler/structures/ty")
-local hir = require("@compiler/structures/hir")
-local ast = require("@compiler/structures/ast")
+local ty = require("@structures/ty")
+local hir = require("@structures/hir")
+local ast = require("@structures/ast")
 
-local bounds = require("@compiler/config/bounds")
-local primitives = require("@compiler/config/primitives")
+local bounds = require("@config/bounds")
+local primitives = require("@config/primitives")
 
 local range = require("@util/range")
 local panic = require("@util/panic")
 local option = require("@util/option")
 local symbols = require("@util/symbols")
 
-local report = require("./report")
+local fmt_id = require("@format/id")
+
+local report = require("@hir/report")
+local attributes = require("./attributes")
 
 type Ty = ty.Ty
 type Decl = hir.Decl
@@ -49,7 +52,7 @@ type Context = {
 
 local block: (ctx: Context, node: ast.Block) -> ()
 local statement: (ctx: Context, stat: ast.Statement) -> DeclId?
-local expression: (ctx: Context, expr: ast.Expression) -> TyId
+local expression: (ctx: Context, expr: ast.Expression) -> TyId<Ty>
 
 local function path_to_segments(path: ast.Path): {string}
     local segments: {string} = {}
@@ -121,7 +124,31 @@ end
 
 --> Luau Primitives
 
-local function ty_numerla(ctx: Context, identifier: string, expr_range: ast.Range?): ty.Numeral
+local function ty_string_literal(ctx: Context, expr: ast.ExprString): ty.StringLiteral
+    return ty.string_literal(expr.value)
+end
+
+local function ty_number_literal(ctx: Context, expr: ast.ExprNumber): ty.NumberLiteral
+    return ty.number_literal(expr.value)
+end
+
+local function ty_boolean_literal(ctx: Context, expr: ast.ExprBoolean): ty.BooleanLiteral
+    return ty.boolean_literal(expr.value)
+end
+
+local function ty_literal(ctx: Context, expr: ast.ExprLiteral): ty.Literal
+    if expr.kind == "number" then
+        return ty_number_literal(ctx, expr)
+    elseif expr.kind == "string" then
+        return ty_string_literal(ctx, expr)
+    elseif expr.kind == "boolean" then
+        return ty_boolean_literal(ctx, expr)
+    end
+
+    return panic(`Unhandled literal kind: "{expr.kind}"`)
+end
+
+local function ty_numeral(ctx: Context, identifier: string, expr_range: ast.Range?): ty.Numeral
     local numeral: primitives.Primitive = (primitives :: any)[identifier]
 
     local size: ty.NumSize = string.sub(identifier, 2, 3) :: ty.NumSize
@@ -144,7 +171,7 @@ local function ty_string(ctx: Context, expr_range: ast.Range?): ty.String
     return ty.string(length)
 end
 
-local function prim_buffer(ctx: Context, expr_range: ast.Range?): ty.Buffer
+local function ty_buffer(ctx: Context, expr_range: ast.Range?): ty.Buffer
     local bounds = primitives.buffer.range
     local length = if expr_range then range_node_to_range_class(expr_range, bounds) else nil
     return ty.buffer(length)
@@ -249,15 +276,15 @@ end
 --- Returns a `ty` from a `reference` **to a primitive (u8, string, buffer, etc.)**
 local function ty_from_reference(ctx: Context, expr: ast.ExprReference, path: string): Ty
     if 
-        path == "u8" or path == "u16" or path == "u32" or path == "u48" 
-        or path == "i8" or path == "i16" or path == "i32" or path == "i48" 
+        path == "u8" or path == "u16" or path == "u24" or path == "u32" or path == "u48" 
+        or path == "i8" or path == "i16" or path == "i24" or path == "i32" or path == "i48" 
         or path == "f16" or path == "f32" or path == "f64"
     then
-        return ty_numerla(ctx, path, expr.range)
+        return ty_numeral(ctx, path, expr.range)
     elseif path == "string" then
         return ty_string(ctx, expr.range)
     elseif path == "buffer" then
-        return prim_buffer(ctx, expr.range)
+        return ty_buffer(ctx, expr.range)
     elseif path == "vector" then
         return ty_vector(ctx, expr)
     elseif path == "boolean" then
@@ -284,9 +311,9 @@ local function ty_from_reference(ctx: Context, expr: ast.ExprReference, path: st
 end
 
 local function ty_set(ctx: Context, expr: ast.ExprSet): ty.Set
-    local items: {string} = {}
+    local items: {ty.StringLiteral} = {}
     for _, value in expr.values do
-        table.insert(items, value.value)
+        table.insert(items, ty_string_literal(ctx, (value :: any) :: ast.ExprString))
     end
 
     return ty.set(items)
@@ -307,7 +334,7 @@ local function ty_map(ctx: Context, expr: ast.ExprMap): ty.Map
     return ty.map(index, value, range)
 end
 
-local function ty_enum(ctx: Context, expr: ast.ExprEnum): ty.UnitEnum
+local function ty_unit_enum(ctx: Context, expr: ast.ExprEnum): ty.UnitEnum
     local variants: {string} = {}
     for _, variant in expr.variants do
         table.insert(variants, variant.value)
@@ -343,18 +370,6 @@ local function ty_struct(ctx: Context, expr: ast.ExprStruct): ty.Struct
     return ty.struct(fields)
 end
 
-local function ty_string_literal(ctx: Context, expr: ast.ExprString): ty.StringLiteral
-    return ty.string_literal(expr.value)
-end
-
-local function ty_number_literal(ctx: Context, expr: ast.ExprNumber): ty.NumberLiteral
-    return ty.number_literal(expr.value)
-end
-
-local function ty_boolean_literal(ctx: Context, expr: ast.ExprBoolean): ty.BooleanLiteral
-    return ty.boolean_literal(expr.value)
-end
-
 local function ty_optional(ctx: Context, expr: ast.ExprOptional): ty.Optional
     local of = expression(ctx, expr.value)
     return ty.optional(of)
@@ -364,16 +379,22 @@ local function ty_tagged_enum(ctx: Context, expr: ast.ExprTaggedEnum): ty.Tagged
     local tag = expr.tag.value
     local variants: {ty.Variant} = {}
     for index, variant in expr.variants do
-        local key = variant.key.value
+        local key = expression(ctx, variant.key)
         local value = ty_struct(ctx, variant.value)
-        variants[index] = ty.variant(key, value)
+        local variant = ty.variant(key, value)
+
+        -- add tag field to variant struct
+        local struct = variant.value
+        table.insert(struct.fields, 1, ty.field(tag, key))
+
+        variants[index] = variant
     end
 
     return ty.tagged_enum(tag, variants)
 end
 
 --- Returns the `ty_id` of the `ty` referenced
-local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference): TyId
+local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference): TyId<Ty>
     --[[
         Phases:
         1 - Check if the reference is a generic parameter, return the generic parameter if it is, otherwise Continue
@@ -406,7 +427,7 @@ local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference): TyId
     local ref_decl_opt = decl_from_id_option(ctx, ref_decl_id)
 
     -- Phase 3:
-    local generic_args: {TyId} = {}
+    local generic_args: {TyId<Ty>} = {}
     local expr_generics = expr.generics
     if expr_generics then
         for index, value in expr_generics.values do
@@ -455,7 +476,7 @@ local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference): TyId
     return ref_decl.ty
 end
 
-function expression(ctx: Context, expr: ast.Expression): TyId
+function expression(ctx: Context, expr: ast.Expression | ast.Identifier): TyId<Ty>
     --> assign node_id
     local node_id = store_node(ctx, expr)
     local ty_id = id.node_id.to_ty_id(node_id)
@@ -467,7 +488,7 @@ function expression(ctx: Context, expr: ast.Expression): TyId
     elseif expr.kind == "map" then
         new_ty = ty_map(ctx, expr)
     elseif expr.kind == "enum" then
-        new_ty = ty_enum(ctx, expr)
+        new_ty = ty_unit_enum(ctx, expr)
     elseif expr.kind == "array" then
         new_ty = ty_array(ctx, expr)
     elseif expr.kind == "union" then
@@ -482,7 +503,7 @@ function expression(ctx: Context, expr: ast.Expression): TyId
     elseif expr.kind == "boolean" then
         --TODO: Remove cast when Luau bug is fixed
         new_ty = ty_boolean_literal(ctx, expr :: any)
-    elseif expr.kind == "tag_enum" then
+    elseif expr.kind == "tagged_enum" then
         --TODO: Remove cast when Luau bug is fixed
         new_ty = ty_tagged_enum(ctx, expr :: any)
     elseif expr.kind == "optional" then
@@ -499,6 +520,8 @@ function expression(ctx: Context, expr: ast.Expression): TyId
         end
 
         new_ty = ty_from_reference(ctx, expr, path)
+    elseif expr.kind == "identifier" then
+        new_ty = ty_string_literal(ctx, expr :: ast.ExprString)
     else
         panic(`Unhandled expression "{expr.kind}"`)
     end
@@ -529,29 +552,6 @@ local function expr_pack(ctx: Context, expr: ast.ExprPack): {hir.Parameter}
     return parameters
 end
 
-local function attribute(ctx: Context, node: ast.Attribute): hir.Attribute
-    local name = node.name.value
-
-    local args = {}
-    for _, arg in node.args do
-        table.insert(args, arg.value)
-    end
-
-    return {
-        name = name,
-        args = args
-    }
-end
-
-local function attributes(ctx: Context, list: {ast.Attribute}): {hir.Attribute}
-    local attributes: {hir.Attribute} = {}
-    for _, node in list do
-        table.insert(attributes, attribute(ctx, node))
-    end
-
-    return attributes
-end
-
 local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
     local scope = ctx.scope
 
@@ -567,7 +567,7 @@ local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
             local name = value.name
             local node_id = store_node(ctx, value)
             local ty_id = id.node_id.to_ty_id(node_id)
-            local generic = ty.generic(name.value, index)
+            local generic = ty.generic(name.value, index)  
 
             ctx.hir.tys[ty_id] = generic
             args[index] = ty_id
@@ -590,7 +590,7 @@ local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
         kind = "type",
         name = stat.name.value,
         scope = scope,
-        attributes = attributes(ctx, stat.attributes),
+        attributes = attributes.type(stat.attributes),
 
         ty = ty_id,
         generics = args
@@ -632,7 +632,7 @@ local function stat_event(ctx: Context, stat: ast.StatEvent): hir.Event
     return {
         kind = "event",
         scope = ctx.scope,
-        attributes = attributes(ctx, stat.attributes),
+        attributes = attributes.shared(stat.attributes),
 
         name = name,
         from = from :: any,
@@ -652,7 +652,7 @@ local function stat_function(ctx: Context, stat: ast.StatFunction): hir.Function
     return {
         kind = "function",
         scope = ctx.scope,
-        attributes = attributes(ctx, stat.attributes),
+        attributes = attributes.shared(stat.attributes),
 
         name = name,
         yield = yield :: any,

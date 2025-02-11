@@ -1,8 +1,10 @@
 --!strict
 
-local ty = require("@compiler/structures/ty")
-local ast = require("@compiler/structures/ast")
-local options = require("@compiler/config/options")
+local ty = require("@structures/ty")
+local ast = require("@structures/ast")
+
+local options = require("@config/options")
+local attributes = require("@config/attributes")
 
 local panic = require("@util/panic")
 
@@ -11,13 +13,6 @@ type Node = ast.Node
 
 type TyId<T = Ty> = ty.TyId<T>
 type NodeId<T = Node> = ast.NodeId<T>
-export type DeclId<T = Decl> = number & { __kind: "decl", __T: T}
-export type ScopeId = number & { __kind: "scope" }
-
-export type Attribute = {
-    name: string,
-    args: {number | boolean | string}
-}
 
 export type Parameter = {
     name: string?,
@@ -28,7 +23,7 @@ export type Type<T = ty.Ty> = {
     read kind: "type",
     read name: string,
     read scope: ScopeId,
-    read attributes: {Attribute},
+    read attributes: attributes.TypeAttributes,
 
     read ty: TyId<T>,
     read generics: {TyId<ty.Generic>}?
@@ -38,7 +33,7 @@ export type Event = {
     read kind: "event",
     read name: string,
     read scope: ScopeId,
-    read attributes: {Attribute},
+    read attributes: attributes.SharedAttributes,
 
     read from: "Server" | "Client" | "Both",
     read type: "Reliable" | "Unreliable",
@@ -51,7 +46,7 @@ export type Function = {
     read kind: "function",
     read name: string,
     read scope: ScopeId,
-    read attributes: {Attribute},
+    read attributes: attributes.SharedAttributes,
 
     read yield: "Coroutine" | "Promise" | "Future",
     read data: {Parameter}?,
@@ -63,6 +58,9 @@ export type Decl =
     | Event
     | Function
 ;
+
+export type DeclId<T = Decl> = number & { __kind: "decl", __T: T}
+export type ScopeId = number & { __kind: "scope" }
 
 export type Hir = {
     read tys: {[TyId]: Ty},
@@ -82,7 +80,7 @@ local function ty_from_id<T>(hir: Hir, ty_id: TyId<T>): T
     return ty
 end
 
-local function decl_from_id(hir: Hir, decl_id: DeclId): Decl
+local function decl_from_id<T>(hir: Hir, decl_id: DeclId<T>): T
     local decl = hir.decls[decl_id]
     if decl == nil then
         return panic("Expected decl_id to point to a decl")
@@ -91,7 +89,7 @@ local function decl_from_id(hir: Hir, decl_id: DeclId): Decl
     return decl
 end
 
-local function node_from_id(hir: Hir, node_id: NodeId): Node
+local function node_from_id<T>(hir: Hir, node_id: NodeId<T>): T
     local node = hir.nodes[node_id]
     if node == nil then
         return panic("Expected node_id to point to a node")

@@ -2,8 +2,8 @@
 --!native
 --!optimize 2
 
-local hir = require("@compiler/structures/hir")
-local lir = require("@compiler/structures/lir")
+local hir = require("@structures/hir")
+local lir = require("@structures/lir")
 
 local function optimize(lir: lir.Lir)
     

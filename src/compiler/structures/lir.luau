@@ -1,7 +1,7 @@
 --!strict
 
-local ty = require("@compiler/structures/ty")
-local hir = require("@compiler/structures/hir")
+local ty = require("@structures/ty")
+local hir = require("@structures/hir")
 
 local panic = require("@util/panic")
 
@@ -29,13 +29,13 @@ export type Constant<T = ConstantValue> = {
 --- An index into the arguments table
 export type ArgumentId = {
     kind: "argument",
-    index: number,
+    index: number
 }
 
 --- An index into the register table
 export type RegisterId = {
     kind: "register",
-    index: number,
+    index: number
 }
 
 export type Id = 
@@ -46,51 +46,85 @@ export type Id =
 --- base(args...)
 export type ProjCall = {
     kind: "call",
-    base: LValue,
-    args: {Value}
+    base: LValue | Constant<string>,
+    args: {RValue}
 }
 
 --- base[field]
 export type ProjField = {
     kind: "field",
-    base: LValue,
-    field: LValue
+    base: LValue | Constant<string>,
+    field: RValue
 }
 
 --- base.index
 export type ProjIndex = {
     kind: "index",
-    base: LValue,
+    base: LValue | Constant<string>,
     element: Constant<string>
+}
+
+--- base:method(args...)
+export type ProjNamecall = {
+    kind: "namecall",
+    base: LValue | Constant<string>,
+    method: Constant<string>,
+    args: {RValue}
 }
 
 export type Projection =
     | ProjCall
     | ProjField
     | ProjIndex
+    | ProjNamecall
 ;
 
---- left * right
+--- left + right
 export type BinaryAdd = {
     kind: "add",
-    left: LRValue,
-    right: LRValue
+    left: RValue,
+    right: RValue
+}
+
+--- left - right
+export type BinarySub = {
+    kind: "sub",
+    left: RValue,
+    right: RValue
 }
 
 --- left * right
 export type BinaryMul = {
     kind: "mul",
-    left: LRValue,
-    right: LRValue
+    left: RValue,
+    right: RValue
 }
+
+--- left / right
+export type BinaryDiv = {
+    kind: "div",
+    left: RValue,
+    right: RValue
+}
+
+--- left % right
+export type BinaryMod = {
+    kind: "mod",
+    left: RValue,
+    right: RValue
+}
+
 export type BinaryOp =
     | BinaryAdd
+    | BinarySub
     | BinaryMul
+    | BinaryDiv
+    | BinaryMod
 
 --- #%of
 export type UnaryLen = {
     kind: "len",
-    of: LValue,
+    of: RValue,
 }
 
 export type UnaryOp = 
@@ -99,50 +133,77 @@ export type UnaryOp =
 --- advance(bytes)
 export type CtrlAdvance = {
     kind: "advance",
-    bytes: LRValue
+    bytes: RValue
 }
 
 --- allocate(bytes)
 export type CtrlAllocate = {
     kind: "allocate",
-    bytes: LRValue
+    bytes: RValue
 }
 
 export type Control =
     | CtrlAdvance
     | CtrlAllocate
-
--- Libraries
-
-export type LValue = 
-    | Id
-    | Projection
-    | Constant<string>
 ;
 
-export type RValue =
-    | UnaryOp
-    | BinaryOp
-    | Constant<number>
-    | Constant<boolean>
-;
-
-export type LRValue = 
-    | LValue
-    | RValue
-;
-
+--- left == / ~=/ >= / > / < / <= right
 export type Condition = {
-    kind: "Equals" | "NotEquals" | "LessThan" | "LessThanOr" | "GreaterThan" | "GreaterThanOr",
-    left: Value,
-    right: Value
+    kind: "equals" | "not_equals" | "less_than" | "less_than_or" | "greater_than" | "greater_than_or",
+    left: RValue,
+    right: RValue
+} | {
+    kind: "always",
+    left: nil,
+    right: nil
 }
 
-export type Value = 
-    | LValue
-    | RValue
+--- if cond then left else right
+export type Ternary = {
+    kind: "ternary",
+    cond: Condition,
+    left: RValue,
+    right: RValue
+}
+
+-- { values }
+export type WrapTable = {
+    kind: "table",
+    values: {RValue}
+}
+
+-- (value)
+export type WrapSingle = {
+    kind: "single",
+    value: RValue
+}
+
+export type Wrapper = 
+    | WrapTable
+    | WrapSingle
+;
+
+--- left side of an assign statement
+export type LValue = 
+    | ProjField
+    | ProjIndex
+    | RegisterId
+    | ArgumentId
+;
+
+--- right side of an assign statement
+export type RValue =
+    | Id
+    | Wrapper
     | Control
+    | Ternary
+    | UnaryOp
+    | BinaryOp
     | Condition
+    | Constant<string>
+    | Constant<number>
+    | Constant<boolean>
+    | Projection
 ;
 
 --- call
@@ -154,28 +215,36 @@ export type StatCall = {
 --- %into = value
 export type StatAssign = {
     kind: "assign",
-    into: RegisterId,
-    value: Value?,
+    into: LValue,
+    value: RValue?,
+}
+
+--- %a, %b, %c = value
+export type StatMultiAssign = {
+    kind: "multi_assign",
+    into: {LValue},
+    value: RValue,
 }
 
 export type Statement = 
     | StatCall
     | StatAssign
+    | StatMultiAssign
 ;
 
---- numeric for `%index` = 1, `iterations` do
+--- numeric for `%index` = 1, `%iterations` do
 export type LoopNumeric = {
     kind: "numeric",
     index: RegisterId,
-    iterations: LRValue,
+    iterations: RegisterId,
 }
 
---- generic for `%index`, `%value% in `target` do
+--- generic for `%index`, `%value` in `%target` do
 export type LoopGeneric = {
     kind: "generic",
     index: RegisterId?,
     value: RegisterId,
-    target: LValue
+    target: Id | ProjField | ProjIndex
 }
 
 export type Loop = 
@@ -188,7 +257,10 @@ export type TermIf = {
     kind: "if",
     cond: Condition,
     truthy: BasicBlock,
-    falsey: BasicBlock
+    falsey: BasicBlock,
+
+    -- elseif
+    chained: boolean?,
 }
 
 --- placeholder
@@ -210,13 +282,13 @@ export type TermLoop = {
 export type TermCall = {
     kind: "call",
     fn: FnId,
-    args: {Value},
+    args: { RValue },
     destination: BasicBlock,
 }
 
 export type TermReturn = {
     kind: "return",
-    values: { Value }
+    values: { RValue }
 }
 
 export type Terminator = 
@@ -229,6 +301,7 @@ export type Terminator =
 
 export type BasicBlock = {
     kind: "block",
+    index: number,
     scope: number,
     statements: {Statement},
     terminator: Terminator

@@ -3,9 +3,9 @@
 --!optimize 2
 
 local id = require("@compiler/id")
-local ty = require("@compiler/structures/ty")
-local hir = require("@compiler/structures/hir")
-local ast = require("@compiler/structures/ast")
+local ty = require("@structures/ty")
+local hir = require("@structures/hir")
+local ast = require("@structures/ast")
 
 local report = require("./report")
 
@@ -50,6 +50,25 @@ local function assert_ty_kind(hir: Hir, ty_id: TyId, kind: TyKind)
         local node = node_from_ty_id(hir, ty_id)
         --TODO: Remove cast when Luau solver bug is fixed
         report.expect(node :: any, kind, ty_kind)
+    end
+end
+
+local function assert_vector_axis_ty(hir: Hir, ty_id: TyId)
+    local ty: Ty = ty_from_id(hir, ty_id)
+    if ty.kind ~= "numeral" then
+        return
+    end
+
+    local size = tonumber(ty.size) :: number
+    local format = ty.format
+
+    if 
+        (format == "f" and size > 32) 
+        or (format ~= "f" and size > 24)
+    then
+        local node = node_from_ty_id(hir, ty_id)
+        --TODO: Remove cast when Luau solver bug is fixed
+        report.cannot_represent_vector_axis(node :: any)
     end
 end
 
@@ -103,20 +122,24 @@ end
 local function check_vector(hir: Hir, ty: ty.Vector)
     if ty.x then
         assert_ty_kinds(hir, ty.x, {"numeral", "number_literal"})
+        assert_vector_axis_ty(hir, ty.x)
     end
 
     if ty.y then
         assert_ty_kinds(hir, ty.y, {"numeral", "number_literal"})
+        assert_vector_axis_ty(hir, ty.y)
     end
 
     if ty.z then
         assert_ty_kinds(hir, ty.z, {"numeral", "number_literal"})
+        assert_vector_axis_ty(hir, ty.z)
     end
 end
 
 local function check_cframe(hir: Hir, ty: ty.CFrame)
     if ty.position then
         assert_ty_kind(hir, ty.position, "numeral")
+        assert_vector_axis_ty(hir, ty.position)
     end
 
     if ty.rotation then

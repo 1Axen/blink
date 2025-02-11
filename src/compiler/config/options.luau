@@ -1,8 +1,8 @@
-local ast = require("@compiler/structures/ast")
+local ast = require("@structures/ast")
 
 export type Option = {
     kind: ast.ExprKind,
-    values: {any}?
+    values: {string | number | boolean}?
 }
 
 local options: {[string]: Option} = {

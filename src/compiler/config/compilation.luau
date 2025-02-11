@@ -1,6 +1,13 @@
-local ast = require("@compiler/structures/ast")
+local ast = require("@structures/ast")
 
-export type Profile = "dev" | "test" | "release"
+local PROFILES = table.freeze({
+    dev = true,
+    test = true,
+    debug = true,
+    release = true
+})
+
+export type Profile = keyof<typeof(PROFILES)>
 export type CompilerOptions = {
     --- Track how long each step took and report it to the standard out
     time: boolean,
@@ -16,4 +23,6 @@ export type CompilerOptions = {
 ]=] 
 export type FilesMap = {[number]: ast.Ast}
 
-return nil
+return table.freeze({
+    PROFILES = PROFILES
+})

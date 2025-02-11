@@ -1,4 +1,4 @@
-local style = require('@util/style')
+local style = require("@util/style")
 local range = require("@util/range")
 local fmt_types = require("@format/types")
 

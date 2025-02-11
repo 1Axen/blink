@@ -6,7 +6,7 @@ local validator = require("./validator")
 
 local id = require("@compiler/id")
 local lexer = require("@compiler/lexer")
-local ast = require("@compiler/structures/ast")
+local ast = require("@structures/ast")
 
 local file = require("@util/file")
 local span = require("@util/span")
@@ -33,7 +33,7 @@ type Context = {
     attributes: {ast.Attribute}
 }
 
-local DUMMY_ID = id.node_id.create(2^8 - 1, 2^22 - 1)
+local DUMMY_ID = id.DUMMY_ID
 local ROOT_SYMBOLS = ""
 
 local block: (Context, boolean) -> ast.Block;
@@ -136,6 +136,7 @@ local function path(ctx: Context): ast.Path
     end
 
     return {
+        id = next_node_id(ctx),
         kind = "path",
         span = path_span :: vector,
         segments = segments
@@ -145,6 +146,7 @@ end
 local function identifier(ctx: Context): ast.Identifier
     local word = expect(ctx, "word")
     return {
+        id = next_node_id(ctx),
         span = word.span,
         kind = "identifier",
         value = span.value(word.span)
@@ -155,23 +157,7 @@ end
 local function any_identifier(ctx: Context): ast.Identifier
     local token = consume(ctx)
     return {
-        span = token.span,
-        kind = "identifier",
-        value = span.value(token.span)
-    }
-end
-
---- Also parses escapes like "option", "type" etc. as identifiers
-local function escaped_identifier(ctx: Context): ast.Identifier
-    local token = peek(ctx)
-    if token.kind ~= "word" and token.kind ~= "string" then
-        return report.expect_one_of(token, {"word", "string"})
-    end
-
-    --> consume identifier
-    consume(ctx)
-
-    return {
+        id = next_node_id(ctx),
         span = token.span,
         kind = "identifier",
         value = span.value(token.span)
@@ -243,7 +229,7 @@ local function generic(ctx: Context): ast.GenericDef
     local node_span = name.span
 
     return {
-        id = DUMMY_ID,
+        id = next_node_id(ctx),
         kind = "generic",
         span = node_span,
         name = name,
@@ -310,6 +296,21 @@ local function expr_string(ctx: Context): ast.ExprString
     }
 end
 
+local function string_or_identifier(ctx: Context): ast.Identifier | ast.ExprString
+    local token = peek(ctx)
+    if token.kind ~= "word" and token.kind ~= "string" then
+        return report.expect_one_of(token, {"word", "string"})
+    end
+
+    if token.kind == "string" then
+        return expr_string(ctx)
+    elseif token.kind == "word" then
+        return identifier(ctx)
+    end
+
+    return panic(`Unhandled token kind: "{token.kind}"`)
+end
+
 local function expr_literal(ctx: Context): ast.ExprLiteral
     local token = peek(ctx)
     if token.kind == "string" then
@@ -326,6 +327,7 @@ end
 local function expr_range(ctx: Context, delimiter: "(" | "["): ast.Range
     local min: ast.ExprNumber?
     local max: ast.ExprNumber?
+    local closing_delimiter: any = if delimiter == "(" then ")" else "]"
 
     local open = expect(ctx, delimiter)
     local first = peek(ctx)
@@ -341,12 +343,13 @@ local function expr_range(ctx: Context, delimiter: "(" | "["): ast.Range
     elseif first.kind == ".." then
         expect(ctx, "..")
         max = expr_number(ctx)
-    else
+    elseif first.kind ~= closing_delimiter then
         report.expect_one_of(first, {"..", "number"})
     end
 
-    local close = expect(ctx, delimiter == "(" and ")" or "]" :: any)
+    local close = expect(ctx, closing_delimiter)
     return {
+        id = next_node_id(ctx),
         span = span.merge(open.span, close.span),
         kind = "range",
         max = max,
@@ -391,7 +394,7 @@ local function expr_reference(ctx: Context): ast.ExprReference
 end
 
 local function expr_field(ctx: Context): ast.ExprField
-    local name = escaped_identifier(ctx)
+    local name = string_or_identifier(ctx)
     expect(ctx, ":")
     local value = expression(ctx)
 
@@ -470,7 +473,7 @@ local function expr_set(ctx: Context): ast.ExprSet
     local keyword = expect(ctx, "set")
     expect(ctx, "{")
 
-    local values = seperated(ctx, escaped_identifier, ",", "}")
+    local values = seperated(ctx, string_or_identifier, ",", "}")
     local close = expect(ctx, "}")
 
     return {
@@ -493,7 +496,7 @@ local function expr_enum_tag_variant(ctx: Context): ast.ExprTaggedEnumVariant
     elseif token.kind == "number" then
         key = expr_number(ctx)
     else
-        key = escaped_identifier(ctx)
+        key = identifier(ctx)
     end
 
     --> struct
@@ -515,14 +518,13 @@ local function expr_enum(ctx: Context): ast.ExprEnum | ast.ExprTaggedEnum
     local function unit(): ast.ExprEnum
         expect(ctx, "{")
 
-        local variants = seperated(ctx, escaped_identifier, ",", "}")
+        local variants = seperated(ctx, string_or_identifier, ",", "}")
         local close = expect(ctx, "}")
 
         return {
             id = DUMMY_ID,
             span = span.merge(keyword.span, close.span),
             kind = "enum",
-
             variants = variants
         }
     end
@@ -537,7 +539,7 @@ local function expr_enum(ctx: Context): ast.ExprEnum | ast.ExprTaggedEnum
         return {
             id = DUMMY_ID,
             span = span.merge(keyword.span, close.span),
-            kind = "tag_enum",
+            kind = "tagged_enum",
             
             tag = tag,
             variants = variants
@@ -928,6 +930,7 @@ end
 function block(ctx: Context, is_scope: boolean?): ast.Block
     local node_id = next_node_id(ctx)
     local statements: {ast.Statement} = {}
+    local opening_token = peek(ctx)
 
     while true do
         local token = peek(ctx)
@@ -949,9 +952,13 @@ function block(ctx: Context, is_scope: boolean?): ast.Block
         table.insert(statements, statement(ctx))
     end
 
+    local closing_token = peek(ctx)
+    local block_span = span.merge(opening_token.span, closing_token.span)
+
     return {
         id = node_id,
         kind = "block",
+        span = block_span,
         statements = statements
     }
 end

@@ -1,11 +1,11 @@
 --!strict
 
-local lir = require("@compiler/structures/lir")
+local lir = require("@structures/lir")
 
-type LValue = lir.LValue
+type RValue = lir.RValue
 type UnaryLen = lir.UnaryLen
 
-local function unary_len(of: LValue): UnaryLen
+local function unary_len(of: RValue): UnaryLen
     return {
         kind = "len",
         of = of

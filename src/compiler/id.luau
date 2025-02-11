@@ -1,6 +1,6 @@
-local ty = require("@compiler/structures/ty")
-local hir = require("@compiler/structures/hir")
-local ast = require("@compiler/structures/ast")
+local ty = require("@structures/ty")
+local hir = require("@structures/hir")
+local ast = require("@structures/ast")
 local panic = require("@util/panic")
 
 type TyId = ty.TyId
@@ -120,5 +120,7 @@ return table.freeze({
     TY_FLAG = TY_FLAG,
     DECL_FLAG = DECL_FLAG,
     NODE_FLAG = NODE_FLAG,
-    SCOPE_FLAG = SCOPE_FLAG
+    SCOPE_FLAG = SCOPE_FLAG,
+
+    DUMMY_ID = create_node_id(2^8 - 1, 2^22 - 1)
 })

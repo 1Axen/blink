@@ -4,9 +4,9 @@ local diagnostics = require("@util/diagnostics")
 
 local fmt_range = require("@format/range")
 
-local ty = require("@compiler/structures/ty")
-local ast = require("@compiler/structures/ast")
-local codes = require("@compiler/config/codes")
+local ty = require("@structures/ty")
+local ast = require("@structures/ast")
+local codes = require("@config/codes")
 
 type TyKind = ty.TyKind
 
@@ -62,7 +62,7 @@ end
 
 local function report_few_generics(node: ast.GenericsArgs, expected: number): never
     return diagnostics.report.create("Error")
-        .with_code(codes.type_checking.ExtraGenericsParameters)
+        .with_code(codes.type_checking.LessGenericsParameters)
         .with_message(`Type expects {expected} generic parameter(s), but {#node.values} are specified`)
         .with_label(diagnostics.label.create(node.span)
             .with_message(`Add missing generic parameters`)
@@ -178,6 +178,60 @@ local function report_cannot_convert_type(expr: ast.Expression, expected: TyKind
     .error()
 end
 
+
+local function report_invalid_attribute(expr: ast.Attribute): never
+    return diagnostics.report.create("Error")
+        .with_code(codes.type_checking.InvalidAttribute)
+        .with_message(`Invalid attribute "@{expr.name.value}"`)
+        .with_label(diagnostics.label.create(expr.span)
+            .with_color(diagnostics.style.color.red)
+            .with_message("Invalid attribute")
+        )
+    .finish()
+    .error()
+end
+
+local function report_few_attribute_parameters(node: ast.Attribute, expected: number): never
+    return diagnostics.report.create("Error")
+        .with_code(codes.type_checking.LessGenericsParameters)
+        .with_message(`Attribute expects {expected} parameter(s), but {#node.args} are specified`)
+        .with_label(diagnostics.label.create(node.span)
+            .with_message(`Add missing parameters`)
+            .with_color(diagnostics.style.color.red)
+        )
+        .finish()
+    .error()
+end
+
+local function report_extra_attribute_parameters(node: ast.Attribute, maximum: number): never
+    local values = node.args
+    local first_extra = values[maximum + 1]
+    local final_extra = values[#values]
+    local extras_span = span.merge(first_extra.span, final_extra.span)
+
+    return diagnostics.report.create("Error")
+        .with_code(codes.type_checking.ExtraAttributeParameters)
+        .with_message(`Attribute expects {maximum} generic parameter(s), but {#values} are specified`)
+        .with_label(diagnostics.label.create(extras_span)
+            .with_message(`Remove extra parameters`)
+            .with_color(diagnostics.style.color.red)
+        )
+        .finish()
+    .error()
+end
+
+local function report_cannot_represent_vector_axis(expr: ast.Expression): never
+    return diagnostics.report.create("Error")
+        .with_code(codes.type_checking.InvalidGenericParameter)
+        .with_message(`Luau cannot represent vector axes types larger than a f32`)
+        .with_label(diagnostics.label.create(expr.span)
+            .with_color(diagnostics.style.color.red)
+            .with_message(`Use a smaller numeral type`)
+        )
+    .finish()
+    .error()
+end
+
 return table.freeze({
     expect = report_expect,
     expect_one_of = report_expect_one_of,
@@ -194,4 +248,10 @@ return table.freeze({
     unknown_reference = report_unknown_reference,
     unrepresentable_range = report_unrepresentable_range,
     self_recursive_type = report_self_recursive_type,
+
+    cannot_represent_vector_axis = report_cannot_represent_vector_axis,
+
+    invalid_attribute = report_invalid_attribute,
+    few_attribute_parameters = report_few_attribute_parameters,
+    extra_attribute_parameters = report_extra_attribute_parameters
 })

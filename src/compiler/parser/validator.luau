@@ -2,14 +2,19 @@
 --!native
 --!optimize 2
 
-local ast = require("@compiler/structures/ast")
-local codes = require("@compiler/config/codes")
-local options = require("@compiler/config/options")
-local primitives = require("@compiler/config/primitives")
+local id = require("@compiler/id")
 
+local ast = require("@structures/ast")
+local codes = require("@config/codes")
+local options = require("@config/options")
+local primitives = require("@config/primitives")
+
+local panic = require("@util/panic")
 local range = require("@util/range")
 local symbols = require("@util/symbols")
 local diagnostics = require("@util/diagnostics")
+
+local fmt_ast = require("@format/ast")
 
 local report = require("./report")
 
@@ -21,6 +26,8 @@ export type Symbols = symbols.Symbols<ast.Statement>
 type Context = {
     symbols: Symbols
 }
+
+local DUMMY_ID = id.DUMMY_ID
 
 local block: (ctx: Context, block: ast.Block, name: string) -> ();
 local statement: (ctx: Context, statement: ast.Statement) -> ();
@@ -44,6 +51,12 @@ local function as_literal(expr: ast.Expression): Literal | never
         )
     .finish()
     .error()
+end
+
+local function assert_id(node: ast.Node)
+    if node.id == DUMMY_ID then
+        panic(`AST node [{fmt_ast.node(node)}] wasn't assigned an id`)
+    end
 end
 
 local function expr_range(ctx: Context, range: ast.Range): ast.Range
@@ -151,9 +164,12 @@ local function expr_optional(ctx: Context, expr: ast.ExprOptional)
     expression(ctx, expr.value)
 end
 
-local function expr_tag_enum(ctx: Context, expr: ast.ExprTaggedEnum): never?
+local function expr_tagged_enum(ctx: Context, expr: ast.ExprTaggedEnum): never?
+    local tag = expr.tag
     local variants = {}
+
     for _, variant in expr.variants do
+        -- check for duplicate variants
         local key = variant.key
         local str_name = tostring(key.value)
 
@@ -163,6 +179,15 @@ local function expr_tag_enum(ctx: Context, expr: ast.ExprTaggedEnum): never?
         end
 
         variants[str_name] = key
+
+        -- check for tag field
+        for _, field in variant.value.fields do
+            if field.name.value == tag.value then
+                return report.tagged_enum_tag_in_variant(tag, field)
+            end
+        end
+
+        -- validate the variants struct
         expr_struct(ctx, variant.value)
     end
 
@@ -181,6 +206,12 @@ local function stat_type(ctx: Context, stat: ast.StatType): never?
     local name = stat.name
     local value = stat.value
     local primitive = (primitives :: any)[name.value]
+
+    if stat.generics then
+        for _, generic in stat.generics.values do
+            assert_id(generic)
+        end
+    end
 
     if primitive ~= nil then
         return diagnostics.report.create("Error")
@@ -229,7 +260,7 @@ local function stat_import(ctx: Context, stat: ast.StatImport): never?
 
     do
         -- name.*
-        local path_extension: string = string.match(path_string, "%..$") :: string
+        local path_extension: string = string.match(path_string, "[%s%w%p]+%.[%w%p]+$") :: string
         if path_extension then
             return report.import_extension(path, path_extension)
         end
@@ -297,6 +328,8 @@ local function stat_function(ctx: Context, stat: ast.StatFunction)
 end
 
 function expression(ctx: Context, expr: ast.Expression)
+    assert_id(expr)
+
     if expr.kind == "map" then
         expr_map(ctx, expr)
     elseif expr.kind == "set" then
@@ -309,8 +342,8 @@ function expression(ctx: Context, expr: ast.Expression)
         expr_struct(ctx, expr)
     elseif expr.kind == "union" then
         expr_union(ctx, expr)
-    elseif expr.kind == "tag_enum" then
-        expr_tag_enum(ctx, expr)
+    elseif expr.kind == "tagged_enum" then
+        expr_tagged_enum(ctx, expr)
     elseif expr.kind == "optional" then
         expr_optional(ctx, expr)
     elseif expr.kind == "reference" then
@@ -319,6 +352,8 @@ function expression(ctx: Context, expr: ast.Expression)
 end
 
 function statement(ctx: Context, stat: ast.Statement)
+    assert_id(stat)
+
     if stat.kind == "type" then
         stat_type(ctx, stat)
     elseif stat.kind == "event" then
@@ -329,7 +364,6 @@ function statement(ctx: Context, stat: ast.Statement)
         stat_option(ctx, stat)
     elseif stat.kind == "import" then
         stat_import(ctx, stat)
-        return
     elseif stat.kind == "function" then
         stat_function(ctx, stat)
     end
@@ -344,10 +378,14 @@ function statement(ctx: Context, stat: ast.Statement)
         report.shadow(name, existing.name :: ast.Identifier)
     end
 
-    symbols.set(ctx.symbols, name.value, stat)
+    if stat.kind ~= "scope" then
+        symbols.set(ctx.symbols, name.value, stat)
+    end
 end
 
 function block(ctx: Context, block: ast.Block, name: string?)
+    assert_id(block)
+
     --> inner symbols
     local parent = ctx.symbols
     if name then

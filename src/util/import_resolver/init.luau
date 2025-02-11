@@ -8,6 +8,12 @@ local runtime = require("@util/runtime")
 local aliases = require("./aliases")
 
 local RUNTIME = runtime()
+local EXTENSIONS = {
+    "blink",
+    --- For luau API support
+    -- "luau",
+    -- "lua"
+}
 
 type File = file.File
 type Path = path.Path
@@ -32,15 +38,15 @@ type ImportResult = Result<Import, ImportError>
 local cached_aliases: {[string]: aliases.Aliases} = {}
 
 --- Resolves a file system import
-local function resolve_fs_import(import_path: Path): ImportResult
-    local directory = path.strip_file_name(import_path)
+local function resolve_fs_import(directory: Path, import: Path): ImportResult
     local directory_string = path.to_string(directory)
 
-    if path.starts_with(import_path, "@") then
+    if path.starts_with(import, "@") then
         local aliases = cached_aliases[directory_string] or aliases.fs(directory)
 
-        local slice: string
-        import_path, slice = path.pop(import_path, 1)
+         -- pop the alias from the path
+        local slice: string;
+        import, slice = path.pop(import, 1)
 
         local alias = slice :: string
         alias = string.sub(alias, 2, #alias)
@@ -50,39 +56,50 @@ local function resolve_fs_import(import_path: Path): ImportResult
             return result.err("UnknownAlias" :: UnknownAlias)
         end
 
-        import_path = path.join(replacement, import_path)
+        -- replace it with the aliased path
+        import = path.join(replacement, import)
     else
-        import_path = path.join(directory, import_path)
+        import = path.join(directory, import)
     end
 
-    if fs.is_file(import_path).value ~= true then
+    local import_stem = path.file_stem(import)
+    if import_stem == nil then
         return result.err("UnknownImport" :: UnknownImport)
     end
 
-    local fs_result = fs.read_file(import_path)
-    if fs_result.error then
-        return fs_result :: result.Error<fs.IOError>
+    for _, extension in EXTENSIONS do
+        local final_import = path.with_file_name(import, import_stem, extension)
+        if fs.is_file(final_import).value ~= true then
+            continue
+        end
+    
+        local fs_result = fs.read_file(final_import)
+        if fs_result.error then
+            return fs_result
+        end
+    
+        return result.ok({
+            path = final_import,
+            file = fs_result.value
+        })
     end
 
-    return result.ok({
-        path = import_path,
-        file = fs_result.value
-    })
+    return result.err("UnknownImport" :: UnknownImport)
 end
 
 --- Resolves a ROBLOX import
 --- Unimplemented for now
-local function resolve_roblox_import(import_path: Path): ImportResult
+local function resolve_roblox_import(directory: Path, import: Path): ImportResult
     error("Unimplemented")
 end
 
 --- Takes in a starting `directory` and import `path`, and returns a `file?`
-local function resolve_import(import_path: Path): ImportResult
+local function resolve_import(directory: Path, import: Path): ImportResult
     if RUNTIME == "ROBLOX" then
-        return resolve_roblox_import(import_path)
+        return resolve_roblox_import(directory, import)
     end
 
-    return resolve_fs_import(import_path)
+    return resolve_fs_import(directory, import)
 end
 
 return table.freeze({

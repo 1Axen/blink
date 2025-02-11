@@ -5,13 +5,8 @@
 local range = require("@util/range")
 
 type Range = range.Range
-type Generic = {
-    
-}
-
 export type Primitive = {
     range: range.Range?,
-    generics: number?
 }
 
 local F64 = 2^53
@@ -21,14 +16,17 @@ local primitives = {
     --> Numerals
     u8 = { range = range.from_usize(8) },
     u16 = { range = range.from_usize(16) },
+    u24 = { range = range.from_usize(24) },
     u32 = { range = range.from_usize(32) },
     u48 = { range = range.from_usize(48) },
 
     i8 = { range = range.from_size(8) },
     i16 = { range = range.from_size(16) },
+    i24 = { range = range.from_size(24) },
     i32 = { range = range.from_size(32) },
     i48 = { range = range.from_size(48) },
 
+    f16 = { range = range.create(-F32, F32) },
     f32 = { range = range.create(-F32, F32) },
     f64 = { range = range.create(-F64, F64) },
 
@@ -38,20 +36,16 @@ local primitives = {
     buffer = { range = range.from_usize(30) },
     vector = {
         range = range.create(-F64, F64),
-        generics = 3
     },
     boolean = { },
 
     --> ROBLOX types
     Enum = {},
-
-    CFrame = { 
-        generics = 2
-    },
+    CFrame = {},
     
     Color3 = { },
     BrickColor = { },
-    Instance = { generics = 1 },
+    Instance = { },
     
     DateTime = { },
     DateTimeMillis = { },

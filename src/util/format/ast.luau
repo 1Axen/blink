@@ -1,4 +1,5 @@
 local ast = require("@compiler/structures/ast")
+local span = require("@util/span")
 
 local fmt_statement;
 local fmt_expression;
@@ -75,7 +76,7 @@ function fmt_expression(expr: ast.Expression): string
         return tostring((expr :: ast.ExprBoolean).value)
     elseif expr.kind == "optional" then
         return `{fmt_expression((expr :: ast.ExprOptional).value)}?`
-    elseif expr.kind == "tag_enum" then
+    elseif expr.kind == "tagged_enum" then
         return `enum "{fmt_expression((expr :: ast.ExprTaggedEnum).tag)}" \{ ... \}`
     elseif expr.kind == "reference" then
         return fmt_path(expr.path)
@@ -94,7 +95,12 @@ function fmt_statement(stat: ast.Statement): string
     error("unreachable")
 end
 
+local function fmt_node(node: ast.Node): string
+    return `"{span.value(node.span)}" ({node.span.z}:{node.span.x}..{node.span.y})`
+end
+
 return table.freeze({
+    node = fmt_node,
     range = fmt_range,
     generic = fmt_generic,
     generics = fmt_generics,

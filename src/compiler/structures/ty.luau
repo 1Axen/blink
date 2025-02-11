@@ -5,8 +5,6 @@ local panic = require("@util/panic")
 
 type Range = range.Range
 
-export type TyId<T = TyKind> = number & { __kind: "ty", __T: T }
-
 export type NumFormat = "u" | "i" | "f"
 export type NumSize = "8" | "16" | "24" | "32" | "48" | "64"
 
@@ -219,40 +217,12 @@ end
 
 -- blink types
 
-export type Field = {
-    read kind: "field",
-    read name: string,
-    read value: TyId
-}
-
-local function create_field(name: string, value: TyId): Field
-    return {
-        kind = "field",
-        name = name,
-        value = value
-    }
-end
-
-export type Variant = {
-    read kind: "variant",
-    read key: number | string | boolean,
-    read value: Struct
-}
-
-local function create_variant(key: index<Variant, "key">, value: Struct): Variant
-    return {
-        kind = "variant",
-        key = key,
-        value = value
-    }
-end
-
 export type Set = {
     read kind: "set",
-    read items: {string}
+    read items: {StringLiteral}
 }
 
-local function create_set(items: {string}): Set
+local function create_set(items: {StringLiteral}): Set
     return {
         kind = "set",
         items = items,
@@ -272,6 +242,20 @@ local function create_map(index: TyId, value: TyId, range: Range?): Map
         index = index,
         value = value,
         range = range
+    }
+end
+
+export type Field = {
+    read kind: "field",
+    read name: string,
+    read value: TyId
+}
+
+local function create_field(name: string, value: TyId): Field
+    return {
+        kind = "field",
+        name = name,
+        value = value
     }
 end
 
@@ -335,14 +319,28 @@ local function create_optional<T>(of: TyId<T>): Optional<T>
 end
 
 export type UnitEnum = {
-    read kind: "enum",
+    read kind: "unit_enum",
     read variants: {string}
 }
 
 local function create_unit_enum(variants: {string}): UnitEnum
     return {
-        kind = "enum",
+        kind = "unit_enum",
         variants = variants,
+    }
+end
+
+export type Variant = {
+    read kind: "variant",
+    read key: TyId<Literal>,
+    read value: Struct
+}
+
+local function create_variant(key: TyId<Literal>, value: Struct): Variant
+    return {
+        kind = "variant",
+        key = key,
+        value = value
     }
 end
 
@@ -447,6 +445,7 @@ export type Ty =
     | GenericType
     | Placeholder
 
+export type TyId<T = Ty> = number & { __kind: "ty", __T: T }
 export type TyKind = index<Ty, "kind">
 
 return table.freeze({
@@ -456,6 +455,7 @@ return table.freeze({
     buffer = create_buffer,
     boolean = create_boolean,
 
+    literal = create_literal,
     string_literal = create_string_literal,
     number_literal = create_number_literal,
     boolean_literal = create_boolean_literal,

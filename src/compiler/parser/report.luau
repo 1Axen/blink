@@ -1,8 +1,8 @@
 local span = require("@util/span")
 local diagnostics = require("@util/diagnostics")
 
-local ast = require("@compiler/structures/ast")
-local codes = require("@compiler/config/codes")
+local ast = require("@structures/ast")
+local codes = require("@config/codes")
 local lexer = require("@compiler/lexer")
 
 type Token = lexer.Token
@@ -155,7 +155,23 @@ local function report_import_extension(path: ast.ExprString, extension: string):
         .with_message(`Import path shouldn't contain an extension`)
         .with_label(diagnostics.label.create(path.span)
             .with_color(diagnostics.style.color.red)
-            .with_message(`Remove file extension: "{extension}"`)
+            .with_message(`Remove file extension from path: "{extension}"`)
+        )
+    .finish()
+    .error()
+end
+
+local function report_tagged_enum_tag_in_variant(tag: ast.ExprString, field: ast.ExprField)
+    return diagnostics.report.create("Error")
+        .with_code(codes.analysis.ReservedIdentifier)
+        .with_message(`Enum tag used as field name in variant`)
+        .with_label(diagnostics.label.create(tag.span)
+            .with_color(diagnostics.style.color.blue)
+            .with_message(`The enum tag`)
+        )
+        .with_label(diagnostics.label.create(field.name.span)
+            .with_color(diagnostics.style.color.red)
+            .with_message(`Change the field's name`)
         )
     .finish()
     .error()
@@ -176,4 +192,6 @@ return table.freeze({
 
     import_prefix = report_import_prefix,
     import_extension = report_import_extension,
+
+    tagged_enum_tag_in_variant = report_tagged_enum_tag_in_variant,
 })

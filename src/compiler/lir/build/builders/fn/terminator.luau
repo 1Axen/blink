@@ -1,6 +1,6 @@
 --!strict
 
-local lir = require("@compiler/structures/lir")
+local lir = require("@structures/lir")
 
 type TermIf = lir.TermIf
 type TermNone = lir.TermNone
@@ -10,16 +10,17 @@ type TermCall = lir.TermCall
 type TermReturn = lir.TermReturn
 
 type Loop = lir.Loop
-type Value = lir.Value
+type RValue = lir.RValue
 type Condition = lir.Condition
 type BasicBlock = lir.BasicBlock
 
-local function term_if(condition: Condition, truthy: BasicBlock, falsey: BasicBlock): TermIf
+local function term_if(condition: Condition, truthy: BasicBlock, falsey: BasicBlock, chained: boolean?): TermIf
     return {
         kind = "if",
         cond = condition,
         truthy = truthy,
-        falsey = falsey
+        falsey = falsey,
+        chained = chained
     }
 end
 
@@ -44,7 +45,7 @@ local function term_loop(loop: Loop, destination: BasicBlock): TermLoop
     }
 end
 
-local function term_call(fn: lir.FnId, args: {Value}, destination: BasicBlock): TermCall
+local function term_call(fn: lir.FnId, args: {RValue}, destination: BasicBlock): TermCall
     return {
         kind = "call",
         fn = fn,
@@ -53,7 +54,7 @@ local function term_call(fn: lir.FnId, args: {Value}, destination: BasicBlock): 
     }
 end
 
-local function term_return(values: {Value}): TermReturn
+local function term_return(values: {RValue}): TermReturn
     return {
         kind = "return",
         values = values

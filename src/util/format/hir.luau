@@ -1,5 +1,6 @@
 local ty = require("@compiler/structures/ty")
 local hir = require("@compiler/structures/hir")
+local config = require("@compiler/config/codes")
 
 local fmt_ty = require("@format/ty")
 local fmt_id = require("@format/id")
@@ -15,24 +16,14 @@ local ATTRIBUTE_STYLE = style.color.bright_purple
 
 type Builder = builder.Builder
 
-local function fmt_attribute(attribute: hir.Attribute, fmt_builder: Builder)
-    builder.append(fmt_builder, ATTRIBUTE_STYLE(`@{attribute.name}`))
+local function fmt_attributes(attributes: {[string]: any}, fmt_builder: Builder)
+    for name, value in attributes do
+        builder.append(fmt_builder, ATTRIBUTE_STYLE(`@{name}`))
 
-    if #attribute.args > 0 then
-        builder.append(fmt_builder, ATTRIBUTE_STYLE("("))
-        for index, arg in attribute.args do
-            builder.append(fmt_builder, fmt_types.any(arg))
-            if index < #attribute.args then
-                builder.append(fmt_builder, ",")
-            end
+        if value ~= true then
+            builder.append(fmt_builder, `{ATTRIBUTE_STYLE("(")}{fmt_types.any(value :: any)}{ATTRIBUTE_STYLE(")")}`)
         end
-        builder.append(fmt_builder, ATTRIBUTE_STYLE(")"))
-    end
-end
 
-local function fmt_attributes(attributes: {hir.Attribute}, fmt_builder: Builder)
-    for index, attribute in attributes do
-        fmt_attribute(attribute, fmt_builder)
         builder.append(fmt_builder, " ")
     end
 end
@@ -194,10 +185,14 @@ local function fmt_scopes(scopes: {[hir.ScopeId]: string}, fmt_builder: Builder)
     builder.append_line(fmt_builder, "}")
 end
 
-local function fmt_hir(hir: hir.Hir, fmt_builder: Builder)
+local function fmt_hir(hir: hir.Hir): string
+    local fmt_builder = builder.create()
+
     fmt_tys(hir.tys, fmt_builder)
     fmt_decls(hir.decls, fmt_builder)
     fmt_scopes(hir.scopes, fmt_builder)
+
+    return builder.to_string(fmt_builder)
 end
 
 return fmt_hir

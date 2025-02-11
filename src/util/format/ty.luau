@@ -142,7 +142,12 @@ local function fmt_field(ty: ty.Field): string
 end
 
 local function fmt_set(ty: ty.Set): string
-    return `{PRIMITIVE_STYLE("set")} \{"{table.concat(ty.items, "\", ")}"\}`
+    local items = {}
+    for index, literal in ty.items do
+        items[index] = literal.value    
+    end
+
+    return `{PRIMITIVE_STYLE("set")} \{"{table.concat(items, "\", ")}"\}`
 end
 
 local function fmt_map(ty: ty.Map): string
@@ -222,7 +227,7 @@ function fmt_ty(ty: ty.Ty): string
 		return fmt_struct(ty)
 	elseif ty.kind == "optional" then
 		return fmt_optional(ty)
-	elseif ty.kind == "enum" then
+	elseif ty.kind == "unit_enum" then
 		return fmt_unit_enum(ty)
 	elseif ty.kind == "tagged_enum" then
 		return fmt_tagged_enum(ty)

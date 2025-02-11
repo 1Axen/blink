@@ -1,0 +1,145 @@
+--!strict
+--!native
+--!optimize 2
+
+local id = require("@compiler/id")
+
+local ty = require("@structures/ty")
+local hir = require("@structures/hir")
+local lir = require("@structures/lir")
+
+local options = require("@config/options")
+
+local context = require("./context")
+local builders = require("@builders/init")
+
+local panic = require("@util/panic")
+
+type Lir = lir.Lir
+type Hir = hir.Hir
+
+type Decl = hir.Decl
+type DeclId<T> = hir.DeclId<T>
+
+type Ty = ty.Ty
+type TyId = ty.TyId
+
+type Fn = lir.Fn
+type FnId = lir.FnId
+
+type Context = context.Context
+type Builder = builders.Builder
+
+local READ_PREFIX = "read_"
+local WRITE_PREFIX = "write_"
+
+local TYPE_PREFIX = "type_"
+local EVENT_PREFIX = "event_"
+local FUNCTION_PREFIX = "function_"
+
+local function options_from_decl_id(ctx: Context, decl_id: DeclId<any>): options.FileOptions
+    local file_id = id.file(decl_id)
+    if file_id == nil then
+        return panic(`Expected declaration to be linked to a file`)
+    end
+
+    local options = ctx.hir.options[file_id]
+    if options == nil then
+        return panic(`Expected file to have options`)
+    end
+
+    return options
+end
+
+local function fn_id(ctx: Context, fn: Fn): FnId
+    local current = ctx.fn_id :: any
+    ctx.fn_id = (current + 1)
+    ctx.lir.fns[current] = fn
+    return current
+end
+
+local function rtrns(ctx: Context, parameters: {hir.Parameter}): {lir.Return}
+    local array = {}
+    for index, parameter in parameters do
+        local ty = hir.ty_from_id(ctx.hir, parameter.value)
+        array[index] = builders.fn.returnn(ty)
+    end
+    return array
+end
+
+local function arguments(ctx: Context, parameters: {hir.Parameter}): {lir.Argument}
+    local array = {}
+    for index, parameter in parameters do
+        local ty = hir.ty_from_id(ctx.hir, parameter.value)
+        array[index] = builders.fn.argument(ty, parameter.name)
+    end
+    return array
+end
+
+local function build_type(ctx: Context, decl_id: DeclId<hir.Type>): lir.Type
+    local decl = hir.decl_from_id(ctx.hir, decl_id)
+    local ty = hir.ty_from_id(ctx.hir, decl.ty)
+
+    local rets = {builders.fn.returnn(ty)}
+    local args = {builders.fn.argument(ty)}
+    local attributes = decl.attributes
+
+    local read_fn = builders.fn.create(`read_{decl.name}`, args, rets, function(block)
+        local value_register = builders.ty.build.read(ctx, block, ty, attributes)
+        builders.ty.validate.read(ctx, block, ty, value_register)
+        block:rtrn({value_register :: lir.RValue})
+    end)
+
+    local write_fn = builders.fn.create(`write_{decl.name}`, args, rets, function(block)
+        builders.ty.build.write(ctx, block, ty, attributes, block:argument(1))
+    end)
+
+    return {
+        kind = "type",
+        decl = decl,
+        read = fn_id(ctx, read_fn),
+        write = fn_id(ctx, write_fn)
+    }
+end
+
+local function build_event(ctx: Context, decl_id: DeclId<hir.Event>): lir.Event
+    local decl = hir.decl_from_id(ctx.hir, decl_id)
+    return nil :: any
+end
+
+local function build_function(ctx: Context, decl_id: DeclId<hir.Function>): lir.Function
+    local decl = hir.decl_from_id(ctx.hir, decl_id)
+    return nil :: any
+end
+
+local function build_lir(hir: hir.Hir): lir.Lir
+    local lir: Lir = {
+        fns = {},
+        types = {},
+        events = {},
+        functions = {}
+    }
+    
+    local ctx: Context = context.create(hir, lir)
+
+    for decl_id, decl in hir.decls do
+        if decl.kind == "type" then
+            lir.types[decl_id] = build_type(ctx, decl_id)
+            continue
+        elseif decl.kind == "event" then
+            lir.events[decl_id] = build_event(ctx, decl_id)
+            continue
+        elseif decl.kind == "function" then
+            lir.functions[decl_id] = build_function(ctx, decl_id)
+            continue
+        end
+
+        panic(`Unhandled declaration kind "{decl.kind}"`)
+    end
+
+    return lir
+end
+
+return table.freeze({
+    lir = build_lir
+})

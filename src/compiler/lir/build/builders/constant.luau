@@ -1,10 +1,10 @@
 --!strict
 
-local ty = require("@compiler/structures/ty")
-local lir = require("@compiler/structures/lir")
+local ty = require("@structures/ty")
+local lir = require("@structures/lir")
 
 type Literal = ty.Literal
-type Constant = lir.Constant
+type Constant<T = ConstantValue> = lir.Constant<T>
 type ConstantValue = lir.ConstantValue
 
 local deduped_constants: {[ConstantValue]: Constant} = {}
@@ -24,15 +24,21 @@ local function create_or_reuse(value: ConstantValue): Constant
     return constant
 end
 
-local function from_ty(ty: Literal): Constant
-    return create_or_reuse(ty.value)
+local function from_ty<T>(ty: T): Constant<index<T, "value">>
+    return create_or_reuse((ty :: Literal).value)
 end
 
-local function from_value(value: ConstantValue): Constant
+local function from_value<T>(value: T): Constant<T>
     return create_or_reuse(value)
 end
 
 return table.freeze({
     from_ty = from_ty,
-    from_value = from_value
+    from_value = from_value,
+
+    truth = from_value(true),
+    falsity = from_value(true),
+
+    one = from_value(1),
+    zero = from_value(0),
 })

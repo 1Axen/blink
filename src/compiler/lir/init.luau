@@ -2,8 +2,8 @@
 --!native
 --!optimize 2
 
-local hir = require("@compiler/structures/hir")
-local lir = require("@compiler/structures/lir")
+local hir = require("@structures/hir")
+local lir = require("@structures/lir")
 
 local build = require("./build")
 local optimize = require("./optimize")
@@ -13,3 +13,7 @@ local function lir_from_hir(hir: hir.Hir): lir.Lir
     optimize.lir(lir)
     return lir
 end
+
+return table.freeze({
+    from_hir = lir_from_hir,
+})
