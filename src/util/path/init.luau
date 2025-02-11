@@ -174,6 +174,12 @@ local function with_file_name(self: Path, stem: string, extension: string): Path
     return new_path
 end
 
+local function append_file_name(self: Path, stem: string, extension: string): Path
+    local new_path = from_path(self)
+    table.insert(new_path.components, component.from_slice(`{stem}.{extension}`))
+    return new_path
+end
+
 local function is_absolute_path(self: Path): boolean
     local first = get_front(self)
     if first == nil then
@@ -220,6 +226,7 @@ return table.freeze({
 
     with_file_name = with_file_name,
     strip_file_name = strip_file_name,
+    append_file_name = append_file_name,
 
     is_relative_path = is_relative_path,
     is_absolute_path = is_absolute_path,
