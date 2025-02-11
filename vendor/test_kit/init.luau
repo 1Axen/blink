@@ -52,7 +52,7 @@ local function print_test_result(test: Test)
 
 		print(`{status}{WALL} {case.name}`)
 
-		if case.error then
+		if case.error and case.skip == false then
 			print(colorful.color.gray(case.error))
 		end
 	end
