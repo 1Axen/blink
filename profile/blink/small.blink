@@ -65,7 +65,7 @@ function request {
 }
 
 scope foo {
-    type bar = u8(0..1)
+    type bar = u8(0..1)?
 }
 
 type foo_bar = foo.bar

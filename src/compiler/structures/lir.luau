@@ -20,6 +20,7 @@ export type ConstantValue =
     | number
     | string
     | boolean
+    | nil
 
 export type Constant<T = ConstantValue> = {
     kind: "constant",
@@ -200,6 +201,7 @@ export type RValue =
     | UnaryOp
     | BinaryOp
     | Condition
+    | Constant<nil>
     | Constant<string>
     | Constant<number>
     | Constant<boolean>

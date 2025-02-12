@@ -7,7 +7,17 @@ type Literal = ty.Literal
 type Constant<T = ConstantValue> = lir.Constant<T>
 type ConstantValue = lir.ConstantValue
 
-local deduped_constants: {[ConstantValue]: Constant} = {}
+local deduped_constants: {[any]: Constant} = {}
+
+local NIL_SYMBOL = newproxy()
+
+local function hash_value(value: ConstantValue): any
+    if value == nil then
+        return NIL_SYMBOL
+    end
+
+    return value
+end
 
 local function create_or_reuse(value: ConstantValue): Constant
     local existing = deduped_constants[value]
@@ -20,7 +30,9 @@ local function create_or_reuse(value: ConstantValue): Constant
         value = value
     }
 
-    deduped_constants[value] = constant
+    local hash = hash_value(value)
+    deduped_constants[hash] = constant
+
     return constant
 end
 
@@ -41,4 +53,6 @@ return table.freeze({
 
     one = from_value(1),
     zero = from_value(0),
+
+    null = from_value(nil)
 })

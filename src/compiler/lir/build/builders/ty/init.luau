@@ -3,6 +3,7 @@ local lir = require("@structures/lir")
 local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
+local types = require("./types")
 local context = require("@lir/build/context")
 
 local panic = require("@util/panic")
@@ -40,16 +41,7 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
-type TyBuilder = {
-    build: {
-        read: (ctx: Context, block: Builder, ty: Ty, attributes: Attributes) -> Register,
-        write: (ctx: Context, block: Builder, ty: Ty, attributes: Attributes, at: LValue) -> ()
-    },
-    validate: {
-        read: (ctx: Context, block: Builder, ty: Ty, at: LValue) -> (),
-        write: (ctx: Context, block: Builder, ty: Ty, at: LValue) -> ()
-    },
-}
+type TyBuilder = types.TyBuilder
 
 local BUILDERS: {[ty.TyKind]: TyBuilder?} = {
     set = ty_set,
@@ -113,7 +105,6 @@ return table.freeze({
         read = build_read,
         write = build_write,
     }),
-
     validate = table.freeze({
         read = validate_read,
         write = validate_write
