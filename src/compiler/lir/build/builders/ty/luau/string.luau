@@ -23,38 +23,30 @@ type RValue = lir.RValue
 type Register = lir.RegisterId
 
 local function build_read(ctx: Context, block: Builder, ty: String, attributes: Attributes): Register
+    local len: RValue;
     local exact_length = length.is_exact(ty)
     if exact_length then
-        local bytes = constant.from_value(exact_length)
-        local advance = control.advance(bytes)
-        local buffer_read = library.buffer.string.read(advance, bytes)
-        return block:store(buffer_read)
+        len = constant.from_value(exact_length)
+    else
+        len = length.read(ctx, block, ty, attributes)
     end
 
-    local len = length.read(ty)
-    local advance = control.advance(len)
-    local buffer_read = library.buffer.string.read(advance, len)
-
-    return block:store(buffer_read)
+    local cursor = control.advance(len)
+    return block:store(library.buffer.string.read(cursor, len))
 end
 
 local function build_write(ctx: Context, block: Builder, ty: String, attributes: Attributes, at: LValue): ()
+    local len: RValue;
     local exact_length = length.is_exact(ty)
     if exact_length then
-        local bytes = constant.from_value(exact_length)
-        local allocate = block:store(control.advance(bytes))
-        local buffer_write = library.buffer.string.write(allocate, bytes, at)
-        block:call_lib(buffer_write)
-        return
+        len = constant.from_value(exact_length)
+    else
+        len = block:store(unary.len(at))
+        length.write(ctx, block, ty, attributes, len)
     end
 
-    local len = unary.len(at)
-    local allocate = block:store(control.allocate(len))
-
-    local size = length.write(block, ty, at)
-    local buffer_write = library.buffer.string.write(allocate, len, size)
-    
-    block:call_lib(buffer_write)
+    local cursor = block:store(control.allocate(len))
+    block:call_lib(library.buffer.string.write(cursor, len, at))
 end
 
 local function validate(ctx: Context, block: Builder, ty: String, at: LValue)

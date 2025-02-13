@@ -4,6 +4,7 @@ local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
 local unary = require("@builders/unary")
+local globals = require("@builders/globals")
 local control = require("@builders/control")
 local library = require("@builders/library")
 local constant = require("@builders/constant")
@@ -22,37 +23,41 @@ type RValue = lir.RValue
 type Register = lir.RegisterId
 
 local function build_read(ctx: Context, block: Builder, ty: Buffer, attributes: Attributes): Register
+    local len: lir.RValue;
+
     local exact_length = length.is_exact(ty)
     if exact_length then
-        local bytes = constant.from_value(exact_length)
-        local advance = control.advance(bytes)
-        local buffer_read = library.buffer.string.read(advance, bytes)
-        return block:store(buffer_read)
+        len = constant.from_value(exact_length)
+    else
+        len = length.read(ctx, block, ty, attributes)
     end
 
-    local len = length.read(ty)
-    local advance = control.advance(len)
-    local buffer_read = library.buffer.string.read(advance, len)
+    local register = block:store(library.buffer.create(len))
+    local buffer_copy = library.buffer.copy(
+        register, constant.zero, 
+        globals.incoming.buffer, control.advance(len), len
+    )
 
-    return block:store(buffer_read)
+    block:call_lib(buffer_copy)
+    return register
 end
 
 local function build_write(ctx: Context, block: Builder, ty: Buffer, attributes: Attributes, at: LValue): ()
+    local len: lir.RValue;
     local exact_length = length.is_exact(ty)
     if exact_length then
-        local bytes = constant.from_value(exact_length)
-        local allocate = block:store(control.advance(bytes))
-        local buffer_copy = library.buffer.copy(at, constant.zero, bytes)
-        block:call_lib(buffer_copy)
-        return
+        len = constant.from_value(exact_length)
+    else
+        len = block:store(unary.len(at))
+        length.write(ctx, block, ty, attributes, len)
     end
 
-    local len = unary.len(at)
-    local allocate = block:store(control.allocate(len))
+    local cursor = block:store(control.allocate(len))
+    local buffer_copy = library.buffer.copy(
+        globals.outgoing.buffer, cursor, 
+        at, constant.zero, len
+    )
 
-    local size = length.write(block, ty, at)
-    local buffer_copy = library.buffer.copy(at, constant.zero, len)
-    
     block:call_lib(buffer_copy)
 end
 
