@@ -971,7 +971,7 @@ function Generators.LuauType(Declaration: Type, UseTypeAsValue: boolean?, Prefix
 		Type = `\{ {Generators.LuauType(Value.Of)} }`
 	elseif Declaration.Type == "Optional" then
 		local Value = Declaration.Value
-		Type = `({Generators.LuauType(Value.Of)})?`
+		Type = `{Generators.LuauType(Value.Of)}?`
 	end
 
 	local Value = Declaration.Value
