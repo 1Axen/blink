@@ -106,6 +106,13 @@ local function buffer_create(size: RValue): Call
     )
 end
 
+local function buffer_len(of: RValue): Call
+    return projection.call(
+        index("buffer", "len"),
+        {of}
+    )
+end
+
 local function buffer_copy(target: RValue, target_offset: RValue, source: RValue, source_offset: RValue?, count: RValue?): Call
     return projection.call(
         index("buffer", "copy"),
@@ -252,6 +259,7 @@ return table.freeze({
     },
 
     buffer = {
+        len = buffer_len,
         copy = buffer_copy,
         create = buffer_create,
         

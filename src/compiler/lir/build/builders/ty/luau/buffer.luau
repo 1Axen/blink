@@ -48,7 +48,7 @@ local function build_write(ctx: Context, block: Builder, ty: Buffer, attributes:
     if exact_length then
         len = constant.from_value(exact_length)
     else
-        len = block:store(unary.len(at))
+        len = block:store(library.buffer.len(at))
         length.write(ctx, block, ty, attributes, len)
     end
 
