@@ -231,17 +231,17 @@ end
 
 export type Map = {
     read kind: "map",
+    read size: Range?,
     read index: TyId,
     read value: TyId,
-    read range: Range?
 }
 
-local function create_map(index: TyId, value: TyId, range: Range?): Map
+local function create_map(index: TyId, value: TyId, size: Range?): Map
     return {
         kind = "map",
+        size = size,
         index = index,
         value = value,
-        range = range
     }
 end
 
