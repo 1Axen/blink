@@ -3,6 +3,7 @@ local ty = require("./ty")
 local loop = require("./loop")
 local unary = require("./unary")
 local binary = require("./binary")
+local globals = require("./globals")
 local ternary = require("./ternary")
 local control = require("./control")
 local wrapper = require("./wrapper")
@@ -19,6 +20,7 @@ return table.freeze({
     loop = loop,
     unary = unary,
     binary = binary,
+    globals = globals,
     ternary = ternary,
     wrapper = wrapper,
     control = control,
