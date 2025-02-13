@@ -14,14 +14,6 @@ local panic = require("@util/panic")
 local fmt_ty: (ty: ty.Ty) -> string
 local PRIMITIVE_STYLE = style.color.bright_purple
 
-local function fmt_opt_id(opt_id: id.Id?): string
-    if opt_id == nil then
-        return ""
-    end
-
-    return fmt_id(opt_id)
-end
-
 local function fmt_opt_range(range: range.Range?): string
     if range == nil then
         return ""
