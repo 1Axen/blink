@@ -6,6 +6,7 @@ option ServerOutput = "../../Network/Server.luau"
 option WriteValidations = true
 option ManualReplication = false
 
+import "./Indexers"
 import "./Sub-Sources/Source"
 import "./Sub-Sources/Source" as ImportA
 

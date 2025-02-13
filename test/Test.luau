@@ -952,6 +952,23 @@ RunClosure("Export buffer trimming", function()
     end
 end)
 
+do
+    local enum: Client.Indexers_TestEnums = "b b"
+    local flags: Client.Indexers_TestFlags = { ["a a"] = true }
+    local struct: Client.Indexers_TestStruct = {
+        ["z z"] = 0,
+        ["1 1"] = 1,
+        ["2 2"] = 2,
+        ["3 3"] = 3
+    }
+    local tagged: Client.Indexers_TestTaggedEnums = {
+        Type = "c c",
+        Test = 1
+    }
+
+    FireAndExpectTuple("Indexers", Server.Indexers.TestEvent, Client.Indexers.TestEvent, struct, flags, enum, tagged)
+end
+
 PrettyPrint("green", `All tests passed successfully!`)
 
 process.exit(0)

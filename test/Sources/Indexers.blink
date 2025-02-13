@@ -19,10 +19,10 @@ enum TestTaggedEnums = "Type" {
 
 event TestEvent 
 {
-    From: Client,
+    From: Server,
     Type: Unreliable,
     Call: SingleSync,
 
-    Data: (TestStruct, TestFlags, TestEnums)
+    Data: (TestStruct, TestFlags, TestEnums, TestTaggedEnums)
 }
 
