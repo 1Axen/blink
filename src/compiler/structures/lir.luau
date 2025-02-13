@@ -148,6 +148,11 @@ export type Control =
     | CtrlAllocate
 ;
 
+export type Global = {
+    kind: "global",
+    identifier: string
+}
+
 --- left == / ~=/ >= / > / < / <= right
 export type Condition = {
     kind: "equals" | "not_equals" | "less_than" | "less_than_or" | "greater_than" | "greater_than_or",
@@ -195,6 +200,7 @@ export type LValue =
 --- right side of an assign statement
 export type RValue =
     | Id
+    | Global
     | Wrapper
     | Control
     | Ternary

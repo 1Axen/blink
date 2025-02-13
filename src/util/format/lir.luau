@@ -48,6 +48,10 @@ local function fmt_id(fmt_builder: Builder, id: lir.Id)
     builder.append(fmt_builder, ID_STYLE(tostring(id.index)))
 end
 
+local function fmt_global(fmt_builder: Builder, global: lir.Global)
+    builder.append(fmt_builder, ID_STYLE(`@{global.identifier}`))
+end
+
 local function fmt_return(fmt_builder: Builder, retrn: lir.Return)
     builder.append(fmt_builder, fmt_ty(retrn.ty))
 end
@@ -297,6 +301,9 @@ function fmt_rvalue(fmt_builder: Builder, rvalue: lir.RValue)
     if rvalue.kind == "len" then
         -- LUAU
         fmt_unary(fmt_builder, rvalue :: lir.UnaryOp)
+        return
+    elseif rvalue.kind == "global" then
+        fmt_global(fmt_builder, rvalue)
         return
     elseif rvalue.kind == "ternary" then
         -- LUAU
