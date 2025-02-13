@@ -20,6 +20,8 @@ type blob = buffer
 type bool = boolean
 type username = string(0..20)
 
+type optional = username?
+
 --[[
 type alpha = Enum<"AlphaMode">
 type location = CFrame<f32, f16>
