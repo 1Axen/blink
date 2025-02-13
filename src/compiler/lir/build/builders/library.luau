@@ -2,6 +2,7 @@
 
 local lir = require("@structures/lir")
 
+local globals = require("./globals")
 local constant = require("./constant")
 local projection = require("./projection")
 
@@ -25,6 +26,9 @@ type Namecall = lir.ProjNamecall
 
 type Advance = lir.CtrlAdvance
 type Allocate = lir.CtrlAllocate
+
+local READ_BUFFER = globals.incoming.buffer
+local WRITE_BUFFER = globals.outgoing.buffer
 
 local function index(library: string, method: string): Index
     local library_const = constant.from_value(library)
@@ -95,11 +99,39 @@ local function bit32_rshift(x: RValue, disp: lir.Constant<number>): Call
     )
 end
 
+local function buffer_create(size: RValue): Call
+    return projection.call(
+        index("buffer", "create"),
+        {size}
+    )
+end
+
+local function buffer_copy(target: RValue, target_offset: RValue, source: RValue, source_offset: RValue?, count: RValue?): Call
+    return projection.call(
+        index("buffer", "copy"),
+        {target, target_offset, source, source_offset, count} :: {RValue}
+    )
+end
+
+local function buffer_readstring(advance: Advance, bytes: RValue): Call
+    return projection.call(
+        index("buffer", "readstring"),
+        {READ_BUFFER, advance, bytes}
+    )
+end
+
+local function buffer_writestring(allocate: Register, bytes: RValue, value: RValue): Call
+    return projection.call(
+        index("buffer", `writestring`),
+        {WRITE_BUFFER, allocate, value, bytes}
+    )
+end
+
 local function buffer_read_ctor(format: BufferDataFormat)
     return function(advance: Advance): Call
         return projection.call(
             index("buffer", `read{format}`),
-            {advance :: RValue}
+            {READ_BUFFER, advance :: RValue}
         )
     end
 end
@@ -108,30 +140,9 @@ local function buffer_write_ctor(format: BufferDataFormat)
     return function(allocate: Register, value: RValue): Call
         return projection.call(
             index("buffer", `write{format}`),
-            {allocate, value}
+            {WRITE_BUFFER, allocate, value}
         )
     end
-end
-
-local function buffer_copy(source: RValue, source_offset: RValue?, count: RValue?): Call
-    return projection.call(
-        index("buffer", "copy"),
-        {source, source_offset, count} :: {RValue}
-    )
-end
-
-local function buffer_readstring(advance: Advance, bytes: RValue): Call
-    return projection.call(
-        index("buffer", "readstring"),
-        {advance, bytes}
-    )
-end
-
-local function buffer_writestring(allocate: Register, bytes: RValue, value: RValue): Call
-    return projection.call(
-        index("buffer", `writestring`),
-        {allocate, value, bytes}
-    )
 end
 
 local function math_cos(n: lir.Constant<number> | lir.BinaryOp): Call
@@ -242,6 +253,7 @@ return table.freeze({
 
     buffer = {
         copy = buffer_copy,
+        create = buffer_create,
         
         u8 = {
             read = buffer_read_ctor("u8"),
