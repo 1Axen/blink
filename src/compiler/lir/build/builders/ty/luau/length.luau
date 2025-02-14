@@ -75,7 +75,7 @@ local function is_exact_length(ty: VariableLengthTy): number?
         return nil
     end
 
-    return conversion.to_byte_size(ty_range.min)
+    return ty_range.min
 end
 
 local function read_length(ctx: Context, block: Builder, ty: VariableLengthTy, attributes: Attributes): lir.RegisterId
