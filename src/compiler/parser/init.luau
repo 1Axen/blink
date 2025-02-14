@@ -339,6 +339,9 @@ local function expr_range(ctx: Context, delimiter: "(" | "["): ast.Range
         if second.kind == ".." then
             expect(ctx, "..")
             max = expr_number(ctx)
+        elseif second.kind == closing_delimiter then
+            -- exact range
+            max = min
         end
     elseif first.kind == ".." then
         expect(ctx, "..")
