@@ -7,10 +7,10 @@ if RUN_SERVICE:IsClient() == false then
     error(`The client module can only be required from the client!`)
 end
 
-local RELIABLE_EVENT: RemoteEvent = REPLICATED_STORAGE:WaitForChild("BLINK_RELIABLE") :: RemoteEvent
-local UNRELIABLE_EVENT: UnreliableRemoteEvent = REPLICATED_STORAGE:WaitForChild("BLINK_UNRELIABLE") :: UnreliableRemoteEvent
+local EVENTS_FOLDER: Folder = REPLICATED_STORAGE:WaitForChild("BLINK_EVENTS") :: Folder
+local RELIABLE_EVENT: RemoteEvent = EVENTS_FOLDER:WaitForChild("BLINK_RELIABLE") :: RemoteEvent
 
-local function send_events()
+local function send_reliable()
     if out_cursor == 0 then
         return
     end

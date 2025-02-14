@@ -77,7 +77,7 @@ end
 --- Loads an external buffer for reading
 --- Buffer length is read from `buf`
 --- `cursor` defaults to `0`
-local function load_external_out(buf: buffer, unknown: {any}, cursor: number?)
+local function load_external_in(buf: buffer, unknown: {any}, cursor: number?)
     in_buffer = buf
     in_cursor = cursor or 0
     in_length = buffer.len(buf)
