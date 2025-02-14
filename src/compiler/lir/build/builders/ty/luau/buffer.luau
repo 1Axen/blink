@@ -26,7 +26,7 @@ local function build_read(ctx: Context, block: Builder, ty: Buffer, attributes: 
     local len: lir.RValue;
 
     local exact_length = length.is_exact(ty)
-    if exact_length then
+    if exact_length ~= nil then
         len = constant.from_value(exact_length)
     else
         len = length.read(ctx, block, ty, attributes)
@@ -45,7 +45,7 @@ end
 local function build_write(ctx: Context, block: Builder, ty: Buffer, attributes: Attributes, at: LValue): ()
     local len: lir.RValue;
     local exact_length = length.is_exact(ty)
-    if exact_length then
+    if exact_length ~= nil then
         len = constant.from_value(exact_length)
     else
         len = block:store(library.buffer.len(at))
@@ -68,6 +68,16 @@ local function validate(ctx: Context, block: Builder, ty: Buffer, at: LValue)
     end
 
     local len = unary.len(at)
+    local exact_length = length.is_exact(ty)
+    if exact_length then
+        local exact = condition.equals(len, constant.from_value(exact_length))
+        block:if_branch(exact, function(block)
+            block:call_lib(library.error(`Expected buffer length to be {bounds.min}`))
+        end)
+
+        return
+    end
+
     local lower = condition.less_than(len, constant.from_value(bounds.min))
     local upper = condition.greater_than(len, constant.from_value(bounds.max))
 
