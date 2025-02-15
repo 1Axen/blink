@@ -353,6 +353,9 @@ local function fmt_statement(fmt_builder: Builder, statement: lir.Statement)
         end
 
         return
+    elseif statement.kind == "remark" then
+        builder.append(fmt_builder, colorful.modifier.dim(`REMARK {statement.text}`))
+        return
     elseif statement.kind == "multi_assign" then
         separated(fmt_builder, fmt_lvalue, statement.into, ",")
 

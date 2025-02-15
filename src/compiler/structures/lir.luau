@@ -220,6 +220,12 @@ export type StatCall = {
     call: ProjCall
 }
 
+--- -- REMARK text
+export type StatRemark = {
+    kind: "remark",
+    text: string
+}
+
 --- %into = value
 export type StatAssign = {
     kind: "assign",
@@ -237,6 +243,7 @@ export type StatMultiAssign = {
 export type Statement = 
     | StatCall
     | StatAssign
+    | StatRemark
     | StatMultiAssign
 ;
 

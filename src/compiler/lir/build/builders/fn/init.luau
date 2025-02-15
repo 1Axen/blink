@@ -115,6 +115,10 @@ local function call_fn(self: Builder, ctx: Context, fn_id: FnId, args: {RValue},
     error("unimplemented")
 end
 
+local function remark(self: Builder, text: string)
+    table.insert(self.block.statements, statement.remark(text))
+end
+
 local function loop(self: Builder, loop: Loop, body: Body)
     local current = self.block
     local loop_block = block.create(next_index(self), current.scope + 1)
@@ -188,6 +192,8 @@ export type Builder = {
     --call_fn: typeof(call_fn),
     call_lib: typeof(call_lib),
 
+    remark: typeof(remark),
+
     loop: typeof(loop),
     rtrn: typeof(rtrn),
 
@@ -224,6 +230,8 @@ local function create(name: string, args: {Argument}, rets: {Return}, body: Body
 
         call_fn = call_fn,
         call_lib = call_lib,
+
+        remark = remark,
         
         loop = loop,
         rtrn = rtrn,

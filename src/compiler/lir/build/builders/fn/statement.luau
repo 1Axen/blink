@@ -4,8 +4,10 @@ local lir = require("@structures/lir")
 
 type Call = lir.StatCall
 type Assign = lir.StatAssign
+type Remark = lir.StatRemark
 type MultiAssign = lir.StatMultiAssign
 
+type LValue = lir.LValue
 type RValue = lir.RValue
 type Register = lir.RegisterId
 
@@ -16,7 +18,7 @@ local function stat_call(call: lir.ProjCall): Call
     }
 end
 
-local function stat_assign(into: lir.LValue, value: RValue?): Assign
+local function stat_assign(into: LValue, value: RValue?): Assign
     return {
         kind = "assign",
         into = into,
@@ -24,7 +26,14 @@ local function stat_assign(into: lir.LValue, value: RValue?): Assign
     }
 end
 
-local function stat_multi_assign(into: {lir.LValue}, value: RValue?): MultiAssign
+local function stat_remark(text: string): Remark
+    return {
+        kind = "remark",
+        text = text
+    }
+end
+
+local function stat_multi_assign(into: {LValue}, value: RValue): MultiAssign
     return {
         kind = "multi_assign",
         into = into,
@@ -34,6 +43,7 @@ end
 
 return table.freeze({
     call = stat_call,
+    remark = stat_remark,
     assign = stat_assign,
     multi_assign = stat_multi_assign
 })
