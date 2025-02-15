@@ -62,9 +62,10 @@ local function register(builder: Builder): Register
     end
 
     return {
+        type = "id",
         kind = "register",
         index = index
-    } :: Register
+    }
 end
 
 local function next_index(builder: Builder): number
@@ -173,11 +174,11 @@ local function if_branch(self: Builder, cond: Condition, body: Body)
 end
 
 local function elseif_branch(self: Builder, cond: Condition, body: Body)
-    branch(self, cond, body, true)
+    --branch(self, cond, body, true)
 end
 
 local function else_branch(self: Builder, body: Body)
-    branch(self, condition.always(), body, true)
+    --branch(self, condition.always(), body, true)
 end
 
 export type Builder = {
@@ -213,6 +214,7 @@ local function create(name: string, args: {Argument}, rets: {Return}, body: Body
         end
 
         return {
+            type = "id",
             kind = "argument",
             index = index
         }
@@ -248,7 +250,7 @@ local function create(name: string, args: {Argument}, rets: {Return}, body: Body
 
     --> return fn
     return {
-        kind = "fn",
+        type = "fn",
         name = name,
 
         rets = rets,

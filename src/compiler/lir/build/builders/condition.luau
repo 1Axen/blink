@@ -5,11 +5,8 @@ local lir = require("@structures/lir")
 type RValue = lir.RValue
 
 local function condition(kind: index<lir.Condition, "kind">, left: RValue, right: RValue): lir.Condition
-    if kind == "always" then
-        return { kind = "always" }
-    end
-    
     return {
+        type = "condition",
         kind = kind,
         left = left,
         right = right
@@ -34,8 +31,5 @@ return table.freeze({
     end,
     greater_than_or = function(left: RValue, right: RValue)
         return condition("greater_than_or", left, right)
-    end,
-    always = function(): lir.Condition
-        return {kind = "always"}
     end
 })

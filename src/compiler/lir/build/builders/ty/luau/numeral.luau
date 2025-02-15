@@ -161,11 +161,12 @@ local function write_i48(block: Builder, at: LValue)
 end
 
 local function read_f16(block: Builder): Register
+    block:remark("f16 is not implemented")
     return block:store()
 end
 
 local function write_f16(block: Builder, at: LValue)
-    
+    block:remark("f16 is not implemented")
 end
 
 local function build_read(ctx: Context, block: Builder, ty: ty.Numeral, attributes: Attributes): Register

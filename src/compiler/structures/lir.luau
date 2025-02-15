@@ -23,18 +23,20 @@ export type ConstantValue =
     | nil
 
 export type Constant<T = ConstantValue> = {
-    kind: "constant",
+    type: "constant",
     value: T
 }
 
 --- An index into the arguments table
 export type ArgumentId = {
+    type: "id",
     kind: "argument",
     index: number
 }
 
 --- An index into the register table
 export type RegisterId = {
+    type: "id",
     kind: "register",
     index: number
 }
@@ -46,6 +48,7 @@ export type Id =
 
 --- base(args...)
 export type ProjCall = {
+    type: "projection",
     kind: "call",
     base: LValue | Constant<string>,
     args: {RValue}
@@ -53,6 +56,7 @@ export type ProjCall = {
 
 --- base[field]
 export type ProjField = {
+    type: "projection",
     kind: "field",
     base: LValue | Constant<string>,
     field: RValue
@@ -60,6 +64,7 @@ export type ProjField = {
 
 --- base.index
 export type ProjIndex = {
+    type: "projection",
     kind: "index",
     base: LValue | Constant<string>,
     element: Constant<string>
@@ -67,6 +72,7 @@ export type ProjIndex = {
 
 --- base:method(args...)
 export type ProjNamecall = {
+    type: "projection",
     kind: "namecall",
     base: LValue | Constant<string>,
     method: Constant<string>,
@@ -82,6 +88,7 @@ export type Projection =
 
 --- left + right
 export type BinaryAdd = {
+    type: "binary",
     kind: "add",
     left: RValue,
     right: RValue
@@ -89,6 +96,7 @@ export type BinaryAdd = {
 
 --- left - right
 export type BinarySub = {
+    type: "binary",
     kind: "sub",
     left: RValue,
     right: RValue
@@ -96,6 +104,7 @@ export type BinarySub = {
 
 --- left * right
 export type BinaryMul = {
+    type: "binary",
     kind: "mul",
     left: RValue,
     right: RValue
@@ -103,6 +112,7 @@ export type BinaryMul = {
 
 --- left / right
 export type BinaryDiv = {
+    type: "binary",
     kind: "div",
     left: RValue,
     right: RValue
@@ -110,6 +120,7 @@ export type BinaryDiv = {
 
 --- left % right
 export type BinaryMod = {
+    type: "binary",
     kind: "mod",
     left: RValue,
     right: RValue
@@ -124,6 +135,7 @@ export type BinaryOp =
 
 --- #%of
 export type UnaryLen = {
+    type: "unary",
     kind: "len",
     of: RValue,
 }
@@ -133,12 +145,14 @@ export type UnaryOp =
     
 --- advance(bytes)
 export type CtrlAdvance = {
+    type: "control",
     kind: "advance",
     bytes: RValue
 }
 
 --- allocate(bytes)
 export type CtrlAllocate = {
+    type: "control",
     kind: "allocate",
     bytes: RValue
 }
@@ -149,24 +163,21 @@ export type Control =
 ;
 
 export type Global = {
-    kind: "global",
+    type: "global",
     identifier: string
 }
 
 --- left == / ~=/ >= / > / < / <= right
 export type Condition = {
+    type: "condition",
     kind: "equals" | "not_equals" | "less_than" | "less_than_or" | "greater_than" | "greater_than_or",
     left: RValue,
     right: RValue
-} | {
-    kind: "always",
-    left: nil,
-    right: nil
 }
 
 --- if cond then left else right
 export type Ternary = {
-    kind: "ternary",
+    type: "ternary",
     cond: Condition,
     left: RValue,
     right: RValue
@@ -174,12 +185,14 @@ export type Ternary = {
 
 -- { values }
 export type WrapTable = {
+    type: "wrapper",
     kind: "table",
     values: {RValue}
 }
 
 -- (value)
 export type WrapSingle = {
+    type: "wrapper",
     kind: "single",
     value: RValue
 }
@@ -216,18 +229,21 @@ export type RValue =
 
 --- call
 export type StatCall = {
+    type: "statement",
     kind: "call",
     call: ProjCall
 }
 
 --- -- REMARK text
 export type StatRemark = {
+    type: "statement",
     kind: "remark",
     text: string
 }
 
 --- %into = value
 export type StatAssign = {
+    type: "statement",
     kind: "assign",
     into: LValue,
     value: RValue?,
@@ -235,6 +251,7 @@ export type StatAssign = {
 
 --- %a, %b, %c = value
 export type StatMultiAssign = {
+    type: "statement",
     kind: "multi_assign",
     into: {LValue},
     value: RValue,
@@ -249,6 +266,7 @@ export type Statement =
 
 --- numeric for `%index` = 1, `%iterations` do
 export type LoopNumeric = {
+    type: "loop",
     kind: "numeric",
     index: RegisterId,
     iterations: RegisterId,
@@ -256,6 +274,7 @@ export type LoopNumeric = {
 
 --- generic for `%index`, `%value` in `%target` do
 export type LoopGeneric = {
+    type: "loop",
     kind: "generic",
     index: RegisterId?,
     value: RegisterId,
@@ -269,6 +288,7 @@ export type Loop =
 
 --- jump to `truthy` if `cond` evaluates to `true`
 export type TermIf = {
+    type: "terminator",
     kind: "if",
     cond: Condition,
     truthy: BasicBlock,
@@ -280,21 +300,25 @@ export type TermIf = {
 
 --- placeholder
 export type TermNone = {
+    type: "terminator",
     kind: "none",
 }
 
 export type TermGoto = {
+    type: "terminator",
     kind: "goto",
     destination: BasicBlock
 }
 
 export type TermLoop = {
+    type: "terminator",
     kind: "loop",
     loop: Loop,
     destination: BasicBlock,
 }
 
 export type TermCall = {
+    type: "terminator",
     kind: "call",
     fn: FnId,
     args: { RValue },
@@ -302,6 +326,7 @@ export type TermCall = {
 }
 
 export type TermReturn = {
+    type: "terminator",
     kind: "return",
     values: { RValue }
 }
@@ -315,7 +340,7 @@ export type Terminator =
     | TermReturn
 
 export type BasicBlock = {
-    kind: "block",
+    type: "block",
     index: number,
     scope: number,
     statements: {Statement},
@@ -323,7 +348,7 @@ export type BasicBlock = {
 }
 
 export type Fn = {
-    kind: "fn",
+    type: "fn",
     name: string,
 
     rets: {Return},
@@ -334,21 +359,21 @@ export type Fn = {
 export type FnId = number & { __fn: true }
 
 export type Type = {
-    kind: "type",
+    type: "type",
     decl: hir.Type,
     read: FnId,
     write: FnId,
 }
 
 export type Event = {
-    kind: "event",
+    type: "event",
     decl: hir.Event,
     read: FnId,
     write: FnId,
 }
 
 export type Function = {
-    kind: "function",
+    type: "function",
     decl: hir.Function,
     read: FnId,
     write: FnId,

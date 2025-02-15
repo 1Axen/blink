@@ -7,6 +7,7 @@ type UnaryLen = lir.UnaryLen
 
 local function unary_len(of: RValue): UnaryLen
     return {
+        type = "unary",
         kind = "len",
         of = of
     }

@@ -7,7 +7,7 @@ type Condition = lir.Condition
 
 local function ternary(cond: Condition, left: RValue, right: RValue): lir.Ternary
     return {
-        kind = "ternary",
+        type = "ternary",
         cond = cond,
         left = left,
         right = right

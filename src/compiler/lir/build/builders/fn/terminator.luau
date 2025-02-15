@@ -16,6 +16,7 @@ type BasicBlock = lir.BasicBlock
 
 local function term_if(condition: Condition, truthy: BasicBlock, falsey: BasicBlock, chained: boolean?): TermIf
     return {
+        type = "terminator",
         kind = "if",
         cond = condition,
         truthy = truthy,
@@ -26,12 +27,14 @@ end
 
 local function term_none(): TermNone
     return {
+        type = "terminator",
         kind = "none"
     }
 end
 
 local function term_goto(destination: BasicBlock): TermGoto
     return {
+        type = "terminator",
         kind = "goto",
         destination = destination
     }
@@ -39,6 +42,7 @@ end
 
 local function term_loop(loop: Loop, destination: BasicBlock): TermLoop
     return {
+        type = "terminator",
         kind = "loop",
         loop = loop,
         destination = destination
@@ -47,6 +51,7 @@ end
 
 local function term_call(fn: lir.FnId, args: {RValue}, destination: BasicBlock): TermCall
     return {
+        type = "terminator",
         kind = "call",
         fn = fn,
         args = args,
@@ -56,6 +61,7 @@ end
 
 local function term_return(values: {RValue}): TermReturn
     return {
+        type = "terminator",
         kind = "return",
         values = values
     }

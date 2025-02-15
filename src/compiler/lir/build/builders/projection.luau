@@ -14,6 +14,7 @@ type Register = lir.RegisterId
 
 local function proj_call(base: LValue | Constant<string>, args: {RValue}): ProjCall
     return {
+        type = "projection",
         kind = "call",
         base = base,
         args = args,
@@ -22,6 +23,7 @@ end
 
 local function proj_field(base: LValue | Constant<string>, field: RValue): ProjField
     return {
+        type = "projection",
         kind = "field",
         base = base,
         field = field,
@@ -30,6 +32,7 @@ end
 
 local function proj_index(base: LValue | Constant<string>, element: lir.Constant<string>): ProjIndex
     return {
+        type = "projection",
         kind = "index",
         base = base,
         element = element,
@@ -38,6 +41,7 @@ end
 
 local function proj_namecall(base: LValue | Constant<string>, method: Constant<string>, args: {RValue}): ProjNamecall
     return {
+        type = "projection",
         kind = "namecall",
         base = base,
         method = method,

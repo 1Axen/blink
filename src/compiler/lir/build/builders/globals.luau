@@ -6,7 +6,7 @@ type Global = lir.Global
 
 local function global(identifier: string): Global
     return {
-        kind = "global",
+        type = "global",
         identifier = identifier
     }
 end

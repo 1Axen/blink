@@ -84,7 +84,7 @@ end
 
 local function fmt_projection(fmt_builder: Builder, projection: lir.Projection)
     local base = projection.base
-    if base.kind == "constant" then
+    if base.type == "constant" then
         builder.append(fmt_builder, BASE_STYLE(tostring(base.value)))
     else
         fmt_lvalue(fmt_builder, projection.base :: lir.LValue)
@@ -129,8 +129,6 @@ local function fmt_condition(fmt_builder: Builder, condition: lir.Condition)
         symbol = ">"
     elseif condition.kind == "greater_than_or" then
         symbol = ">="
-    elseif condition.kind == "always" then
-        symbol = "!"
     end
 
     builder.append(fmt_builder, "(")
@@ -235,107 +233,39 @@ local function fmt_loop(fmt_builder: Builder, loop: lir.Loop)
 end
 
 function fmt_rvalue(fmt_builder: Builder, rvalue: lir.RValue)
-    -- control
-    if 
-        rvalue.kind == "advance"
-        or rvalue.kind == "allocate" 
-    then
-        fmt_control(fmt_builder, rvalue)
-        return
-    end
-
-    -- condition
-    if 
-        rvalue.kind == "always"
-        or rvalue.kind == "equals"
-        or rvalue.kind == "not_equals"
-        or rvalue.kind == "less_than"
-        or rvalue.kind == "less_than_or"
-        or rvalue.kind == "greater_than"
-        or rvalue.kind == "greater_than_or" 
-    then
-        fmt_condition(fmt_builder, rvalue :: lir.Condition)
-        return
-    end
-
-    -- binary
-    if 
-        rvalue.kind == "add"
-        or rvalue.kind == "sub"
-        or rvalue.kind == "mul"
-        or rvalue.kind == "mod"
-        or rvalue.kind == "div"
-    then
+    if rvalue.type == "id" then
+        fmt_id(fmt_builder, rvalue)
+    elseif rvalue.type == "unary" then
+        fmt_unary(fmt_builder, rvalue)
+    elseif rvalue.type == "binary" then
         fmt_binary(fmt_builder, rvalue)
-        return
-    end
-
-    -- id
-    if 
-        rvalue.kind == "argument"
-        or rvalue.kind == "register" 
-    then
-        fmt_id(fmt_builder, rvalue :: lir.Id)
-        return
-    end
-
-    if 
-        rvalue.kind == "call" 
-        or rvalue.kind == "index"
-        or rvalue.kind == "field"
-        or rvalue.kind == "namecall" 
-    then
-        fmt_projection(fmt_builder, rvalue :: any)
-        return
-    end
-
-    -- wrapper
-    if 
-        rvalue.kind == "table" 
-        or rvalue.kind == "single"
-    then
-        fmt_wrapper(fmt_builder, rvalue :: lir.Wrapper)
-        return
-    end
-
-    if rvalue.kind == "len" then
-        -- LUAU
-        fmt_unary(fmt_builder, rvalue :: lir.UnaryOp)
-        return
-    elseif rvalue.kind == "global" then
+    elseif rvalue.type == "global" then
         fmt_global(fmt_builder, rvalue)
-        return
-    elseif rvalue.kind == "ternary" then
-        -- LUAU
-        fmt_ternary(fmt_builder, rvalue :: any)
-        return
-    elseif rvalue.kind == "constant" then
-        -- LUAU
+    elseif rvalue.type == "control" then
+        fmt_control(fmt_builder, rvalue)
+    elseif rvalue.type == "wrapper" then
+        fmt_wrapper(fmt_builder, rvalue)
+    elseif rvalue.type == "ternary" then
+        fmt_ternary(fmt_builder, rvalue)
+    elseif rvalue.type == "constant" then
         fmt_constant(fmt_builder, rvalue :: lir.Constant)
-        return
+    elseif rvalue.type == "condition" then
+        fmt_condition(fmt_builder, rvalue :: lir.Condition)
+    elseif rvalue.type == "projection" then
+        fmt_projection(fmt_builder, rvalue)
+    else
+        panic(`Unhandled rvalue kind "{rvalue.type}"`)
     end
-
-    panic(`Unhandled rvalue kind "{rvalue.kind}"`)
 end
 
 function fmt_lvalue(fmt_builder: Builder, lvalue: lir.LValue)
-    if 
-        lvalue.kind == "field"
-        or lvalue.kind == "index" 
-    then
+    if lvalue.type == "projection" then
         fmt_projection(fmt_builder, lvalue)
-        return
-    end
-
-    if 
-        lvalue.kind == "register"
-        or lvalue.kind == "argument"
-    then
+    elseif lvalue.type == "id" then
         fmt_id(fmt_builder, lvalue)
-        return
+    else
+        panic(`Unhandaled lvalue kind "{lvalue.type}"`)
     end
-
-    panic(`Unhandaled lvalue kind "{lvalue.kind}"`)
 end
 
 local function fmt_statement(fmt_builder: Builder, statement: lir.Statement)

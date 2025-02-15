@@ -26,7 +26,7 @@ local function create_or_reuse(value: ConstantValue): Constant
     end
 
     local constant: Constant = {
-        kind = "constant",
+        type = "constant",
         value = value
     }
 
