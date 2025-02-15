@@ -11,6 +11,7 @@ export type Primitive = {
 
 local F64 = 2^53
 local F32 = 2^24
+local F16 = 2^10
 
 local primitives = {
     --> Numerals
@@ -26,7 +27,7 @@ local primitives = {
     i32 = { range = range.from_size(32) },
     i48 = { range = range.from_size(48) },
 
-    f16 = { range = range.create(-F32, F32) },
+    f16 = { range = range.create(-F16, F16) },
     f32 = { range = range.create(-F32, F32) },
     f64 = { range = range.create(-F64, F64) },
 
