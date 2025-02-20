@@ -61,7 +61,7 @@ end
 
 --- Returns the smallest possible numeral that can encode the ty's bounds/length
 local function to_range_numeral(ty: VariableLengthTy): ty.Numeral
-    local bounds = ty.length or to_max_range(ty)
+    local bounds = to_range(ty) or to_max_range(ty)
     return conversion.to_numeral(bounds.max)
 end
 
