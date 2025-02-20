@@ -269,14 +269,14 @@ export type LoopNumeric = {
     type: "loop",
     kind: "numeric",
     index: RegisterId,
-    iterations: RegisterId,
+    iterations: RValue,
 }
 
 --- generic for `%index`, `%value` in `%target` do
 export type LoopGeneric = {
     type: "loop",
     kind: "generic",
-    index: RegisterId?,
+    index: RegisterId,
     value: RegisterId,
     target: Id | ProjField | ProjIndex
 }

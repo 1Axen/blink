@@ -9,6 +9,7 @@ local terminator = require("./terminator")
 
 local context = require("@lir/build/context")
 
+local loop = require("@builders/loop")
 local condition = require("@builders/condition")
 local projection = require("@builders/projection")
 
@@ -31,7 +32,9 @@ type RValue = lir.RValue
 
 type Context = context.Context
 
-type Body = (Builder) -> ()
+type Body = (block: Builder) -> ()
+type NumericLoopBody = (block: Builder, index: Register) -> ()
+type GenericLoopBody = (block: Builder, index: Register, value: Register) -> ()
 
 local MAX_REGISTERS = 256
 local REGISTERS_TEMPLATE = table.create(MAX_REGISTERS, 0)
@@ -120,26 +123,6 @@ local function remark(self: Builder, text: string)
     table.insert(self.block.statements, statement.remark(text))
 end
 
-local function loop(self: Builder, loop: Loop, body: Body)
-    local current = self.block
-    local loop_block = block.create(next_index(self), current.scope + 1)
-    local after_block = block.create(next_index(self), current.scope, current.terminator)
-
-    current.terminator = terminator.loop(loop, loop_block)
-    loop_block.terminator = terminator.goto(after_block)
-
-    --> set block to loop
-    self.block = loop_block
-    table.insert(self.blocks, loop_block)
-
-    --> populate the loop
-    body(self)
-
-    --> set block to after loop
-    self.block = after_block
-    table.insert(self.blocks, after_block)
-end
-
 local function branch(self: Builder, cond: Condition, body: Body, chained: boolean)
     local current = self.block
     local truthy_block = block.create(next_index(self), current.scope + 1)
@@ -181,6 +164,47 @@ local function else_branch(self: Builder, body: Body)
     --branch(self, condition.always(), body, true)
 end
 
+local function for_numeric(self: Builder, iterations: RValue, body: NumericLoopBody)
+    local prev_block = self.block
+    local loop_block = block.create(next_index(self), prev_block.scope + 1)
+    local after_block = block.create(next_index(self), prev_block.scope, prev_block.terminator)
+
+    loop_block.terminator = terminator.goto(after_block)
+
+    self.block = loop_block
+    table.insert(self.blocks, loop_block)
+
+    local index_register = register(self)
+    local numeric_loop = loop.numeric(index_register, iterations)
+    prev_block.terminator = terminator.loop(numeric_loop, loop_block)
+
+    body(self, index_register)
+
+    self.block = after_block
+    table.insert(self.blocks, after_block)
+end
+
+local function for_generic(self: Builder, target: index<lir.LoopGeneric, "target">, body: GenericLoopBody)
+    local prev_block = self.block
+    local loop_block = block.create(next_index(self), prev_block.scope + 1)
+    local after_block = block.create(next_index(self), prev_block.scope, prev_block.terminator)
+
+    loop_block.terminator = terminator.goto(after_block)
+
+    self.block = loop_block
+    table.insert(self.blocks, loop_block)
+
+    local index_register = register(self)
+    local value_register = register(self)
+    local numeric_loop = loop.generic(index_register, value_register, target)
+    prev_block.terminator = terminator.loop(numeric_loop, loop_block)
+
+    body(self, index_register, value_register)
+
+    self.block = after_block
+    table.insert(self.blocks, after_block)
+end
+
 export type Builder = {
     index: number,
     block: BasicBlock,
@@ -192,15 +216,17 @@ export type Builder = {
     
     --call_fn: typeof(call_fn),
     call_lib: typeof(call_lib),
-
+    
     remark: typeof(remark),
-
-    loop: typeof(loop),
+    
     rtrn: typeof(rtrn),
-
+    
     if_branch: typeof(if_branch),
     elseif_branch: typeof(elseif_branch),
     else_branch: typeof(else_branch),
+    
+    for_numeric: typeof(for_numeric),
+    for_generic: typeof(for_generic),
 
     argument: (self: Builder, index: number) -> lir.ArgumentId
 }
@@ -241,6 +267,9 @@ local function create(name: string, args: {Argument}, rets: {Return}, body: Body
         if_branch = if_branch,
         elseif_branch = elseif_branch,
         else_branch = else_branch,
+
+        for_numeric = for_numeric,
+        for_generic = for_generic,
 
         argument = argument_id
     }
