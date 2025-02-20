@@ -57,10 +57,10 @@ local function luau_tostring(value: LValue): Call
     )
 end
 
-local function table_create(size: number): Call
+local function table_create(size: RValue): Call
     return projection.call(
         index("table", "create"), 
-        {constant.from_value(size) :: RValue}
+        {size}
     )
 end
 
