@@ -25,7 +25,7 @@ type Register = lir.RegisterId
 local function build_read(ctx: Context, block: Builder, enum: UnitEnum, attributes: Attributes): Register
     local total = #enum.variants
     -- account for serdesing from 0
-    local format = conversion.to_numeral(total - 1)
+    local format = conversion.to_min_numeral(total - 1)
 
     local stored_index = numeral.build.read(ctx, block, format, attributes)
     local value_register = block:store()
@@ -56,7 +56,7 @@ end
 local function build_write(ctx: Context, block: Builder, enum: UnitEnum, attributes: Attributes, at: LValue): ()
     local total = #enum.variants
     -- account for serdesing from 0
-    local format = conversion.to_numeral(total - 1)
+    local format = conversion.to_min_numeral(total - 1)
     local index_register = block:store()
 
     for index, variant in enum.variants do

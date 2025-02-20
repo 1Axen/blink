@@ -8,7 +8,7 @@ local U32 = (2 ^ 32) - 1
 local U48 = (2 ^ 48) - 1
 
 --- Converts a number to the smallest possible uint numeral size, such that it can be encoded as it.
-local function to_size(number: number): ty.NumSize
+local function to_min_size(number: number): ty.NumSize
     if number <= U8 then
         return "8"
     elseif number <= U16 then
@@ -25,7 +25,7 @@ local function to_size(number: number): ty.NumSize
 end
 
 --- Converts a number to the smallest possible uint byte size, such that it can be encoded as it.
-local function to_byte_size(number: number): number
+local function to_min_byte_size(number: number): number
     if number <= U8 then
         return 1
     elseif number <= U16 then
@@ -42,13 +42,13 @@ local function to_byte_size(number: number): number
 end
 
 --- Converts a number to the smallest possible unsigned numeral, such that it can be encoded as it.
-local function to_numeral(number: number): ty.Numeral
-    local size = to_size(number)
+local function to_min_numeral(number: number): ty.Numeral
+    local size = to_min_size(number)
     return ty.numeral(size, "u")
 end
 
 return table.freeze({
-    to_size = to_size,
-    to_numeral = to_numeral,
-    to_byte_size = to_byte_size,
+    to_min_size = to_min_size,
+    to_min_numeral = to_min_numeral,
+    to_min_byte_size = to_min_byte_size,
 })
