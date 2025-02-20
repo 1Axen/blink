@@ -345,7 +345,11 @@ end
 
 local function ty_array(ctx: Context, expr: ast.ExprArray): ty.Array
     local of = expression(ctx, expr.value)
-    local size = range_node_to_range_class(expr.range, bounds.array)
+    local size: Range?; 
+    if expr.range then
+        size = range_node_to_range_class(expr.range, bounds.array)
+    end
+
     return ty.array(of, size)
 end
 

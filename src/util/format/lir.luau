@@ -191,6 +191,42 @@ local function fmt_binary(fmt_builder: Builder, binary: lir.BinaryOp)
     fmt_rvalue(fmt_builder, binary.right)
 end
 
+function fmt_rvalue(fmt_builder: Builder, rvalue: lir.RValue)
+    if rvalue.type == "id" then
+        fmt_id(fmt_builder, rvalue)
+    elseif rvalue.type == "unary" then
+        fmt_unary(fmt_builder, rvalue)
+    elseif rvalue.type == "binary" then
+        fmt_binary(fmt_builder, rvalue)
+    elseif rvalue.type == "global" then
+        fmt_global(fmt_builder, rvalue)
+    elseif rvalue.type == "control" then
+        fmt_control(fmt_builder, rvalue)
+    elseif rvalue.type == "wrapper" then
+        fmt_wrapper(fmt_builder, rvalue)
+    elseif rvalue.type == "ternary" then
+        fmt_ternary(fmt_builder, rvalue)
+    elseif rvalue.type == "constant" then
+        fmt_constant(fmt_builder, rvalue :: lir.Constant)
+    elseif rvalue.type == "condition" then
+        fmt_condition(fmt_builder, rvalue :: lir.Condition)
+    elseif rvalue.type == "projection" then
+        fmt_projection(fmt_builder, rvalue)
+    else
+        panic(`Unhandled rvalue kind "{rvalue.type}"`)
+    end
+end
+
+function fmt_lvalue(fmt_builder: Builder, lvalue: lir.LValue)
+    if lvalue.type == "projection" then
+        fmt_projection(fmt_builder, lvalue)
+    elseif lvalue.type == "id" then
+        fmt_id(fmt_builder, lvalue)
+    else
+        panic(`Unhandaled lvalue kind "{lvalue.type}"`)
+    end
+end
+
 local function fmt_loop(fmt_builder: Builder, loop: lir.Loop)
     if loop.kind == "generic" then
         builder.append(fmt_builder, "for(")
@@ -227,44 +263,8 @@ local function fmt_loop(fmt_builder: Builder, loop: lir.Loop)
         builder.append(fmt_builder, "for(")
         fmt_id(fmt_builder, loop.index)
         builder.append(fmt_builder, ", ")
-        fmt_id(fmt_builder, loop.iterations)
+        fmt_rvalue(fmt_builder, loop.iterations)
         builder.append(fmt_builder, ")")
-    end
-end
-
-function fmt_rvalue(fmt_builder: Builder, rvalue: lir.RValue)
-    if rvalue.type == "id" then
-        fmt_id(fmt_builder, rvalue)
-    elseif rvalue.type == "unary" then
-        fmt_unary(fmt_builder, rvalue)
-    elseif rvalue.type == "binary" then
-        fmt_binary(fmt_builder, rvalue)
-    elseif rvalue.type == "global" then
-        fmt_global(fmt_builder, rvalue)
-    elseif rvalue.type == "control" then
-        fmt_control(fmt_builder, rvalue)
-    elseif rvalue.type == "wrapper" then
-        fmt_wrapper(fmt_builder, rvalue)
-    elseif rvalue.type == "ternary" then
-        fmt_ternary(fmt_builder, rvalue)
-    elseif rvalue.type == "constant" then
-        fmt_constant(fmt_builder, rvalue :: lir.Constant)
-    elseif rvalue.type == "condition" then
-        fmt_condition(fmt_builder, rvalue :: lir.Condition)
-    elseif rvalue.type == "projection" then
-        fmt_projection(fmt_builder, rvalue)
-    else
-        panic(`Unhandled rvalue kind "{rvalue.type}"`)
-    end
-end
-
-function fmt_lvalue(fmt_builder: Builder, lvalue: lir.LValue)
-    if lvalue.type == "projection" then
-        fmt_projection(fmt_builder, lvalue)
-    elseif lvalue.type == "id" then
-        fmt_id(fmt_builder, lvalue)
-    else
-        panic(`Unhandaled lvalue kind "{lvalue.type}"`)
     end
 end
 
@@ -309,7 +309,7 @@ local function fmt_terminator(fmt_builder: Builder, terminator: lir.Terminator)
         builder.append(fmt_builder, `) -> {block_ident(terminator.destination)}`)
     elseif terminator.kind == "loop" then
         fmt_loop(fmt_builder, terminator.loop)
-        builder.append(fmt_builder, `-> {block_ident(terminator.destination)}`)
+        builder.append(fmt_builder, ` -> {block_ident(terminator.destination)}`)
     elseif terminator.kind == "goto" then
         builder.append(fmt_builder, `{TERM_STYLE("goto")} -> {block_ident(terminator.destination)}`)
     elseif terminator.kind == "none" then
@@ -323,6 +323,11 @@ local function fmt_terminator(fmt_builder: Builder, terminator: lir.Terminator)
 end
 
 local function fmt_block(fmt_builder: Builder, block: lir.BasicBlock)
+    local indent = (block.scope + 1)
+    for _ = 1, indent do
+        builder.indent(fmt_builder)
+    end
+
     builder.append_line(fmt_builder, `{block_ident(block)}: \{`)
     builder.indent(fmt_builder)
 
@@ -340,6 +345,10 @@ local function fmt_block(fmt_builder: Builder, block: lir.BasicBlock)
 
     builder.dedent(fmt_builder)
     builder.append_line(fmt_builder, "}")
+
+    for _ = 1, indent do
+        builder.dedent(fmt_builder)
+    end
 end
 
 local function fmt_fn(fmt_builder: Builder, fn: lir.Fn)

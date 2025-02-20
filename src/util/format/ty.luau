@@ -147,7 +147,7 @@ local function fmt_map(ty: ty.Map): string
 end
 
 local function fmt_array(ty: ty.Array): string
-    return `\{{fmt_id(ty.of)}\}{fmt_range(ty.size)}`
+    return `\{{fmt_id(ty.of)}\}{if ty.size then fmt_range(ty.size) else ""}`
 end
 
 local function fmt_union(ty: ty.Union): string

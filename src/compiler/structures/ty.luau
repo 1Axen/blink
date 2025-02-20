@@ -274,10 +274,10 @@ end
 export type Array<T = Ty> = {
     read kind: "array",
     read of: TyId<T>,
-    read size: Range
+    read size: Range?
 }
 
-local function create_array<T>(of: TyId<T>, size: Range): Array<T>
+local function create_array<T>(of: TyId<T>, size: Range?): Array<T>
     return {
         kind = "array",
         of = of,

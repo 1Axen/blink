@@ -324,14 +324,11 @@ local function expr_literal(ctx: Context): ast.ExprLiteral
     return report.expect_one_of(token, {"string", "number", "true", "false"})
 end
 
-local function expr_range(ctx: Context, delimiter: "(" | "["): ast.Range
-    local min: ast.ExprNumber?
-    local max: ast.ExprNumber?
-    local closing_delimiter: any = if delimiter == "(" then ")" else "]"
+local function expr_range(ctx: Context): ast.Range
+    local min: ast.ExprNumber;
+    local max: ast.ExprNumber;
 
-    local open = expect(ctx, delimiter)
     local first = peek(ctx)
-
     if first.kind == "number" then
         min = expr_number(ctx)
 
@@ -339,21 +336,20 @@ local function expr_range(ctx: Context, delimiter: "(" | "["): ast.Range
         if second.kind == ".." then
             expect(ctx, "..")
             max = expr_number(ctx)
-        elseif second.kind == closing_delimiter then
+        else
             -- exact range
             max = min
         end
     elseif first.kind == ".." then
         expect(ctx, "..")
         max = expr_number(ctx)
-    elseif first.kind ~= closing_delimiter then
-        report.expect_one_of(first, {"..", "number"})
+    else
+        return report.expect_one_of(first, {"..", "number"})
     end
 
-    local close = expect(ctx, closing_delimiter)
     return {
         id = next_node_id(ctx),
-        span = span.merge(open.span, close.span),
+        span = span.merge((min or max).span, (max or min).span),
         kind = "range",
         max = max,
         min = min
@@ -382,8 +378,11 @@ local function expr_reference(ctx: Context): ast.ExprReference
     --> range
     local range: ast.Range?
     if peek_kind(ctx) == "(" then
-        range = expr_range(ctx, "(")
-        node_span = span.merge(node_span, range.span)
+        expect(ctx, "(")
+        range = expr_range(ctx)
+
+        local close = expect(ctx, ")")
+        node_span = span.merge(node_span, close.span)
     end
 
     return {
@@ -459,7 +458,9 @@ local function expr_map(ctx: Context): ast.ExprMap
 
     local range: ast.Range?;
     if peek_kind(ctx) == "(" then
-        range = expr_range(ctx, "(")
+        expect(ctx, "(")
+        range = expr_range(ctx)
+        expect(ctx, ")")
     end
 
     return {
@@ -611,10 +612,22 @@ local function expr_pack_single(ctx: Context): ast.ExprPack
 end
 
 local function expr_array(ctx: Context, of: ast.Expression): ast.ExprArray
-    local range = expr_range(ctx, "[")
+    local range: ast.Range;
+    
+    local open = expect(ctx, "[")
+    local node_span = open.span
+
+    local lookahead_kind = peek_kind(ctx)
+    if lookahead_kind == ".." or lookahead_kind == "number" then
+        range = expr_range(ctx, "[")
+    end
+
+    local close = expect(ctx, "]")
+    node_span = span.merge(node_span, close.span)
+
     return {
         id = DUMMY_ID,
-        span = span.merge(of.span, range.span),
+        span = node_span,
         kind = "array",
 
         range = range,
