@@ -60,7 +60,7 @@ local function to_max_range(ty: VariableLengthTy): Range
 end
 
 --- Returns the smallest possible numeral that can encode the ty's bounds/length
-local function to_range_numeral(ty: VariableLengthTy): ty.Numeral
+local function to_min_range_numeral(ty: VariableLengthTy): ty.Numeral
     local bounds = to_range(ty) or to_max_range(ty)
     return conversion.to_min_numeral(bounds.max)
 end
@@ -84,7 +84,7 @@ local function read_length(ctx: Context, block: Builder, ty: VariableLengthTy, a
         return constant.from_value(exact_length)
     end
     
-    local range_numeral = to_range_numeral(ty)
+    local range_numeral = to_min_range_numeral(ty)
     return numeral.build.read(ctx, block, range_numeral, attributes)
 end
 
@@ -95,7 +95,7 @@ local function write_length(ctx: Context, block: Builder, ty: VariableLengthTy, 
     end
 
     local len_register = block:store(len)
-    local range_numeral = to_range_numeral(ty)
+    local range_numeral = to_min_range_numeral(ty)
     numeral.build.write(ctx, block, range_numeral, attributes, len_register)
 
     return len_register

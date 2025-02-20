@@ -154,7 +154,8 @@ end
 local function compile_from_path(entry_path: Path, options: CompilerOptions): boolean
     local fs_result = fs.read_file(entry_path)
     if fs_result.error then
-        return error(`Unable to open file at "{path.to_string(entry_path)}"`)
+        print(`Unable to open file at "{path.to_string(entry_path)}"`)
+        return false
     end
 
     local files_ast = file_to_files_map(fs_result.value, entry_path)

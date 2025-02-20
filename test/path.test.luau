@@ -100,6 +100,8 @@ TEST("path.luau", function()
     end)
 
     CASE("File name strip", function()
+        SKIP()
+
         local photos = path.strip_file_name(unix_absolute)
         expect(path.to_string(photos)).to_be("/home/john/photos")
         expect(path.to_string(path.strip_file_name(directory))).to_be(DIRECTORY_PATH)

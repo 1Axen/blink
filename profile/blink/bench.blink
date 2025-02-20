@@ -1,3 +1,7 @@
+type array = u8[0..255]
+type fixed_array = u8[16]
+
+--[[
 type vec3 = vector
 type vec2 = vector<f32, f32, 0>
 type vec1 = vector<f32, 0, 0>
@@ -24,11 +28,9 @@ type username = string(0..20)
 
 type optional = username?
 
---[[
 type alpha = Enum<"AlphaMode">
 type location = CFrame<f32, f16>
 
-type mesh = Instance<"MeshPart">
 type color = Color3
 type brick_color = BrickColor
 
@@ -36,6 +38,7 @@ type timestamp = DateTime
 type timestamp_millis = DateTimeMillis
 
 type any = unknown
+type mesh = Instance<"MeshPart">
 
 type opt<T> = enum "has_value" {
     true {
@@ -92,6 +95,13 @@ type player_data = struct {
 }
 
 type game_flags = set {
+    FallDamage,
+    PlayerDamage,
+    FriendlyDamage,
+}
+
+@bitpack
+type game_flags_packet = set {
     FallDamage,
     PlayerDamage,
     FriendlyDamage,
