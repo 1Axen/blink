@@ -65,7 +65,7 @@ local function to_range_numeral(ty: VariableLengthTy): ty.Numeral
     return conversion.to_numeral(bounds.max)
 end
 
-local function is_exact_length(ty: VariableLengthTy): number?
+local function to_exact_length(ty: VariableLengthTy): number?
     local ty_range = to_range(ty)
     if ty_range == nil then
         return nil
@@ -78,18 +78,31 @@ local function is_exact_length(ty: VariableLengthTy): number?
     return ty_range.min
 end
 
-local function read_length(ctx: Context, block: Builder, ty: VariableLengthTy, attributes: Attributes): lir.RegisterId
+local function read_length(ctx: Context, block: Builder, ty: VariableLengthTy, attributes: Attributes): lir.RegisterId | lir.Constant<number>
+    local exact_length = to_exact_length(ty)
+    if exact_length ~= nil then
+        return constant.from_value(exact_length)
+    end
+    
     local range_numeral = to_range_numeral(ty)
     return numeral.build.read(ctx, block, range_numeral, attributes)
 end
 
-local function write_length(ctx: Context, block: Builder, ty: VariableLengthTy, attributes: Attributes, at: LValue)
+local function write_length(ctx: Context, block: Builder, ty: VariableLengthTy, attributes: Attributes, len: RValue): lir.RegisterId | lir.Constant<number>
+    local exact_length = to_exact_length(ty)
+    if exact_length then
+        return constant.from_value(exact_length)
+    end
+
+    local len_register = block:store(len)
     local range_numeral = to_range_numeral(ty)
-    numeral.build.write(ctx, block, range_numeral, attributes, at)
+    numeral.build.write(ctx, block, range_numeral, attributes, len_register)
+
+    return len_register
 end
 
 return table.freeze({
     read = read_length,
     write = write_length,
-    is_exact = is_exact_length,
+    is_exact = to_exact_length,
 })

@@ -23,28 +23,13 @@ type RValue = lir.RValue
 type Register = lir.RegisterId
 
 local function build_read(ctx: Context, block: Builder, ty: String, attributes: Attributes): Register
-    local len: RValue;
-    local exact_length = length.is_exact(ty)
-    if exact_length then
-        len = constant.from_value(exact_length)
-    else
-        len = length.read(ctx, block, ty, attributes)
-    end
-
+    local len = length.read(ctx, block, ty, attributes)
     local cursor = control.advance(len)
     return block:store(library.buffer.string.read(cursor, len))
 end
 
 local function build_write(ctx: Context, block: Builder, ty: String, attributes: Attributes, at: LValue): ()
-    local len: RValue;
-    local exact_length = length.is_exact(ty)
-    if exact_length then
-        len = constant.from_value(exact_length)
-    else
-        len = block:store(unary.len(at))
-        length.write(ctx, block, ty, attributes, len)
-    end
-
+    local len = length.write(ctx, block, ty, attributes, unary.len(at))
     local cursor = block:store(control.allocate(len))
     block:call_lib(library.buffer.string.write(cursor, len, at))
 end
