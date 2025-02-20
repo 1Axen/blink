@@ -1,6 +1,4 @@
-return function(RemoteScope: string?)
-    return `local EVENT_NAME = "{if RemoteScope then RemoteScope .. "_" else ""}BLINK"\n` ..
-        [[local Invocations = 0
+return [[local Invocations = 0
 
 local SendSize = 64
 local SendOffset = 0
@@ -139,4 +137,3 @@ local Queue: any = {
 }
 
 ]]
-end
