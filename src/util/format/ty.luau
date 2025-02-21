@@ -143,11 +143,11 @@ local function fmt_set(ty: ty.Set): string
 end
 
 local function fmt_map(ty: ty.Map): string
-    return `{PRIMITIVE_STYLE("map")} \{[{fmt_id(ty.index)}]: {fmt_id(ty.value)}\}{fmt_opt_range(ty.range)}`
+    return `{PRIMITIVE_STYLE("map")} \{[{fmt_id(ty.index)}]: {fmt_id(ty.value)}\}{fmt_opt_range(ty.size)}`
 end
 
 local function fmt_array(ty: ty.Array): string
-    return `\{{fmt_id(ty.of)}\}{if ty.size then fmt_range(ty.size) else ""}`
+    return `\{{fmt_id(ty.of)}\}{fmt_opt_range(ty.size)}`
 end
 
 local function fmt_union(ty: ty.Union): string
