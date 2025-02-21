@@ -36,7 +36,7 @@ local function build_read(ctx: Context, block: Builder, array: Array, attributes
         block:store(value_register, array_index)
     end)
 
-    return block:store()
+    return array_register
 end
 
 local function build_write(ctx: Context, block: Builder, array: Array, attributes: Attributes, at: LValue): ()
