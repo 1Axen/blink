@@ -85,6 +85,7 @@ export type Options = {
     PromiseLibrary: string?,
     WriteValidations: boolean?,
     ManualReplication: boolean?,
+    RemoteScope: string?,
 }
 
 export type Body = Node<"Body", {
@@ -189,6 +190,7 @@ local OPTIONS: {[string]: Lexer.Types} = {
     PromiseLibrary = "String",
     WriteValidations = "Boolean",
     ManualReplication = "Boolean",
+    RemoteScope = "String",
 }
 
 local EVENT: {EventOption} = {

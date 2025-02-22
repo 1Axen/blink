@@ -1277,6 +1277,7 @@ function Generator.Generate(FileContext: Context, AbstractSyntaxTree: Parser.Bod
 		Globals,
 		string.split(Source[1], "\r"),
 		Imports.DumpLines(),
+		{`local BASE_EVENT_NAME = "{if Options.RemoteScope then Options.RemoteScope .. "_" else ""}BLINK"\n`},
 		string.split(Sources.Base, "\r"),
 		Events.DumpLines(),
 		LuauTypes.DumpLines(),
