@@ -1,8 +1,8 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches: ["main"]
+  release:
+    types: [released]
   workflow_dispatch:
 
 permissions:
