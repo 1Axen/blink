@@ -84,18 +84,28 @@ local function build_type(ctx: Context, decl_id: DeclId<hir.Type>): lir.Type
     local args = {builders.fn.argument(ty)}
     local attributes = decl.attributes
 
+    local read_props = {
+        ctx = ctx, 
+        attributes = attributes
+    }
+
+    local write_props  = {
+        ctx = ctx, 
+        validate = true,
+        attributes = attributes, 
+    }
+
     local read_fn = builders.fn.create(`read_{decl.name}`, args, rets, function(block)
-        local value_register = builders.ty.build.read(ctx, block, ty, attributes)
-        builders.ty.validate.read(ctx, block, ty, value_register)
+        local value_register = builders.ty.read(read_props, block, ty)
         block:rtrn({value_register :: lir.RValue})
     end)
 
     local write_fn = builders.fn.create(`write_{decl.name}`, args, rets, function(block)
-        builders.ty.build.write(ctx, block, ty, attributes, block:argument(1))
+        builders.ty.write(write_props, block, ty, block:argument(1))
     end)
 
     return {
-        kind = "type",
+        type = "type",
         decl = decl,
         read = fn_id(ctx, read_fn),
         write = fn_id(ctx, write_fn)
