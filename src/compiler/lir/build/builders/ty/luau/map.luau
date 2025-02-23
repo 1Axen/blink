@@ -71,14 +71,6 @@ local function build_write(props: WriteProps, block: Builder, map: Map, at: RVal
     end)
 end
 
-local function validate_read(ctx: Context, block: Builder, map: Map, at: LValue)
-    
-end
-
-local function validate_write(ctx: Context, block: Builder, map: Map, at: LValue)
-    
-end
-
 return table.freeze({
     read = build_read,
     write = build_write,

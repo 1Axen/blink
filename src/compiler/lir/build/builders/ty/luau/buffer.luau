@@ -51,35 +51,6 @@ local function build_write(props: WriteProps, block: Builder, buf: ty.Buffer, va
     block:call_lib(buffer_copy)
 end
 
-local function validate(ctx: Context, block: Builder, ty: Buffer, at: LValue)
-    local bounds = ty.length
-    if bounds == nil then
-        return
-    end
-
-    local len = unary.len(at)
-    local exact_length = length.is_exact(ty)
-    if exact_length then
-        local exact = condition.equals(len, constant.from_value(exact_length))
-        block:if_branch(exact, function(block)
-            block:call_lib(library.error(`Expected buffer length to be {bounds.min}`))
-        end)
-
-        return
-    end
-
-    local lower = condition.less_than(len, constant.from_value(bounds.min))
-    local upper = condition.greater_than(len, constant.from_value(bounds.max))
-
-    block:if_branch(lower, function(block)
-        block:call_lib(library.error(`Expected buffer length to be greater than or equal to {bounds.min}`))
-    end)
-
-    block:if_branch(upper, function(block)
-        block:call_lib(library.error(`Expected buffer length to be less than or equal to {bounds.max}`))
-    end)
-end
-
 return table.freeze({
     read = build_read,
     write = build_write,

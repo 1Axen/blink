@@ -10,6 +10,7 @@ local unary = require("@builders/unary")
 local control = require("@builders/control")
 local library = require("@builders/library")
 local constant = require("@builders/constant")
+local condition = require("@builders/condition")
 
 local numeral = require("./numeral")
 
@@ -84,6 +85,38 @@ local function to_exact_length(ty: VariableLengthTy): number?
     return ty_range.min
 end
 
+local function validate_exact(block: Builder, ty: VariableLengthTy, value: RValue)
+    local bounds = to_range(ty)
+    if bounds == nil then
+        return
+    end
+
+    local exact_length = to_exact_length(ty) :: number
+    local is_exact_length = condition.equals(value, constant.from_value(exact_length))
+
+    block:if_branch(is_exact_length, function(block)
+        block:call_lib(library.error(`Expected {ty.kind} length to be {bounds.min}`))
+    end)
+end
+
+local function validate_range(block: Builder, ty: VariableLengthTy, len_register: LValue)
+    local bounds = to_range(ty)
+    if bounds == nil then
+        return
+    end
+
+    local lower = condition.less_than(len_register, constant.from_value(bounds.min))
+    local upper = condition.greater_than(len_register, constant.from_value(bounds.max))
+
+    block:if_branch(lower, function(block)
+        block:call_lib(library.error(`Expected {ty.kind} length to be greater than or equal to {bounds.min}`))
+    end)
+
+    block:if_branch(upper, function(block)
+        block:call_lib(library.error(`Expected {ty.kind} length to be less than or equal to {bounds.max}`))
+    end)
+end
+
 local function read_length(props: ReadProps, block: Builder, ty: VariableLengthTy): lir.RegisterId | lir.Constant<number>
     local exact_length = to_exact_length(ty)
     if exact_length ~= nil then
@@ -91,16 +124,27 @@ local function read_length(props: ReadProps, block: Builder, ty: VariableLengthT
     end
     
     local range_numeral = to_min_range_numeral(ty)
-    return numeral.read(props, block, range_numeral)
+    local len_register = numeral.read(props, block, range_numeral)
+    validate_range(block, ty, len_register)
+
+    return len_register
 end
 
 local function write_length(props: WriteProps, block: Builder, ty: VariableLengthTy, value: RValue): lir.RegisterId | lir.Constant<number>
     local exact_length = to_exact_length(ty)
     if exact_length then
+        if props.validate then
+            validate_exact(block, ty, value)
+        end
+
         return constant.from_value(exact_length)
     end
 
     local len_register = block:store(value)
+    if props.validate then
+        validate_range(block, ty, len_register)
+    end
+
     local range_numeral = to_min_range_numeral(ty)
     numeral.write(props, block, range_numeral, len_register)
 
