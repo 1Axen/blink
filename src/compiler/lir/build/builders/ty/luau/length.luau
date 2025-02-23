@@ -34,9 +34,9 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T = any> = lir.LValue<T>
+type RValue<T = any> = lir.RValue<T>
+type Register<T = any> = lir.RegisterId<T>
 
 local function to_range(ty: VariableLengthTy): Range?
     if ty.kind == "buffer" then
@@ -85,7 +85,7 @@ local function to_exact_length(ty: VariableLengthTy): number?
     return ty_range.min
 end
 
-local function validate_exact(block: Builder, ty: VariableLengthTy, value: RValue)
+local function validate_exact(block: Builder, ty: VariableLengthTy, value: RValue<number>)
     local bounds = to_range(ty)
     if bounds == nil then
         return
@@ -99,7 +99,7 @@ local function validate_exact(block: Builder, ty: VariableLengthTy, value: RValu
     end)
 end
 
-local function validate_range(block: Builder, ty: VariableLengthTy, len_register: LValue)
+local function validate_range(block: Builder, ty: VariableLengthTy, len_register: LValue<number>)
     local bounds = to_range(ty)
     if bounds == nil then
         return
@@ -117,7 +117,7 @@ local function validate_range(block: Builder, ty: VariableLengthTy, len_register
     end)
 end
 
-local function read_length(props: ReadProps, block: Builder, ty: VariableLengthTy): lir.RegisterId | lir.Constant<number>
+local function read_length(props: ReadProps, block: Builder, ty: VariableLengthTy): lir.RegisterId<number> | lir.Constant<number>
     local exact_length = to_exact_length(ty)
     if exact_length ~= nil then
         return constant.from_value(exact_length)
@@ -130,7 +130,7 @@ local function read_length(props: ReadProps, block: Builder, ty: VariableLengthT
     return len_register
 end
 
-local function write_length(props: WriteProps, block: Builder, ty: VariableLengthTy, value: RValue): lir.RegisterId | lir.Constant<number>
+local function write_length(props: WriteProps, block: Builder, ty: VariableLengthTy, value: RValue<number>): lir.RegisterId<number> | lir.Constant<number>
     local exact_length = to_exact_length(ty)
     if exact_length then
         if props.validate then

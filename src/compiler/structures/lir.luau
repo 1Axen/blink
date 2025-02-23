@@ -23,215 +23,252 @@ export type ConstantValue =
     | nil
 
 export type Constant<T = ConstantValue> = {
+    __phantom_type: T,
+
     type: "constant",
     value: T
 }
 
 --- An index into the arguments table
-export type ArgumentId = {
+export type ArgumentId<T> = {
+    __phantom_type: T,
+
     type: "id",
     kind: "argument",
     index: number
 }
 
 --- An index into the register table
-export type RegisterId = {
+export type RegisterId<T> = {
+    __phantom_type: T,
+
     type: "id",
     kind: "register",
     index: number
 }
 
-export type Id = 
-    | ArgumentId
-    | RegisterId
+export type Id<T> = 
+    | ArgumentId<T>
+    | RegisterId<T>
 ;
 
 --- base(args...)
-export type ProjCall = {
+export type ProjCall<T> = {
+    __phantom_type: T,
+
     type: "projection",
     kind: "call",
-    base: LValue | Constant<string>,
-    args: {RValue}
+    base: LValue<any> | Constant<string>,
+    args: {RValue<any>}
 }
 
 --- base[field]
-export type ProjField = {
+export type ProjField<T> = {
+    __phantom_type: T,
+
     type: "projection",
     kind: "field",
-    base: LValue | Constant<string>,
-    field: RValue
+    base: LValue<any> | Constant<string>,
+    field: RValue<any>
 }
 
 --- base.index
-export type ProjIndex = {
+export type ProjIndex<T> = {
+    __phantom_type: T,
+
     type: "projection",
     kind: "index",
-    base: LValue | Constant<string>,
+    base: LValue<any> | Constant<string>,
     element: Constant<string>
 }
 
 --- base:method(args...)
-export type ProjNamecall = {
+export type ProjNamecall<T> = {
+    __phantom_type: T,
+
     type: "projection",
     kind: "namecall",
-    base: LValue | Constant<string>,
+    base: LValue<any> | Constant<string>,
     method: Constant<string>,
-    args: {RValue}
+    args: {RValue<any>}
 }
 
-export type Projection =
-    | ProjCall
-    | ProjField
-    | ProjIndex
-    | ProjNamecall
+export type Projection<T> =
+    | ProjCall<T>
+    | ProjField<T>
+    | ProjIndex<T>
+    | ProjNamecall<T>
 ;
 
 --- left + right
-export type BinaryAdd = {
+export type BinaryAdd<T> = {
+    __phantom_type: T,
+
     type: "binary",
     kind: "add",
-    left: RValue,
-    right: RValue
+    left: RValue<T>,
+    right: RValue<T>
 }
 
 --- left - right
-export type BinarySub = {
+export type BinarySub<T> = {
+    __phantom_type: T,
+
     type: "binary",
     kind: "sub",
-    left: RValue,
-    right: RValue
+    left: RValue<T>,
+    right: RValue<T>
 }
 
 --- left * right
-export type BinaryMul = {
+export type BinaryMul<T> = {
+    __phantom_type: T,
+
     type: "binary",
     kind: "mul",
-    left: RValue,
-    right: RValue
+    left: RValue<T>,
+    right: RValue<T>
 }
 
 --- left / right
-export type BinaryDiv = {
+export type BinaryDiv<T> = {
+    __phantom_type: T,
+
     type: "binary",
     kind: "div",
-    left: RValue,
-    right: RValue
+    left: RValue<T>,
+    right: RValue<T>
 }
 
 --- left % right
-export type BinaryMod = {
+export type BinaryMod<T> = {
+    __phantom_type: T,
+
     type: "binary",
     kind: "mod",
-    left: RValue,
-    right: RValue
+    left: RValue<T>,
+    right: RValue<T>
 }
 
-export type BinaryOp =
-    | BinaryAdd
-    | BinarySub
-    | BinaryMul
-    | BinaryDiv
-    | BinaryMod
+export type BinaryOp<T> =
+    | BinaryAdd<T>
+    | BinarySub<T>
+    | BinaryMul<T>
+    | BinaryDiv<T>
+    | BinaryMod<T>
 
 --- #%of
-export type UnaryLen = {
+export type UnaryLen<T> = {
+    __phantom_type: T,
+
     type: "unary",
     kind: "len",
-    of: RValue,
+    of: RValue<T>,
 }
 
-export type UnaryOp = 
-    | UnaryLen
+export type UnaryOp<T> = 
+    | UnaryLen<T>
     
 --- advance(bytes)
-export type CtrlAdvance = {
+export type CtrlAdvance<T> = {
+    __phantom_type: T,
+
     type: "control",
     kind: "advance",
-    bytes: RValue
+    bytes: RValue<T>
 }
 
 --- allocate(bytes)
-export type CtrlAllocate = {
+export type CtrlAllocate<T> = {
+    __phantom_type: T,
+
     type: "control",
     kind: "allocate",
-    bytes: RValue
+    bytes: RValue<T>
 }
 
-export type Control =
-    | CtrlAdvance
-    | CtrlAllocate
+export type Control<T> =
+    | CtrlAdvance<T>
+    | CtrlAllocate<T>
 ;
 
-export type Global = {
+export type Global<T> = {
+    __phantom_type: T,
+
     type: "global",
     identifier: string
 }
 
 --- left == / ~=/ >= / > / < / <= right
-export type Condition = {
+export type Condition<T> = {
+    __phantom_type: T,
+
     type: "condition",
     kind: "equals" | "not_equals" | "less_than" | "less_than_or" | "greater_than" | "greater_than_or",
-    left: RValue,
-    right: RValue
+    left: RValue<T>,
+    right: RValue<T>
 }
 
 --- if cond then left else right
-export type Ternary = {
+export type Ternary<T> = {
+    __phantom_type: T,
+
     type: "ternary",
-    cond: Condition,
-    left: RValue,
-    right: RValue
+    cond: Condition<T>,
+    left: RValue<T>,
+    right: RValue<T>
 }
 
 -- { values }
-export type WrapTable = {
+export type WrapTable<T> = {
+    __phantom_type: {T},
+
     type: "wrapper",
     kind: "table",
-    values: {RValue}
+    values: {RValue<T>}
 }
 
 -- (value)
-export type WrapSingle = {
+export type WrapSingle<T> = {
+    __phantom_type: number,
+
     type: "wrapper",
     kind: "single",
-    value: RValue
+    value: RValue<T>
 }
 
-export type Wrapper = 
-    | WrapTable
-    | WrapSingle
+export type Wrapper<T> = 
+    | WrapTable<T>
+    | WrapSingle<T>
 ;
 
 --- left side of an assign statement
-export type LValue = 
-    | ProjField
-    | ProjIndex
-    | RegisterId
-    | ArgumentId
+export type LValue<T> = 
+    | ProjField<T>
+    | ProjIndex<T>
+    | RegisterId<T>
+    | ArgumentId<T>
 ;
 
 --- right side of an assign statement
-export type RValue =
-    | Id
-    | Global
-    | Wrapper
-    | Control
-    | Ternary
-    | UnaryOp
-    | BinaryOp
-    | Condition
-    | Constant<nil>
-    | Constant<string>
-    | Constant<number>
-    | Constant<boolean>
-    | Projection
+export type RValue<T> =
+    | Id<T>
+    | Global<T>
+    | Wrapper<T>
+    | Control<T>
+    | Ternary<T>
+    | UnaryOp<T>
+    | BinaryOp<T>
+    | Condition<T>
+    | Constant<T>
+    | Projection<T>
 ;
 
 --- call
 export type StatCall = {
     type: "statement",
     kind: "call",
-    call: ProjCall
+    call: ProjCall<any>
 }
 
 --- -- REMARK text
@@ -245,16 +282,16 @@ export type StatRemark = {
 export type StatAssign = {
     type: "statement",
     kind: "assign",
-    into: LValue,
-    value: RValue?,
+    into: LValue<any>,
+    value: RValue<any>?,
 }
 
 --- %a, %b, %c = value
 export type StatMultiAssign = {
     type: "statement",
     kind: "multi_assign",
-    into: {LValue},
-    value: RValue,
+    into: {LValue<any>},
+    value: RValue<any>,
 }
 
 export type Statement = 
@@ -268,17 +305,17 @@ export type Statement =
 export type LoopNumeric = {
     type: "loop",
     kind: "numeric",
-    index: RegisterId,
-    iterations: RValue,
+    index: RegisterId<number>,
+    iterations: RValue<number>,
 }
 
 --- generic for `%index`, `%value` in `%target` do
 export type LoopGeneric = {
     type: "loop",
     kind: "generic",
-    index: RegisterId,
-    value: RegisterId,
-    target: RValue
+    index: RegisterId<any>,
+    value: RegisterId<any>,
+    target: RValue<{[any]: any}>
 }
 
 export type Loop = 
@@ -290,7 +327,7 @@ export type Loop =
 export type TermIf = {
     type: "terminator",
     kind: "if",
-    cond: Condition,
+    cond: Condition<any>,
     truthy: BasicBlock,
     falsey: BasicBlock,
 
@@ -321,14 +358,14 @@ export type TermCall = {
     type: "terminator",
     kind: "call",
     fn: FnId,
-    args: { RValue },
+    args: { RValue<any> },
     destination: BasicBlock,
 }
 
 export type TermReturn = {
     type: "terminator",
     kind: "return",
-    values: { RValue }
+    values: { RValue<any> }
 }
 
 export type Terminator = 
@@ -356,7 +393,7 @@ export type Fn = {
     blocks: {BasicBlock},
 }
 
-export type FnId = number & { __fn: true }
+export type FnId = any & { __fn: true }
 
 export type Type = {
     type: "type",

@@ -21,20 +21,20 @@ type FnId = lir.FnId
 type Return = lir.Return
 type Argument = lir.Argument
 
-type Register = lir.RegisterId
 type BasicBlock = lir.BasicBlock
 
 type Loop = lir.Loop
-type Condition = lir.Condition
+type Condition = lir.Condition<boolean>
 
-type LValue = lir.LValue
-type RValue = lir.RValue
+type LValue<T = any> = lir.LValue<T>
+type RValue<T = any> = lir.RValue<T>
+type Register<T = any> = lir.RegisterId<T>
 
 type Context = context.Context
 
 type Body = (block: Builder) -> ()
-type NumericLoopBody = (block: Builder, index: Register) -> ()
-type GenericLoopBody = (block: Builder, index: Register, value: Register) -> ()
+type NumericLoopBody = (block: Builder, index: Register<number>) -> ()
+type GenericLoopBody = (block: Builder, index: Register<any>, value: Register<any>) -> ()
 
 local MAX_REGISTERS = 256
 local REGISTERS_TEMPLATE = table.create(MAX_REGISTERS, 0)
@@ -58,13 +58,15 @@ local function argument(ty: Ty, name: string?): lir.Argument
     }
 end
 
-local function register(builder: Builder): Register
+local function register<T>(builder: Builder): Register<T>
     local index = table.remove(builder.registers, 1)
     if index == nil then
         return panic(`Function exceeded {MAX_REGISTERS} registers`)
     end
 
     return {
+        __phantom_type = nil :: any,
+
         type = "id",
         kind = "register",
         index = index
@@ -77,15 +79,11 @@ local function next_index(builder: Builder): number
     return index
 end
 
-type Store = ((Builder, value: RValue?) -> lir.RegisterId)
-    & ((Builder, value: RValue?, into: lir.RegisterId) -> lir.RegisterId)
-    & ((Builder, value: RValue?, into: LValue) -> LValue)
-
-local function store(self: Builder, value: RValue?, into: LValue?): LValue
-    local register = into or register(self)
+local function store<T>(self: Builder, value: RValue<T>?, into: LValue<T>?): Register<T>
+    local register = into or register(self) :: Register<T>
     local assign = statement.assign(register, value)
     table.insert(self.block.statements, assign)
-    return register
+    return register :: Register<T>
 end
 
 --- Store the result of `value` into `count` registers
@@ -101,7 +99,7 @@ local function store_mult(self: Builder, value: RValue, count: number): {LValue}
     return registers
 end
 
-local function call_lib(self: Builder, projection: lir.ProjCall)
+local function call_lib(self: Builder, projection: lir.ProjCall<any>)
     local call = statement.call(projection)
     table.insert(self.block.statements, call)
 end
@@ -164,7 +162,7 @@ local function else_branch(self: Builder, body: Body)
     --branch(self, condition.always(), body, true)
 end
 
-local function for_numeric(self: Builder, iterations: RValue, body: NumericLoopBody)
+local function for_numeric(self: Builder, iterations: RValue<number>, body: NumericLoopBody)
     local prev_block = self.block
     local loop_block = block.create(next_index(self), prev_block.scope + 1)
     local after_block = block.create(next_index(self), prev_block.scope, prev_block.terminator)
@@ -174,7 +172,7 @@ local function for_numeric(self: Builder, iterations: RValue, body: NumericLoopB
     self.block = loop_block
     table.insert(self.blocks, loop_block)
 
-    local index_register = register(self)
+    local index_register = register(self) :: Register<number>
     local numeric_loop = loop.numeric(index_register, iterations)
     prev_block.terminator = terminator.loop(numeric_loop, loop_block)
 
@@ -211,7 +209,7 @@ export type Builder = {
     blocks: {BasicBlock},
     registers: {number},
 
-    store: Store,
+    store: typeof(store),
     store_mult: typeof(store_mult),
     
     --call_fn: typeof(call_fn),
@@ -228,11 +226,11 @@ export type Builder = {
     for_numeric: typeof(for_numeric),
     for_generic: typeof(for_generic),
 
-    argument: (self: Builder, index: number) -> lir.ArgumentId
+    argument: (self: Builder, index: number) -> lir.ArgumentId<any>
 }
 
 local function create(name: string, args: {Argument}, rets: {Return}, body: Body): Fn
-    local function argument_id(self: Builder, index: number): lir.ArgumentId
+    local function argument_id(self: Builder, index: number): lir.ArgumentId<any>
         if index > #args then
             return panic(`Attempted to get argument id #{index}, but fn only has {#args} arguments`)
         elseif index < 0 then
@@ -240,6 +238,8 @@ local function create(name: string, args: {Argument}, rets: {Return}, body: Body
         end
 
         return {
+            __phantom_type = nil :: any,
+
             type = "id",
             kind = "argument",
             index = index
@@ -253,7 +253,7 @@ local function create(name: string, args: {Argument}, rets: {Return}, body: Body
         blocks = {entry},
         registers = table.clone(REGISTERS_TEMPLATE),
 
-        store = store :: Store,
+        store = store,
         store_mult = store_mult,
 
         call_fn = call_fn,

@@ -27,11 +27,11 @@ type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
 type Array = ty.Array
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, array: ty.Array): Register
+local function build_read(props: ReadProps, block: Builder, array: ty.Array): Register<{any}>
     local ctx = props.ctx
 
     local of = hir.ty_from_id(ctx.hir, array.of)
@@ -40,19 +40,19 @@ local function build_read(props: ReadProps, block: Builder, array: ty.Array): Re
     
     block:for_numeric(len, function(block, index)
         local element = ty_builder.read(props, block, of)
-        local position = projection.field(array_register, index)
+        local position = projection.field(array_register :: any, index :: any)
         block:store(element, position)
     end)
 
     return array_register
 end
 
-local function build_write(props: WriteProps, block: Builder, array: ty.Array, value: RValue): ()
+local function build_write(props: WriteProps, block: Builder, array: ty.Array, value: RValue<{any}>): ()
     local ctx = props.ctx
     local of = hir.ty_from_id(ctx.hir, array.of)
 
-    length.write(props, block, array, unary.len(value))
-    block:for_generic(value, function(block, _, value)
+    length.write(props, block, array, unary.len(value :: any))
+    block:for_generic(value :: any, function(block, _, value)
         ty_builder.write(props, block, of, value)
     end)
 end

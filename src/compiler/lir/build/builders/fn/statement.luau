@@ -7,9 +7,9 @@ type Assign = lir.StatAssign
 type Remark = lir.StatRemark
 type MultiAssign = lir.StatMultiAssign
 
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue = lir.LValue<any>
+type RValue = lir.RValue<any>
+type Register = lir.RegisterId<any>
 
 local function stat_call(call: lir.ProjCall): Call
     return {

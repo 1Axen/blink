@@ -31,9 +31,9 @@ local ty_brick_color = require("./roblox/brick_color")
 local ty_date_time_millis = require("./roblox/date_time_millis")
 
 type Ty = ty.Ty
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
 type Builder = fn.Builder
 type Context = context.Context
@@ -109,12 +109,12 @@ local function builder_from_ty(ty: Ty): TyBuilder
     return ty_builder
 end
 
-local function build_read(props: ReadProps, block: Builder, ty: Ty): Register
+local function build_read(props: ReadProps, block: Builder, ty: Ty): Register<any>
     local ty_builder = builder_from_ty(ty)
     return ty_builder.read(props, block, ty)
 end
 
-local function build_write(props: WriteProps, block: Builder, ty: Ty, value: RValue): ()
+local function build_write(props: WriteProps, block: Builder, ty: Ty, value: RValue<any>): ()
     local ty_builder = builder_from_ty(ty)
     return ty_builder.write(props, block, ty, value)
 end

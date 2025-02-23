@@ -24,17 +24,17 @@ type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
 type UnitEnum = ty.UnitEnum
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, enum: UnitEnum): Register
+local function build_read(props: ReadProps, block: Builder, enum: UnitEnum): Register<string>
     local total = #enum.variants
     -- account for serdesing from 0
     local format = conversion.to_min_numeral(total - 1)
 
     local stored_index = numeral.read(props, block, format)
-    local value_register = block:store()
+    local value_register = block:store() :: Register<string>
 
     local out_of_bounds = condition.greater_than_or(
         stored_index,
@@ -59,7 +59,7 @@ local function build_read(props: ReadProps, block: Builder, enum: UnitEnum): Reg
     return value_register
 end
 
-local function build_write(props: WriteProps, block: Builder, enum: UnitEnum, value: RValue): ()
+local function build_write(props: WriteProps, block: Builder, enum: UnitEnum, value: RValue<string>): ()
     local total = #enum.variants
     -- account for serdesing from 0
     local format = conversion.to_min_numeral(total - 1)
@@ -84,10 +84,6 @@ local function build_write(props: WriteProps, block: Builder, enum: UnitEnum, va
     block:else_branch(function(block)
         block:call_lib(library.error(`Invalid enum variant`))
     end)
-end
-
-local function validate(ctx: Context, block: Builder, enum: UnitEnum, at: LValue)
-    
 end
 
 return table.freeze({

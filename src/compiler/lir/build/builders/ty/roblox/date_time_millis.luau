@@ -24,19 +24,19 @@ type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
 type DateTimeMillis = ty.DateTimeMillis
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
 local FORMAT = ty_numeral.f64
 
-local function build_read(props: ReadProps, block: Builder, date_time: DateTimeMillis): Register
+local function build_read(props: ReadProps, block: Builder, date_time: DateTimeMillis): Register<DateTime>
     local timestamp = ty_numeral.read(props, block, FORMAT)
     return block:store(library.DateTime.from_timestamp_millis(timestamp))
 end
 
-local function build_write(props: WriteProps, block: Builder, date_time: DateTimeMillis, value: RValue): ()
-    local timestamp = projection.index(value :: LValue, constant.from_value("UnixTimestampMillis"))
+local function build_write(props: WriteProps, block: Builder, date_time: DateTimeMillis, value: RValue<DateTime>): ()
+    local timestamp = projection.index(value :: any, constant.from_value("UnixTimestampMillis")) :: lir.ProjIndex<number>
     ty_numeral.write(props, block, FORMAT, timestamp)
 end
 

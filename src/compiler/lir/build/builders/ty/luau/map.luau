@@ -28,11 +28,11 @@ type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
 type Map = ty.Map
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, map: Map): Register
+local function build_read(props: ReadProps, block: Builder, map: Map): Register<{[any]: any}>
     local ctx = props.ctx
     
     local key_ty = hir.ty_from_id(ctx.hir, map.index)
@@ -44,14 +44,14 @@ local function build_read(props: ReadProps, block: Builder, map: Map): Register
     block:for_numeric(len, function(block)
         local key = ty_builder.read(props, block, key_ty)
         local value = ty_builder.read(props, block, value_ty)
-        local map_index = projection.field(map_register, key)
+        local map_index = projection.field(map_register :: Register<any>, key)
         block:store(value, map_index)
     end)
 
     return map_register
 end
 
-local function build_write(props: WriteProps, block: Builder, map: Map, at: RValue): ()
+local function build_write(props: WriteProps, block: Builder, map: Map, at: RValue<{[any]: any}>): ()
     local ctx = props.ctx
     
     local key_ty = hir.ty_from_id(ctx.hir, map.index)

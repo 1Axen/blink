@@ -21,12 +21,21 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
-type LValue = lir.LValue
-type RValue = lir.RValue
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
 type Boolean = ty.Boolean
-type Register = lir.RegisterId
+type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, boolean: ty.Boolean): Register
+local function validate(block: Builder, ty: Boolean, value: RValue<boolean>)
+    local type = constant.from_value("boolean")
+    local equals = condition.not_equals(value, type)
+
+    block:if_branch(equals, function(block)
+        block:call_lib(library.error(`Expected a boolean`))
+    end)
+end
+
+local function build_read(props: ReadProps, block: Builder, boolean: ty.Boolean): Register<boolean>
     local bytes = constant.from_value(1)
     local advance = control.advance(bytes)
     local buffer_read = library.buffer.u8.read(advance)
@@ -37,7 +46,11 @@ local function build_read(props: ReadProps, block: Builder, boolean: ty.Boolean)
     return block:store(conversion)
 end
 
-local function build_write(props: WriteProps, block: Builder, boolean: ty.Boolean, value: RValue): ()
+local function build_write(props: WriteProps, block: Builder, boolean: ty.Boolean, value: RValue<boolean>): ()
+    if props.validate then
+        validate(block, boolean, value)
+    end
+
     local bytes = constant.from_value(1)
     local allocate = block:store(control.allocate(bytes))
 
@@ -46,20 +59,6 @@ local function build_write(props: WriteProps, block: Builder, boolean: ty.Boolea
     local buffer_write = library.buffer.u8.write(allocate, conversion)
 
     block:call_lib(buffer_write)
-end
-
-
-local function validate_read(ctx: Context, block: Builder, ty: Boolean, at: LValue)
-
-end
-
-local function validate_write(ctx: Context, block: Builder, ty: Boolean, at: LValue)
-    local type = constant.from_value("boolean")
-    local equals = condition.not_equals(at, type)
-
-    block:if_branch(equals, function(block)
-        block:call_lib(library.error(`Expected a boolean`))
-    end)
 end
 
 return table.freeze({

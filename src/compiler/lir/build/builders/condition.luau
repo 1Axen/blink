@@ -2,10 +2,13 @@
 
 local lir = require("@structures/lir")
 
-type RValue = lir.RValue
+type RValue<T = any> = lir.RValue<T>
+type Condition = lir.Condition<boolean>
 
-local function condition(kind: index<lir.Condition, "kind">, left: RValue, right: RValue): lir.Condition
+local function condition<A, B>(kind: index<Condition, "kind">, left: RValue<A>, right: RValue<B>): Condition
     return {
+        __phantom_type = nil :: any,
+
         type = "condition",
         kind = kind,
         left = left,
@@ -14,22 +17,22 @@ local function condition(kind: index<lir.Condition, "kind">, left: RValue, right
 end
 
 return table.freeze({
-    equals = function(left: RValue, right: RValue)
+    equals = function<A, B>(left: RValue<A>, right: RValue<B>)
         return condition("equals", left, right)
     end,
-    not_equals = function(left: RValue, right: RValue)
+    not_equals = function<A, B>(left: RValue<A>, right: RValue<B>)
         return condition("not_equals", left, right)
     end,
-    less_than = function(left: RValue, right: RValue)
+    less_than = function<A, B>(left: RValue<A>, right: RValue<B>)
         return condition("less_than", left, right)
     end,
-    less_than_or = function(left: RValue, right: RValue)
+    less_than_or = function<A, B>(left: RValue<A>, right: RValue<B>)
         return condition("less_than_or", left, right)
     end,
-    greater_than = function(left: RValue, right: RValue)
+    greater_than = function<A, B>(left: RValue<A>, right: RValue<B>)
         return condition("greater_than", left, right)
     end,
-    greater_than_or = function(left: RValue, right: RValue)
+    greater_than_or = function<A, B>(left: RValue<A>, right: RValue<B>)
         return condition("greater_than_or", left, right)
     end
 })

@@ -22,14 +22,13 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
-type Color3 = ty.Color3
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
 local FORMAT = ty.numeral("32", "f")
 
-local function build_read(props: ReadProps, block: Builder, color3_ty: Color3): Register
+local function build_read(props: ReadProps, block: Builder, color3_ty: ty.Color3): Register<Color3>
     local hue = numeral.read(props, block, FORMAT)
     local sat = numeral.read(props, block, FORMAT)
     local val = numeral.read(props, block, FORMAT)
@@ -37,8 +36,8 @@ local function build_read(props: ReadProps, block: Builder, color3_ty: Color3): 
     return block:store(color3_ctor)
 end
 
-local function build_write(props: WriteProps, block: Builder, color3_ty: Color3, value: RValue): ()
-    local components = block:store_mult(library.Color3.to_HSV(value :: LValue), 3)
+local function build_write(props: WriteProps, block: Builder, color3_ty: ty.Color3, value: RValue<Color3>): ()
+    local components = block:store_mult(library.Color3.to_HSV(value) ::any, 3) :: {Register<number>}
     numeral.write(props, block, FORMAT, components[1])
     numeral.write(props, block, FORMAT, components[2])
     numeral.write(props, block, FORMAT, components[3])

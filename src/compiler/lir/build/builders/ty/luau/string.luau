@@ -24,18 +24,18 @@ type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
 type String = ty.String
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, ty: String): Register
+local function build_read(props: ReadProps, block: Builder, ty: String): Register<string>
     local len = length.read(props, block, ty)
     local cursor = control.advance(len)
     return block:store(library.buffer.string.read(cursor, len))
 end
 
-local function build_write(props: WriteProps, block: Builder, ty: String, value: RValue): ()
-    local len = length.write(props, block, ty, unary.len(value))
+local function build_write(props: WriteProps, block: Builder, ty: String, value: RValue<string>): ()
+    local len = length.write(props, block, ty, unary.len(value :: any))
     local cursor = block:store(control.allocate(len))
     block:call_lib(library.buffer.string.write(cursor, len, value))
 end

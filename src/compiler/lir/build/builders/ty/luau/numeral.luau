@@ -24,16 +24,16 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
-type LValue = lir.LValue
-type RValue = lir.RValue
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
-type Call = lir.ProjCall
-type Register = lir.RegisterId
-type Advance = lir.CtrlAdvance
-type Allocate = lir.CtrlAllocate
+type Call<T> = lir.ProjCall<T>
+type Advance = lir.CtrlAdvance<number>
+type Allocate = lir.CtrlAllocate<number>
 
-type ReadCtor = (cursor: Advance) -> Call
-type WriteCtor = (cursor: Register, value: RValue) -> Call
+type ReadCtor = (cursor: Advance) -> Call<number>
+type WriteCtor = (cursor: Register<number>, value: RValue<number>) -> Call<number>
 
 --[[type function concat_literal_union(left: any, right: any)
     local left_components: {singleton} = left:components()
@@ -74,7 +74,7 @@ local function methods_from_numeral(ty: ty.Numeral): {read: ReadCtor, write: Wri
     return methods
 end
 
-local function read_u24(block: Builder): Register
+local function read_u24(block: Builder): Register<number>
     local lower = control.advance(constant.from_value(2))
     local upper = control.advance(constant.from_value(1))
 
@@ -87,7 +87,7 @@ local function read_u24(block: Builder): Register
     ))
 end
 
-local function read_i24(block: Builder): Register
+local function read_i24(block: Builder): Register<number>
     local register = read_u24(block)
 
     -- handle sign
@@ -107,7 +107,7 @@ local function read_i24(block: Builder): Register
     return register
 end
 
-local function write_24(block: Builder, value: RValue)
+local function write_24(block: Builder, value: RValue<number>)
     local lower_cursor = block:store(control.allocate(constant.from_value(2)))
     local upper_cursor = block:store(control.allocate(constant.from_value(1)))
     local shifted_upper = library.bit32.lshift(value, constant.from_value(16))
@@ -116,14 +116,14 @@ local function write_24(block: Builder, value: RValue)
     block:call_lib(library.buffer.u8.write(upper_cursor, shifted_upper))
 end
 
-local function read_u48(block: Builder): Register
+local function read_u48(block: Builder): Register<number>
     local lower = library.buffer.u32.read(control.advance(constant.from_value(4)))
     local upper = library.buffer.u16.read(control.advance(constant.from_value(2)))
     local shifted_lower = binary.mul(constant.from_value(2^16), lower)
     return block:store(binary.add(shifted_lower, upper))
 end
 
-local function write_u48(block: Builder, value: RValue)
+local function write_u48(block: Builder, value: RValue<number>)
     local lower_cursor = block:store(control.allocate(constant.from_value(4)))
     local upper_cursor = block:store(control.allocate(constant.from_value(2)))
 
@@ -134,7 +134,7 @@ local function write_u48(block: Builder, value: RValue)
     block:call_lib(library.buffer.u16.write(upper_cursor, shifted_upper))
 end
 
-local function read_i48(block: Builder): Register
+local function read_i48(block: Builder): Register<number>
     local register = read_u48(block)
 
     -- handle sign
@@ -154,7 +154,7 @@ local function read_i48(block: Builder): Register
     return register
 end
 
-local function write_i48(block: Builder, value: RValue)
+local function write_i48(block: Builder, value: RValue<number>)
     local register = block:store(value)
 
     -- handle sign
@@ -168,16 +168,34 @@ local function write_i48(block: Builder, value: RValue)
     write_u48(block, register)
 end
 
-local function read_f16(block: Builder): Register
+local function read_f16(block: Builder): Register<number>
     block:remark("f16 is not implemented")
-    return block:store()
+    return block:store(constant.zero)
 end
 
-local function write_f16(block: Builder, value: RValue)
+local function write_f16(block: Builder, value: RValue<number>)
     block:remark("f16 is not implemented")
 end
 
-local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral): Register
+local function validate(block: Builder, ty: ty.Numeral, value: RValue<number>)
+    local bounds = ty.bounds
+    if bounds == nil then
+        return
+    end
+
+    local lower = condition.less_than(value, constant.from_value(bounds.min))
+    local upper = condition.greater_than(value, constant.from_value(bounds.max))
+    
+    block:if_branch(lower, function(block)
+        block:call_lib(library.error(`Expected number to be greater than or equal to {bounds.min}`))
+    end)
+
+    block:if_branch(upper, function(block)
+        block:call_lib(library.error(`Expected number to be less than or equal to {bounds.max}`))
+    end)
+end
+
+local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral): Register<number>
     --local format: concat_literal_union<ty.NumFormat, ty.NumSize> = (ty.format .. ty.size) :: any
     local format = (ty.format .. ty.size)
 
@@ -198,11 +216,18 @@ local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral): Reg
     
     local cursor = control.advance(bytes)
     local methods = methods_from_numeral(ty)
+    
+    local register = block:store(methods.read(cursor))
+    validate(block, ty, register)
 
-    return block:store(methods.read(cursor))
+    return register
 end
 
-local function build_write(props: WriteProps, block: Builder, ty: ty.Numeral, value: RValue)
+local function build_write(props: WriteProps, block: Builder, ty: ty.Numeral, value: RValue<number>)
+    if props.validate then
+        validate(block, ty, value)
+    end
+
     --local format: concat_literal_union<ty.NumFormat, ty.NumSize> = (ty.format .. ty.size) :: any
     local format = (ty.format .. ty.size)
 
@@ -222,24 +247,6 @@ local function build_write(props: WriteProps, block: Builder, ty: ty.Numeral, va
 
     local cursor = block:store(control.allocate(bytes))
     block:call_lib(methods.write(cursor, value))
-end
-
-local function validate(ctx: Context, block: Builder, ty: ty.Numeral, attributes: Attributes, at: LValue)
-    local bounds = ty.bounds
-    if bounds == nil then
-        return
-    end
-
-    local lower = condition.less_than(at, constant.from_value(bounds.min))
-    local upper = condition.greater_than(at, constant.from_value(bounds.max))
-    
-    block:if_branch(lower, function(block)
-        block:call_lib(library.error(`Expected number to be greater than or equal to {bounds.min}`))
-    end)
-
-    block:if_branch(upper, function(block)
-        block:call_lib(library.error(`Expected number to be less than or equal to {bounds.max}`))
-    end)
 end
 
 return table.freeze({

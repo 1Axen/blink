@@ -2,15 +2,17 @@
 
 local lir = require("@structures/lir")
 
-type RValue = lir.RValue
-type BinaryAdd = lir.BinaryAdd
-type BinarySub = lir.BinarySub
-type BinaryMul = lir.BinaryMul
-type BinaryDiv = lir.BinaryDiv
-type BinaryMod = lir.BinaryMod
+type RValue<T> = lir.RValue<T>
+type BinaryAdd<T> = lir.BinaryAdd<T>
+type BinarySub<T> = lir.BinarySub<T>
+type BinaryMul<T> = lir.BinaryMul<T>
+type BinaryDiv<T> = lir.BinaryDiv<T>
+type BinaryMod<T> = lir.BinaryMod<T>
 
-local function binary_add(left: RValue, right: RValue): BinaryAdd
+local function binary_add(left: RValue<number>, right: RValue<number>): BinaryAdd<number>
     return {
+        __phantom_type = nil :: any,
+
         type = "binary",
         kind = "add",
         left = left,
@@ -18,8 +20,10 @@ local function binary_add(left: RValue, right: RValue): BinaryAdd
     }
 end
 
-local function binary_sub(left: RValue, right: RValue): BinarySub
+local function binary_sub(left: RValue<number>, right: RValue<number>): BinarySub<number>
     return {
+        __phantom_type = nil :: any,
+
         type = "binary",    
         kind = "sub",
         left = left,
@@ -27,8 +31,10 @@ local function binary_sub(left: RValue, right: RValue): BinarySub
     }
 end
 
-local function binary_mul(left: RValue, right: RValue): BinaryMul
+local function binary_mul(left: RValue<number>, right: RValue<number>): BinaryMul<number>
     return {
+        __phantom_type = nil :: any,
+
         type = "binary",
         kind = "mul",
         left = left,
@@ -36,8 +42,10 @@ local function binary_mul(left: RValue, right: RValue): BinaryMul
     }
 end
 
-local function binary_div(left: RValue, right: RValue): BinaryDiv
+local function binary_div(left: RValue<number>, right: RValue<number>): BinaryDiv<number>
     return {
+        __phantom_type = nil :: any,
+
         type = "binary",
         kind = "div",
         left = left,
@@ -45,8 +53,10 @@ local function binary_div(left: RValue, right: RValue): BinaryDiv
     }
 end
 
-local function binary_mod(left: RValue, right: RValue): BinaryMod
+local function binary_mod(left: RValue<number>, right: RValue<number>): BinaryMod<number>
     return {
+        __phantom_type = nil :: any,
+
         type = "binary",
         kind = "mod",
         left = left,
@@ -54,10 +64,36 @@ local function binary_mod(left: RValue, right: RValue): BinaryMod
     }
 end
 
+local function binary_add_vec(left: RValue<vector>, right: RValue<number>): BinaryAdd<vector>
+    return binary_add(left :: any, right) :: any
+end
+
+local function binary_sub_vec(left: RValue<vector>, right: RValue<number>): BinarySub<vector>
+    return binary_sub(left :: any, right) :: any
+end
+
+local function binary_mul_vec(left: RValue<vector>, right: RValue<number>): BinaryMul<vector>
+    return binary_mul(left :: any, right) :: any
+end
+
+local function binary_div_vec(left: RValue<vector>, right: RValue<number>): BinaryDiv<vector>
+    return binary_div(left :: any, right) :: any
+end
+
+local function binary_mod_vec(left: RValue<vector>, right: RValue<number>): BinaryMod<vector>
+    return binary_mod(left :: any, right) :: any
+end
+
 return table.freeze({
     add = binary_add,
     sub = binary_sub,
     mul = binary_mul,
     div = binary_div,
-    mod = binary_mod
+    mod = binary_mod,
+
+    add_vec = binary_add_vec,
+    sub_vec = binary_sub_vec,
+    mul_vec = binary_mul_vec,
+    div_vec = binary_div_vec,
+    mod_vec = binary_mod_vec,
 })

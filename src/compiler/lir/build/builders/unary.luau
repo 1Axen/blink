@@ -2,14 +2,12 @@
 
 local lir = require("@structures/lir")
 
-type RValue = lir.RValue
-type UnaryLen = lir.UnaryLen
-
-local function unary_len(of: RValue): UnaryLen
+local function unary_len(of: lir.RValue<any>): lir.UnaryLen<number>
     return {
+        __phantom_type = nil :: any,
         type = "unary",
         kind = "len",
-        of = of
+        of = of :: any
     }
 end
 

@@ -26,9 +26,9 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
 type Axis = ty.Numeral | ty.NumberLiteral
 
@@ -49,48 +49,43 @@ local function to_axes(ctx: Context, ty: ty.Vector): (Axis, Axis, Axis)
     return ty_x, ty_y, ty_z
 end
 
-local function read_axis(props: ReadProps, block: Builder, axis_ty: Axis): Register
+local function read_axis(props: ReadProps, block: Builder, axis_ty: Axis): Register<number>
     if axis_ty.kind == "numeral" then
         return numeral.read(props, block, axis_ty)
     elseif axis_ty.kind == "number_literal" then
-        return literal.read(props, block, axis_ty)
+        return literal.read(props, block, axis_ty) :: Register<number>
     end
 
     return panic(`Unexpected vector axis ty kind "{axis_ty.kind}"`)
 end
 
-local function write_axis(props: WriteProps, block: Builder, axis_ty: Axis, value: RValue)
+local function write_axis(props: WriteProps, block: Builder, axis_ty: Axis, value: RValue<number>)
     if axis_ty.kind == "numeral" then
         return numeral.write(props, block, axis_ty, value)
     elseif axis_ty.kind == "number_literal" then
-        return literal.write(props, block, axis_ty, value)
+        return literal.write(props, block, axis_ty, value :: any)
     end
 
     panic(`Unexpected vector axis ty kind "{axis_ty.kind}"`)
 end
 
-local function build_read(props: ReadProps, block: Builder, ty: ty.Vector): Register
-    local ty_x, ty_y, ty_z = to_axes(props.ctx, ty)
-    local axis_x = read_axis(props, block, ty_x)
-    local axis_y = read_axis(props, block, ty_y)
-    local axis_z = read_axis(props, block, ty_z)
-    return block:store(library.vector.create(axis_x, axis_y, axis_z))
-end
-
-local function build_write(props: WriteProps, block: Builder, ty: ty.Vector, value: RValue)
-    local ty_x, ty_y, ty_z = to_axes(props.ctx, ty)
-    write_axis(props, block, ty_x, projection.index(value :: LValue, constant.from_value("x")))
-    write_axis(props, block, ty_y, projection.index(value :: LValue, constant.from_value("y")))
-    write_axis(props, block, ty_z, projection.index(value :: LValue, constant.from_value("z")))
-end
-
-local function validate(ctx: Context, block: Builder, ty: ty.Vector, attributes: Attributes, at: LValue)
-    local bounds = ty.magnitude
+local function validate(block: Builder, vec: ty.Vector, value: RValue<vector>)
+    local bounds = vec.magnitude
     if bounds == nil then
         return
     end
 
-    local magnitude = projection.index(at, constant.from_value("magnitude"))
+    local magnitude = projection.index(value :: any, constant.from_value("magnitude")) :: lir.ProjIndex<number>
+    if bounds.min == bounds.max then
+        local exact_length = constant.from_value(bounds.min)
+        local is_exact_length = condition.equals(magnitude, exact_length)
+        block:if_branch(is_exact_length, function(block)
+            block:call_lib(library.error(`Expected vector length to be exactly {bounds.min}`))
+        end)
+
+        return
+    end
+    
     local lower = condition.less_than(magnitude, constant.from_value(bounds.min))
     local upper = condition.greater_than(magnitude, constant.from_value(bounds.max))
 
@@ -101,6 +96,28 @@ local function validate(ctx: Context, block: Builder, ty: ty.Vector, attributes:
     block:if_branch(upper, function(block)
         block:call_lib(library.error(`Expected vector length to be less than or equal to {bounds.max}`))
     end)
+end
+
+local function build_read(props: ReadProps, block: Builder, vec: ty.Vector): Register<vector>
+    local ty_x, ty_y, ty_z = to_axes(props.ctx, vec)
+    local axis_x = read_axis(props, block, ty_x)
+    local axis_y = read_axis(props, block, ty_y)
+    local axis_z = read_axis(props, block, ty_z)
+    local register = block:store(library.vector.create(axis_x, axis_y, axis_z))
+    validate(block, vec, register)
+
+    return register
+end
+
+local function build_write(props: WriteProps, block: Builder, vec: ty.Vector, value: RValue<vector>)
+    if props.validate then
+        validate(block, vec, value)
+    end
+
+    local ty_x, ty_y, ty_z = to_axes(props.ctx, vec)
+    write_axis(props, block, ty_x, projection.index(value :: any, constant.from_value("x")) :: any)
+    write_axis(props, block, ty_y, projection.index(value :: any, constant.from_value("y")) :: any)
+    write_axis(props, block, ty_z, projection.index(value :: any, constant.from_value("z")) :: any)
 end
 
 return table.freeze({

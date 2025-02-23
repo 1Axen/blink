@@ -25,17 +25,16 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
-type Enum = ty.Enum
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
 local const = constant.from_value
 
 local NAME_FORMAT = ty.string()
 local VALUE_FORMAT = ty.numeral("16", "u")
 
-local function to_static_enum_type(ctx: Context, ty: Enum): lir.Constant<string>?
+local function to_static_enum_type(ctx: Context, ty: ty.Enum): lir.Constant<string>?
     local ty_id = ty.type
     if ty_id == nil then
         return nil
@@ -45,48 +44,52 @@ local function to_static_enum_type(ctx: Context, ty: Enum): lir.Constant<string>
     return constant.from_value(ty.value)
 end
 
-local function build_read(props: ReadProps, block: Builder, ty: Enum): Register
-    -- Enum[name]
-    local name = ty_string.read(props, block, NAME_FORMAT, attributes)
-    local enum = projection.field(
-        const("Enum"), 
-        name
-    )
-
-    -- enum:FromValue(value)
-    local value = ty_numeral.read(props, block, VALUE_FORMAT, attributes)
-    local enum_item = projection.namecall(
-        enum, 
-        const("FromValue"), 
-        {value :: lir.RValue}
-    )
-    
-    return block:store(enum_item)
-end
-
-local function build_write(props: WriteProps, block: Builder, ty: Enum, value: RValue): ()
-    -- tostring(enum.EnumType)
-    local enum_type = projection.index(value :: LValue, const("EnumType"))
-    local name = block:store(library.tostring(enum_type))
-    ty_string.write(props, block, NAME_FORMAT, name)
-
-    -- enum.Value
-    local value = block:store(projection.index(value :: LValue, const("Value")))
-    ty_numeral.write(props, block, VALUE_FORMAT, value)
-end
-
-local function validate(ctx: Context, block: Builder, ty: Enum, at: LValue)
-    local static_enum_type = to_static_enum_type(ctx, ty)
+local function validate(props: WriteProps, block: Builder, ty: ty.Enum, at: RValue<EnumItem>)
+    local static_enum_type = to_static_enum_type(props.ctx, ty)
     if static_enum_type == nil then
         return
     end
 
-    local enum_type = projection.index(at, const("EnumType"))
+    local enum_type = projection.index(at :: any, const("EnumType"))
     local type_cond = condition.not_equals(enum_type, static_enum_type)
 
     block:if_branch(type_cond, function(block)
         block:call_lib(library.error(`Expected an enum of type: "{static_enum_type.value}"`))
     end)
+end
+
+local function build_read(props: ReadProps, block: Builder, ty: ty.Enum): Register<EnumItem>
+    -- Enum[name]
+    local name = ty_string.read(props, block, NAME_FORMAT, attributes)
+    local enum = projection.field(
+        const("Enum"), 
+        name :: any
+    ) :: lir.ProjField<Enum>
+
+    -- enum:FromValue(value)
+    local value = ty_numeral.read(props, block, VALUE_FORMAT, attributes)
+    local enum_item = projection.namecall(
+        enum :: any, 
+        const("FromValue"), 
+        {value :: any}
+    ) :: lir.ProjNamecall<EnumItem>
+    
+    return block:store(enum_item)
+end
+
+local function build_write(props: WriteProps, block: Builder, ty: ty.Enum, value: RValue<EnumItem>): ()
+    if props.validate then
+        validate(props, block, ty, value)
+    end
+
+    -- tostring(enum.EnumType)
+    local enum_type = projection.index(value :: any, const("EnumType")) :: lir.ProjIndex<Enum>
+    local name = block:store(library.tostring(enum_type :: any))
+    ty_string.write(props, block, NAME_FORMAT, name)
+
+    -- enum.Value
+    local value = block:store(projection.index(value :: any, const("Value")) :: lir.ProjIndex<number>)
+    ty_numeral.write(props, block, VALUE_FORMAT, value)
 end
 
 return table.freeze({

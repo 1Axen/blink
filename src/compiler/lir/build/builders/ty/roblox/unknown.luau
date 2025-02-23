@@ -26,15 +26,15 @@ type Attributes = attributes.TypeAttributes
 
 type Instance = ty.Instance
 
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, instance: Instance): Register
+local function build_read(props: ReadProps, block: Builder, instance: Instance): Register<unknown>
     return block:store()
 end
 
-local function build_write(props: WriteProps, block: Builder, instance: Instance, value: RValue): ()
+local function build_write(props: WriteProps, block: Builder, instance: Instance, value: RValue<unknown>): ()
     
 end
 

@@ -10,15 +10,15 @@ type TermCall = lir.TermCall
 type TermReturn = lir.TermReturn
 
 type Loop = lir.Loop
-type RValue = lir.RValue
-type Condition = lir.Condition
+type RValue = lir.RValue<any>
+type Condition = lir.Condition<boolean>
 type BasicBlock = lir.BasicBlock
 
 local function term_if(condition: Condition, truthy: BasicBlock, falsey: BasicBlock, chained: boolean?): TermIf
     return {
         type = "terminator",
         kind = "if",
-        cond = condition,
+        cond = condition :: any,
         truthy = truthy,
         falsey = falsey,
         chained = chained

@@ -23,20 +23,19 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
-type BrickColor = ty.BrickColor
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
 local FORMAT = ty_numeral.u16
 
-local function build_read(props: ReadProps, block: Builder, brick_color: BrickColor): Register
+local function build_read(props: ReadProps, block: Builder, brick_color: ty.BrickColor): Register<BrickColor>
     local number = ty_numeral.read(props, block, FORMAT)
     return block:store(library.BrickColor.new(number))
 end
 
-local function build_write(props: WriteProps, block: Builder, brick_color: BrickColor, value: RValue): ()
-    local number = projection.index(value :: LValue, constant.from_value("Number"))
+local function build_write(props: WriteProps, block: Builder, brick_color: ty.BrickColor, value: RValue<BrickColor>): ()
+    local number = projection.index(value :: any, constant.from_value("Number")) :: lir.ProjIndex<number>
     ty_numeral.write(props, block, FORMAT, number)
 end
 

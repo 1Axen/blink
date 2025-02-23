@@ -26,10 +26,9 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
-type CFrame = ty.CFrame
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
 local add = binary.add
 local sub = binary.sub
@@ -41,87 +40,73 @@ local sin = library.math.sin
 local const = constant.from_value
 
 local HALF = const(0.5)
-local POS_FORMAT = ty.vector({})
-local ROT_FORMAT = ty_numeral.f32
+local VECTOR = ty.vector({})
 
-local function to_tys(ctx: Context, cframe_ty: CFrame): (ty.Vector, ty.Numeral)
-    local pos_ty = if cframe_ty.position 
-    then ty.vector({
-        x = cframe_ty.position, 
-        y = cframe_ty.position, 
-        z = cframe_ty.position
-    }) 
-    else POS_FORMAT
+local function index_vector(vec: RValue<vector>, property: "x" | "y" | "z"): lir.ProjIndex<number>
+    return projection.index(vec :: any, const(property :: string)) :: lir.ProjIndex<number>
+end
 
-    local rot_ty: ty.Numeral = if cframe_ty.rotation 
-        then hir.ty_from_id(ctx.hir, cframe_ty.rotation) 
-        else ROT_FORMAT
+local function to_tys(ctx: Context, cframe_ty: ty.CFrame): (ty.Vector, ty.Vector)
+    local pos_ty = 
+        if cframe_ty.position 
+        then ty.vector({
+            x = cframe_ty.position, 
+            y = cframe_ty.position, 
+            z = cframe_ty.position
+        }) 
+        else VECTOR
+
+    local rot_ty: ty.Vector = 
+        if cframe_ty.rotation 
+        then ty.vector({
+            x = cframe_ty.rotation, 
+            y = cframe_ty.rotation, 
+            z = cframe_ty.rotation
+        }) 
+        else VECTOR
 
     return pos_ty, rot_ty
 end
 
-local function build_read(props: ReadProps, block: Builder, cframe_ty: CFrame): Register
+local function build_read(props: ReadProps, block: Builder, cframe_ty: ty.CFrame): Register<CFrame>
     local pos_ty, rot_ty = to_tys(props.ctx, cframe_ty)
 
     local pos = ty_vector.read(props, block, pos_ty)
-    local rot_x = ty_numeral.read(props, block, rot_ty)
-    local rot_y = ty_numeral.read(props, block, rot_ty)
-    local rot_z = ty_numeral.read(props, block, rot_ty)
+    local axis_angle = ty_vector.read(props, block, rot_ty)
 
-    local cos_x = block:store(cos(mul(rot_x, HALF)))
-    local sin_x = block:store(sin(mul(rot_x, HALF)))
-    local cos_y = block:store(cos(mul(rot_y, HALF)))
-    local sin_y = block:store(sin(mul(rot_y, HALF)))
-    local cos_z = block:store(cos(mul(rot_z, HALF)))
-    local sin_z = block:store(sin(mul(rot_z, HALF)))
+    local angle = block:store(library.vector.magnitude(axis_angle))
+    -- div specifies RValue<number> but you can also div vectors
+    -- div can't be typed correctly as RValue<number | vector>
+    -- because of solver limitations
+    local axis = block:store(binary.div_vec(axis_angle, angle))
 
-    local cos_x_sin_y = mul(cos_x, sin_y)
-    local cos_x_cos_y = mul(cos_x, cos_y)
-    local sin_x_sin_y = mul(sin_x, sin_y)
-    local sin_x_cos_y = mul(sin_x, cos_y)
+    local half_angle = block:store(binary.mul(angle, HALF))
+    local sin_angle = block:store(library.math.sin(half_angle))
 
     local cframe_ctor = library.CFrame.new_quat(
-        projection.index(pos, const("x")), 
-        projection.index(pos, const("y")), 
-        projection.index(pos, const("z")),
-        -- sin_x * cos_y * cos_z + cos_x * sin_y * sin_z
-        add(
-            mul(sin_x_cos_y, cos_z),
-            mul(cos_x_sin_y, sin_z)
-        ), 
-        -- cos_x * sin_y * cos_z - sin_x * cos_y * sin_z
-        sub(
-            mul(cos_x_sin_y, cos_z),
-            mul(sin_x_cos_y, sin_z)
-        ), 
-        -- cos_x * cos_y * sin_z + sin_x * sin_y * cos_z
-        add(
-            mul(cos_x_cos_y, sin_z),
-            mul(sin_x_sin_y, cos_z)
-        ),
-        -- cos_x * cos_y * cos_z - sin_x * sin_y * sin_z
-        add(
-            mul(cos_x_cos_y, cos_z),
-            mul(sin_x_sin_y, sin_z)
-        )
+        index_vector(pos, "x"),
+        index_vector(pos, "y"),
+        index_vector(pos, "z"),
+        binary.mul(index_vector(axis, "x"), sin_angle),
+        binary.mul(index_vector(axis, "y"), sin_angle),
+        binary.mul(index_vector(axis, "z"), sin_angle),
+        library.math.cos(half_angle)
     )
 
     return block:store(cframe_ctor)
 end
 
-local function build_write(props: WriteProps, block: Builder, cframe_ty: CFrame, value: RValue): ()
+local function build_write(props: WriteProps, block: Builder, cframe_ty: ty.CFrame, value: RValue<CFrame>): ()
     local pos_ty, rot_ty = to_tys(props.ctx, cframe_ty)
     
     -- position
-    ty_vector.write(props, block, pos_ty, value)
+    local position = block:store(projection.index(value :: any, const("Position"))) :: Register<vector>
+    ty_vector.write(props, block, pos_ty, position)
 
     -- rotation
-    local to_euler = projection.namecall(value :: LValue, const("ToEulerAnglesXYZ"), {})
-    local rotation_axes = block:store_mult(to_euler, 3)
-
-    ty_numeral.write(props, block, rot_ty, rotation_axes[1])
-    ty_numeral.write(props, block, rot_ty, rotation_axes[2])
-    ty_numeral.write(props, block, rot_ty, rotation_axes[3])
+    local axis_angle = block:store_mult(library.CFrame.to_axis_angle(value) :: any, 3) :: {Register<number>}
+    local rotation = block:store(binary.mul_vec(axis_angle[1] :: any, axis_angle[2]))
+    ty_vector.write(props, block, rot_ty, rotation)
 end
 
 return table.freeze({

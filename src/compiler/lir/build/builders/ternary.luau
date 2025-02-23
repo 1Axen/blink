@@ -2,11 +2,13 @@
 
 local lir = require("@structures/lir")
 
-type RValue = lir.RValue
-type Condition = lir.Condition
+type RValue<T = any> = lir.RValue<T>
+type Condition = lir.Condition<boolean>
 
-local function ternary(cond: Condition, left: RValue, right: RValue): lir.Ternary
+local function ternary<T>(cond: Condition, left: RValue<T>, right: RValue<T>): lir.Ternary<T>
     return {
+        __phantom_type = nil :: any,
+
         type = "ternary",
         cond = cond,
         left = left,

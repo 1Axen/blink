@@ -21,24 +21,16 @@ type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
 type Ty = ty.Ty
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, ty: Ty): Register
+local function build_read(props: ReadProps, block: Builder, ty: Ty): Register<any>
     return block:store()
 end
 
-local function build_write(props: WriteProps, block: Builder, ty: Ty, value: RValue): ()
+local function build_write(props: WriteProps, block: Builder, ty: Ty, value: RValue<any>): ()
 
-end
-
-local function validate_read(ctx: Context, block: Builder, ty: Ty, at: LValue)
-    
-end
-
-local function validate_write(ctx: Context, block: Builder, ty: Ty, at: LValue)
-    
 end
 
 return table.freeze({

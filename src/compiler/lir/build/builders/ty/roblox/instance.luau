@@ -26,23 +26,15 @@ type Attributes = attributes.TypeAttributes
 
 type Instance = ty.Instance
 
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
 local DEFAULT_TYPE = constant.from_value("Instance")
 local DEFAULT_CLASS = constant.from_value("Instance")
 
-local function build_read(props: ReadProps, block: Builder, instance: Instance): Register
-    return block:store()
-end
-
-local function build_write(props: WriteProps, block: Builder, instance: Instance, value: RValue): ()
-    
-end
-
-local function validate(ctx: Context, block: Builder, instance: Instance, at: LValue)
-    local type_cond = condition.equals(library.typeof(at), DEFAULT_TYPE)
+local function validate(ctx: Context, block: Builder, instance: Instance, value: RValue<Instance>)
+    local type_cond = condition.equals(library.typeof(value :: any), DEFAULT_TYPE)
     block:if_branch(type_cond, function(block)
         block:call_lib(library.error(`Expected an Instance"`))
     end)
@@ -54,11 +46,19 @@ local function validate(ctx: Context, block: Builder, instance: Instance, at: LV
 
     -- LUAU
     local class = hir.ty_from_id(ctx.hir, class_ty_id) :: lir.Constant<string>
-    local class_cond = condition.equals(library.Instance.is_a(at, class), constant.from_value(true))
+    local class_cond = condition.equals(library.Instance.is_a(value :: any, class), constant.from_value(true))
 
     block:if_branch(class_cond, function(block)
         block:call_lib(library.error(`Expected an Instance of class "{class}"`))
     end)
+end
+
+local function build_read(props: ReadProps, block: Builder, instance: Instance): Register<Instance>
+    return block:store()
+end
+
+local function build_write(props: WriteProps, block: Builder, instance: Instance, value: RValue<Instance>): ()
+    
 end
 
 return table.freeze({

@@ -2,18 +2,18 @@
 
 local lir = require("@structures/lir")
 
-type ProjCall = lir.ProjCall
-type ProjField = lir.ProjField
-type ProjIndex = lir.ProjIndex
-type ProjNamecall = lir.ProjNamecall
+type ProjCall<T> = lir.ProjCall<T>
+type ProjField<T> = lir.ProjField<T>
+type ProjIndex<T> = lir.ProjIndex<T>
+type ProjNamecall<T> = lir.ProjNamecall<T>
 
-type RValue = lir.RValue
-type LValue = lir.LValue
+type RValue = lir.RValue<any>
+type LValue = lir.LValue<any>
 type Constant<T> = lir.Constant<T>
-type Register = lir.RegisterId
 
-local function proj_call(base: LValue | Constant<string>, args: {RValue}): ProjCall
+local function proj_call<T>(base: LValue | Constant<string>, args: {RValue}): ProjCall<any>
     return {
+        __phantom_type = nil :: any,
         type = "projection",
         kind = "call",
         base = base,
@@ -21,8 +21,9 @@ local function proj_call(base: LValue | Constant<string>, args: {RValue}): ProjC
     }
 end
 
-local function proj_field(base: LValue | Constant<string>, field: RValue): ProjField
+local function proj_field<T>(base: LValue | Constant<string>, field: RValue): ProjField<T>
     return {
+        __phantom_type = nil :: any,
         type = "projection",
         kind = "field",
         base = base,
@@ -30,8 +31,9 @@ local function proj_field(base: LValue | Constant<string>, field: RValue): ProjF
     }
 end
 
-local function proj_index(base: LValue | Constant<string>, element: lir.Constant<string>): ProjIndex
+local function proj_index<T>(base: LValue | Constant<string>, element: lir.Constant<string>): ProjIndex<T>
     return {
+        __phantom_type = nil :: any,
         type = "projection",
         kind = "index",
         base = base,
@@ -39,8 +41,9 @@ local function proj_index(base: LValue | Constant<string>, element: lir.Constant
     }
 end
 
-local function proj_namecall(base: LValue | Constant<string>, method: Constant<string>, args: {RValue}): ProjNamecall
+local function proj_namecall<T>(base: LValue | Constant<string>, method: Constant<string>, args: {RValue}): ProjNamecall<T>
     return {
+        __phantom_type = nil :: any,
         type = "projection",
         kind = "namecall",
         base = base,

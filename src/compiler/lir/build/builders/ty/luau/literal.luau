@@ -19,27 +19,29 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
-type LValue = lir.LValue
-type RValue = lir.RValue
+type LValue<T = any> = lir.LValue<T>
+type RValue<T = any> = lir.RValue<T>
 type Literal = ty.Literal
-type Register = lir.RegisterId
+type Register<T = any> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, literal: ty.Literal): Register
-    local constant = constant.from_ty(literal)
-    return block:store(constant :: lir.RValue)
-end
-
-local function build_write(props: WriteProps, block: Builder, literal: ty.Literal, value: RValue): ()
-
-end
-
-local function validate(ctx: Context, block: Builder, ty: Literal, at: LValue)
-    local constant = constant.from_ty(ty)
-    local equals = condition.not_equals(at, constant :: any)
+local function validate(props: WriteProps, block: Builder, ty: Literal, value: RValue)
+    local constant = constant.from_ty(ty :: any)
+    local equals = condition.not_equals(value, constant :: any)
 
     block:if_branch(equals, function(block)
         block:call_lib(library.error(`Expected "{ty.value}"`))
     end)
+end
+
+local function build_read<A>(props: ReadProps, block: Builder, literal: ty.Literal): Register<A>
+    local constant = constant.from_ty((literal :: any) :: {kind: any, value: A})
+    return block:store(constant)
+end
+
+local function build_write(props: WriteProps, block: Builder, literal: ty.Literal, value: RValue): ()
+    if props.validate then
+        validate(props, block, literal, value)
+    end
 end
 
 return table.freeze({

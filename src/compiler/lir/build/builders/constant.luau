@@ -26,6 +26,8 @@ local function create_or_reuse(value: ConstantValue): Constant
     end
 
     local constant: Constant = {
+        __phantom_type = nil :: any,
+        
         type = "constant",
         value = value
     }
@@ -36,8 +38,8 @@ local function create_or_reuse(value: ConstantValue): Constant
     return constant
 end
 
-local function from_ty<T>(ty: T): Constant<index<T, "value">>
-    return create_or_reuse((ty :: Literal).value)
+local function from_ty<A>(ty: {kind: index<ty.Literal, "kind">, value: A}): Constant<A>
+    return create_or_reuse(ty.value)
 end
 
 local function from_value<T>(value: T): Constant<T>

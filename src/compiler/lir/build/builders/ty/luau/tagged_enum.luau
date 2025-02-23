@@ -28,11 +28,11 @@ type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
 type TaggedEnum = ty.TaggedEnum
-type LValue = lir.LValue
-type RValue = lir.RValue
-type Register = lir.RegisterId
+type LValue<T> = lir.LValue<T>
+type RValue<T> = lir.RValue<T>
+type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, enum: TaggedEnum): Register
+local function build_read(props: ReadProps, block: Builder, enum: TaggedEnum): Register<any>
     local total = #enum.variants
 
     -- account for serdesing from 0
@@ -65,7 +65,7 @@ local function build_read(props: ReadProps, block: Builder, enum: TaggedEnum): R
     return value_register
 end
 
-local function build_write(props: WriteProps, block: Builder, enum: TaggedEnum, value: RValue): ()
+local function build_write(props: WriteProps, block: Builder, enum: TaggedEnum, value: RValue<any>): ()
     local ctx = props.ctx
 
     local tag = constant.from_value(enum.tag)
@@ -73,13 +73,13 @@ local function build_write(props: WriteProps, block: Builder, enum: TaggedEnum, 
 
     -- account for serdesing from 0
     local format = conversion.to_min_numeral(total - 1)
-    local tag_register = block:store(projection.field(value :: LValue, tag))
+    local tag_register = block:store(projection.field(value :: any, tag :: RValue<any>))
 
     for index, variant in enum.variants do
         local key = hir.ty_from_id(ctx.hir, variant.key)
         local is_variant = condition.equals(
             tag_register,
-            constant.from_ty(key) :: lir.RValue
+            constant.from_ty(key :: any)
         )
 
         local function store_variant(block: Builder)
@@ -99,17 +99,7 @@ local function build_write(props: WriteProps, block: Builder, enum: TaggedEnum, 
     end)
 end
 
-local function validate(ctx: Context, block: Builder, enum: TaggedEnum, at: LValue)
-    
-end
-
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate,
-        write = validate
-    })
+    read = build_read,
+    write = build_write,
 })
