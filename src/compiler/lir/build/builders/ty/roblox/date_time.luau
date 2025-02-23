@@ -13,6 +13,12 @@ local projection = require("@builders/projection")
 
 local context = require("@lir/build/context")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
@@ -24,27 +30,17 @@ type Register = lir.RegisterId
 
 local FORMAT = ty_numeral.f64
 
-local function build_read(ctx: Context, block: Builder, date_time: DateTime, attributes: Attributes): Register
-    local timestamp = ty_numeral.build.read(ctx, block, FORMAT, attributes)
+local function build_read(props: ReadProps, block: Builder, date_time: DateTime): Register
+    local timestamp = ty_numeral.read(props, block, FORMAT)
     return block:store(library.DateTime.from_timestamp(timestamp))
 end
 
-local function build_write(ctx: Context, block: Builder, date_time: DateTime, attributes: Attributes, at: LValue): ()
-    local timestamp = projection.index(at, constant.from_value("UnixTimestamp"))
-    ty_numeral.build.write(ctx, block, FORMAT, attributes, timestamp)
-end
-
-local function validate(ctx: Context, block: Builder, date_time: DateTime, at: LValue)
-    
+local function build_write(props: WriteProps, block: Builder, date_time: DateTime, value: RValue): ()
+    local timestamp = projection.index(value :: LValue, constant.from_value("UnixTimestamp"))
+    ty_numeral.write(props, block, FORMAT, timestamp)
 end
 
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate,
-        write = validate
-    })
+    read = build_read,
+    write = build_write,
 })

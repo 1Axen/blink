@@ -278,7 +278,7 @@ export type LoopGeneric = {
     kind: "generic",
     index: RegisterId,
     value: RegisterId,
-    target: Id | ProjField | ProjIndex
+    target: RValue
 }
 
 export type Loop = 

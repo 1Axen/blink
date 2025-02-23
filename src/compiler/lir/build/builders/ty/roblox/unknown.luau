@@ -14,6 +14,12 @@ local projection = require("@builders/projection")
 
 local context = require("@lir/build/context")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
@@ -24,28 +30,15 @@ type LValue = lir.LValue
 type RValue = lir.RValue
 type Register = lir.RegisterId
 
-local DEFAULT_TYPE = constant.from_value("Instance")
-local DEFAULT_CLASS = constant.from_value("Instance")
-
-local function build_read(ctx: Context, block: Builder, instance: Instance, attributes: Attributes): Register
+local function build_read(props: ReadProps, block: Builder, instance: Instance): Register
     return block:store()
 end
 
-local function build_write(ctx: Context, block: Builder, instance: Instance, attributes: Attributes, at: LValue): ()
-    
-end
-
-local function validate(ctx: Context, block: Builder, instance: Instance, at: LValue)
+local function build_write(props: WriteProps, block: Builder, instance: Instance, value: RValue): ()
     
 end
 
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate,
-        write = validate
-    })
+    read = build_read,
+    write = build_write,
 })

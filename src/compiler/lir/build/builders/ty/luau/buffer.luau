@@ -13,6 +13,12 @@ local condition = require("@builders/condition")
 local length = require("./length")
 local context = require("@lir/build/context")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
@@ -22,8 +28,8 @@ type LValue = lir.LValue
 type RValue = lir.RValue
 type Register = lir.RegisterId
 
-local function build_read(ctx: Context, block: Builder, ty: Buffer, attributes: Attributes): Register
-    local len = length.read(ctx, block, ty, attributes)
+local function build_read(props: ReadProps, block: Builder, buf: ty.Buffer): Register
+    local len = length.read(props, block, buf)
     local register = block:store(library.buffer.create(len))
     local buffer_copy = library.buffer.copy(
         register, constant.zero, 
@@ -34,12 +40,12 @@ local function build_read(ctx: Context, block: Builder, ty: Buffer, attributes: 
     return register
 end
 
-local function build_write(ctx: Context, block: Builder, ty: Buffer, attributes: Attributes, at: LValue): ()
-    local len = length.write(ctx, block, ty, attributes, library.buffer.len(at))
+local function build_write(props: WriteProps, block: Builder, buf: ty.Buffer, value: RValue): ()
+    local len = length.write(props, block, buf, library.buffer.len(value))
     local cursor = block:store(control.allocate(len))
     local buffer_copy = library.buffer.copy(
         globals.outgoing.buffer, cursor, 
-        at, constant.zero, len
+        value, constant.zero, len
     )
 
     block:call_lib(buffer_copy)
@@ -75,12 +81,6 @@ local function validate(ctx: Context, block: Builder, ty: Buffer, at: LValue)
 end
 
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate,
-        write = validate
-    })
+    read = build_read,
+    write = build_write,
 })

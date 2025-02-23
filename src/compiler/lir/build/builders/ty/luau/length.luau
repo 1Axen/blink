@@ -19,6 +19,14 @@ local panic = require("@util/panic")
 local range = require("@util/range")
 local conversion = require("@util/conversion")
 
+local types = require("../types")
+
+type VariableLengthTy = ty.Buffer | ty.String | ty.Array<ty.Ty> | ty.Map
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Range = range.Range
 
 type Builder = fn.Builder
@@ -28,8 +36,6 @@ type Attributes = attributes.TypeAttributes
 type LValue = lir.LValue
 type RValue = lir.RValue
 type Register = lir.RegisterId
-
-type VariableLengthTy = ty.Buffer | ty.String | ty.Array<ty.Ty> | ty.Map
 
 local function to_range(ty: VariableLengthTy): Range?
     if ty.kind == "buffer" then
@@ -78,25 +84,25 @@ local function to_exact_length(ty: VariableLengthTy): number?
     return ty_range.min
 end
 
-local function read_length(ctx: Context, block: Builder, ty: VariableLengthTy, attributes: Attributes): lir.RegisterId | lir.Constant<number>
+local function read_length(props: ReadProps, block: Builder, ty: VariableLengthTy): lir.RegisterId | lir.Constant<number>
     local exact_length = to_exact_length(ty)
     if exact_length ~= nil then
         return constant.from_value(exact_length)
     end
     
     local range_numeral = to_min_range_numeral(ty)
-    return numeral.build.read(ctx, block, range_numeral, attributes)
+    return numeral.read(props, block, range_numeral)
 end
 
-local function write_length(ctx: Context, block: Builder, ty: VariableLengthTy, attributes: Attributes, len: RValue): lir.RegisterId | lir.Constant<number>
+local function write_length(props: WriteProps, block: Builder, ty: VariableLengthTy, value: RValue): lir.RegisterId | lir.Constant<number>
     local exact_length = to_exact_length(ty)
     if exact_length then
         return constant.from_value(exact_length)
     end
 
-    local len_register = block:store(len)
+    local len_register = block:store(value)
     local range_numeral = to_min_range_numeral(ty)
-    numeral.build.write(ctx, block, range_numeral, attributes, len_register)
+    numeral.write(props, block, range_numeral, len_register)
 
     return len_register
 end

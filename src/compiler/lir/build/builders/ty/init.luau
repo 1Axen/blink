@@ -1,11 +1,14 @@
 local ty = require("@structures/ty")
 local lir = require("@structures/lir")
+
 local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
 local context = require("@lir/build/context")
 
 local panic = require("@util/panic")
+
+local types = require("./types")
 
 local ty_set = require("./luau/set")
 local ty_unit_enum = require("./luau/unit_enum")
@@ -29,22 +32,16 @@ local ty_date_time_millis = require("./roblox/date_time_millis")
 
 type Ty = ty.Ty
 type LValue = lir.LValue
+type RValue = lir.RValue
 type Register = lir.RegisterId
 
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
-export type TyBuilder = {
-    build: {
-        read: (ctx: Context, block: Builder, ty: Ty, attributes: Attributes) -> Register,
-        write: (ctx: Context, block: Builder, ty: Ty, attributes: Attributes, at: LValue) -> ()
-    },
-    validate: {
-        read: (ctx: Context, block: Builder, ty: Ty, at: LValue) -> (),
-        write: (ctx: Context, block: Builder, ty: Ty, at: LValue) -> ()
-    },
-}
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
 
 -- cyclical ty builders
 local ty_map: TyBuilder?;
@@ -75,7 +72,7 @@ local BUILDERS: {[ty.TyKind]: TyBuilder?} = {
     date_time_millis = ty_date_time_millis,
 }
 
-local function as_builder(ty: Ty): TyBuilder
+local function builder_from_ty(ty: Ty): TyBuilder
     local kind = ty.kind
     if kind == "map" then
         if ty_map == nil then
@@ -112,33 +109,17 @@ local function as_builder(ty: Ty): TyBuilder
     return ty_builder
 end
 
-local function build_read(ctx: Context, block: Builder, ty: Ty, attributes: Attributes): Register
-    local ty_builder = as_builder(ty)
-    return ty_builder.build.read(ctx, block, ty, attributes)
+local function build_read(props: ReadProps, block: Builder, ty: Ty): Register
+    local ty_builder = builder_from_ty(ty)
+    return ty_builder.read(props, block, ty)
 end
 
-local function build_write(ctx: Context, block: Builder, ty: Ty, attributes: Attributes, at: LValue): ()
-    local ty_builder = as_builder(ty)
-    return ty_builder.build.write(ctx, block, ty, attributes, at)
-end
-
-local function validate_read(ctx: Context, block: Builder, ty: Ty, at: LValue)
-    local ty_builder = as_builder(ty)
-    return ty_builder.validate.read(ctx, block, ty, at)
-end
-
-local function validate_write(ctx: Context, block: Builder, ty: Ty, at: LValue)
-    local ty_builder = as_builder(ty)
-    return ty_builder.validate.write(ctx, block, ty, at)
+local function build_write(props: WriteProps, block: Builder, ty: Ty, value: RValue): ()
+    local ty_builder = builder_from_ty(ty)
+    return ty_builder.write(props, block, ty, value)
 end
 
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate_read,
-        write = validate_write
-    })
+    read = build_read,
+    write = build_write
 })

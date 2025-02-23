@@ -14,6 +14,12 @@ local context = require("@lir/build/context")
 
 local panic = require("@util/panic")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
@@ -101,12 +107,12 @@ local function read_i24(block: Builder): Register
     return register
 end
 
-local function write_24(block: Builder, at: LValue)
+local function write_24(block: Builder, value: RValue)
     local lower_cursor = block:store(control.allocate(constant.from_value(2)))
     local upper_cursor = block:store(control.allocate(constant.from_value(1)))
-    local shifted_upper = library.bit32.lshift(at, constant.from_value(16))
+    local shifted_upper = library.bit32.lshift(value, constant.from_value(16))
 
-    block:call_lib(library.buffer.u16.write(lower_cursor, at))
+    block:call_lib(library.buffer.u16.write(lower_cursor, value))
     block:call_lib(library.buffer.u8.write(upper_cursor, shifted_upper))
 end
 
@@ -117,12 +123,12 @@ local function read_u48(block: Builder): Register
     return block:store(binary.add(shifted_lower, upper))
 end
 
-local function write_u48(block: Builder, at: LValue)
+local function write_u48(block: Builder, value: RValue)
     local lower_cursor = block:store(control.allocate(constant.from_value(4)))
     local upper_cursor = block:store(control.allocate(constant.from_value(2)))
 
-    local shifted_lower = binary.div(at, constant.from_value(2^16))
-    local shifted_upper = binary.mod(at, constant.from_value(2^16))
+    local shifted_lower = binary.div(value, constant.from_value(2^16))
+    local shifted_upper = binary.mod(value, constant.from_value(2^16))
 
     block:call_lib(library.buffer.u32.write(lower_cursor, shifted_lower))
     block:call_lib(library.buffer.u16.write(upper_cursor, shifted_upper))
@@ -148,16 +154,18 @@ local function read_i48(block: Builder): Register
     return register
 end
 
-local function write_i48(block: Builder, at: LValue)
+local function write_i48(block: Builder, value: RValue)
+    local register = block:store(value)
+
     -- handle sign
     block:if_branch(condition.less_than(
-        at, 
+        value, 
         constant.from_value(0)
     ), function(block)
-        block:store(binary.add(at, constant.from_value(2^48)), at)
+        block:store(binary.add(register, constant.from_value(2^48)), register)
     end)
 
-    write_u48(block, at)
+    write_u48(block, register)
 end
 
 local function read_f16(block: Builder): Register
@@ -165,11 +173,11 @@ local function read_f16(block: Builder): Register
     return block:store()
 end
 
-local function write_f16(block: Builder, at: LValue)
+local function write_f16(block: Builder, value: RValue)
     block:remark("f16 is not implemented")
 end
 
-local function build_read(ctx: Context, block: Builder, ty: ty.Numeral, attributes: Attributes): Register
+local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral): Register
     --local format: concat_literal_union<ty.NumFormat, ty.NumSize> = (ty.format .. ty.size) :: any
     local format = (ty.format .. ty.size)
 
@@ -194,18 +202,18 @@ local function build_read(ctx: Context, block: Builder, ty: ty.Numeral, attribut
     return block:store(methods.read(cursor))
 end
 
-local function build_write(ctx: Context, block: Builder, ty: ty.Numeral, attributes: Attributes, at: LValue)
+local function build_write(props: WriteProps, block: Builder, ty: ty.Numeral, value: RValue)
     --local format: concat_literal_union<ty.NumFormat, ty.NumSize> = (ty.format .. ty.size) :: any
     local format = (ty.format .. ty.size)
 
     if format == "u24" or format == "i24" then
-        return write_24(block, at)
+        return write_24(block, value)
     elseif format == "u48" then
-        return write_u48(block, at)
+        return write_u48(block, value)
     elseif format == "i48" then
-        return write_i48(block, at)
+        return write_i48(block, value)
     elseif format == "f16" then
-        return write_f16(block, at)
+        return write_f16(block, value)
     end
 
     local size = size_to_byte_size(ty.size)
@@ -213,7 +221,7 @@ local function build_write(ctx: Context, block: Builder, ty: ty.Numeral, attribu
     local methods = methods_from_numeral(ty)
 
     local cursor = block:store(control.allocate(bytes))
-    block:call_lib(methods.write(cursor, at))
+    block:call_lib(methods.write(cursor, value))
 end
 
 local function validate(ctx: Context, block: Builder, ty: ty.Numeral, attributes: Attributes, at: LValue)
@@ -235,14 +243,8 @@ local function validate(ctx: Context, block: Builder, ty: ty.Numeral, attributes
 end
 
 return table.freeze({
-    build = {
-        read = build_read,
-        write = build_write
-    },
-    validate = {
-        read = validate,
-        write = validate
-    },
+    read = build_read,
+    write = build_write,
 
     u8 = ty.numeral("8", "u"),
     u16 = ty.numeral("16", "u"),

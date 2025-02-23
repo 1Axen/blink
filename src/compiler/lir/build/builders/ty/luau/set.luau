@@ -15,6 +15,12 @@ local context = require("@lir/build/context")
 
 local numeral = require("./numeral")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
@@ -26,11 +32,11 @@ type Register = lir.RegisterId
 
 local FORMAT = numeral.u8
 
-local function build_read(ctx: Context, block: Builder, set: Set, attributes: Attributes): Register
+local function build_read(props: ReadProps, block: Builder, set: Set): Register
     local set_register = block:store(wrapper.table({}))
 
     for _, item in set.items do
-        local value = numeral.build.read(ctx, block, FORMAT, attributes)
+        local value = numeral.read(props, block, FORMAT)
         local field = projection.field(set_register, constant.from_value(item.value))
         local in_set = condition.equals(value, constant.one)
         block:store(in_set, field)
@@ -39,26 +45,16 @@ local function build_read(ctx: Context, block: Builder, set: Set, attributes: At
     return set_register
 end
 
-local function build_write(ctx: Context, block: Builder, set: Set, attributes: Attributes, at: LValue): ()
+local function build_write(props: WriteProps, block: Builder, set: Set, value: RValue): ()
     for _, item in set.items do
-        local field = projection.field(at, constant.from_value(item.value))
+        local field = projection.field(value :: LValue, constant.from_value(item.value))
         local in_set = condition.equals(field, constant.truth)
         local value_register = block:store(ternary(in_set, constant.one, constant.zero))
-        numeral.build.write(ctx, block, FORMAT, attributes, value_register)
+        numeral.write(props, block, FORMAT, value_register)
     end
 end
 
-local function validate(ctx: Context, block: Builder, set: Set, at: LValue)
-    
-end
-
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate,
-        write = validate
-    })
+    read = build_read,
+    write = build_write,
 })

@@ -9,6 +9,12 @@ local condition = require("@builders/condition")
 
 local context = require("@lir/build/context")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
@@ -18,12 +24,12 @@ type RValue = lir.RValue
 type Literal = ty.Literal
 type Register = lir.RegisterId
 
-local function build_read(ctx: Context, block: Builder, ty: Literal, attributes: Attributes): Register
-    local constant = constant.from_ty(ty) :: any
+local function build_read(props: ReadProps, block: Builder, literal: ty.Literal): Register
+    local constant = constant.from_ty(literal)
     return block:store(constant :: lir.RValue)
 end
 
-local function build_write(ctx: Context, block: Builder, ty: Literal, attributes: Attributes, at: LValue): ()
+local function build_write(props: WriteProps, block: Builder, literal: ty.Literal, value: RValue): ()
 
 end
 
@@ -37,12 +43,6 @@ local function validate(ctx: Context, block: Builder, ty: Literal, at: LValue)
 end
 
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate,
-        write = validate
-    })
+    read = build_read,
+    write = build_write,
 })

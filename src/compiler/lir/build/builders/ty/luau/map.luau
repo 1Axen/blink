@@ -17,6 +17,12 @@ local length = require("./length")
 
 local context = require("@lir/build/context")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
@@ -26,25 +32,29 @@ type LValue = lir.LValue
 type RValue = lir.RValue
 type Register = lir.RegisterId
 
-local function build_read(ctx: Context, block: Builder, map: Map, attributes: Attributes): Register
-    local index_ty = hir.ty_from_id(ctx.hir, map.index)
+local function build_read(props: ReadProps, block: Builder, map: Map): Register
+    local ctx = props.ctx
+    
+    local key_ty = hir.ty_from_id(ctx.hir, map.index)
     local value_ty = hir.ty_from_id(ctx.hir, map.value)
 
-    local len = length.read(ctx, block, map, attributes)
+    local len = length.read(props, block, map)
     local map_register = block:store(wrapper.table({}))
 
     block:for_numeric(len, function(block)
-        local index_register = ty_builder.build.read(ctx, block, index_ty, attributes)
-        local value_register = ty_builder.build.read(ctx, block, value_ty, attributes)
-        local index_into_map = projection.field(map_register, index_register)
-        block:store(value_register, index_into_map)
+        local key = ty_builder.read(props, block, key_ty)
+        local value = ty_builder.read(props, block, value_ty)
+        local map_index = projection.field(map_register, key)
+        block:store(value, map_index)
     end)
 
     return map_register
 end
 
-local function build_write(ctx: Context, block: Builder, map: Map, attributes: Attributes, at: LValue): ()
-    local index_ty = hir.ty_from_id(ctx.hir, map.index)
+local function build_write(props: WriteProps, block: Builder, map: Map, at: RValue): ()
+    local ctx = props.ctx
+    
+    local key_ty = hir.ty_from_id(ctx.hir, map.index)
     local value_ty = hir.ty_from_id(ctx.hir, map.value)
 
     local elements_register = block:store(constant.zero)
@@ -53,11 +63,11 @@ local function build_write(ctx: Context, block: Builder, map: Map, attributes: A
         block:store(increase_elements, elements_register)
     end)
 
-    length.write(ctx, block, map, attributes, elements_register)
+    length.write(props, block, map, elements_register)
 
-    block:for_generic(at, function(block, index_register, value_register)
-        ty_builder.build.write(ctx, block, index_ty, attributes, index_register)
-        ty_builder.build.write(ctx, block, value_ty, attributes, value_register)
+    block:for_generic(at, function(block, key, value)
+        ty_builder.write(props, block, key_ty, key)
+        ty_builder.write(props, block, value_ty, value)
     end)
 end
 
@@ -70,12 +80,6 @@ local function validate_write(ctx: Context, block: Builder, map: Map, at: LValue
 end
 
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate_read,
-        write = validate_write
-    })
+    read = build_read,
+    write = build_write,
 })

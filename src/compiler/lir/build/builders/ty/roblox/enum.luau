@@ -15,12 +15,19 @@ local projection = require("@builders/projection")
 
 local context = require("@lir/build/context")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
 type Enum = ty.Enum
 type LValue = lir.LValue
+type RValue = lir.RValue
 type Register = lir.RegisterId
 
 local const = constant.from_value
@@ -38,16 +45,16 @@ local function to_static_enum_type(ctx: Context, ty: Enum): lir.Constant<string>
     return constant.from_value(ty.value)
 end
 
-local function build_read(ctx: Context, block: Builder, ty: Enum, attributes: Attributes): Register
+local function build_read(props: ReadProps, block: Builder, ty: Enum): Register
     -- Enum[name]
-    local name = ty_string.build.read(ctx, block, NAME_FORMAT, attributes)
+    local name = ty_string.read(props, block, NAME_FORMAT, attributes)
     local enum = projection.field(
         const("Enum"), 
         name
     )
 
     -- enum:FromValue(value)
-    local value = ty_numeral.build.read(ctx, block, VALUE_FORMAT, attributes)
+    local value = ty_numeral.read(props, block, VALUE_FORMAT, attributes)
     local enum_item = projection.namecall(
         enum, 
         const("FromValue"), 
@@ -57,15 +64,15 @@ local function build_read(ctx: Context, block: Builder, ty: Enum, attributes: At
     return block:store(enum_item)
 end
 
-local function build_write(ctx: Context, block: Builder, ty: Enum, attributes: Attributes, at: LValue): ()
+local function build_write(props: WriteProps, block: Builder, ty: Enum, value: RValue): ()
     -- tostring(enum.EnumType)
-    local enum_type = projection.index(at, const("EnumType"))
+    local enum_type = projection.index(value :: LValue, const("EnumType"))
     local name = block:store(library.tostring(enum_type))
-    ty_string.build.write(ctx, block, NAME_FORMAT, attributes, name)
+    ty_string.write(props, block, NAME_FORMAT, name)
 
     -- enum.Value
-    local value = block:store(projection.index(at, const("Value")))
-    ty_numeral.build.write(ctx, block, VALUE_FORMAT, attributes, value)
+    local value = block:store(projection.index(value :: LValue, const("Value")))
+    ty_numeral.write(props, block, VALUE_FORMAT, value)
 end
 
 local function validate(ctx: Context, block: Builder, ty: Enum, at: LValue)
@@ -83,12 +90,6 @@ local function validate(ctx: Context, block: Builder, ty: Enum, at: LValue)
 end
 
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate,
-        write = validate
-    })
+    read = build_read,
+    write = build_write,
 })

@@ -17,6 +17,12 @@ local conversion = require("@util/conversion")
 
 local context = require("@lir/build/context")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
@@ -26,13 +32,13 @@ type LValue = lir.LValue
 type RValue = lir.RValue
 type Register = lir.RegisterId
 
-local function build_read(ctx: Context, block: Builder, enum: TaggedEnum, attributes: Attributes): Register
+local function build_read(props: ReadProps, block: Builder, enum: TaggedEnum): Register
     local total = #enum.variants
 
     -- account for serdesing from 0
     local format = conversion.to_min_numeral(total - 1)
 
-    local stored_index = numeral.build.read(ctx, block, format, attributes)
+    local stored_index = numeral.read(props, block, format)
     local value_register = block:store()
 
     local out_of_bounds = condition.greater_than_or(
@@ -51,7 +57,7 @@ local function build_read(ctx: Context, block: Builder, enum: TaggedEnum, attrib
         )
 
         block:elseif_branch(is_variant, function(block)
-            local struct_register = struct.build.read(ctx, block, variant.value, attributes)
+            local struct_register = struct.read(props, block, variant.value, attributes)
             block:store(struct_register, value_register)
         end)
     end
@@ -59,13 +65,15 @@ local function build_read(ctx: Context, block: Builder, enum: TaggedEnum, attrib
     return value_register
 end
 
-local function build_write(ctx: Context, block: Builder, enum: TaggedEnum, attributes: Attributes, at: LValue): ()
+local function build_write(props: WriteProps, block: Builder, enum: TaggedEnum, value: RValue): ()
+    local ctx = props.ctx
+
     local tag = constant.from_value(enum.tag)
     local total = #enum.variants
 
     -- account for serdesing from 0
     local format = conversion.to_min_numeral(total - 1)
-    local tag_register = block:store(projection.field(at, tag))
+    local tag_register = block:store(projection.field(value :: LValue, tag))
 
     for index, variant in enum.variants do
         local key = hir.ty_from_id(ctx.hir, variant.key)
@@ -75,9 +83,8 @@ local function build_write(ctx: Context, block: Builder, enum: TaggedEnum, attri
         )
 
         local function store_variant(block: Builder)
-            local index_register = block:store(constant.from_value(index - 1))
-            numeral.build.write(ctx, block, format, attributes, index_register)
-            struct.build.write(ctx, block, variant.value, attributes, at)
+            numeral.write(props, block, format, constant.from_value(index - 1))
+            struct.write(props, block, variant.value, value)
         end
 
         if index == 1 then

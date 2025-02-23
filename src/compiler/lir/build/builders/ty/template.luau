@@ -19,14 +19,6 @@ type LValue = lir.LValue
 type RValue = lir.RValue
 type Register = lir.RegisterId
 
-local function build_read(ctx: Context, block: Builder, ty: Ty, attributes: Attributes): Register
-    return block:store(constant.from_value(0))
-end
-
-local function build_write(ctx: Context, block: Builder, ty: Ty, attributes: Attributes, at: LValue): ()
-
-end
-
 local function validate_read(ctx: Context, block: Builder, ty: Ty, at: LValue)
     
 end
@@ -35,13 +27,15 @@ local function validate_write(ctx: Context, block: Builder, ty: Ty, at: LValue)
     
 end
 
+local function build_read(props: ReadProps, block: Builder, ty: Ty): Register
+    return block:store(constant.from_value(0))
+end
+
+local function build_write(props: WriteProps, block: Builder, ty: Ty, value: RValue): ()
+    validate_write(ctx, block, ty, at)
+end
+
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate_read,
-        write = validate_write
-    })
+    read = build_read,
+    write = build_write,
 })

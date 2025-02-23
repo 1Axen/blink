@@ -13,6 +13,12 @@ local conversion = require("@util/conversion")
 
 local context = require("@lir/build/context")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
@@ -22,12 +28,12 @@ type LValue = lir.LValue
 type RValue = lir.RValue
 type Register = lir.RegisterId
 
-local function build_read(ctx: Context, block: Builder, enum: UnitEnum, attributes: Attributes): Register
+local function build_read(props: ReadProps, block: Builder, enum: UnitEnum): Register
     local total = #enum.variants
     -- account for serdesing from 0
     local format = conversion.to_min_numeral(total - 1)
 
-    local stored_index = numeral.build.read(ctx, block, format, attributes)
+    local stored_index = numeral.read(props, block, format)
     local value_register = block:store()
 
     local out_of_bounds = condition.greater_than_or(
@@ -53,34 +59,31 @@ local function build_read(ctx: Context, block: Builder, enum: UnitEnum, attribut
     return value_register
 end
 
-local function build_write(ctx: Context, block: Builder, enum: UnitEnum, attributes: Attributes, at: LValue): ()
+local function build_write(props: WriteProps, block: Builder, enum: UnitEnum, value: RValue): ()
     local total = #enum.variants
     -- account for serdesing from 0
     local format = conversion.to_min_numeral(total - 1)
-    local index_register = block:store()
 
     for index, variant in enum.variants do
         local is_variant = condition.equals(
-            at,
+            value,
             constant.from_value(variant)
         )
 
-        local function store_index(block: Builder)
-            block:store(constant.from_value(index - 1), index_register)
+        local function write_index(block: Builder)
+            numeral.write(props, block, format, constant.from_value(index - 1))
         end
 
         if index == 1 then
-            block:if_branch(is_variant, store_index)
+            block:if_branch(is_variant, write_index)
         elseif index > 1 then
-            block:elseif_branch(is_variant, store_index)
+            block:elseif_branch(is_variant, write_index)
         end
     end
 
     block:else_branch(function(block)
         block:call_lib(library.error(`Invalid enum variant`))
     end)
-
-    numeral.build.write(ctx, block, format, attributes, index_register)
 end
 
 local function validate(ctx: Context, block: Builder, enum: UnitEnum, at: LValue)
@@ -88,12 +91,6 @@ local function validate(ctx: Context, block: Builder, enum: UnitEnum, at: LValue
 end
 
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate,
-        write = validate
-    })
+    read = build_read,
+    write = build_write,
 })

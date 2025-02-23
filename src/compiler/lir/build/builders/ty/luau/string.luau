@@ -13,6 +13,12 @@ local condition = require("@builders/condition")
 local context = require("@lir/build/context")
 local length = require("./length")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
@@ -22,16 +28,16 @@ type LValue = lir.LValue
 type RValue = lir.RValue
 type Register = lir.RegisterId
 
-local function build_read(ctx: Context, block: Builder, ty: String, attributes: Attributes): Register
-    local len = length.read(ctx, block, ty, attributes)
+local function build_read(props: ReadProps, block: Builder, ty: String): Register
+    local len = length.read(props, block, ty)
     local cursor = control.advance(len)
     return block:store(library.buffer.string.read(cursor, len))
 end
 
-local function build_write(ctx: Context, block: Builder, ty: String, attributes: Attributes, at: LValue): ()
-    local len = length.write(ctx, block, ty, attributes, unary.len(at))
+local function build_write(props: WriteProps, block: Builder, ty: String, value: RValue): ()
+    local len = length.write(props, block, ty, unary.len(value))
     local cursor = block:store(control.allocate(len))
-    block:call_lib(library.buffer.string.write(cursor, len, at))
+    block:call_lib(library.buffer.string.write(cursor, len, value))
 end
 
 local function validate(ctx: Context, block: Builder, ty: String, at: LValue)
@@ -64,12 +70,6 @@ local function validate(ctx: Context, block: Builder, ty: String, at: LValue)
 end
 
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate,
-        write = validate
-    })
+    read = build_read,
+    write = build_write,
 })

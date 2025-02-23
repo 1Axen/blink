@@ -13,6 +13,12 @@ local projection = require("@builders/projection")
 
 local context = require("@lir/build/context")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
@@ -24,27 +30,17 @@ type Register = lir.RegisterId
 
 local FORMAT = ty_numeral.u16
 
-local function build_read(ctx: Context, block: Builder, brick_color: BrickColor, attributes: Attributes): Register
-    local number = ty_numeral.build.read(ctx, block, FORMAT, attributes)
+local function build_read(props: ReadProps, block: Builder, brick_color: BrickColor): Register
+    local number = ty_numeral.read(props, block, FORMAT)
     return block:store(library.BrickColor.new(number))
 end
 
-local function build_write(ctx: Context, block: Builder, brick_color: BrickColor, attributes: Attributes, at: LValue): ()
-    local number = projection.index(at, constant.from_value("Number"))
-    ty_numeral.build.write(ctx, block, FORMAT, attributes, number)
-end
-
-local function validate(ctx: Context, block: Builder, brick_color: BrickColor, at: LValue)
-    
+local function build_write(props: WriteProps, block: Builder, brick_color: BrickColor, value: RValue): ()
+    local number = projection.index(value :: LValue, constant.from_value("Number"))
+    ty_numeral.write(props, block, FORMAT, number)
 end
 
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate,
-        write = validate
-    })
+    read = build_read,
+    write = build_write,
 })

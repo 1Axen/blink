@@ -16,12 +16,19 @@ local projection = require("@builders/projection")
 
 local context = require("@lir/build/context")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
 type CFrame = ty.CFrame
 type LValue = lir.LValue
+type RValue = lir.RValue
 type Register = lir.RegisterId
 
 local add = binary.add
@@ -53,13 +60,13 @@ local function to_tys(ctx: Context, cframe_ty: CFrame): (ty.Vector, ty.Numeral)
     return pos_ty, rot_ty
 end
 
-local function build_read(ctx: Context, block: Builder, cframe_ty: CFrame, attributes: Attributes): Register
-    local pos_ty, rot_ty = to_tys(ctx, cframe_ty)
+local function build_read(props: ReadProps, block: Builder, cframe_ty: CFrame): Register
+    local pos_ty, rot_ty = to_tys(props.ctx, cframe_ty)
 
-    local pos = ty_vector.build.read(ctx, block, pos_ty, attributes)
-    local rot_x = ty_numeral.build.read(ctx, block, rot_ty, attributes)
-    local rot_y = ty_numeral.build.read(ctx, block, rot_ty, attributes)
-    local rot_z = ty_numeral.build.read(ctx, block, rot_ty, attributes)
+    local pos = ty_vector.read(props, block, pos_ty)
+    local rot_x = ty_numeral.read(props, block, rot_ty)
+    local rot_y = ty_numeral.read(props, block, rot_ty)
+    local rot_z = ty_numeral.read(props, block, rot_ty)
 
     local cos_x = block:store(cos(mul(rot_x, HALF)))
     local sin_x = block:store(sin(mul(rot_x, HALF)))
@@ -102,32 +109,22 @@ local function build_read(ctx: Context, block: Builder, cframe_ty: CFrame, attri
     return block:store(cframe_ctor)
 end
 
-local function build_write(ctx: Context, block: Builder, cframe_ty: CFrame, attributes: Attributes, at: LValue): ()
-    local pos_ty, rot_ty = to_tys(ctx, cframe_ty)
+local function build_write(props: WriteProps, block: Builder, cframe_ty: CFrame, value: RValue): ()
+    local pos_ty, rot_ty = to_tys(props.ctx, cframe_ty)
     
     -- position
-    ty_vector.build.write(ctx, block, pos_ty, attributes, at)
+    ty_vector.write(props, block, pos_ty, value)
 
     -- rotation
-    local to_euler = projection.namecall(at, const("ToEulerAnglesXYZ"), {})
+    local to_euler = projection.namecall(value :: LValue, const("ToEulerAnglesXYZ"), {})
     local rotation_axes = block:store_mult(to_euler, 3)
 
-    ty_numeral.build.write(ctx, block, rot_ty, attributes, rotation_axes[1])
-    ty_numeral.build.write(ctx, block, rot_ty, attributes, rotation_axes[2])
-    ty_numeral.build.write(ctx, block, rot_ty, attributes, rotation_axes[3])
-end
-
-local function validate(ctx: Context, block: Builder, cframe_ty: CFrame, at: LValue)
-    
+    ty_numeral.write(props, block, rot_ty, rotation_axes[1])
+    ty_numeral.write(props, block, rot_ty, rotation_axes[2])
+    ty_numeral.write(props, block, rot_ty, rotation_axes[3])
 end
 
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate,
-        write = validate
-    })
+    read = build_read,
+    write = build_write,
 })

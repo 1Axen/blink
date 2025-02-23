@@ -11,6 +11,12 @@ local condition = require("@builders/condition")
 
 local context = require("@lir/build/context")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
@@ -20,7 +26,7 @@ type RValue = lir.RValue
 type Boolean = ty.Boolean
 type Register = lir.RegisterId
 
-local function build_read(ctx: Context, block: Builder, ty: Boolean, attributes: Attributes): Register
+local function build_read(props: ReadProps, block: Builder, boolean: ty.Boolean): Register
     local bytes = constant.from_value(1)
     local advance = control.advance(bytes)
     local buffer_read = library.buffer.u8.read(advance)
@@ -31,11 +37,11 @@ local function build_read(ctx: Context, block: Builder, ty: Boolean, attributes:
     return block:store(conversion)
 end
 
-local function build_write(ctx: Context, block: Builder, ty: Boolean, attributes: Attributes, at: LValue): ()
+local function build_write(props: WriteProps, block: Builder, boolean: ty.Boolean, value: RValue): ()
     local bytes = constant.from_value(1)
     local allocate = block:store(control.allocate(bytes))
 
-    local truthful = condition.equals(at, constant.from_value(true))
+    local truthful = condition.equals(value, constant.from_value(true))
     local conversion = ternary(truthful, constant.from_value(1), constant.from_value(0)) 
     local buffer_write = library.buffer.u8.write(allocate, conversion)
 
@@ -57,12 +63,6 @@ local function validate_write(ctx: Context, block: Builder, ty: Boolean, at: LVa
 end
 
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate_read,
-        write = validate_write
-    })
+    read = build_read,
+    write = build_write,
 })

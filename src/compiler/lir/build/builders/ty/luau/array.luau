@@ -16,6 +16,12 @@ local context = require("@lir/build/context")
 local length = require("./length")
 local ty_builder = require("@builders/ty")
 
+local types = require("../types")
+
+type TyBuilder = types.TyBuilder
+type ReadProps = types.ReadProps
+type WriteProps = types.WriteProps
+
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.TypeAttributes
@@ -25,26 +31,29 @@ type LValue = lir.LValue
 type RValue = lir.RValue
 type Register = lir.RegisterId
 
-local function build_read(ctx: Context, block: Builder, array: Array, attributes: Attributes): Register
+local function build_read(props: ReadProps, block: Builder, array: ty.Array): Register
+    local ctx = props.ctx
+
     local of = hir.ty_from_id(ctx.hir, array.of)
-    local len = length.read(ctx, block, array, attributes)
+    local len = length.read(props, block, array)
     local array_register = block:store(library.table.create(len))
     
     block:for_numeric(len, function(block, index)
-        local value_register = ty_builder.build.read(ctx, block, of, attributes)
-        local array_index = projection.field(array_register, index)
-        block:store(value_register, array_index)
+        local element = ty_builder.read(props, block, of)
+        local position = projection.field(array_register, index)
+        block:store(element, position)
     end)
 
     return array_register
 end
 
-local function build_write(ctx: Context, block: Builder, array: Array, attributes: Attributes, at: LValue): ()
+local function build_write(props: WriteProps, block: Builder, array: ty.Array, value: RValue): ()
+    local ctx = props.ctx
     local of = hir.ty_from_id(ctx.hir, array.of)
 
-    length.write(ctx, block, array, attributes, unary.len(at))
-    block:for_generic(at, function(block, index, value)
-        ty_builder.build.write(ctx, block, of, attributes, value)
+    length.write(props, block, array, unary.len(value))
+    block:for_generic(value, function(block, _, value)
+        ty_builder.write(props, block, of, value)
     end)
 end
 
@@ -86,12 +95,6 @@ local function validate_read(ctx: Context, block: Builder, array: Array, at: LVa
 end
 
 return table.freeze({
-    build = table.freeze({
-        read = build_read,
-        write = build_write,
-    }),
-    validate = table.freeze({
-        read = validate_read,
-        write = validate
-    })
+    read = build_read,
+    write = build_write,
 })
