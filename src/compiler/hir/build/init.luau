@@ -353,12 +353,6 @@ local function ty_array(ctx: Context, expr: ast.ExprArray): ty.Array
     return ty.array(of, size)
 end
 
-local function ty_union(ctx: Context, expr: ast.ExprUnion): ty.Union
-    local left = expression(ctx, expr.left)
-    local right = expression(ctx, expr.right)
-    return ty.union(left, right)
-end
-
 local function ty_field(ctx: Context, expr: ast.ExprField): ty.Field
     local name = expr.name.value
     local value = expression(ctx, expr.value)
@@ -372,6 +366,12 @@ local function ty_struct(ctx: Context, expr: ast.ExprStruct): ty.Struct
     end
 
     return ty.struct(fields)
+end
+
+local function ty_intersection(ctx: Context, expr: ast.ExprUnion): ty.Intersection
+    local left = expression(ctx, expr.left)
+    local right = expression(ctx, expr.right)
+    return ty.intersection(left, right)
 end
 
 local function ty_optional(ctx: Context, expr: ast.ExprOptional): ty.Optional
@@ -497,7 +497,7 @@ function expression(ctx: Context, expr: ast.Expression | ast.Identifier): TyId<T
         new_ty = ty_array(ctx, expr)
     elseif expr.kind == "union" then
         --TODO: Remove cast when Luau bug is fixed
-        new_ty = ty_union(ctx, expr) :: Ty
+        new_ty = ty_intersection(ctx, expr) :: Ty
     elseif expr.kind == "string" then
         new_ty = ty_string_literal(ctx, expr)
     elseif expr.kind == "struct" then

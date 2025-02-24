@@ -285,22 +285,15 @@ local function create_array<T>(of: TyId<T>, size: Range?): Array<T>
     }
 end
 
-type UnionSide = TyId<
-    | GenericType<Union>
-    | GenericType<Struct> 
-    | Optional<GenericType<Union>>
-    | Optional<GenericType<Struct>> 
->
-
-export type Union = {
-    read kind: "union",
-    read left: UnionSide,
-    read right: UnionSide
+export type Intersection = {
+    read kind: "intersection",
+    read left: TyId,
+    read right: TyId
 }
 
-local function create_union(left: UnionSide, right: UnionSide): Union
+local function create_intersection(left: TyId, right: TyId): Intersection
     return {
-        kind = "union",
+        kind = "intersection",
         left = left,
         right = right
     }
@@ -439,6 +432,7 @@ export type Ty =
     | Optional
     | UnitEnum
     | TaggedEnum
+    | Intersection
     | Unknown
 
     | Generic
@@ -470,12 +464,12 @@ return table.freeze({
 
     set = create_set,
     map = create_map,
-    union = create_union,
     array = create_array,
     struct = create_struct,
     optional = create_optional,
     unit_enum = create_unit_enum,
     tagged_enum = create_tagged_enum,
+    intersection = create_intersection,
     unknown = create_unknown,
 
     generic = create_generic,

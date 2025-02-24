@@ -150,7 +150,7 @@ local function fmt_array(ty: ty.Array): string
     return `\{{fmt_id(ty.of)}\}{fmt_opt_range(ty.size)}`
 end
 
-local function fmt_union(ty: ty.Union): string
+local function fmt_intersection(ty: ty.Intersection): string
     return `{fmt_id(ty.left)} & {fmt_id(ty.right)}`
 end
 
@@ -213,8 +213,6 @@ function fmt_ty(ty: ty.Ty): string
 		return fmt_map(ty)
 	elseif ty.kind == "array" then
 		return fmt_array(ty)
-	elseif ty.kind == "union" then
-		return fmt_union(ty)
 	elseif ty.kind == "struct" then
 		return fmt_struct(ty)
 	elseif ty.kind == "optional" then
@@ -223,6 +221,8 @@ function fmt_ty(ty: ty.Ty): string
 		return fmt_unit_enum(ty)
 	elseif ty.kind == "tagged_enum" then
 		return fmt_tagged_enum(ty)
+    elseif ty.kind == "intersection" then
+        return fmt_intersection(ty)
 	elseif ty.kind == "generic" then
 		return fmt_generic(ty :: ty.Generic)
     elseif ty.kind == "placeholder" then

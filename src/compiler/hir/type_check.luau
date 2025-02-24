@@ -99,7 +99,7 @@ local function check_map(hir: Hir, ty: ty.Map)
     end
 end
 
-local function check_union(hir: Hir, ty: ty.Union)
+local function check_intersection(hir: Hir, ty: ty.Intersection)
     local left = ty_from_id(hir, ty.left)
     local right = ty_from_id(hir, ty.right)
 
@@ -163,7 +163,7 @@ local function check_ty(hir: Hir, ty: ty.Ty)
     if ty.kind == "map" then
         check_map(hir, ty)
     elseif ty.kind == "union" then
-        check_union(hir, ty)
+        check_intersection(hir, ty)
     elseif ty.kind == "vector" then
         check_vector(hir, ty)
     elseif ty.kind == "cframe" then

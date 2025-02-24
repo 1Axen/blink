@@ -153,15 +153,15 @@ local function report_optional_indexer(expr: ast.Expression): never
     .error()
 end
 
-local function report_invalid_union(expr: ast.Expression, got: TyKind, left: TyKind, right: TyKind): never
+local function report_invalid_intersection(expr: ast.Expression, got: TyKind, left: TyKind, right: TyKind): never
     return diagnostics.report.create("Error")
         .with_code(codes.type_checking.InvalidType)
-        .with_message(`Cannot union type "{left}" and type "{right}"`)
+        .with_message(`Cannot intersect type "{left}" and type "{right}"`)
         .with_label(diagnostics.label.create(expr.span)
             .with_color(diagnostics.style.color.red)
             .with_message(`Expected type "struct", got type "{got}" instead`)
         )
-        .with_note("Unions can only be created between two structs")
+        .with_note("Intersections can only be created between two structs")
     .finish()
     .error()
 end
@@ -244,7 +244,7 @@ return table.freeze({
     optional_value = report_optional_value,
     optional_indexer = report_optional_indexer,
 
-    invalid_union = report_invalid_union,
+    invalid_union = report_invalid_intersection,
     unknown_reference = report_unknown_reference,
     unrepresentable_range = report_unrepresentable_range,
     self_recursive_type = report_self_recursive_type,
