@@ -4,6 +4,7 @@
 # New tools can be added by running `rokit add <tool>` in a terminal.
 
 [tools]
+act = "nektos/act@0.2.74"
 selene = "Kampfkarren/selene@0.26.1"
 lune = "filiptibell/lune@0.8.9"
 darklua = "seaofvoices/darklua@0.14.0"
