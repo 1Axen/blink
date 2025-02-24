@@ -15,7 +15,7 @@ jobs:
             - name: Setup rokit
               uses: CompeyDev/setup-rokit@v0.1.2
               with:
-                token: ${{ github.token }}
+                token: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Install tooling
               run:
