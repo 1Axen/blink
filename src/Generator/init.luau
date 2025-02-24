@@ -162,14 +162,16 @@ function Declarations.Set(Declaration: Parser.Set, Read: Blocks.Block, Write: Bl
 		local FlagIndex = 1
 
 		while Remaining > 0 do
-			Write:Line(`{Write:Declare("SET_BITS")} = 0`)
-
 			local Partition = math.min(Remaining, 32)
 
 			for Index = 1, Partition do
 				local Flag = Flags[FlagIndex]
 
-				Write:Line(`SET_BITS = (bit32.replace(SET_BITS, {Variable}{FormatIndex(Flag)} and 1 or 0, {Index - 1}))`)
+				if Index == 1 then
+					Write:Line(`{Write:Declare("SET_BITS")} = {Variable}{FormatIndex(Flag)} and 1 or 0`)
+				else
+					Write:Line(`SET_BITS += {Variable}{FormatIndex(Flag)} and {BitIndexToHex(Index - 1)} or 0`)
+				end
 
 				FlagIndex += 1
 			end
