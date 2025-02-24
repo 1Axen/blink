@@ -12,8 +12,14 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v4
 
-            - name: Setup Lune
-              uses: CompeyDev/setup-lune@v0.1.0
+            - name: Setup rokit
+              uses: CompeyDev/setup-rokit@v0.1.2
+              with:
+                token: ${{ github.token }}
+
+            - name: Install tooling
+              run:
+                  rokit install --no-trust-check
 
             - name: Run tests
               id: run-tests
