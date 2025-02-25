@@ -398,7 +398,7 @@ export type GenericType = {
     read args: {TyId}
 }
 
-local function create_generic_type(def: TyId, args: {TyId}): GenericType
+local function create_generic_type(def: Ty, args: {TyId}): GenericType
     return {
         kind = "generic_type",
         def = def,
