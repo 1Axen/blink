@@ -285,10 +285,16 @@ local function create_array(of: TyId, size: Range?): Array
     }
 end
 
+export type IntersectionSide = 
+    | Struct
+    | Optional
+    | GenericType
+    | Intersection
+
 export type Intersection = {
     read kind: "intersection",
-    read left: TyId,
-    read right: TyId
+    read left: TyId<IntersectionSide>,
+    read right: TyId<IntersectionSide>
 }
 
 local function create_intersection(left: TyId, right: TyId): Intersection
