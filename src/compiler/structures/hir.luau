@@ -19,13 +19,13 @@ export type Parameter = {
     value: TyId
 }
 
-export type Type<T = Ty> = {
+export type Type = {
     read kind: "type",
     read name: string,
     read scope: ScopeId,
     read attributes: attributes.TypeAttributes,
 
-    read ty: TyId<T>,
+    read ty: TyId,
     read generics: {TyId<ty.Generic>}?
 } 
 
