@@ -29,7 +29,7 @@ type Node = ast.Node
 type Hir = hir.Hir
 type Ast = ast.Ast
 
-type TyId<T = Ty> = ty.TyId
+type TyId<T = Ty> = ty.TyId<T>
 type DeclId<T = Decl> = hir.DeclId<T>
 type NodeId<T = Node> = ast.NodeId<T>
 type ScopeId = hir.ScopeId
