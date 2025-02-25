@@ -39,20 +39,22 @@ type TyKind = ty.TyKind
 type Range = range.Range
 type Symbols = ast.Symbols
 
+type Generics = {
+    args: {TyId<ty.Generic>},
+    values: {[string]: TyId<ty.Generic>}
+}
+
 type Context = {
     read hir: Hir,
     read file_id: number,
 
     scope: ScopeId,
-    generics: {
-        args: {TyId<ty.Generic>},
-        values: {[string]: TyId<ty.Generic>}
-    }?,
+    generics: Generics?,
 }
 
 local block: (ctx: Context, node: ast.Block) -> ()
 local statement: (ctx: Context, stat: ast.Statement) -> DeclId?
-local expression: (ctx: Context, expr: ast.Expression) -> TyId<Ty>
+local expression: (ctx: Context, expr: ast.Expression, generics: Generics?) -> TyId<Ty>
 
 local function path_to_segments(path: ast.Path): {string}
     local segments: {string} = {}
@@ -480,10 +482,14 @@ local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference): TyId
     return ref_decl.ty
 end
 
-function expression(ctx: Context, expr: ast.Expression | ast.Identifier): TyId<Ty>
+function expression(ctx: Context, expr: ast.Expression | ast.Identifier, generics: Generics?): TyId<Ty>
     --> assign node_id
     local node_id = store_node(ctx, expr)
     local ty_id = id.node_id.to_ty_id(node_id)
+
+    if generics ~= nil then
+        ctx.generics = generics
+    end
 
     --> process node
     local new_ty: Ty;
@@ -530,8 +536,9 @@ function expression(ctx: Context, expr: ast.Expression | ast.Identifier): TyId<T
         panic(`Unhandled expression "{expr.kind}"`)
     end
 
-    if ctx.generics then
-        new_ty = ty.generic_type(new_ty, ctx.generics.args)
+    if generics then
+        new_ty = ty.generic_type(new_ty, generics.args)
+        ctx.generics = nil
     end
 
     --> store ty
@@ -561,13 +568,14 @@ local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
 
     --> set generics
     local args: {TyId<ty.Generic>}?;
-    local generics = stat.generics
+    local generics: Generics?;
+    local generics_def = stat.generics
 
-    if generics then
+    if generics_def then
         local values: {[string]: TyId<ty.Generic>} = {}
         args = {}
 
-        for index, value in generics.values do
+        for index, value in generics_def.values do
             local name = value.name
             local node_id = store_node(ctx, value)
             local ty_id = id.node_id.to_ty_id(node_id)
@@ -578,17 +586,14 @@ local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
             values[name.value] = ty_id
         end
 
-        ctx.generics = {
+        generics = {
             args = args,
             values = values
         }
     end
 
     --> lower expression
-    local ty_id = expression(ctx, stat.value)
-
-    --> remove generics
-    ctx.generics = nil
+    local ty_id = expression(ctx, stat.value, generics)
 
     return {
         kind = "type",
@@ -792,7 +797,7 @@ end
     Constructs a HIR from the provided files map.
     @param `files` - A map of `file_id` to an `AST`. A `file_id` of **0** must always correspond to the **entry file**.
 ]=]
-local function build_hir(files: types.FilesMap): Hir
+local function from_files(files: types.FilesMap): Hir
     local new_hir: Hir = {
         tys = {},
         decls = {},
@@ -810,5 +815,5 @@ local function build_hir(files: types.FilesMap): Hir
 end
 
 return table.freeze({
-    hir = build_hir
+    hir = from_files
 })
