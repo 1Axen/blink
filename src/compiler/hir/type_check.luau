@@ -18,6 +18,7 @@ type NodeId<T = Node> = ast.NodeId<T>
 
 type TyKind = ty.TyKind
 
+local follow = hir.follow
 local ty_from_id = hir.ty_from_id
 local node_from_id = hir.node_from_id
 
@@ -28,20 +29,6 @@ end
 
 local function ty_id_to_ty_kind(hir: Hir, ty_id: TyId): TyKind
     return ty_from_id(hir, ty_id).kind
-end
-
-local function ty_to_base_ty_kind(ty: Ty): TyKind
-    if ty.kind == "optional" then
-        return ty_to_base_ty_kind(ty.of)
-    elseif ty.kind == "generic_type" then
-        return ty_to_base_ty_kind(ty.def)
-    end
-
-    return ty.kind
-end
-
-local function is_ty_of_kind(ty: Ty, kind: TyKind): boolean
-    return ty_to_base_ty_kind(ty) == kind
 end
 
 local function assert_ty_kind(hir: Hir, ty_id: TyId, kind: TyKind)
@@ -103,19 +90,19 @@ local function check_intersection(hir: Hir, ty: ty.Intersection)
     local left = ty_from_id(hir, ty.left)
     local right = ty_from_id(hir, ty.right)
 
-    local left_kind = ty_to_base_ty_kind(left)
-    local right_kind = ty_to_base_ty_kind(right)
+    left = follow(hir, left)
+    right = follow(hir, right)
 
-    if left_kind ~= "struct" then
+    if left.kind ~= "struct" and left.kind ~= "intersection" then
         local node_id = id.ty_id.to_node_id(ty.left)
         local node = node_from_id(hir, node_id)
         --TODO: Remove cast (Luau bug)
-        report.invalid_union(node :: any, left_kind, left_kind, right_kind)
-    elseif right_kind ~= "struct" then
+        report.invalid_union(node :: any, left.kind, left.kind, right.kind)
+    elseif right.kind ~= "struct" and right.kind ~= "intersection" then
         local node_id = id.ty_id.to_node_id(ty.right)
         local node = node_from_id(hir, node_id)
         --TODO: Remove cast (Luau bug)
-        report.invalid_union(node :: any, right_kind, left_kind, right_kind)
+        report.invalid_union(node :: any, right.kind, left.kind, right.kind)
     end
 end
 
