@@ -98,14 +98,16 @@ local function node_from_id<T>(hir: Hir, node_id: NodeId<T>): T
     return node
 end
 
-local function follow(hir: Hir, ty: ty.Ty)
+local function follow(hir: Hir, ty: ty.Ty): ty.Ty
     if ty.kind == "optional" then
-        return follow(hir, ty_from_id(hir, ty.of))
+        local of = ty_from_id(hir, ty.of)
+        return follow(hir, of)
     elseif ty.kind == "generic_type" then
         return follow(hir, ty.def)
     end
 
-    return ty
+    -- SOLVER BUG
+    return ty :: any
 end
 
 return table.freeze({
