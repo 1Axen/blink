@@ -97,7 +97,7 @@ local function build_type(ctx: Context, decl_id: DeclId<hir.Type>): lir.Type
 
     local read_fn = builders.fn.create(`read_{decl.name}`, args, rets, function(block)
         local value_register = builders.ty.read(read_props, block, ty)
-        block:rtrn({value_register :: lir.RValue})
+        block:rtrn({value_register :: lir.RValue<any>})
     end)
 
     local write_fn = builders.fn.create(`write_{decl.name}`, args, rets, function(block)
@@ -122,7 +122,7 @@ local function build_function(ctx: Context, decl_id: DeclId<hir.Function>): lir.
     return nil :: any
 end
 
-local function build_lir(hir: hir.Hir): lir.Lir
+local function from_hir(hir: hir.Hir): lir.Lir
     local lir: Lir = {
         fns = {},
         types = {},
@@ -151,5 +151,5 @@ local function build_lir(hir: hir.Hir): lir.Lir
 end
 
 return table.freeze({
-    lir = build_lir
+    from_hir = from_hir
 })
