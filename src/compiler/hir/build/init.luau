@@ -815,5 +815,5 @@ local function from_files(files: types.FilesMap): Hir
 end
 
 return table.freeze({
-    hir = from_files
+    from_files = from_files
 })

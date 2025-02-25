@@ -8,10 +8,12 @@ local ast = require("@structures/ast")
 
 local build = require("./build")
 local type_check = require("./type_check")
+local flatten_tys = require("./flatten_tys")
 
 local function hir_from_files(files: {[number]: ast.Ast}): hir.Hir
-    local hir = build.hir(files)
+    local hir = build.from_files(files)
     type_check.hir(hir)
+    flatten_tys.hir(hir)
     return hir
 end
 
