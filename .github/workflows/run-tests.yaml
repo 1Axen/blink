@@ -17,10 +17,6 @@ jobs:
               with:
                 token: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Install tooling
-              run:
-                  rokit install --no-trust-check
-
             - name: Run tests
               id: run-tests
               run: |
