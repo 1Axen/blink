@@ -271,13 +271,13 @@ local function create_struct(fields: {Field}): Struct
     }
 end
 
-export type Array<T = Ty> = {
+export type Array = {
     read kind: "array",
-    read of: TyId<T>,
+    read of: TyId,
     read size: Range?
 }
 
-local function create_array<T>(of: TyId<T>, size: Range?): Array<T>
+local function create_array(of: TyId, size: Range?): Array
     return {
         kind = "array",
         of = of,
@@ -299,12 +299,12 @@ local function create_intersection(left: TyId, right: TyId): Intersection
     }
 end
 
-export type Optional<T = Ty> = {
+export type Optional = {
     read kind: "optional",
-    read of: TyId<T>,
+    read of: TyId,
 }
 
-local function create_optional<T>(of: TyId<T>): Optional<T>
+local function create_optional(of: TyId): Optional
     return {
         kind = "optional",
         of = of,
@@ -392,13 +392,13 @@ local function create_placeholder(path: {string}, args: {TyId}?): Placeholder
     }
 end
 
-export type GenericType<T = Ty> = {
+export type GenericType = {
     read kind: "generic_type",
-    read def: T,
+    read def: Ty,
     read args: {TyId}
 }
 
-local function create_generic_type(def: Ty, args: {TyId}): GenericType
+local function create_generic_type(def: TyId, args: {TyId}): GenericType
     return {
         kind = "generic_type",
         def = def,
