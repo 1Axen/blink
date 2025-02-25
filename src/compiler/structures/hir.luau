@@ -98,7 +98,18 @@ local function node_from_id<T>(hir: Hir, node_id: NodeId<T>): T
     return node
 end
 
+local function follow(hir: Hir, ty: ty.Ty)
+    if ty.kind == "optional" then
+        return follow(hir, ty_from_id(hir, ty.of))
+    elseif ty.kind == "generic_type" then
+        return follow(hir, ty.def)
+    end
+
+    return ty
+end
+
 return table.freeze({
+    follow = follow,
     ty_from_id = ty_from_id,
     decl_from_id = decl_from_id,
     node_from_id = node_from_id,
