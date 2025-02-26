@@ -78,6 +78,10 @@ end
 
 local function build_type(ctx: Context, decl_id: DeclId<hir.Type>): lir.Type
     local decl = hir.decl_from_id(ctx.hir, decl_id)
+    if decl.generics then
+        return nil :: any
+    end
+
     local ty = hir.ty_from_id(ctx.hir, decl.ty)
 
     local rets = {builders.fn.returnn(ty)}

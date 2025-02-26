@@ -71,6 +71,19 @@ local BUILDERS: {[ty.TyKind]: TyBuilder?} = {
     date_time_millis = ty_date_time_millis,
 }
 
+local function replace_generic(props: ReadProps | WriteProps, ty: Ty): Ty
+    if ty.kind ~= "generic" then
+        return ty
+    end
+
+    local generics = props.generics
+    if generics == nil then
+        return panic(`Tried to get builder for generic, but there are no generics`)
+    end
+    
+    return generics[ty.index]
+end
+
 local function builder_from_ty(ty: Ty): TyBuilder
     local kind = ty.kind
     if kind == "map" then
@@ -114,11 +127,15 @@ local function builder_from_ty(ty: Ty): TyBuilder
 end
 
 local function build_read(props: ReadProps, block: Builder, ty: Ty): Register<any>
+    ty = replace_generic(props, ty)
+    
     local ty_builder = builder_from_ty(ty)
     return ty_builder.read(props, block, ty)
 end
 
 local function build_write(props: WriteProps, block: Builder, ty: Ty, value: RValue<any>): ()
+    ty = replace_generic(props, ty)
+
     local ty_builder = builder_from_ty(ty)
     return ty_builder.write(props, block, ty, value)
 end

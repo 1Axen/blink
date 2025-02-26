@@ -15,11 +15,13 @@ type Attributes = attributes.TypeAttributes
 
 export type ReadProps = {
     ctx: Context,
+    generics: {Ty}?,
     attributes: Attributes,
 }
 
 export type WriteProps = {
     ctx: Context,
+    generics: {Ty}?,
     validate: boolean,
     attributes: Attributes,
 }
