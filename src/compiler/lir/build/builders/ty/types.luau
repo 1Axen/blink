@@ -6,6 +6,7 @@ local fn = require("@builders/fn")
 local context = require("@lir/build/context")
 
 type Ty = ty.Ty
+type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
@@ -27,7 +28,7 @@ export type WriteProps = {
 }
 
 export type TyBuilder = {
-    read read: (props: ReadProps, block: Builder, ty: Ty) -> Register<any>,
+    read read: (props: ReadProps, block: Builder, ty: Ty, target: Register<any>?) -> Register<any>,
     read write: (props: WriteProps, block: Builder, ty: Ty, value: RValue<any>) -> ()
 }
 

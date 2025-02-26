@@ -49,6 +49,7 @@ local ty_struct: TyBuilder?;
 local ty_optional: TyBuilder?;
 local ty_tagged_enum: TyBuilder?;
 local ty_generic_type: TyBuilder?;
+local ty_intersection: TyBuilder?;
 
 local BUILDERS: {[ty.TyKind]: TyBuilder?} = {
     set = ty_set,
@@ -116,6 +117,11 @@ local function builder_from_ty(ty: Ty): TyBuilder
             ty_generic_type = (require :: any)("./luau/generic_type")
         end
         return ty_generic_type
+    elseif kind == "intersection" then
+        if ty_intersection == nil then
+            ty_intersection = (require :: any)("./luau/intersection")
+        end
+        return ty_intersection
     end
 
     local ty_builder = BUILDERS[kind]
