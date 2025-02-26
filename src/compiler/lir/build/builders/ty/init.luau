@@ -12,7 +12,6 @@ local types = require("./types")
 
 local ty_set = require("./luau/set")
 local ty_unit_enum = require("./luau/unit_enum")
-local ty_tagged_enum = require("./luau/tagged_enum")
 
 local ty_buffer = require("./luau/buffer")
 local ty_string = require("./luau/string")
@@ -48,12 +47,12 @@ local ty_map: TyBuilder?;
 local ty_array: TyBuilder?;
 local ty_struct: TyBuilder?;
 local ty_optional: TyBuilder?;
+local ty_tagged_enum: TyBuilder?;
 local ty_generic_type: TyBuilder?;
 
 local BUILDERS: {[ty.TyKind]: TyBuilder?} = {
     set = ty_set,
     unit_enum = ty_unit_enum,
-    tagged_enum = ty_tagged_enum,
 
     buffer = ty_buffer,
     string = ty_string,
@@ -94,6 +93,11 @@ local function builder_from_ty(ty: Ty): TyBuilder
             ty_optional = (require :: any)("./luau/optional")
         end
         return ty_optional
+    elseif kind == "tagged_enum" then
+        if ty_tagged_enum == nil then
+            ty_tagged_enum = (require :: any)("./luau/tagged_enum")
+        end
+        return ty_tagged_enum
     elseif kind == "generic_type" then
         if ty_generic_type == nil then
             ty_generic_type = (require :: any)("./luau/generic_type")
