@@ -113,6 +113,10 @@ local function FormatIndex(Index: string): string
 	return `.{Index}`
 end
 
+local function BitIndexToHex(Index: number): string
+	return `0x{string.format("%x", 2 ^ Index)}`
+end
+
 --> Declaration functions
 
 function Declarations.Primitive(Declaration: Parser.Primitive, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
@@ -125,45 +129,52 @@ end
 function Declarations.Set(Declaration: Parser.Set, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	local Value = Declaration.Value
 	local Flags = Value.Values
+	
+	do
+		--> Read Flags
 
-	local BitsType = Prefabs.GetTypeToUseByBits(math.min(#Flags, 32))
-	local IsOverBit32Limit = #Flags > 32
+		Read:Line(`{Read:Declare(Variable)} = \{\}`)
 
-	--> Read body
-	if not IsOverBit32Limit then
-		BitsType.Read("SET_BITS", Read)
-	end
+		local Remaining = #Flags
+		local FlagIndex = 1
+	
+		while Remaining > 0 do
+			local Partition = math.min(Remaining, 32)
+			Prefabs.GetTypeToUseByBits(Partition).Read("SET_BITS", Read)
 
-	Read:Line(`{Read:Declare(Variable)} = \{`)
+			for Index = 1, Partition do
+				local Flag = Flags[FlagIndex]
 
-	for Index, Flag in Flags do
-		Read:EmptyDeclare(Flag)
+				Read:EmptyDeclare(Flag)
+				Read:Line(`{Variable}{FormatIndex(Flag)} = bit32.btest(SET_BITS, {BitIndexToHex(Index - 1)});`)
 
-		if IsOverBit32Limit then
-			Prefabs.Types.boolean.Read(Flag, Read)
-			Read:Character(",")
-		else
-			Read:Line(`{FormatKey(Flag)} = (bit32.extract(SET_BITS, {Index - 1}) == 1),`, Read.Indent + 1)
+				FlagIndex += 1
+			end
+
+			Remaining -= Partition
 		end
 	end
 
-	Read:Line("}")
+	do		
+		--> Write body
 
-	--> Write body
-	if not IsOverBit32Limit then
-		Write:Line("local SET_BITS = 0")
-	end
+		local Remaining = #Flags
+		local FlagIndex = 1
 
-	for Index, Flag in Flags do
-		if IsOverBit32Limit then
-			Prefabs.Types.boolean.Write(`{Variable}{FormatIndex(Flag)}`, Write)
-		else
-			Write:Line(`SET_BITS = bit32.bor(SET_BITS, bit32.lshift(({Variable}{FormatIndex(Flag)}) and 1 or 0, {Index - 1}))`)
+		while Remaining > 0 do
+			local Partition = math.min(Remaining, 32)
+			Write:Line(`{Write:Declare("SET_BITS")} = 0`)
+
+			for Index = 1, Partition do
+				local Flag = Flags[FlagIndex]
+				Write:Line(`if {Variable}{FormatIndex(Flag)} == true then SET_BITS += {BitIndexToHex(Index - 1)} end`)
+				FlagIndex += 1
+			end
+
+			Prefabs.GetTypeToUseByBits(Partition).Write("SET_BITS", Write)
+
+			Remaining -= Partition
 		end
-	end
-
-	if not IsOverBit32Limit then
-		BitsType.Write("SET_BITS", Write)
 	end
 end
 
