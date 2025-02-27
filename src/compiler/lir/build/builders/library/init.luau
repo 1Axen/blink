@@ -11,6 +11,7 @@ local table_lib = require("./table")
 local vector_lib = require("./vector")
 local buffer_lib = require("./buffer")
 local roblox_lib = require("./roblox")
+local coroutine_lib = require("./coroutine")
 
 type Call<T> = lir.ProjCall<T>
 type RValue<T> = lir.RValue<T>
@@ -46,6 +47,7 @@ return table.freeze({
     table = table_lib,
     vector = vector_lib,
     buffer = buffer_lib,
+    coroutine = coroutine_lib,
 
     CFrame = roblox_lib.CFrame,
     Color3 = roblox_lib.Color3,

@@ -1,0 +1,46 @@
+--!strict
+
+local lir = require("@structures/lir")
+
+local constant = require("@builders/constant")
+local projection = require("@builders/projection")
+
+type Call<T> = lir.ProjCall<T>
+type RValue<T> = lir.RValue<T>
+
+type Status = typeof(coroutine.status(nil :: any))
+
+local function create(fn: RValue<any>): Call<thread>
+    return projection.call(
+        constant.from_value("coroutine.create"),
+        {fn} :: {RValue<any>}
+    )
+end
+
+local function resume(thread: RValue<thread>, ...: RValue<any>): Call<nil>
+    return projection.call(
+        constant.from_value("coroutine.resume"),
+        {thread, ...} :: {RValue<any>}
+    )
+end
+
+local function status(thread: RValue<thread>): Call<Status>
+    return projection.call(
+        constant.from_value("coroutine.status"),
+        {thread} :: {RValue<any>}
+    )
+end
+
+local function close(thread: RValue<thread>): Call<nil>
+    return projection.call(
+        constant.from_value("coroutine.close"),
+        {thread} :: {RValue<any>}
+    )
+end
+
+return table.freeze({
+    create = create,
+    resume = resume,
+    status = status,
+    close = close,
+})
