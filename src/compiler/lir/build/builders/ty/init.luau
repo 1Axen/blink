@@ -58,9 +58,12 @@ local BUILDERS: {[ty.TyKind]: TyBuilder?} = {
     buffer = ty_buffer,
     string = ty_string,
     vector = ty_vector,
-    literal = ty_literal,
     numeral = ty_numeral,
     boolean = ty_boolean,
+
+    string_literal = ty_literal,
+    number_literal = ty_literal,
+    boolean_literal = ty_literal,
 
     cframe = ty_cframe,
     color3 = ty_color3,
