@@ -4,6 +4,7 @@
 
 local file = require("@util/file")
 local span = require("@util/span")
+local panic = require("@util/panic")
 
 export type TokenBase<Kind> = {
     read kind: Kind,
@@ -56,6 +57,8 @@ export type Token =
     | TokenBase<"eof">
 
 export type TokenKind = index<Token, "kind">
+
+local NULL = 0
 
 local DOT = string.byte(".")
 local QOUTE = string.byte("\"")
@@ -168,14 +171,14 @@ local function tokenize(input: file.File): {Token}
                     end
 
                     char = advance_peek()
-                until (counter == 2)
+                until (counter == 2 or char == NULL)
 
                 return nil
             end
 
             repeat
                 char = advance_peek()
-            until (char == NEW_LINE or char == CARRIAGE_RETURN)
+            until (char == NEW_LINE or char == CARRIAGE_RETURN or char == NULL)
 
             return nil
         --> word, can't start with numeral
