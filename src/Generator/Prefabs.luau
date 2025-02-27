@@ -71,7 +71,7 @@ local Asserts = {
 		return {
 			Lower = `error("Something has gone wrong")`,
 			Upper = `error("Something has gone wrong")`,
-			Exact = `if (not {Variable}) or typeof({Variable}) ~= "Instance" then error(\`Expected an Instance, got \{typeof({Variable})} instead.\`) end\nif not {Variable}:IsA("{Class}") then error(\`Expected an Instance of type "{Class}", got "\{{Variable}.ClassName}" instead.\`) end`,
+			Exact = `if typeof({Variable}) ~= "Instance" then error(\`Expected an Instance, got \{typeof({Variable})} instead.\`) end\nif not {Variable}:IsA("{Class}") then error(\`Expected an Instance of type "{Class}", got "\{{Variable}.ClassName}" instead.\`) end`,
 		}
 	end,
 }
@@ -135,7 +135,7 @@ local function GeneratePrimitivePrefab(Type: string, Prefab: TypePrefab, AssertG
 			if not AssertGenerator then
 				return
 			end
-
+			
 			if Range then
 				local Assert = AssertGenerator(Variable, Range.Min, Range.Max)
 				if not IsVariableSize and Assert.Exact then
@@ -146,7 +146,7 @@ local function GeneratePrimitivePrefab(Type: string, Prefab: TypePrefab, AssertG
 				end
 			elseif Primitive == "Instance" and Class then
 				local Assert = AssertGenerator(Variable, Class)
-				if Value.Optional and Block == Write then
+				if Block == Write then
 					Block:Compare(Variable, "nil", "Not")
 						:Multiline(Assert.Exact, Block.Indent + 1)
 					:End()

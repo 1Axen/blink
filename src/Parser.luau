@@ -1286,7 +1286,10 @@ function Parser.Type(self: Parser, Name: Token, Keyword: Token?, IsDataField: bo
 
     -- ex: vector<u8> and u8(0..00)
     if Primitive then
-        Value.Components = self:Components(Primitive)
+        local Components = self:Components(Primitive)
+        if Components then
+            Value.Components = Components
+        end
         
         local Range = self:Range(Primitive)
         if Range then
@@ -1333,7 +1336,7 @@ function Parser.Type(self: Parser, Name: Token, Keyword: Token?, IsDataField: bo
             break
         end
     end
-    
+
     return Declaration
 end
 
@@ -1621,7 +1624,6 @@ function Parser.Declaration(self: Parser, Name: Token): TypeNode
     local List = (Generics and Generics.Keys[Token.Value])
     if List then
         local Generic: Generic = {
-            __debug = os.clock(),
             Type = "Generic",
             Name = Name.Value,
             Value = { Generic = Token.Value },
@@ -1643,12 +1645,8 @@ function Parser.Declaration(self: Parser, Name: Token): TypeNode
     local To = Reference.To
 
     --> Need to use the new node name
-    To = {
-        Name = Name.Value,
-        Type = To.Type :: any,
-        Value = To.Value :: any,
-        Tokens = To.Tokens :: any
-    }
+    To = table.clone(To)
+    To.Name = Name.Value
     
     if GENERICS_TYPES[To.Type] and To.Value.Generics then
         To = self:ReplaceGenerics(To)

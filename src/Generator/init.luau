@@ -827,11 +827,16 @@ function Declarations.Array(Declaration: Parser.Array, Read: Blocks.Block, Write
 	Write:Comment("END ARRAY")
 end
 
-function Declarations.Optional(Declaration: Parser.Optional, Read: Blocks.Block, Write: Blocks.Block, Variable: string, IsInstance: boolean)
+function Declarations.Optional(Declaration: Parser.Optional, Read: Blocks.Block, Write: Blocks.Block, Variable: string)
 	Read:Declare(Variable, true)
 
+	local Of = Declaration.Value.Of
+	local IsInstance = if Of.Type == "Primitive" then Of.Tokens.Primitive.Value == "Instance" else false
+
 	if IsInstance then
+		Read:Line("RecieveInstanceCursor += 1")
 		Read = Read:Compare("typeof(RecieveInstances[RecieveInstanceCursor])", "\"Instance\"", "Equals")
+		Read:Line("RecieveInstanceCursor -= 1")
 	else
 		Types.u8.Write(`{Variable} ~= nil and 1 or 0`, Write)
 		Read = Read:Compare(`buffer.readu8(RecieveBuffer, {Read:Read(1)})`, "1", "Equals")
@@ -850,25 +855,18 @@ end
 function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Blocks.Block, Variable: string?)
 	local Name = Declaration.Name
 	local Variable = Variable or "Value"
-	local IsInstance = false
-
-	if Declaration.Type == "Primitive" then
-		local Tokens = (Declaration :: Parser.Primitive).Tokens
-		local Primitive = Tokens.Primitive.Value
-		IsInstance = (Primitive == "Instance")
-	end
 
 	if not _G.BUNDLED then
 		Read:Comment(`{Variable}: {Name}`)
 		Write:Comment(`{Variable}: {Name}`)
 	end
 
-	--> Instance
-	if IsInstance then
-		Read:Line("RecieveInstanceCursor += 1")
-	end
-
 	if Declaration.Type == "Primitive" then
+		local Kind = (Declaration :: Parser.Primitive).Tokens.Primitive.Value
+		if Kind == "Instance" then
+			Read:Line("RecieveInstanceCursor += 1")
+		end
+
         Declarations.Primitive(Declaration, Read, Write, Variable)
 	elseif Declaration.Type == "Set" then
 		Declarations.Set(Declaration, Read, Write, Variable)
@@ -885,7 +883,7 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 	elseif Declaration.Type == "Array" then
 		Declarations.Array(Declaration, Read, Write, Variable)
 	elseif Declaration.Type == "Optional" then
-		Declarations.Optional(Declaration, Read, Write, Variable, IsInstance)
+		Declarations.Optional(Declaration, Read, Write, Variable)
     end
 end
 

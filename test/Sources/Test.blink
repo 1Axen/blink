@@ -152,6 +152,13 @@ struct MapStruct {
     Map: map {[string]: u8}
 }
 
+event SendOccupiedCell {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+    Data: IntegerVector
+}
+
 event ClientPollEvent {
     From: Client,
     Type: Reliable,

@@ -50,7 +50,8 @@ if stdio.prompt("confirm", "Compile files?") then
     PrettyPrint("green", `Successfully compiled {#Sources}/{#Sources} source files!`)
 end
 
-local BaseEnvironment = require("Shared").GetEnvironment()
+local Shared = require("Shared")
+local BaseEnvironment = Shared.GetEnvironment()
 local ClientEnvironment = require("Client")
 local ServerEnvironment = require("Server")
 
@@ -508,6 +509,42 @@ local function FireAndPollExpect(Name: string, OutgoingEvent: any, IncomingEvent
     OkPrint(`Test "{Name}" passed!`)
 end
 
+local function FireAndExpectSeparate(Name: string, OutgoingEvent: any, IncomingEvent: any, Value: any, Expect: any)
+    PrettyPrint("cyan", `Testing: {Name}...`, true)
+
+    local Result: unknown;
+    local IsServerSending = (OutgoingEvent.FireAll ~= nil)
+    local IsServerRecieving = (OutgoingEvent.FireAll == nil)
+
+    local Disconnect = IncomingEvent.On(function(First, Second)
+        if IsServerRecieving then
+            if tostring(First) ~= "Player" then
+                ErrorPrint(`Expected argument #1 to {Name} to be Player, got {First} instead.`)
+            end
+
+            Result = Second
+        else
+            Result = First
+        end
+    end)
+
+    if IsServerSending then
+        OutgoingEvent.FireAll(Value)
+    else
+        OutgoingEvent.Fire(Value)
+    end
+
+    --> Wait for replication
+    task.wait(1 / 30)
+
+    if not Equals(Result, Expect) then
+        Fail(Name, Expect, Result)
+    end
+
+    Disconnect()
+    OkPrint(`Test "{Name}" passed!`)
+end
+
 local function RunClosure(Name: string, Closure: () -> ())
     PrettyPrint("cyan", `Testing: {Name}...`, true)
 
@@ -601,8 +638,9 @@ FireAndExpect("Optional (nil)", Server.OptionalPrimitive, Client.OptionalPrimiti
 
 FireAndExpect("Instance Any", Server.InstanceAny, Client.InstanceAny, Instance)
 FireAndExpect("Instance Type", Server.InstanceOfType, Client.InstanceOfType, Instance)
+FireAndFail("Instance Type (Fail)", Server.InstanceOfType, Client.InstanceOfType, nil)
 FireAndExpect("Instance Optional", Server.InstanceOptional, Client.InstanceOptional, Instance)
-FireAndExpect("Instance Optional (nil)", Server.InstanceOptional, Client.InstanceOptional, nil)
+FireAndExpectSeparate("Instance Optional (nil)", Server.InstanceOptional, Client.InstanceOptional, Shared.ServerOnlyInstance, nil)
 
 local Array = table.create(8, Example)
 FireAndExpect("Reference", Server.Reference, Client.Reference, Example)

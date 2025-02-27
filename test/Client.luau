@@ -40,6 +40,12 @@ Shared.Bridge:Connect(function(From: string, Remote: string, Buffer: buffer, Ins
         return
     end
 
+    for Index, Value in Instances do
+        if Value == Shared.ServerOnlyInstance then
+            Instances[Index] = nil
+        end
+    end
+
     ClientEnviornment.Instances[Remote].OnClientEvent:Fire(Buffer, Instances)
 end)
 

@@ -1,10 +1,13 @@
 local task = require("@lune/task")
+local roblox = require("@lune/roblox")
 
 local Player = newproxy(true)
 local Metatable = getmetatable(Player)
 Metatable.__tostring = function()
     return "Player"
 end
+
+local ServerOnlyInstance = (newproxy() :: any) :: Instance
 
 local Signal = {}
 Signal.__index = Signal
@@ -102,6 +105,7 @@ return {
     Signal = Signal,
     Player = Player,
     Bridge = Signal.new(),
-    GetEnvironment = GetEnvironment
+    GetEnvironment = GetEnvironment,
+    ServerOnlyInstance = roblox.Instance.new("Instance"),
 }
 
