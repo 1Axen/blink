@@ -34,8 +34,15 @@ type Register<T> = lir.RegisterId<T>
 
 local function props_with_generics(base_props: ReadProps | WriteProps, generic_type: GenericType): ReadProps | WriteProps
     local args: {Ty} = {}
-    for index, generic_arg in generic_type.args do
-        args[index] = hir.ty_from_id(base_props.ctx.hir, generic_arg)
+    local generics = base_props.generics
+    
+    for index, generic_id in generic_type.args do
+        local generic_ty = hir.ty_from_id(base_props.ctx.hir, generic_id)
+        if generic_ty.kind == "generic" and generics then
+            generic_ty = generics[generic_ty.index]
+        end
+
+        args[index] = generic_ty
     end
     
     local new_props = table.clone(base_props)
