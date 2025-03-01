@@ -17,8 +17,8 @@ local TERM_STYLE = colorful.combineStyles({colorful.modifier.bold})
 local BLOCK_STYLE = colorful.combineStyles({colorful.color.blue, colorful.modifier.bold})
 local INDEX_STYLE = colorful.combineStyles({colorful.color.blueBright})
 
-local fmt_lvalue: (fmt_builder: Builder, lvalue: lir.LValue) -> ()
-local fmt_rvalue: (fmt_builder: Builder, rvalue: lir.RValue) -> ()
+local fmt_lvalue: (fmt_builder: Builder, lvalue: lir.LValue<any>) -> ()
+local fmt_rvalue: (fmt_builder: Builder, rvalue: lir.RValue<any>) -> ()
 
 local function block_ident(block: lir.BasicBlock): string
     return colorful.color.yellow(`bb{block.index}`)
@@ -36,7 +36,7 @@ local function separated<T>(fmt_builder: Builder, formatter: (fmt_builder: Build
     end
 end
 
-local function fmt_id(fmt_builder: Builder, id: lir.Id)
+local function fmt_id(fmt_builder: Builder, id: lir.Id<any>)
     if id.kind == "argument" then
         builder.append(fmt_builder, ID_STYLE("a"))
     elseif id.kind == "register" then
@@ -48,7 +48,7 @@ local function fmt_id(fmt_builder: Builder, id: lir.Id)
     builder.append(fmt_builder, ID_STYLE(tostring(id.index)))
 end
 
-local function fmt_global(fmt_builder: Builder, global: lir.Global)
+local function fmt_global(fmt_builder: Builder, global: lir.Global<any>)
     builder.append(fmt_builder, ID_STYLE(`@{global.identifier}`))
 end
 
@@ -70,7 +70,7 @@ local function fmt_constant(fmt_builder: Builder, constant: lir.Constant<any>)
     builder.append(fmt_builder, fmt_types.any(constant.value))
 end
 
-local function fmt_wrapper(fmt_builder: Builder, wrapper: lir.Wrapper)
+local function fmt_wrapper(fmt_builder: Builder, wrapper: lir.Wrapper<any>)
     if wrapper.kind == "table" then
         builder.append(fmt_builder, "{")
         separated(fmt_builder, fmt_rvalue, wrapper.values, ",")
@@ -82,12 +82,12 @@ local function fmt_wrapper(fmt_builder: Builder, wrapper: lir.Wrapper)
     end
 end
 
-local function fmt_projection(fmt_builder: Builder, projection: lir.Projection)
+local function fmt_projection(fmt_builder: Builder, projection: lir.Projection<any>)
     local base = projection.base
     if base.type == "constant" then
         builder.append(fmt_builder, BASE_STYLE(tostring(base.value)))
     else
-        fmt_lvalue(fmt_builder, projection.base :: lir.LValue)
+        fmt_lvalue(fmt_builder, projection.base :: lir.LValue<any>)
     end
 
     if projection.kind == "call" or projection.kind == "namecall" then
@@ -115,7 +115,7 @@ local function fmt_projection(fmt_builder: Builder, projection: lir.Projection)
     panic(`Unhandled projection kind "{projection.kind}"`)
 end
 
-local function fmt_condition(fmt_builder: Builder, condition: lir.Condition)
+local function fmt_condition(fmt_builder: Builder, condition: lir.Condition<any>)
     local symbol = ""
     if condition.kind == "equals" then
         symbol = "=="
@@ -147,7 +147,7 @@ local function fmt_condition(fmt_builder: Builder, condition: lir.Condition)
     builder.append(fmt_builder, ")")
 end
 
-local function fmt_ternary(fmt_builder: Builder, ternary: lir.Ternary)
+local function fmt_ternary(fmt_builder: Builder, ternary: lir.Ternary<any>)
     fmt_condition(fmt_builder, ternary.cond)
     builder.append(fmt_builder, " ? ")
     fmt_rvalue(fmt_builder, ternary.left)
@@ -155,14 +155,14 @@ local function fmt_ternary(fmt_builder: Builder, ternary: lir.Ternary)
     fmt_rvalue(fmt_builder, ternary.right)
 end
 
-local function fmt_control(fmt_builder: Builder, control: lir.Control)
+local function fmt_control(fmt_builder: Builder, control: lir.Control<any>)
     builder.append(fmt_builder, colorful.modifier.dim(control.kind))
     builder.append(fmt_builder, "(")
     fmt_rvalue(fmt_builder, control.bytes)
     builder.append(fmt_builder, ")")
 end
 
-local function fmt_unary(fmt_builder: Builder, unary: lir.UnaryOp)
+local function fmt_unary(fmt_builder: Builder, unary: lir.UnaryOp<any>)
     local symbol = ""
     if unary.kind == "len" then
         symbol = "#"
@@ -172,7 +172,7 @@ local function fmt_unary(fmt_builder: Builder, unary: lir.UnaryOp)
     fmt_rvalue(fmt_builder, unary.of)
 end
 
-local function fmt_binary(fmt_builder: Builder, binary: lir.BinaryOp)
+local function fmt_binary(fmt_builder: Builder, binary: lir.BinaryOp<any>)
     local symbol = ""
     if binary.kind == "add" then
         symbol = "+"
@@ -191,7 +191,7 @@ local function fmt_binary(fmt_builder: Builder, binary: lir.BinaryOp)
     fmt_rvalue(fmt_builder, binary.right)
 end
 
-function fmt_rvalue(fmt_builder: Builder, rvalue: lir.RValue)
+function fmt_rvalue(fmt_builder: Builder, rvalue: lir.RValue<any>)
     if rvalue.type == "id" then
         fmt_id(fmt_builder, rvalue)
     elseif rvalue.type == "unary" then
@@ -209,7 +209,7 @@ function fmt_rvalue(fmt_builder: Builder, rvalue: lir.RValue)
     elseif rvalue.type == "constant" then
         fmt_constant(fmt_builder, rvalue :: lir.Constant)
     elseif rvalue.type == "condition" then
-        fmt_condition(fmt_builder, rvalue :: lir.Condition)
+        fmt_condition(fmt_builder, rvalue :: any)
     elseif rvalue.type == "projection" then
         fmt_projection(fmt_builder, rvalue)
     else
@@ -217,7 +217,7 @@ function fmt_rvalue(fmt_builder: Builder, rvalue: lir.RValue)
     end
 end
 
-function fmt_lvalue(fmt_builder: Builder, lvalue: lir.LValue)
+function fmt_lvalue(fmt_builder: Builder, lvalue: lir.LValue<any>)
     if lvalue.type == "projection" then
         fmt_projection(fmt_builder, lvalue)
     elseif lvalue.type == "id" then
@@ -247,12 +247,12 @@ local function fmt_loop(fmt_builder: Builder, loop: lir.Loop)
             target.kind == "field" 
             or target.kind == "index" 
         then
-            fmt_projection(fmt_builder, target)
+            fmt_projection(fmt_builder, target :: any)
         elseif 
             target.kind == "register" 
             or target.kind == "argument" 
         then
-            fmt_id(fmt_builder, target)
+            fmt_id(fmt_builder, target :: any)
         else
             panic(`Unhandled loop target kind "{target.kind}"`)
         end
@@ -261,9 +261,9 @@ local function fmt_loop(fmt_builder: Builder, loop: lir.Loop)
         return
     elseif loop.kind == "numeric" then
         builder.append(fmt_builder, "for(")
-        fmt_id(fmt_builder, loop.index)
+        fmt_id(fmt_builder, loop.index :: any)
         builder.append(fmt_builder, ", ")
-        fmt_rvalue(fmt_builder, loop.iterations)
+        fmt_rvalue(fmt_builder, loop.iterations :: any)
         builder.append(fmt_builder, ")")
     end
 end
@@ -354,7 +354,7 @@ end
 local function fmt_fn(fmt_builder: Builder, fn: lir.Fn)
     builder.append_indent(fmt_builder)
 
-    builder.append(fmt_builder, `{BLOCK_STYLE(fn.name)} (`)
+    builder.append(fmt_builder, `fn {BLOCK_STYLE(fn.name)} (`)
     separated(fmt_builder, fmt_argument, fn.args, ",")
 
     builder.append(fmt_builder, ") -> (")
