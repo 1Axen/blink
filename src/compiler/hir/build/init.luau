@@ -54,7 +54,7 @@ type Context = {
 
 local block: (ctx: Context, node: ast.Block) -> ()
 local statement: (ctx: Context, stat: ast.Statement) -> DeclId?
-local expression: (ctx: Context, expr: ast.Expression, generics: Generics?) -> TyId<Ty>
+local expression: (ctx: Context, expr: ast.Expression, node_id: NodeId?, generics: Generics?) -> TyId<Ty>
 
 local function path_to_segments(path: ast.Path): {string}
     local segments: {string} = {}
@@ -69,13 +69,8 @@ local function path_to_string(path: ast.Path): string
     return table.concat(path_to_segments(path), ".")
 end
 
-local function decl_from_id_option(ctx: Context, decl_id: DeclId): option.Option<Decl>
-    local decl = ctx.hir.decls[decl_id]
-    if decl == nil then
-        return option.none()
-    end
-
-    return option.some(decl)
+local function decl_from_id_optional(ctx: Context, decl_id: DeclId): Decl?
+    return ctx.hir.decls[decl_id]
 end
 
 local function store_node(ctx: Context, node: Node): NodeId
@@ -400,12 +395,13 @@ local function ty_tagged_enum(ctx: Context, expr: ast.ExprTaggedEnum): ty.Tagged
 end
 
 --- Returns the `ty_id` of the `ty` referenced
-local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference): TyId<Ty>
+local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference, expr_ty_id: TyId): TyId<Ty>
     --[[
         Phases:
         1 - Check if the reference is a generic parameter, return the generic parameter if it is, otherwise Continue
         2 - Check whether the reference exists, continue if it does, otherwise report an unknown reference
         3 - If any generics were passed alongside the reference convert them into an array of corresponding ty's
+
         4 - Check whether the reference is recursive, return a placeholder to it if it is, otherwise continue
         5 - If any generics were passed then check whether the referenced ty accepts generics, if it does then continue to 5.1, else report extra generics
         5.1 - Validate whether the exact amount of generics were passed, report too few or too many if not, else create a new ty (generic type) and return it
@@ -428,63 +424,57 @@ local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference): TyId
         return report.unknown_reference(expr)
     end
 
-    local ref_node_id = ref_node.id
-    local ref_decl_id = id.node_id.to_decl_id(ref_node_id)
-    local ref_decl_opt = decl_from_id_option(ctx, ref_decl_id)
+    local decl_node_id = ref_node.id
+    local decl_id = id.node_id.to_decl_id(decl_node_id)
+    local decl = decl_from_id_optional(ctx, decl_id)
 
     -- Phase 3:
-    local generic_args: {TyId<Ty>} = {}
+    local generics: {TyId<Ty>} = {}
     local expr_generics = expr.generics
     if expr_generics then
         for index, value in expr_generics.values do
-            generic_args[index] = expression(ctx, value)
+            generics[index] = expression(ctx, value)
         end
     end
 
     -- Phase 4:
-    if ref_decl_opt.has_value == false then
-        local ref_ty_id = id.node_id.to_ty_id(ref_node_id)
-        local placeholder = ty.placeholder(path_segments, generic_args)
-        ctx.hir.tys[ref_ty_id] = placeholder
-        return ref_ty_id
+    if decl == nil then
+        local placeholder = ty.placeholder(path_segments, generics)
+        ctx.hir.tys[expr_ty_id] = placeholder
+        return expr_ty_id
     end
 
     -- Phase 5:
-    local ref_decl = ref_decl_opt.value
-    local ref_generics = ref_decl.generics
-
-    if ref_generics then
+    local decl_generics = decl.generics
+    if decl_generics then
         -- Phase 5.1:
-        local n_ref_generics = #ref_generics
+        local n_decl_generics = #decl_generics
         if expr_generics == nil then
-            return report.few_none_generics(expr.path, n_ref_generics)
+            return report.few_none_generics(expr.path, n_decl_generics)
         end
 
         local n_expr_generics = #expr_generics.values
-        if n_expr_generics > n_ref_generics then
-            return report.extra_generics(expr_generics, n_ref_generics)
-        elseif n_expr_generics < n_ref_generics then
-            return report.few_generics(expr_generics, n_ref_generics)
+        if n_expr_generics > n_decl_generics then
+            return report.extra_generics(expr_generics, n_decl_generics)
+        elseif n_expr_generics < n_decl_generics then
+            return report.few_generics(expr_generics, n_decl_generics)
         end
 
-        local ty_id = id.node_id.to_ty_id(expr.id)
-        local ref_ty = hir.ty_from_id(ctx.hir, ref_decl.ty) :: ty.GenericType
+        local decl_ty = hir.ty_from_id(ctx.hir, decl.ty) :: ty.GenericType
+        local new_ty: ty.GenericType = ty.generic_type(decl_ty.def, generics)
+        ctx.hir.tys[expr_ty_id] = new_ty
 
-        local ty: ty.GenericType = ty.generic_type(ref_ty.def, generic_args)
-        ctx.hir.tys[ty_id] = ty
-
-        return ty_id
+        return expr_ty_id
     elseif expr_generics then
         return report.extra_generics(expr_generics, 0)
     end
     
     -- Phase 6:
-    return ref_decl.ty
+    return decl.ty
 end
 
-function expression(ctx: Context, expr: ast.Expression | ast.Identifier, generics: Generics?): TyId<Ty>
-    --> assign node_id
-    local node_id = store_node(ctx, expr)
+function expression(ctx: Context, expr: ast.Expression | ast.Identifier, node_id: NodeId?, generics: Generics?): TyId<Ty>
+    node_id = node_id or store_node(ctx, expr)
     local ty_id = id.node_id.to_ty_id(node_id)
 
     if generics ~= nil then
@@ -521,12 +511,12 @@ function expression(ctx: Context, expr: ast.Expression | ast.Identifier, generic
         new_ty = ty_optional(ctx, expr :: any)
     elseif expr.kind == "reference" then
         --TODO: Remove when Luau bug is fixed
-        expr = (expr :: any) :: ast.ExprReference
+        expr = expr :: ast.ExprReference
 
         local path = path_to_string(expr.path)
         local primitive = (primitives :: any)[path]
         if primitive == nil then
-            return ty_id_from_reference(ctx, expr)
+            return ty_id_from_reference(ctx, expr, ty_id)
         end
 
         new_ty = ty_from_reference(ctx, expr, path)
@@ -593,7 +583,8 @@ local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
     end
 
     --> lower expression
-    local ty_id = expression(ctx, stat.value, generics)
+    local node_id = store_node(ctx, stat)
+    local ty_id = expression(ctx, stat.value, node_id, generics)
 
     return {
         kind = "type",
@@ -766,6 +757,7 @@ local function substitute_placeholders(ctx: Context): never?
                 return report.extra_generics(expr_generics, n_decl_generics)
             end
 
+            decl_ty = hir.follow(ctx.hir, decl_ty)
             decl_ty = ty.generic_type(decl_ty, args)
         end
 
