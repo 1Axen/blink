@@ -36,7 +36,7 @@ type Body = (block: Builder) -> ()
 type NumericLoopBody = (block: Builder, index: Register<number>) -> ()
 type GenericLoopBody = (block: Builder, index: Register<any>, value: Register<any>) -> ()
 
-local MAX_REGISTERS = 256
+local MAX_REGISTERS = 200
 local REGISTERS_TEMPLATE = table.create(MAX_REGISTERS, 0)
 
 for index = 1, MAX_REGISTERS do
