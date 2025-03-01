@@ -402,7 +402,7 @@ local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference, expr_
         2 - Check whether the reference exists, continue if it does, otherwise report an unknown reference
         3 - If any generics were passed alongside the reference convert them into an array of corresponding ty's
 
-        4 - Check whether the reference is recursive, return a placeholder to it if it is, otherwise continue
+        4 - Check whether the reference exiusts, return a placeholder to it if it doesn't, otherwise continue
         5 - If any generics were passed then check whether the referenced ty accepts generics, if it does then continue to 5.1, else report extra generics
         5.1 - Validate whether the exact amount of generics were passed, report too few or too many if not, else create a new ty (generic type) and return it
         6 - Return the referenced ty
@@ -419,12 +419,12 @@ local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference, expr_
 
     -- Phase 2:
     local path_segments = path_to_segments(expr.path)
-    local ref_node = symbols.search(ctx.symbols, path_segments)
-    if ref_node == nil or ref_node.kind ~= "type" then
+    local decl_node = symbols.search(ctx.symbols, path_segments)
+    if decl_node == nil or decl_node.kind ~= "type" then
         return report.unknown_reference(expr)
     end
 
-    local decl_node_id = ref_node.id
+    local decl_node_id = decl_node.id
     local decl_id = id.node_id.to_decl_id(decl_node_id)
     local decl = decl_from_id_optional(ctx, decl_id)
 
@@ -719,7 +719,15 @@ local function substitute_placeholders(ctx: Context): never?
         local args = placeholder.args
 
         -- Phase 1:
-        local expr_node: ast.ExprReference = hir.node_from_id(ctx.hir, id.ty_id.to_node_id(ty_id)) :: any
+        local node = hir.node_from_id(ctx.hir, id.ty_id.to_node_id(ty_id))
+        local expr_node: ast.ExprReference;
+
+        if node.kind == "reference" then
+            expr_node = node
+        elseif node.kind == "type" then
+            expr_node = node.value :: any
+        end
+
         local expr_generics = expr_node.generics
 
         -- Phase 2:
