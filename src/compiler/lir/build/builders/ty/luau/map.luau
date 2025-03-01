@@ -5,10 +5,10 @@ local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
 local binary = require("@builders/binary")
-local wrapper = require("@builders/wrapper")
 local control = require("@builders/control")
 local library = require("@builders/library")
 local constant = require("@builders/constant")
+local structure = require("@builders/structure")
 local condition = require("@builders/condition")
 local projection = require("@builders/projection")
 local ty_builder = require("@builders/ty")
@@ -39,7 +39,7 @@ local function build_read(props: ReadProps, block: Builder, map: Map): Register<
     local value_ty = hir.ty_from_id(ctx.hir, map.value)
 
     local len = length.read(props, block, map)
-    local map_register = block:store(wrapper.table({}))
+    local map_register = block:store(structure.map({}))
 
     block:for_numeric(len, function(block)
         local key = ty_builder.read(props, block, key_ty)

@@ -7,10 +7,10 @@ local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
 local control = require("@builders/control")
-local wrapper = require("@builders/wrapper")
 local library = require("@builders/library")
 local constant = require("@builders/constant")
 local condition = require("@builders/condition")
+local structure = require("@builders/structure")
 local projection = require("@builders/projection")
 local ty_builder = require("@builders/ty")
 
@@ -31,7 +31,7 @@ type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
 local function build_read(props: ReadProps, block: Builder, intersection: Intersection): Register<any>
-    local register: Register<any> = block:store(wrapper.table({}))
+    local register: Register<any> = block:store(structure.struct({}))
 
     local left_ty = hir.ty_from_id(props.ctx.hir, intersection.left)
     local right_ty = hir.ty_from_id(props.ctx.hir, intersection.right)

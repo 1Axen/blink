@@ -220,26 +220,36 @@ export type Ternary<T> = {
 }
 
 -- { values }
-export type WrapTable<T> = {
+export type Map<T> = {
     __phantom_type: {T},
 
-    type: "wrapper",
-    kind: "table",
+    type: "structure",
+    kind: "map",
+    values: {[RValue<any>]: RValue<any>}
+}
+
+-- { values }
+export type Array<T> = {
+    __phantom_type: {T},
+
+    type: "structure",
+    kind: "array",
     values: {RValue<T>}
 }
 
--- (value)
-export type WrapSingle<T> = {
-    __phantom_type: number,
+-- { values }
+export type Struct<T> = {
+    __phantom_type: {T},
 
-    type: "wrapper",
-    kind: "single",
-    value: RValue<T>
+    type: "structure",
+    kind: "struct",
+    values: {[Constant<string>]: RValue<T>}
 }
 
-export type Wrapper<T> = 
-    | WrapTable<T>
-    | WrapSingle<T>
+export type Structure<T> = 
+    | Map<T>
+    | Array<T>
+    | Struct<T>
 ;
 
 --- left side of an assign statement
@@ -253,8 +263,8 @@ export type LValue<T> =
 --- right side of an assign statement
 export type RValue<T> =
     | Id<T>
+    | Structure<T>
     | Global<T>
-    | Wrapper<T>
     | Control<T>
     | Ternary<T>
     | UnaryOp<T>

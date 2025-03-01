@@ -4,7 +4,7 @@ local lir = require("@structures/lir")
 local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
-local wrapper = require("@builders/wrapper")
+local structure = require("@builders/structure")
 local control = require("@builders/control")
 local library = require("@builders/library")
 local constant = require("@builders/constant")
@@ -30,7 +30,7 @@ type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
 local function build_read(props: ReadProps, block: Builder, struct: Struct): Register<any>
-    local register: Register<any> = block:store(wrapper.table({}))
+    local register: Register<any> = block:store(structure.struct({}))
     for _, field in struct.fields do
         local name = field.name
         local value_ty = hir.ty_from_id(props.ctx.hir, field.value)

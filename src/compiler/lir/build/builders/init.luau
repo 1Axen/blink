@@ -6,10 +6,10 @@ local binary = require("./binary")
 local globals = require("./globals")
 local ternary = require("./ternary")
 local control = require("./control")
-local wrapper = require("./wrapper")
 local library = require("./library")
 local constant = require("./constant")
 local condition = require("./condition")
+local structure = require("./structure")
 local projection = require("./projection")
 
 export type Builder = fn.Builder
@@ -22,10 +22,10 @@ return table.freeze({
     binary = binary,
     globals = globals,
     ternary = ternary,
-    wrapper = wrapper,
     control = control,
     library = library,
     constant = constant,
+    structure = structure,
     condition = condition,
     projection = projection
 })

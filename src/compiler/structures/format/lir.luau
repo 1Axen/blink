@@ -70,14 +70,28 @@ local function fmt_constant(fmt_builder: Builder, constant: lir.Constant<any>)
     builder.append(fmt_builder, fmt_types.any(constant.value))
 end
 
-local function fmt_wrapper(fmt_builder: Builder, wrapper: lir.Wrapper<any>)
-    if wrapper.kind == "table" then
+local function fmt_structure(fmt_builder: Builder, structure: lir.Structure<any>)
+    if structure.kind == "array" then
         builder.append(fmt_builder, "{")
-        separated(fmt_builder, fmt_rvalue, wrapper.values, ",")
+        separated(fmt_builder, fmt_rvalue, structure.values, ",")
         builder.append(fmt_builder, "}")
-    elseif wrapper.kind == "single" then
+    elseif structure.kind == "array" then
+        builder.append(fmt_builder, "{")
+        for index, value in structure.values do
+            fmt_rvalue(fmt_builder, index)
+            builder.append(fmt_builder, " = ")
+            fmt_rvalue(fmt_builder, value)
+            builder.append(fmt_builder, ",")
+        end
+        builder.append(fmt_builder, "}")
+    elseif structure.kind == "struct" then
         builder.append(fmt_builder, "(")
-        fmt_rvalue(fmt_builder, wrapper.value)
+        for key, value in structure.values do
+            builder.append(fmt_builder, key.value)
+            builder.append(fmt_builder, " = ")
+            fmt_rvalue(fmt_builder, value)
+            builder.append(fmt_builder, ",")
+        end
         builder.append(fmt_builder, ")")
     end
 end
@@ -202,8 +216,8 @@ function fmt_rvalue(fmt_builder: Builder, rvalue: lir.RValue<any>)
         fmt_global(fmt_builder, rvalue)
     elseif rvalue.type == "control" then
         fmt_control(fmt_builder, rvalue)
-    elseif rvalue.type == "wrapper" then
-        fmt_wrapper(fmt_builder, rvalue)
+    elseif rvalue.type == "structure" then
+        fmt_structure(fmt_builder, rvalue)
     elseif rvalue.type == "ternary" then
         fmt_ternary(fmt_builder, rvalue)
     elseif rvalue.type == "constant" then

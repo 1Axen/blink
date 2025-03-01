@@ -4,7 +4,7 @@ local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
 local ternary = require("@builders/ternary")
-local wrapper = require("@builders/wrapper")
+local structure = require("@builders/structure")
 local control = require("@builders/control")
 local library = require("@builders/library")
 local constant = require("@builders/constant")
@@ -35,7 +35,7 @@ type LuauSet = {[string]: any}
 local FORMAT = numeral.u8
 
 local function build_read(props: ReadProps, block: Builder, set: Set): Register<LuauSet>
-    local set_register = block:store(wrapper.table({})) :: Register<any>
+    local set_register = block:store(structure.struct({})) :: Register<any>
 
     for _, item in set.items do
         local value = numeral.read(props, block, FORMAT)
@@ -51,7 +51,7 @@ local function build_write(props: WriteProps, block: Builder, set: Set, value: R
     for _, item in set.items do
         local field = projection.field(value :: any, constant.from_value(item.value) :: RValue<any>)
         local in_set = condition.equals(field, constant.truth)
-        local value_register = block:store(ternary(in_set, constant.one, constant.zero))
+        local value_register = block:store(ternary(in_set, constant.one, constant.zero) :: lir.Ternary<number>)
         numeral.write(props, block, FORMAT, value_register)
     end
 end
