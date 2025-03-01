@@ -1,11 +1,12 @@
+local id = require("@compiler/id")
 local ty = require("@compiler/structures/ty")
 local hir = require("@compiler/structures/hir")
-local config = require("@compiler/config/codes")
 
 local fmt_ty = require("@format/ty")
 local fmt_id = require("@format/id")
 local fmt_types = require("@format/types")
 
+local span = require("@util/span")
 local style = require("@util/style")
 local builder = require("@util/builder")
 
@@ -16,7 +17,7 @@ local ATTRIBUTE_STYLE = style.color.bright_purple
 
 type Builder = builder.Builder
 
-local function fmt_attributes(attributes: {[string]: any}, fmt_builder: Builder)
+local function fmt_attributes(attributes: any, fmt_builder: Builder)
     for name, value in attributes do
         builder.append(fmt_builder, ATTRIBUTE_STYLE(`@{name}`))
 
@@ -125,25 +126,37 @@ local function fmt_function(decl: hir.Function, fmt_builder: Builder)
     builder.append_line(fmt_builder, "}")
 end
 
-local function fmt_tys(tys: {[ty.TyId]: ty.Ty}, fmt_builder: Builder)
+local function fmt_tys(hirr: hir.Hir, fmt_builder: Builder)
     builder.append_line(fmt_builder, `{CATEGORY_STYLE("Tys")} \{`)
     builder.indent(fmt_builder)
 
-    local sorted_tys: {{id: ty.TyId, ty: ty.Ty}} = {}
-    for ty_id, ty in tys do
-        table.insert(sorted_tys, {id = ty_id, ty = ty})
+    local tys = hirr.tys
+    local sorted: {ty.TyId} = {}
+
+    for ty_id in hirr.tys do
+        table.insert(sorted, ty_id)
     end
 
-    table.sort(sorted_tys, function(a, b)
-        return a.id < b.id
+    table.sort(sorted, function(a, b)
+        return a < b
     end)
-    
-    for _, item in sorted_tys do
-        local ty_id = item.id
-        local ty = item.ty
+
+    for _, ty_id in sorted do
+        local ty = tys[ty_id]
+        local node_id = id.ty_id.to_node_id(ty_id)
+        local ty_node = hir.node_from_id(hirr, node_id)
+
+        local source_code = span.value(ty_node.span)
+        local as_lines = string.split(source_code, "\n")
 
         builder.append_indent(fmt_builder)
         builder.append_line(fmt_builder, `{fmt_id(ty_id)}: {fmt_ty(ty)}`)
+
+        builder.indent(fmt_builder)
+        builder.indent(fmt_builder)
+        builder.append_lines(fmt_builder, as_lines)
+        builder.dedent(fmt_builder)
+        builder.dedent(fmt_builder)
     end
 
     builder.dedent(fmt_builder)
@@ -188,7 +201,7 @@ end
 local function fmt_hir(hir: hir.Hir): string
     local fmt_builder = builder.create()
 
-    fmt_tys(hir.tys, fmt_builder)
+    fmt_tys(hir, fmt_builder)
     fmt_decls(hir.decls, fmt_builder)
     fmt_scopes(hir.scopes, fmt_builder)
 
