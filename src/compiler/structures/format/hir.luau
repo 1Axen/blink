@@ -1,6 +1,6 @@
 local id = require("@compiler/id")
-local ty = require("@compiler/structures/ty")
-local hir = require("@compiler/structures/hir")
+local ty = require("@structures/ty")
+local hir = require("@structures/hir")
 
 local fmt_ty = require("@format/ty")
 local fmt_id = require("@format/id")

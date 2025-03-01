@@ -6,6 +6,8 @@
         "parser": "parser",
         "config": "config",
         "codegen": "codegen",
+
+        "format": "structures/format",
         "structures": "structures"
     }
 }

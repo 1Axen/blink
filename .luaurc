@@ -4,7 +4,6 @@
         "test": "test",
         "util": "src/util",
         "vendor": "vendor",
-        "format": "src/util/format",
         "compiler": "src/compiler",
         "lune": "~/.lune/.typedefs/0.8.9"
     }

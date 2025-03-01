@@ -1,4 +1,4 @@
-local lir = require("@compiler/structures/lir")
+local lir = require("@structures/lir")
 
 local panic = require("@util/panic")
 local builder = require("@util/builder")

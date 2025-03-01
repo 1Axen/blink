@@ -1,4 +1,4 @@
-local ast = require("@compiler/structures/ast")
+local ast = require("@structures/ast")
 local span = require("@util/span")
 
 local fmt_statement;
