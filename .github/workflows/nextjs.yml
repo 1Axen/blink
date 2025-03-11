@@ -38,7 +38,7 @@ jobs:
 
       - name: Build
         working-directory: ./docs
-        run: npm run export
+        run: npm run build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
