@@ -448,7 +448,7 @@ do
 			Block:Line(`{Block:Declare(Variable)} = RecieveInstances[RecieveInstanceCursor]`)
 		end,
 		Write = function(Value: string, Block: Block)
-			Block:Line(`table.insert(SendInstances, {Value} or false :: any)`)
+			Block:Line(`table.insert(SendInstances, {Value} or Null)`)
 		end,
 	}
 
@@ -468,7 +468,7 @@ do
 			Block:Line(`{Block:Declare(Variable)} = RecieveInstances[RecieveInstanceCursor]`)
 		end,
 		Write = function(Value: string, Block: Block)
-			Block:Line(`table.insert(SendInstances, {Value})`)
+			Block:Line(`table.insert(SendInstances, {Value} or Null)`)
 		end,
 	}
 

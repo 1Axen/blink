@@ -12,6 +12,8 @@ local RecieveBuffer = buffer.create(64)
 local RecieveInstances = {}
 local RecieveInstanceCursor = 0
 
+local Null = newproxy()
+
 type Entry = {
     value: any,
     next: Entry?
