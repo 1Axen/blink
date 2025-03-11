@@ -618,6 +618,7 @@ FireManyAndExpectMany("Many Unreliable Sync Server", 8, Server.ManyUnreliableSyn
 FireManyAndExpectMany("Many Unreliable Async Server", 8, Server.ManyUnreliableAsync, Client.ManyUnreliableAsync, 1)
 
 FireAndExpect("Unknown", Server.Unknown, Client.Unknown, newproxy())
+FireAndExpectAll("Unknown (nil mixed)", Server.Unknown, Client.Unknown, {"a", nil, "b", nil, nil, nil, "c"})
 
 FireAndExpect("Generic", Server.Generic, Client.Generic, {Data = 0, Array = {0}, Optional = nil, Nested = {Value = 0}})
 
