@@ -473,8 +473,8 @@ do
 	}
 	
 	Primitives.DateTimeMillis = {
-		Type = "DateTimeMillis",
-		Generate = GeneratePrimitivePrefab("DateTimeMillis", Types.DateTimeMillis)
+		Type = "DateTime",
+		Generate = GeneratePrimitivePrefab("DateTime", Types.DateTimeMillis)
 	}
 end
 
