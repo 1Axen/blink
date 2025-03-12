@@ -59,25 +59,27 @@ This is particularly useful if you're using Blink inside of a package, and don't
 You can define a primitive using the `type` keyword  
 Blink supports the following primitives:  
 
-|Name    |Size (Bytes)|Supports ranges  |Minimum        |Maximum      |Components| 
-|--------|------------|-----------------|---------------|-------------|----------|
-|u8      |1 Byte      |Yes              |0              |255          |No        |
-|u16     |2 Bytes     |Yes              |0              |65,535       |No        |
-|u32     |4 Bytes     |Yes              |0              |4,294,967,295|No        |
-|i8      |1 Byte      |Yes              |-128           |127          |No        |
-|i16     |2 Bytes     |Yes              |-32,768        |32,767       |No        |
-|i32     |4 Bytes     |Yes              |-2,147,483,648 |2,147,483,647|No        |
-|f16     |2 Bytes     |Yes              |-65504         |65504        |No        |
-|f32     |4 Bytes     |Yes              |−16777216      |16777216     |No        |
-|f64     |8 Bytes     |Yes              |-2^53          |2^53         |No        |
-|vector  |12 Bytes    |Yes (Magnitude)  |N/A            |N/A          |Yes (1)   |
-|buffer  |N/A         |Yes (buffer.len) |N/A            |65,535 Bytes |No        |
-|string  |N/A         |Yes (string.len) |N/A            |65,535 Bytes |No        |
-|boolean |1 Byte      |No               |N/A            |N/A          |No        |
-|CFrame  |24 Bytes    |No               |N/A            |N/A          |Yes (2)   |
-|Color3  |12 Bytes    |No               |N/A            |N/A          |No        |
-|Instance|4 Bytes     |No               |N/A            |N/A          |No        |
-|unknown |N/A         |No               |N/A            |N/A          |No        |
+|Name           |Size (Bytes)|Supports ranges  |Minimum        |Maximum      |Components| 
+|---------------|------------|-----------------|---------------|-------------|----------|
+|u8             |1 Byte      |Yes              |0              |255          |No        |
+|u16            |2 Bytes     |Yes              |0              |65,535       |No        |
+|u32            |4 Bytes     |Yes              |0              |4,294,967,295|No        |
+|i8             |1 Byte      |Yes              |-128           |127          |No        |
+|i16            |2 Bytes     |Yes              |-32,768        |32,767       |No        |
+|i32            |4 Bytes     |Yes              |-2,147,483,648 |2,147,483,647|No        |
+|f16            |2 Bytes     |Yes              |-65504         |65504        |No        |
+|f32            |4 Bytes     |Yes              |−16777216      |16777216     |No        |
+|f64            |8 Bytes     |Yes              |-2^53          |2^53         |No        |
+|vector         |12 Bytes    |Yes (Magnitude)  |N/A            |N/A          |Yes (1)   |
+|buffer         |N/A         |Yes (buffer.len) |N/A            |65,535 Bytes |No        |
+|string         |N/A         |Yes (string.len) |N/A            |65,535 Bytes |No        |
+|boolean        |1 Byte      |No               |N/A            |N/A          |No        |
+|DateTimeMillis |8 Bytes     |No               |N/A            |N/A          |No        |
+|DateTime       |8 Bytes     |No               |N/A            |N/A          |No        |
+|CFrame         |24 Bytes    |No               |N/A            |N/A          |Yes (2)   |
+|Color3         |12 Bytes    |No               |N/A            |N/A          |No        |
+|Instance       |4 Bytes     |No               |N/A            |N/A          |No        |
+|unknown        |N/A         |No               |N/A            |N/A          |No        |
 
 ## Attributes
 A type can be marked optional by appending `?` at the end.
