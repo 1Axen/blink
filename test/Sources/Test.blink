@@ -23,6 +23,7 @@ type D = Color3
 export type Byte = u8
 
 export type Color = Color3
+export type BrickkColor = BrickColor
 
 export type ExactRange = f32(0)
 export type DecimalRange = f32(-5.5..10.5)

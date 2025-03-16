@@ -87,6 +87,17 @@ local function GetEnvironment()
         return Color3.new(R / 255, G / 255, B / 255)
     end
 
+    local function BrickColor__eq(a: BrickColor, b: BrickColor): boolean
+        return a.Number == b.Number
+    end
+
+    local BrickColor = {}
+    function BrickColor.new(number: number): BrickColor
+        local Object = {Number = number, __typeof = "BrickColor"}
+        setmetatable(Object, {__eq = BrickColor__eq})
+        return table.freeze(Object)
+    end
+
     return {
         game = {
             GetService = function(self, Service: string)
@@ -97,7 +108,8 @@ local function GetEnvironment()
 
         Color3 = Color3,
         Services = Services,
-        Instances = Instances
+        Instances = Instances,
+        BrickColor = BrickColor,
     }
 end
 
