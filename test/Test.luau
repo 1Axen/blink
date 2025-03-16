@@ -58,11 +58,13 @@ local ServerEnvironment = require("Server")
 _G.client = {
     game = ClientEnvironment.game,
     Color3 = ClientEnvironment.Color3,
+    BrickColor = ClientEnvironment.BrickColor,
 }
 
 _G.server = {
     game = ServerEnvironment.game,
-    Color3 = ClientEnvironment.Color3,
+    Color3 = ServerEnvironment.Color3,
+    BrickColor = ServerEnvironment.BrickColor,
 }
 
 local Client = require("../Network/Client")
@@ -716,6 +718,14 @@ RunClosure("Color3", function()
     assert(Color.R == Deserialized.R, `Expected {Color.R}, got {Deserialized.R}`)
     assert(Color.G == Deserialized.G, `Expected {Color.G}, got {Deserialized.G}`)
     assert(Color.B == Deserialized.B, `Expected {Color.B}, got {Deserialized.B}`)
+end)
+
+RunClosure("BrickColor", function()
+    local BrickColor = BaseEnvironment.BrickColor.new(373)
+    local Serialized = Server.BrickkColor.Write(BrickColor)
+    local Deserialized = Server.BrickkColor.Read(Serialized)
+
+    assert(BrickColor == Deserialized, `Expected BrickColor number to be {BrickColor.Number}, got {Deserialized.Number}`)
 end)
 
 RunClosure("Nested Map", function()

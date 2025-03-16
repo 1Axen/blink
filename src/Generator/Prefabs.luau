@@ -440,6 +440,25 @@ do
 	}
 end
 
+--> BrickColor
+do
+	Types.BrickColor = {
+		Read = function(Variable: string, Block: Block)
+			local Number = Block:Read(SHORT)
+			Block:Line(`{Block:Declare(Variable)} = BrickColor.new(buffer.readu16({RECIEVE_BUFFER}, {Number}))`)
+		end,
+		Write = function(Value: string, Block: Block)
+			Block:Line(`local BrickColor = {Value}`)
+			Types.u16.Write("BrickColor.Number", Block)
+		end
+	}
+	
+	Primitives.BrickColor = {
+		Type = "BrickColor",
+		Generate = GeneratePrimitivePrefab("BrickColor", Types.BrickColor)
+	}
+end
+
 --> Instance
 do
 	Types.Instance = {
