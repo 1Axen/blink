@@ -168,6 +168,12 @@ local Primitives: {[string]: Primitive} = {
         AllowsOptional = true,
         AllowedComponents = 0
     },
+    BrickColor = {
+        Component = false,
+        AllowsRange = false,
+        AllowsOptional = true,
+        AllowedComponents = 0
+    },
     unknown = {
         Component = false,
         AllowsRange = false,
