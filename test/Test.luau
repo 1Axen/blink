@@ -59,12 +59,14 @@ _G.client = {
     game = ClientEnvironment.game,
     Color3 = ClientEnvironment.Color3,
     DateTime = ClientEnvironment.DateTime,
+    BrickColor = ClientEnvironment.BrickColor,
 }
 
 _G.server = {
     game = ServerEnvironment.game,
     Color3 = ServerEnvironment.Color3,
     DateTime = ServerEnvironment.DateTime,
+    BrickColor = ServerEnvironment.BrickColor,
 }
 
 local Client = require("../Network/Client")
@@ -732,6 +734,14 @@ RunClosure("DateTimeMillis", function()
     local Serialized = Server.DateMilliseconds.Write(DateTime)
     local Deserialized = Server.DateMilliseconds.Read(Serialized)
     assert(DateTime.UnixTimestampMillis == Deserialized.UnixTimestampMillis, `Expected timestamp {DateTime.UnixTimestampMillis}, got {Deserialized.UnixTimestampMillis}`)
+end)
+
+RunClosure("BrickColor", function()
+    local BrickColor = BaseEnvironment.BrickColor.new(373)
+    local Serialized = Server.BrickkColor.Write(BrickColor)
+    local Deserialized = Server.BrickkColor.Read(Serialized)
+
+    assert(BrickColor == Deserialized, `Expected BrickColor number to be {BrickColor.Number}, got {Deserialized.Number}`)
 end)
 
 RunClosure("Nested Map", function()

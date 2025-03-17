@@ -59,7 +59,8 @@ local DEBUG_GLOBALS = {
 	"local task = require(\"@lune/task\")\n",
 	"local game = _G.%s.game\n",
 	"local Color3 = _G.%s.Color3\n",
-	"local DateTime = _G.%s.DateTime\n"
+	"local DateTime = _G.%s.DateTime\n",
+	"local BrickColor = _G.%s.BrickColor\n",
 }
 
 local IGNORED_TYPES_IN_SHARED = {

@@ -95,6 +95,11 @@ local function GetEnvironment()
     function DateTime.fromUnixTimestampMillis(TimestampMillis: number): DateTime
         return table.freeze({UnixTimestampMillis = TimestampMillis, __typeof = "DateTime"})
     end
+          
+    local BrickColor = {}
+    function BrickColor.new(Number: number): BrickColor
+        return table.freeze({Number = Number, __typeof = "BrickColor"})
+    end
 
     return {
         game = {
@@ -107,7 +112,8 @@ local function GetEnvironment()
         Color3 = Color3,
         DateTime = DateTime,
         Services = Services,
-        Instances = Instances
+        Instances = Instances,
+        BrickColor = BrickColor,
     }
 end
 
