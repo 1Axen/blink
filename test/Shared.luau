@@ -87,6 +87,15 @@ local function GetEnvironment()
         return Color3.new(R / 255, G / 255, B / 255)
     end
 
+    local DateTime = {}
+    function DateTime.fromUnixTimestamp(Timestamp: number): DateTime
+        return table.freeze({UnixTimestamp = Timestamp, __typeof = "DateTime"})
+    end
+
+    function DateTime.fromUnixTimestampMillis(TimestampMillis: number): DateTime
+        return table.freeze({UnixTimestampMillis = TimestampMillis, __typeof = "DateTime"})
+    end
+
     return {
         game = {
             GetService = function(self, Service: string)
@@ -96,6 +105,7 @@ local function GetEnvironment()
         },
 
         Color3 = Color3,
+        DateTime = DateTime,
         Services = Services,
         Instances = Instances
     }
