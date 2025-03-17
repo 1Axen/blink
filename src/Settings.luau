@@ -180,6 +180,12 @@ local Primitives: {[string]: Primitive} = {
         AllowsOptional = true,
         AllowedComponents = 0
     },
+    DateTimeMillis = {
+        Component = false,
+        AllowsRange = false,
+        AllowsOptional = true,
+        AllowedComponents = 0
+    },
 }
 
 return {
