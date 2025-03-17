@@ -179,7 +179,19 @@ local Primitives: {[string]: Primitive} = {
         AllowsRange = false,
         AllowsOptional = false,
         AllowedComponents = 0
-    }
+    },
+    DateTime = {
+        Component = false,
+        AllowsRange = false,
+        AllowsOptional = true,
+        AllowedComponents = 0
+    },
+    DateTimeMillis = {
+        Component = false,
+        AllowsRange = false,
+        AllowsOptional = true,
+        AllowedComponents = 0
+    },
 }
 
 return {

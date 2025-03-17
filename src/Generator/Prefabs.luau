@@ -440,6 +440,44 @@ do
 	}
 end
 
+--> DateTime
+do
+	Types.DateTime = {
+		Read = function(Variable: string, Block: Block)
+			local UnixTimestamp = Block:Read(BYTE)
+			Block:Line(`{Block:Declare(Variable)} = DateTime.fromUnixTimestamp(buffer.readf64({RECIEVE_BUFFER}, {UnixTimestamp}))`)
+		end,
+		Write = function(Value: string, Block: Block)
+			Block:Line(`local DateTime = {Value}`)
+			Types.f64.Write(`DateTime.UnixTimestamp`, Block)
+		end
+	}
+	
+	Primitives.DateTime = {
+		Type = "DateTime",
+		Generate = GeneratePrimitivePrefab("DateTime", Types.DateTime)
+	}
+end
+
+--> DateTimeMillis
+do
+	Types.DateTimeMillis = {
+		Read = function(Variable: string, Block: Block)
+			local UnixTimestampMillis = Block:Read(BYTE)
+			Block:Line(`{Block:Declare(Variable)} = DateTime.fromUnixTimestampMillis(buffer.readf64({RECIEVE_BUFFER}, {UnixTimestampMillis}))`)
+		end,
+		Write = function(Value: string, Block: Block)
+			Block:Line(`local DateTimeMillis = {Value}`)
+			Types.f64.Write(`DateTimeMillis.UnixTimestampMillis`, Block)
+		end
+	}
+	
+	Primitives.DateTimeMillis = {
+		Type = "DateTime",
+		Generate = GeneratePrimitivePrefab("DateTime", Types.DateTimeMillis)
+  }
+end
+
 --> BrickColor
 do
 	Types.BrickColor = {

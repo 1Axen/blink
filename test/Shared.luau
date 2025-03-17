@@ -87,15 +87,18 @@ local function GetEnvironment()
         return Color3.new(R / 255, G / 255, B / 255)
     end
 
-    local function BrickColor__eq(a: BrickColor, b: BrickColor): boolean
-        return a.Number == b.Number
+    local DateTime = {}
+    function DateTime.fromUnixTimestamp(Timestamp: number): DateTime
+        return table.freeze({UnixTimestamp = Timestamp, __typeof = "DateTime"})
     end
 
+    function DateTime.fromUnixTimestampMillis(TimestampMillis: number): DateTime
+        return table.freeze({UnixTimestampMillis = TimestampMillis, __typeof = "DateTime"})
+    end
+          
     local BrickColor = {}
-    function BrickColor.new(number: number): BrickColor
-        local Object = {Number = number, __typeof = "BrickColor"}
-        setmetatable(Object, {__eq = BrickColor__eq})
-        return table.freeze(Object)
+    function BrickColor.new(Number: number): BrickColor
+        return table.freeze({Number = Number, __typeof = "BrickColor"})
     end
 
     return {
@@ -107,6 +110,7 @@ local function GetEnvironment()
         },
 
         Color3 = Color3,
+        DateTime = DateTime,
         Services = Services,
         Instances = Instances,
         BrickColor = BrickColor,

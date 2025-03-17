@@ -58,12 +58,14 @@ local ServerEnvironment = require("Server")
 _G.client = {
     game = ClientEnvironment.game,
     Color3 = ClientEnvironment.Color3,
+    DateTime = ClientEnvironment.DateTime,
     BrickColor = ClientEnvironment.BrickColor,
 }
 
 _G.server = {
     game = ServerEnvironment.game,
     Color3 = ServerEnvironment.Color3,
+    DateTime = ServerEnvironment.DateTime,
     BrickColor = ServerEnvironment.BrickColor,
 }
 
@@ -718,6 +720,20 @@ RunClosure("Color3", function()
     assert(Color.R == Deserialized.R, `Expected {Color.R}, got {Deserialized.R}`)
     assert(Color.G == Deserialized.G, `Expected {Color.G}, got {Deserialized.G}`)
     assert(Color.B == Deserialized.B, `Expected {Color.B}, got {Deserialized.B}`)
+end)
+
+RunClosure("DateTime", function()
+    local DateTime = BaseEnvironment.DateTime.fromUnixTimestamp(math.random(1, 2^30))
+    local Serialized = Server.DateSeconds.Write(DateTime)
+    local Deserialized = Server.DateSeconds.Read(Serialized)
+    assert(DateTime.UnixTimestamp == Deserialized.UnixTimestamp, `Expected timestamp {DateTime.UnixTimestamp}, got {Deserialized.UnixTimestamp}`)
+end)
+
+RunClosure("DateTimeMillis", function()
+    local DateTime = BaseEnvironment.DateTime.fromUnixTimestampMillis(math.random(1, 2^30))
+    local Serialized = Server.DateMilliseconds.Write(DateTime)
+    local Deserialized = Server.DateMilliseconds.Read(Serialized)
+    assert(DateTime.UnixTimestampMillis == Deserialized.UnixTimestampMillis, `Expected timestamp {DateTime.UnixTimestampMillis}, got {Deserialized.UnixTimestampMillis}`)
 end)
 
 RunClosure("BrickColor", function()
