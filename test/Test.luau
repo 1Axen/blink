@@ -741,7 +741,7 @@ RunClosure("BrickColor", function()
     local Serialized = Server.BrickkColor.Write(BrickColor)
     local Deserialized = Server.BrickkColor.Read(Serialized)
 
-    assert(BrickColor == Deserialized, `Expected BrickColor number to be {BrickColor.Number}, got {Deserialized.Number}`)
+    assert(BrickColor.Number == Deserialized.Number, `Expected BrickColor number to be {BrickColor.Number}, got {Deserialized.Number}`)
 end)
 
 RunClosure("Nested Map", function()
