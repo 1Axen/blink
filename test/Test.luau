@@ -225,7 +225,7 @@ local function FireAndExpect(Name: string, OutgoingEvent: any, IncomingEvent: an
     OkPrint(`Test "{Name}" passed!`)
 end
 
-local function InvokeAndExpect(Name: string, ClientFunction: any, ServerFunction: any, Data: any, Return: boolean?)
+local function InvokeAndExpect(Name: string, ClientFunction: any, ServerFunction: any, Data: any, Return: boolean?, YieldFor: number?)
     PrettyPrint("cyan", `Testing: {Name}...`, true)
 
     local ServerRecieve: unknown;
@@ -237,6 +237,11 @@ local function InvokeAndExpect(Name: string, ClientFunction: any, ServerFunction
         ServerRecieve = Recieve
         if not Return then
             error("Expects fail")
+        end
+
+        if YieldFor then
+            task.wait(YieldFor)
+        end
         end
 
         return Recieve
@@ -655,6 +660,7 @@ FireAndExpect("Referency Optional", Server.ReferenceOptional, Client.ReferenceOp
 FireAndExpect("Referency Optional (nil)", Server.ReferenceOptional, Client.ReferenceOptional, nil)
 
 InvokeAndExpect("Remote Function", Client.RemoteFunction, Server.RemoteFunction, 1, true)
+InvokeAndExpect("Remote Function (yield)", Client.RemoteFunction, Server.RemoteFunction, 1, true, 1)
 InvokeAndExpect("Remote Function (error)", Client.RemoteFunction, Server.RemoteFunction, 1, false)
 InvokeAndExpect("Empty Remote Function", Client.EmptyFunction, Server.EmptyFunction, nil, true)
 
