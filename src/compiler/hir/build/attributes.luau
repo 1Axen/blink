@@ -5,12 +5,15 @@ local report = require("@hir/report")
 local attributes = require("@config/attributes")
 local compilation = require("@config/compilation")
 
+local exhaustive_match = require("@util/exhaustive_match")
+
 type Attribute = ast.Attribute
 type Attributes = {Attribute}
 
 type TypeAttributes = attributes.TypeAttributes
 type SharedAttributes = attributes.SharedAttributes
 
+local TARGETS: {[string]: true} = compilation.TARGETS :: any
 local PROFILES: {[string]: true} = compilation.PROFILES :: any
 
 local function set_to_array<T>(set: {[T]: true}, sort_comp: ((a: T, b: T) -> boolean)?): {T}
@@ -34,6 +37,24 @@ local function expect_n_parameters(attribute: Attribute, expected: number)
     elseif got < expected then
         report.few_attribute_parameters(attribute, expected)
     end
+end
+
+local function attr_target(attribute: Attribute): compilation.Target
+    expect_n_parameters(attribute, 1)
+
+    local target = attribute.args[1]
+    if target.kind ~= "string" then
+        -- LUAU
+        return report.expect(target :: any, "string", target.kind)
+    end
+
+    local value = target.value
+    if TARGETS[value] ~= true then
+        -- LUAU
+        return report.expect_one_of(target :: any, set_to_array(TARGETS), value)
+    end
+
+    return value :: compilation.Target
 end
 
 local function attr_profile(attribute: Attribute): compilation.Profile
@@ -69,14 +90,15 @@ local function shared_attributes(ast_attributes: Attributes): SharedAttributes
     local attributes: SharedAttributes & {[any]: any} = {}
 
     for _, attribute in ast_attributes do
-        local name: keyof<SharedAttributes> = attribute.name.value :: any
+        local name = attribute.name.value :: keyof<SharedAttributes>
         local value: any?
 
         if name == "profile" then
             value = attr_profile(attribute)
-        end
-
-        if value == nil then
+        elseif name == "target" then
+            value = attr_target(attribute)
+        else
+            exhaustive_match.type_only(name)
             return report.invalid_attribute(attribute)
         end
 
@@ -101,9 +123,10 @@ local function type_attributes(ast_attributes: Attributes): TypeAttributes
             value = attr_any(attribute)
         elseif name == "profile" then
             value = attr_profile(attribute)
-        end
-
-        if value == nil then
+        elseif name == "target" then
+            value = attr_target(attribute)
+        else
+            exhaustive_match.type_only(name)
             return report.invalid_attribute(attribute)
         end
 
