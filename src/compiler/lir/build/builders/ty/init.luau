@@ -1,4 +1,5 @@
 local ty = require("@structures/ty")
+local hir = require("@structures/hir")
 local lir = require("@structures/lir")
 
 local attributes = require("@config/attributes")
@@ -30,6 +31,8 @@ local ty_brick_color = require("./roblox/brick_color")
 local ty_date_time_millis = require("./roblox/date_time_millis")
 
 type Ty = ty.Ty
+type TyId = ty.TyId
+
 type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
@@ -75,78 +78,58 @@ local BUILDERS: {[ty.TyKind]: TyBuilder?} = {
     date_time_millis = ty_date_time_millis,
 }
 
-local function replace_generic(props: ReadProps | WriteProps, ty: Ty): Ty
-    if ty.kind ~= "generic" then
-        return ty
-    end
+local function import_cyclic()
+    ty_map = (require :: any)("./luau/map")
+    ty_array = (require :: any)("./luau/array")
+    ty_struct = (require :: any)("./luau/struct")
+    ty_optional = (require :: any)("./luau/optional")
+    ty_tagged_enum = (require :: any)("./luau/tagged_enum")
+    ty_generic_type = (require :: any)("./luau/generic_type")
+    ty_intersection = (require :: any)("./luau/intersection")
 
+    BUILDERS.map = ty_map
+    BUILDERS.array = ty_array
+    BUILDERS.struct = ty_struct
+    BUILDERS.optional = ty_optional
+    BUILDERS.tagged_enum = ty_tagged_enum
+    BUILDERS.generic_type = ty_generic_type
+    BUILDERS.intersection = ty_intersection
+end
+
+local function replace_generic(props: ReadProps | WriteProps, generic: ty.Generic): TyId
     local generics = props.generics
     if generics == nil then
-        return panic(`Tried to get builder for generic, but there are no generics`)
+        return panic(`Tried to subsitute generic but type has no generics`)
     end
     
-    return generics[ty.index]
+    return generics[generic.index]
 end
 
 local function builder_from_ty(ty: Ty): TyBuilder
-    local kind = ty.kind
-    if kind == "map" then
-        if ty_map == nil then
-            ty_map = (require :: any)("./luau/map")
-        end
-        return ty_map
-    elseif kind == "array" then
-        if ty_array == nil then
-            ty_array = (require :: any)("./luau/array")
-        end
-        return ty_array
-    elseif kind == "struct" then
-        if ty_struct == nil then
-            ty_struct = (require :: any)("./luau/struct")
-        end
-        return ty_struct
-    elseif kind == "optional" then
-        if ty_optional == nil then
-            ty_optional = (require :: any)("./luau/optional")
-        end
-        return ty_optional
-    elseif kind == "tagged_enum" then
-        if ty_tagged_enum == nil then
-            ty_tagged_enum = (require :: any)("./luau/tagged_enum")
-        end
-        return ty_tagged_enum
-    elseif kind == "generic_type" then
-        if ty_generic_type == nil then
-            ty_generic_type = (require :: any)("./luau/generic_type")
-        end
-        return ty_generic_type
-    elseif kind == "intersection" then
-        if ty_intersection == nil then
-            ty_intersection = (require :: any)("./luau/intersection")
-        end
-        return ty_intersection
+    if ty_map == nil then
+        import_cyclic()
     end
 
-    local ty_builder = BUILDERS[kind]
-    if ty_builder == nil then
+    local builder = BUILDERS[ty.kind]
+    if builder == nil then
         return panic(`Unhandled ty kind: "{ty.kind}"`)
     end
 
-    return ty_builder
+    return builder
 end
 
-local function build_read(props: ReadProps, block: Builder, ty: Ty): Register<any>
-    ty = replace_generic(props, ty)
-    
-    local ty_builder = builder_from_ty(ty)
-    return ty_builder.read(props, block, ty)
+local function build_read(props: ReadProps, block: Builder, ty_id: TyId): Register<any>
+    local ty = hir.ty_from_id(props.ctx.hir, ty_id)
+
+    local builder = builder_from_ty(ty)
+    return builder.read(props, block, ty)
 end
 
-local function build_write(props: WriteProps, block: Builder, ty: Ty, value: RValue<any>): ()
-    ty = replace_generic(props, ty)
+local function build_write(props: WriteProps, block: Builder, ty_id: TyId, value: RValue<any>): ()
+    local ty = hir.ty_from_id(props.ctx.hir, ty_id)
 
-    local ty_builder = builder_from_ty(ty)
-    return ty_builder.write(props, block, ty, value)
+    local builder = builder_from_ty(ty)
+    return builder.write(props, block, ty, value)
 end
 
 return table.freeze({
