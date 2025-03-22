@@ -351,7 +351,9 @@ do
 	Types.buffer = {
 		Read = function(Variable: string, Block: Block, Range: NumberRange?)
 			if Range and Range.Min == Range.Max then
-				Block:Line(`buffer.copy({Variable}, 0, {RECIEVE_BUFFER}, {Block:Read(Range.Max)}, {Range.Max})`)
+				local Length = Range.Max
+				Block:Line(`{Block:Declare(Variable)} = buffer.create({Length})`)
+				Block:Line(`buffer.copy({Variable}, 0, {RECIEVE_BUFFER}, {Block:Read(Length)}, {Length})`)
 				return
 			end
 			
