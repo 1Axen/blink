@@ -8,5 +8,6 @@
   "luau-lsp.fflags.enableByDefault": true,
   "luau-lsp.fflags.sync": false,
   "luau-lsp.platform.type": "roblox",
-  "luau-lsp.completion.imports.requireStyle": "alwaysRelative"
+  "luau-lsp.completion.imports.requireStyle": "alwaysRelative",
+  "luau-lsp.completion.enableFragmentAutocomplete": true
 }
