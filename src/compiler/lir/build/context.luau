@@ -28,10 +28,10 @@ local function create(hir: Hir, lir: Lir): Context
     }
 end
 
-local function next_id(ctx: Context): number
+local function next_id(ctx: Context): FnId
     local current = ctx.fn_id
     ctx.fn_id += 1
-    return current
+    return current :: any
 end
 
 return table.freeze({
