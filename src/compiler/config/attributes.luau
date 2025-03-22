@@ -1,6 +1,7 @@
 local compilation = require("@config/compilation")
 
 export type SharedAttributes = {
+    target: compilation.Target?,
     profile: compilation.Profile?,
 }
 

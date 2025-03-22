@@ -1,5 +1,11 @@
 local ast = require("@structures/ast")
 
+local TARGETS = table.freeze({
+    shared = true,
+    client = true,
+    server = true,
+})
+
 local PROFILES = table.freeze({
     dev = true,
     test = true,
@@ -7,6 +13,7 @@ local PROFILES = table.freeze({
     release = true
 })
 
+export type Target = keyof<typeof(TARGETS)>
 export type Profile = keyof<typeof(PROFILES)>
 export type CompilerOptions = {
     --- Track how long each step took and report it to the standard out
@@ -24,5 +31,6 @@ export type CompilerOptions = {
 export type FilesMap = {[number]: ast.Ast}
 
 return table.freeze({
+    TARGETS = TARGETS,
     PROFILES = PROFILES
 })

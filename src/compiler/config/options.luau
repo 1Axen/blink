@@ -6,8 +6,8 @@ export type Option = {
 }
 
 local options: {[string]: Option} = {
-    output = { kind = "string" },
     typescript = { kind = "boolean" },
+    shared_output = { kind = "string" },
     client_output = { kind = "string" },
     server_output = { kind = "string" },
 
@@ -26,8 +26,8 @@ local options: {[string]: Option} = {
 
 export type FileOptions = {
     -- Ignored
-    output: string?,
     typescript: boolean?,
+    shared_output: string?,
     client_output: string?,
     server_output: string?,
 
