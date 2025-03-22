@@ -33,6 +33,10 @@ export type NegativeRange = i8(-5..10)
 export type UnboundUpper = f32(-0.0..)
 export type UnboundLower = f32(..-0.0)
 
+export type Buffer = buffer
+export type ExactBuffer = buffer(9)
+export type BoundedBuffer = buffer(0..1000)
+
 type IntegerVector = vector<i16>
 type HalfPrecisionCFrame = CFrame<f32, f16>
 

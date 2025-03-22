@@ -1035,6 +1035,39 @@ do
     FireAndExpectTuple("Indexers", Server.Indexers.TestEvent, Client.Indexers.TestEvent, struct, flags, enum, tagged)
 end
 
+RunClosure("Buffer (Default, Fixed, Bounded)", function()
+    local ExactBuffer = buffer.create(9)
+    local BoundedBuffer = buffer.create(256)
+
+    -- write some random bytes
+    for offset = 0, 8, 4 do
+        buffer.writeu8(ExactBuffer, offset, math.random(0, 2^30))
+    end
+
+    for offset = 0, 255, 4 do
+        buffer.writeu8(BoundedBuffer, offset, math.random(0, 2^30))
+    end
+
+    -- test serdes
+    do
+        local Serialised = Client.Buffer.Write(BoundedBuffer)
+        local Deserialised = Client.Buffer.Read(Serialised)
+        assert(Equals(BoundedBuffer, Deserialised), `Default buffer serdes failed`)
+    end
+
+    do
+        local Serialised = Client.ExactBuffer.Write(ExactBuffer)
+        local Deserialised = Client.ExactBuffer.Read(Serialised)
+        assert(Equals(ExactBuffer, Deserialised), `Fixed buffer serdes failed`)
+    end
+
+    do
+        local Serialised = Client.BoundedBuffer.Write(BoundedBuffer)
+        local Deserialised = Client.BoundedBuffer.Read(Serialised)
+        assert(Equals(BoundedBuffer, Deserialised), `Bounded buffer serdes failed`)
+    end
+end)
+
 PrettyPrint("green", `All tests passed successfully!`)
 
 process.exit(0)
