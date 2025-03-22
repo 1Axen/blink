@@ -8,7 +8,9 @@ local lir = require("@structures/lir")
 local build = require("./build")
 local optimize = require("./optimize")
 
-local function lir_from_hir(hir: hir.Hir): lir.Lir
+export type Lir = lir.Lir
+
+local function lir_from_hir(hir: hir.Hir): Lir
     local lir = build.from_hir(hir)
     optimize.lir(lir)
     return lir
