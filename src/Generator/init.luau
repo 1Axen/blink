@@ -29,7 +29,27 @@ local EVENT_BODY = {
 	"RecieveBuffer = Buffer\n",
 	"RecieveInstances = Instances\n",
 	"RecieveInstanceCursor = 0\n",
-	"local Size = buffer.len(RecieveBuffer)\n"
+	"local Size = buffer.len(RecieveBuffer)\n",
+}
+
+local SYNC_VALIDATION_BODY = {
+	"local Yielded = false\n",
+	"local Deferred = false\n",
+	"local SyncValidationThread = task.spawn(function()\n",
+	"\twhile true do\n",
+	"\t\tlocal SerdesThread = coroutine.yield()\n",
+	"\t\tYielded = coroutine.status(SerdesThread) == \"suspended\"\n",
+	"\t\tDeferred = false\n",
+	"\tend\n",
+	"end)\n",
+}
+
+local EVENT_SYNC_VALIDATION = {
+	"Yielded = false\n",
+	"if Deferred == false then\n",
+	"\tDeferred = true\n",
+	"\ttask.defer(SyncValidationThread, coroutine.running())\n",
+	"end\n",
 }
 
 local RELIABLE_BODY = {
@@ -377,8 +397,18 @@ function Declarations.Event(Declaration: Parser.Event)
 		local ContextArguments = `Listener: ({Context == "Server" and "Player: Player, " or ""}{Values}) -> ()`
 		local ListenerArguments = `{Context == "Server" and "Player, " or ""}{Arguments}`
 		
-		local CallManyListenerFunction = IsSingle and `Listener({ListenerArguments})` or `task.spawn(Listener, {ListenerArguments})`
-		local CallSingleListenerFunction = IsSync and `{Connection}({ListenerArguments})` or `task.spawn({Connection}, {ListenerArguments})`
+		local CallListener = Blocks.Block()
+		do
+			local PathExpr = IsSingle and Connection or "Listener"
+			local CallExpr = IsSync and `{PathExpr}({ListenerArguments})` or `task.spawn({PathExpr}, {ListenerArguments})`
+			CallListener = CallListener:Line(CallExpr)
+
+			if IsSync and Options.SyncValidation then
+				CallListener = CallListener:Compare("Yielded", "true", "Equals")
+					:Line(`error("Yielded in a Sync call. Event \\"{Declaration.Name}\\" is Sync, consider using Async instead.")`)
+				:End()
+			end
+		end
 
 		Block:Line(`local {Values} = {Util.GetPath(Identifier, false, Scope)}()`)
 
@@ -391,11 +421,11 @@ function Declarations.Event(Declaration: Parser.Event)
 			local ListenerBound: Blocks.Block;
 			if IsSingle then
 				ListenerBound = Block:Compare(Connection, "nil", "Not")
-					:Line(CallSingleListenerFunction)
+					:Lines(CallListener.Content, Block.Indent)
 			else
 				ListenerBound = Block:Compare(`#{Connection}`, "0", "Greater")
 					:Iterator("_", "Listener", Connection)
-						:Line(CallManyListenerFunction)
+						:Lines(CallListener.Content, Block.Indent + 1)
 					:End()
 			end
 				
@@ -417,13 +447,11 @@ function Declarations.Event(Declaration: Parser.Event)
 		else
 			if IsSingle then
 				Block:Compare(Connection, "nil", "Not")
-					:Line(CallSingleListenerFunction)
+					:Lines(CallListener.Content, Block.Indent)
 				:End()
 			else
-				Block:Compare(Connection, "nil", "Not")
-					:Iterator("_", "Listener", Connection)
-						:Line(CallManyListenerFunction)
-					:End()
+				Block:Iterator("_", "Listener", Connection)
+					:Lines(CallListener.Content, Block.Indent)
 				:End()
 			end
 
@@ -1213,6 +1241,11 @@ function Generator.Generate(FileContext: Context, AbstractSyntaxTree: Parser.Bod
 	Reliables:Lines(EVENT_BODY, 1)
 	Unreliables:Lines(EVENT_BODY, 1)
 
+	if Options.SyncValidation then
+		Reliables:Lines(EVENT_SYNC_VALIDATION, 1)
+		Unreliables:Lines(EVENT_SYNC_VALIDATION, 1)
+	end
+
 	Reliables = Reliables:While("RecieveCursor < Size")
 	Unreliables = Unreliables:While("RecieveCursor < Size")
 	Types.u8.Read("Index", Reliables)
@@ -1290,6 +1323,7 @@ function Generator.Generate(FileContext: Context, AbstractSyntaxTree: Parser.Bod
 		Imports.DumpLines(),
 		{`local BASE_EVENT_NAME = "{if Options.RemoteScope then Options.RemoteScope .. "_" else ""}BLINK"\n`},
 		string.split(Sources.Base, "\r"),
+		(if Options.SyncValidation then SYNC_VALIDATION_BODY else {}),
 		Events.DumpLines(),
 		LuauTypes.DumpLines(),
 		UserTypes.DumpLines(),

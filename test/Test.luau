@@ -242,7 +242,6 @@ local function InvokeAndExpect(Name: string, ClientFunction: any, ServerFunction
         if YieldFor then
             task.wait(YieldFor)
         end
-        end
 
         return Recieve
     end)
