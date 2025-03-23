@@ -39,6 +39,9 @@ In order to use future and promise yield types with functions a path to each lib
 option FutureLibrary = "ReplicatedStorage.Packages.Future"
 option PromiseLibrary = "ReplicatedStorage.Packages.Promise"
 ```
+### `SyncValidation`
+Default: `false`
+Controls if Blink will check whether a sync call yielded.
 ### `WriteValidations`
 Default: `false`
 Controls if Blink will check types when writing them (firing an event/invoking a function). Helpful for debugging and during development, but it might result in degraded performance. It is encouraged you disable this option in production.
