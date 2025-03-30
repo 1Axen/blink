@@ -40,9 +40,8 @@ local function build_read(props: ReadProps, block: Builder, optional: Optional):
     
     local exists = condition.equals(byte_register, constant.one)
     block:if_branch(exists, function(block)
-        local of_ty = hir.ty_from_id(ctx.hir, optional.of)
         block:store(
-            ty_builder.read(props, block, of_ty),
+            ty_builder.read(props, block, optional.of),
             value_register
         )
     end)
@@ -57,8 +56,7 @@ local function build_write(props: WriteProps, block: Builder, optional: Optional
     local cursor = block:store(control.allocate(constant.one))
     
     block:if_branch(exists, function(block)
-        local of_ty = hir.ty_from_id(ctx.hir, optional.of)
-        ty_builder.write(props, block, of_ty, value)
+        ty_builder.write(props, block, optional.of, value)
     end)
 
     local as_number = ternary(exists, constant.one, constant.zero)
