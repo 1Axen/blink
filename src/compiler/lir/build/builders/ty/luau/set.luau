@@ -49,7 +49,7 @@ local function build_write(props: WriteProps, block: Builder, set: Set, value: R
     for _, item in set.items do
         local field = projection.field(value :: any, constant.from_value(item.value) :: RValue<any>)
         local in_set = condition.equals(field, constant.truth)
-        local value_register = block:store(ternary(in_set, constant.one, constant.zero) :: lir.Ternary<number>)
+        local value_register = block:store(ternary(in_set, constant.one, constant.zero)) :: Register<number>
         numeral.write(props, block, FORMAT, value_register)
     end
 end

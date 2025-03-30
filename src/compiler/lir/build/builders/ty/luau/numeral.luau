@@ -154,7 +154,7 @@ local function read_i48(block: Builder): Register<number>
 end
 
 local function write_i48(block: Builder, value: RValue<number>)
-    local register = block:store(value)
+    local register = block:store(value) :: Register<number>
 
     -- handle sign
     block:if_branch(condition.less_than(

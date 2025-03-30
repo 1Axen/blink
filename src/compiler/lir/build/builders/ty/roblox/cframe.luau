@@ -74,7 +74,7 @@ local function build_read(props: ReadProps, block: Builder, cframe_ty: ty.CFrame
     local axis = block:store(binary.div_vec(axis_angle, angle))
 
     local half_angle = block:store(binary.mul(angle, HALF))
-    local sin_angle = block:store(sin(half_angle))
+    local sin_angle = block:store(sin(half_angle)) :: Register<number>
 
     local cframe_ctor = library.CFrame.new_quat(
         index_vector(pos, "x"),
