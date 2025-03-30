@@ -82,7 +82,8 @@ local function build_type(ctx: Context, decl_id: DeclId<hir.Type>): lir.Type
         return nil :: any
     end
 
-    local ty = hir.ty_from_id(ctx.hir, decl.ty)
+    local ty_id = decl.ty
+    local ty = hir.ty_from_id(ctx.hir, ty_id)
 
     local rets = {builders.fn.returnn(ty)}
     local args = {builders.fn.argument(ty)}
@@ -100,12 +101,12 @@ local function build_type(ctx: Context, decl_id: DeclId<hir.Type>): lir.Type
     }
 
     local read_fn = builders.fn.create(`read_{decl.name}`, args, rets, function(block)
-        local value_register = builders.ty.read(read_props, block, ty)
+        local value_register = builders.ty.read(read_props, block, ty_id)
         block:rtrn({value_register :: lir.RValue<any>})
     end)
 
     local write_fn = builders.fn.create(`write_{decl.name}`, args, rets, function(block)
-        builders.ty.write(write_props, block, ty, block:argument(1))
+        builders.ty.write(write_props, block, ty_id, block:argument(1))
     end)
 
     return {
@@ -126,6 +127,16 @@ local function build_function(ctx: Context, decl_id: DeclId<hir.Function>): lir.
     return nil :: any
 end
 
+local function populate_ty_fns(ctx: Context)
+    local tys = ctx.tys
+    for ty_id in ctx.hir.tys do
+        tys[ty_id] = {
+            read = context.next_id(ctx),
+            write = context.next_id(ctx),
+        }
+    end
+end
+
 local function from_hir(hir: hir.Hir): lir.Lir
     local lir: Lir = {
         fns = {},
@@ -135,6 +146,8 @@ local function from_hir(hir: hir.Hir): lir.Lir
     }
     
     local ctx: Context = context.create(hir, lir)
+
+    populate_ty_fns(ctx)
 
     for decl_id, decl in hir.decls do
         if decl.kind == "type" then

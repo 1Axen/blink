@@ -33,13 +33,11 @@ type Register<T> = lir.RegisterId<T>
 
 local function build_read(props: ReadProps, block: Builder, array: ty.Array): Register<{any}>
     local ctx = props.ctx
-
-    local of = hir.ty_from_id(ctx.hir, array.of)
     local len = length.read(props, block, array)
     local array_register = block:store(library.table.create(len))
     
     block:for_numeric(len, function(block, index)
-        local element = ty_builder.read(props, block, of)
+        local element = ty_builder.read(props, block, array.of)
         local position = projection.field(array_register :: any, index :: any)
         block:store(element, position)
     end)
@@ -49,11 +47,9 @@ end
 
 local function build_write(props: WriteProps, block: Builder, array: ty.Array, value: RValue<{any}>): ()
     local ctx = props.ctx
-    local of = hir.ty_from_id(ctx.hir, array.of)
-
     length.write(props, block, array, unary.len(value :: any))
     block:for_generic(value :: any, function(block, _, value)
-        ty_builder.write(props, block, of, value)
+        ty_builder.write(props, block, array.of, value)
     end)
 end
 

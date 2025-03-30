@@ -30,6 +30,8 @@ local ty_date_time = require("./roblox/date_time")
 local ty_brick_color = require("./roblox/brick_color")
 local ty_date_time_millis = require("./roblox/date_time_millis")
 
+local fmt_id = require("@format/id")
+
 type Ty = ty.Ty
 type TyId = ty.TyId
 
@@ -96,16 +98,25 @@ local function import_cyclic()
     BUILDERS.intersection = ty_intersection
 end
 
-local function replace_generic(props: ReadProps | WriteProps, generic: ty.Generic): TyId
+local function replace_generic(props: ReadProps | WriteProps, generic: ty.Generic): Ty
     local generics = props.generics
     if generics == nil then
         return panic(`Tried to subsitute generic but type has no generics`)
     end
     
-    return generics[generic.index]
+    local target_id = generics[generic.index]
+    return hir.ty_from_id(props.ctx.hir, target_id)
 end
 
-local function builder_from_ty(ty: Ty): TyBuilder
+local function try_replace_generic(props: ReadProps | WriteProps, ty: Ty): Ty
+    if ty.kind ~= "generic" then
+        return ty
+    end
+
+    return replace_generic(props, ty)
+end
+
+local function builder_from_ty(props: ReadProps | WriteProps, ty: Ty): TyBuilder
     if ty_map == nil then
         import_cyclic()
     end
@@ -119,20 +130,40 @@ local function builder_from_ty(ty: Ty): TyBuilder
 end
 
 local function build_read(props: ReadProps, block: Builder, ty_id: TyId): Register<any>
+    print(`Building reader for {fmt_id(ty_id)}`)
     local ty = hir.ty_from_id(props.ctx.hir, ty_id)
+    ty = try_replace_generic(props, ty)
 
-    local builder = builder_from_ty(ty)
+    local builder = builder_from_ty(props, ty)
     return builder.read(props, block, ty)
 end
 
 local function build_write(props: WriteProps, block: Builder, ty_id: TyId, value: RValue<any>): ()
+    print(`Building writer for {fmt_id(ty_id)}`)
     local ty = hir.ty_from_id(props.ctx.hir, ty_id)
+    ty = try_replace_generic(props, ty)
+    
+    local builder = builder_from_ty(props, ty)
+    return builder.write(props, block, ty, value)
+end
 
-    local builder = builder_from_ty(ty)
+local function build_read_ty(props: ReadProps, block: Builder, ty: Ty): Register<any>
+    ty = try_replace_generic(props, ty)
+
+    local builder = builder_from_ty(props, ty)
+    return builder.read(props, block, ty)
+end
+
+local function build_write_ty(props: WriteProps, block: Builder, ty: Ty, value: RValue<any>): ()
+    ty = try_replace_generic(props, ty)
+
+    local builder = builder_from_ty(props, ty)
     return builder.write(props, block, ty, value)
 end
 
 return table.freeze({
     read = build_read,
-    write = build_write
+    write = build_write,
+    read_ty = build_read_ty,
+    write_ty = build_write_ty,
 })

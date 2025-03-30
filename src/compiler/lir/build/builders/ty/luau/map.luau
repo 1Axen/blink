@@ -34,16 +34,13 @@ type Register<T> = lir.RegisterId<T>
 
 local function build_read(props: ReadProps, block: Builder, map: Map): Register<{[any]: any}>
     local ctx = props.ctx
-    
-    local key_ty = hir.ty_from_id(ctx.hir, map.index)
-    local value_ty = hir.ty_from_id(ctx.hir, map.value)
 
     local len = length.read(props, block, map)
     local map_register = block:store(structure.map({}))
 
     block:for_numeric(len, function(block)
-        local key = ty_builder.read(props, block, key_ty)
-        local value = ty_builder.read(props, block, value_ty)
+        local key = ty_builder.read(props, block, map.index)
+        local value = ty_builder.read(props, block, map.value)
         local map_index = projection.field(map_register :: Register<any>, key)
         block:store(value, map_index)
     end)
@@ -53,9 +50,6 @@ end
 
 local function build_write(props: WriteProps, block: Builder, map: Map, at: RValue<{[any]: any}>): ()
     local ctx = props.ctx
-    
-    local key_ty = hir.ty_from_id(ctx.hir, map.index)
-    local value_ty = hir.ty_from_id(ctx.hir, map.value)
 
     local elements_register = block:store(constant.zero)
     local increase_elements = binary.add(elements_register, constant.one) 
@@ -66,8 +60,8 @@ local function build_write(props: WriteProps, block: Builder, map: Map, at: RVal
     length.write(props, block, map, elements_register)
 
     block:for_generic(at, function(block, key, value)
-        ty_builder.write(props, block, key_ty, key)
-        ty_builder.write(props, block, value_ty, value)
+        ty_builder.write(props, block, map.index, key)
+        ty_builder.write(props, block, map.value, value)
     end)
 end
 

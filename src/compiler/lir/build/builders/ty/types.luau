@@ -6,6 +6,7 @@ local fn = require("@builders/fn")
 local context = require("@lir/build/context")
 
 type Ty = ty.Ty
+type TyId = ty.TyId
 type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>

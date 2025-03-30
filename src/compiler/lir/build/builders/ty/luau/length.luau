@@ -22,7 +22,7 @@ local conversion = require("@util/conversion")
 
 local types = require("../types")
 
-type VariableLengthTy = ty.Buffer | ty.String | ty.Array<ty.Ty> | ty.Map
+type VariableLengthTy = ty.Buffer | ty.String | ty.Array | ty.Map
 
 type TyBuilder = types.TyBuilder
 type ReadProps = types.ReadProps

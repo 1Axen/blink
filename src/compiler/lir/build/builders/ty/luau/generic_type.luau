@@ -24,6 +24,7 @@ type Context = context.Context
 type Attributes = attributes.TypeAttributes
 
 type Ty = ty.Ty
+type TyId = ty.TyId
 type GenericType = ty.GenericType
 
 type LValue<T> = lir.LValue<T>
@@ -32,16 +33,16 @@ type Register<T> = lir.RegisterId<T>
 
 
 local function props_with_generics(base_props: ReadProps | WriteProps, generic_type: GenericType): ReadProps | WriteProps
-    local args: {Ty} = {}
+    local args: {TyId} = {}
     local generics = base_props.generics
     
     for index, generic_id in generic_type.args do
         local generic_ty = hir.ty_from_id(base_props.ctx.hir, generic_id)
         if generic_ty.kind == "generic" and generics then
-            generic_ty = generics[generic_ty.index]
+            generic_id = generics[generic_ty.index]
         end
 
-        args[index] = generic_ty
+        args[index] = generic_id
     end
     
     local new_props = table.clone(base_props)
@@ -52,12 +53,12 @@ end
 
 local function build_read(props: ReadProps, block: Builder, generic_type: GenericType): Register<any>
     local new_props = props_with_generics(props, generic_type) :: ReadProps
-    return ty_builder.read(new_props, block, generic_type.def)
+    return ty_builder.read_ty(new_props, block, generic_type.def)
 end
 
 local function build_write(props: WriteProps, block: Builder, generic_type: GenericType, value: RValue<any>): ()
     local new_props = props_with_generics(props, generic_type) :: WriteProps
-    ty_builder.write(new_props, block, generic_type.def, value)
+    ty_builder.write_ty(new_props, block, generic_type.def, value)
 end
 
 return table.freeze({

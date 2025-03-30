@@ -33,8 +33,7 @@ local function build_read(props: ReadProps, block: Builder, struct: Struct): Reg
     local register: Register<any> = block:store(structure.struct({}))
     for _, field in struct.fields do
         local name = field.name
-        local value_ty = hir.ty_from_id(props.ctx.hir, field.value)
-        local value_register = ty_builder.read(props, block, value_ty)
+        local value_register = ty_builder.read(props, block, field.value)
 
         local struct_index = projection.field(register, constant.from_value(name) :: RValue<any>)
         block:store(value_register, struct_index)
@@ -46,10 +45,9 @@ end
 local function build_write(props: WriteProps, block: Builder, struct: Struct, value: RValue<any>): ()
     for _, field in struct.fields do
         local name = field.name
-        local value_ty = hir.ty_from_id(props.ctx.hir, field.value)
         local struct_index = projection.field(value :: LValue<any>, constant.from_value(name) :: RValue<any>)
         local field_register = block:store(struct_index)
-        ty_builder.write(props, block, value_ty, field_register)
+        ty_builder.write(props, block, field.value, field_register)
     end
 end
 
