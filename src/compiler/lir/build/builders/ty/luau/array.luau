@@ -1,14 +1,10 @@
 local ty = require("@structures/ty")
 local lir = require("@structures/lir")
-local hir = require("@structures/hir")
 local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
 local unary = require("@builders/unary")
-local control = require("@builders/control")
 local library = require("@builders/library")
-local constant = require("@builders/constant")
-local condition = require("@builders/condition")
 local projection = require("@builders/projection")
 
 local context = require("@lir/build/context")
@@ -32,7 +28,6 @@ type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
 local function build_read(props: ReadProps, block: Builder, array: ty.Array): Register<{any}>
-    local ctx = props.ctx
     local len = length.read(props, block, array)
     local array_register = block:store(library.table.create(len))
     
@@ -46,7 +41,6 @@ local function build_read(props: ReadProps, block: Builder, array: ty.Array): Re
 end
 
 local function build_write(props: WriteProps, block: Builder, array: ty.Array, value: RValue<{any}>): ()
-    local ctx = props.ctx
     length.write(props, block, array, unary.len(value :: any))
     block:for_generic(value :: any, function(block, _, value)
         ty_builder.write(props, block, array.of, value)

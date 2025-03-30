@@ -10,8 +10,6 @@ local terminator = require("./terminator")
 local context = require("@lir/build/context")
 
 local loop = require("@builders/loop")
-local condition = require("@builders/condition")
-local projection = require("@builders/projection")
 
 type Ty = ty.Ty
 

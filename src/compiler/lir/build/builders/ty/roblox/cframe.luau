@@ -1,17 +1,13 @@
 local ty = require("@structures/ty")
 local lir = require("@structures/lir")
-local hir = require("@structures/hir")
 local attributes = require("@config/attributes")
 
 local ty_vector = require("../luau/vector")
-local ty_numeral = require("../luau/numeral")
 
 local fn = require("@builders/fn")
 local binary = require('@builders/binary')
-local control = require("@builders/control")
 local library = require("@builders/library")
 local constant = require("@builders/constant")
-local condition = require("@builders/condition")
 local projection = require("@builders/projection")
 
 local context = require("@lir/build/context")
@@ -30,10 +26,7 @@ type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
-local add = binary.add
-local sub = binary.sub
 local mul = binary.mul
-
 local cos = library.math.cos
 local sin = library.math.sin
 
@@ -81,16 +74,16 @@ local function build_read(props: ReadProps, block: Builder, cframe_ty: ty.CFrame
     local axis = block:store(binary.div_vec(axis_angle, angle))
 
     local half_angle = block:store(binary.mul(angle, HALF))
-    local sin_angle = block:store(library.math.sin(half_angle))
+    local sin_angle = block:store(sin(half_angle))
 
     local cframe_ctor = library.CFrame.new_quat(
         index_vector(pos, "x"),
         index_vector(pos, "y"),
         index_vector(pos, "z"),
-        binary.mul(index_vector(axis, "x"), sin_angle),
-        binary.mul(index_vector(axis, "y"), sin_angle),
-        binary.mul(index_vector(axis, "z"), sin_angle),
-        library.math.cos(half_angle)
+        mul(index_vector(axis, "x"), sin_angle),
+        mul(index_vector(axis, "y"), sin_angle),
+        mul(index_vector(axis, "z"), sin_angle),
+        cos(half_angle)
     )
 
     return block:store(cframe_ctor)

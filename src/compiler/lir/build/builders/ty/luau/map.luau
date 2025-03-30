@@ -1,15 +1,11 @@
 local ty = require("@structures/ty")
 local lir = require("@structures/lir")
-local hir = require("@structures/hir")
 local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
 local binary = require("@builders/binary")
-local control = require("@builders/control")
-local library = require("@builders/library")
 local constant = require("@builders/constant")
 local structure = require("@builders/structure")
-local condition = require("@builders/condition")
 local projection = require("@builders/projection")
 local ty_builder = require("@builders/ty")
 
@@ -33,8 +29,6 @@ type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
 local function build_read(props: ReadProps, block: Builder, map: Map): Register<{[any]: any}>
-    local ctx = props.ctx
-
     local len = length.read(props, block, map)
     local map_register = block:store(structure.map({}))
 
@@ -49,8 +43,6 @@ local function build_read(props: ReadProps, block: Builder, map: Map): Register<
 end
 
 local function build_write(props: WriteProps, block: Builder, map: Map, at: RValue<{[any]: any}>): ()
-    local ctx = props.ctx
-
     local elements_register = block:store(constant.zero)
     local increase_elements = binary.add(elements_register, constant.one) 
     block:for_generic(at, function(block)

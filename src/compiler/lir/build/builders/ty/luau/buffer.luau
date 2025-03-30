@@ -3,12 +3,10 @@ local lir = require("@structures/lir")
 local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
-local unary = require("@builders/unary")
 local globals = require("@builders/globals")
 local control = require("@builders/control")
 local library = require("@builders/library")
 local constant = require("@builders/constant")
-local condition = require("@builders/condition")
 
 local length = require("./length")
 local context = require("@lir/build/context")

@@ -4,7 +4,6 @@ local hir = require("@structures/hir")
 local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
-local control = require("@builders/control")
 local library = require("@builders/library")
 local constant = require("@builders/constant")
 local condition = require("@builders/condition")

@@ -7,8 +7,6 @@ local fn = require("@builders/fn")
 local unary = require("@builders/unary")
 local control = require("@builders/control")
 local library = require("@builders/library")
-local constant = require("@builders/constant")
-local condition = require("@builders/condition")
 
 local context = require("@lir/build/context")
 local length = require("./length")

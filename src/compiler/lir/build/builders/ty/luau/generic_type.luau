@@ -4,11 +4,6 @@ local lir = require("@structures/lir")
 local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
-local control = require("@builders/control")
-local library = require("@builders/library")
-local constant = require("@builders/constant")
-local condition = require("@builders/condition")
-local projection = require("@builders/projection")
 
 local context = require("@lir/build/context")
 local ty_builder = require("@builders/ty")

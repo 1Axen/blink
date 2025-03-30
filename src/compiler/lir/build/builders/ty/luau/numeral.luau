@@ -3,7 +3,6 @@ local lir = require("@structures/lir")
 local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
-local unary = require("@builders/unary")
 local binary = require("@builders/binary")
 local library = require("@builders/library")
 local control = require("@builders/control")

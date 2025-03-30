@@ -7,7 +7,6 @@ local ty_string = require("../luau/string")
 local ty_numeral = require("../luau/numeral")
 
 local fn = require("@builders/fn")
-local control = require("@builders/control")
 local library = require("@builders/library")
 local constant = require("@builders/constant")
 local condition = require("@builders/condition")
@@ -40,8 +39,8 @@ local function to_static_enum_type(ctx: Context, ty: ty.Enum): lir.Constant<stri
         return nil
     end
 
-    local ty = hir.ty_from_id(ctx.hir, ty_id) :: ty.StringLiteral
-    return constant.from_value(ty.value)
+    local literal = hir.ty_from_id(ctx.hir, ty_id) :: ty.StringLiteral
+    return constant.from_value(literal.value)
 end
 
 local function validate(props: WriteProps, block: Builder, ty: ty.Enum, at: RValue<EnumItem>)
@@ -88,8 +87,8 @@ local function build_write(props: WriteProps, block: Builder, ty: ty.Enum, value
     ty_string.write(props, block, NAME_FORMAT, name)
 
     -- enum.Value
-    local value = block:store(projection.index(value :: any, const("Value")) :: lir.ProjIndex<number>)
-    ty_numeral.write(props, block, VALUE_FORMAT, value)
+    local enum_value = block:store(projection.index(value :: any, const("Value")) :: lir.ProjIndex<number>)
+    ty_numeral.write(props, block, VALUE_FORMAT, enum_value)
 end
 
 return table.freeze({

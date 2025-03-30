@@ -5,10 +5,7 @@ local attributes = require("@config/attributes")
 local numeral = require("../luau/numeral")
 
 local fn = require("@builders/fn")
-local control = require("@builders/control")
 local library = require("@builders/library")
-local constant = require("@builders/constant")
-local condition = require("@builders/condition")
 
 local context = require("@lir/build/context")
 
