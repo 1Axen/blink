@@ -133,7 +133,7 @@ local function fmt_tys(hirr: hir.Hir, fmt_builder: Builder)
     local tys = hirr.tys
     local sorted: {ty.TyId} = {}
 
-    for ty_id in hirr.tys do
+    for ty_id in tys do
         table.insert(sorted, ty_id)
     end
 
