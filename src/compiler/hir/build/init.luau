@@ -17,6 +17,7 @@ local panic = require("@util/panic")
 local option = require("@util/option")
 local symbols = require("@util/symbols")
 
+local span = require("@util/span")
 local fmt_id = require("@format/id")
 
 local report = require("@hir/report")
@@ -413,6 +414,16 @@ local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference, expr_
         local path_string = path_to_string(expr.path)
         local generic = ctx.generics.values[path_string]
         if generic then
+            -- The type is the generic
+            local node_id = id.ty_id.to_node_id(expr_ty_id)
+            local expr_node = hir.node_from_id(ctx.hir, node_id)
+            if expr_node.kind == "type" then
+                local generic_ty = hir.ty_from_id(ctx.hir, generic) :: ty.Generic
+                local new_ty: ty.GenericType = ty.generic_type(generic_ty, {generic})
+                ctx.hir.tys[expr_ty_id] = new_ty
+                return expr_ty_id
+            end
+
             return generic
         end
     end
