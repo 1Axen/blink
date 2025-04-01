@@ -15,13 +15,6 @@ local PROFILES = table.freeze({
 
 export type Target = keyof<typeof(TARGETS)>
 export type Profile = keyof<typeof(PROFILES)>
-export type CompilerOptions = {
-    --- Track how long each step took and report it to the standard out
-    time: boolean,
-    --- Controls whether the compiler will report internal information to the standard out
-    verbose: boolean,
-    profile: Profile,
-}
 
 --[=[
     Map of `file id` to `AST`.

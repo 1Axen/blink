@@ -2,6 +2,7 @@ local hir = require("@compiler/hir")
 local lir = require("@compiler/lir")
 local lexer = require("@compiler/lexer")
 local parser = require("@compiler/parser")
+local codegen = require("@compiler/codegen")
 
 local ast = require("@structures/ast")
 local codes = require("@config/codes")
@@ -11,7 +12,6 @@ local fs = require("@util/fs")
 local file = require("@util/file")
 local path = require("@util/path")
 local panic = require("@util/panic")
-local option = require("@util/option")
 local symbols = require("@util/symbols")
 local diagnostics = require("@util/diagnostics")
 local import_resolver = require("@util/import_resolver")
@@ -26,12 +26,37 @@ type Symbols = ast.Symbols
 type Path = path.Path
 type File = file.File
 
+type Target = compilation.Target
+type Profile = compilation.Profile
 type FilesMap = compilation.FilesMap
-type CompilerOptions = compilation.CompilerOptions
 
 type Context = {
     symbols: Symbols,
     directory: Path,
+}
+
+export type Targets = {
+    [Target]: string?
+}
+
+export type Options = {
+    profile: Profile,
+}
+
+export type Timings = {
+    ast: number,
+    hir: number,
+    lir: number,
+    codegen: number,
+    total: number
+}
+
+export type Result = {
+    hir: hir.Hir,
+    lir: lir.Lir,
+    files: FilesMap,
+    timings: Timings,
+    targets: Targets
 }
 
 local function report_unknown_require(expr: ast.ExprString): never
@@ -151,27 +176,62 @@ end
     Takes a path to a file to compile.
     @param `file_path` - An absolute path to the file which to compile.
 ]=]
-local function compile_from_path(entry_path: Path, options: CompilerOptions): boolean
+local function compile_from_path(entry_path: Path, compiler_options: Options): Result?
     local fs_result = fs.read_file(entry_path)
     if fs_result.error then
-        print(`Unable to open file at "{path.to_string(entry_path)}"`)
-        return false
+        return nil
     end
 
-    local files_ast = file_to_files_map(fs_result.value, entry_path)
-    local files_hir = hir.from_files(files_ast)
+    local ast_pin = os.clock()
+    local files = file_to_files_map(fs_result.value, entry_path)
+    local ast_elapsed = (os.clock() - ast_pin)
+
+    local hir_pin = os.clock()
+    local files_hir = hir.from_files(files)
+    local hir_elapsed = (os.clock() - hir_pin)
+
+    print(fmt_hir(files_hir))
+
+    local lir_pin = os.clock()
     local files_lir = lir.from_hir(files_hir)
-    
-    if options.profile == "dev" then
-        print(fmt_symbols(files_ast[0].symbols))
-        print(fmt_hir(files_hir))
-        print(fmt_lir(files_lir))
-    end
+    local lir_elapsed = (os.clock() - lir_pin)
 
-    return true
+    print(fmt_lir(files_lir))
+
+    local codegen_pin = os.clock()
+    local targets: Targets = {}
+    do
+        -- local entry_options = files_hir.options[0]
+        -- if entry_options.shared_output then
+        --     targets.shared = codegen.from_lir(files_lir, "shared")
+        -- end
+        -- if entry_options.client_output then
+        --     targets.client = codegen.from_lir(files_lir, "client")
+        -- end
+        -- if entry_options.server_output then
+        --     targets.server = codegen.from_lir(files_lir, "server")
+        -- end
+    end
+    local codegen_elapsed = (os.clock() -  codegen_pin)
+
+    local timings: Timings = {
+        ast = ast_elapsed,
+        hir = hir_elapsed,
+        lir = lir_elapsed,
+        codegen = codegen_elapsed,
+        total = (ast_elapsed + hir_elapsed + lir_elapsed + codegen_elapsed)
+    }
+
+    return {
+        lir = files_lir,
+        hir = files_hir,
+        files = files,
+        timings = timings,
+        targets = targets,
+    }
 end
 
-local function compile_from_snippet(snippet: string, options: CompilerOptions): boolean
+local function compile_from_snippet(snippet: string, options: Options): boolean
     return true
 end
 
