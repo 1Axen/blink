@@ -413,9 +413,18 @@ function Declarations.Event(Declaration: Parser.Event)
 		Block:Line(`local {Values} = {Util.GetPath(Identifier, false, Scope)}()`)
 
 		local Disconnect = Blocks.Function("", "", "()")
-			:Line(IsSingle and `{Connection} = nil` or `table.remove({Connection}, table.find({Connection}, Listener))`)
+		if IsSingle then
+			Disconnect = Disconnect:Compare(Connection, "Listener", "Equals")
+				:Line(`{Connection} = nil`)
 			:End()
-		:Wrap("return ", "")
+		else
+			Disconnect = Disconnect:Line(`local Index = table.find({Connection}, Listener)`)
+			Disconnect = Disconnect:Compare("Index", "nil", "Not")
+				:Line(`table.remove({Connection}, Index)`)
+			:End()
+		end
+
+		Disconnect = Disconnect:End():Wrap("return ", "")
 
 		if IsReliable then
 			local ListenerBound: Blocks.Block;
