@@ -71,9 +71,9 @@ local function build_read(props: ReadProps, block: Builder, cframe_ty: ty.CFrame
     -- div specifies RValue<number> but you can also div vectors
     -- div can't be typed correctly as RValue<number | vector>
     -- because of solver limitations
-    local axis = block:store(binary.div_vec(axis_angle, angle))
+    local axis = block:store(binary.div_vec(axis_angle, angle)) :: Register<vector>
 
-    local half_angle = block:store(binary.mul(angle, HALF))
+    local half_angle = block:store(binary.mul(angle, HALF)) :: Register<number>
     local sin_angle = block:store(sin(half_angle)) :: Register<number>
 
     local cframe_ctor = library.CFrame.new_quat(
