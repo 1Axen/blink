@@ -728,6 +728,29 @@ RunClosure("Color3", function()
     assert(Color.B == Deserialized.B, `Expected {Color.B}, got {Deserialized.B}`)
 end)
 
+RunClosure("Color3 Array", function()
+    local Array = {}
+    for _ = 1, 32 do
+        table.insert(Array, BaseEnvironment.Color3.fromRGB(
+            math.random(0, 255),
+            math.random(0, 255),
+            math.random(0, 255)
+        ))
+    end
+
+    local Serialized = Server.ColorArray.Write(Array)
+    local Deserialized = Server.ColorArray.Read(Serialized)
+
+    assert(#Array == #Deserialized, `Expected {#Array} elements`)
+
+    for Index, Got in Deserialized do
+        local Expected = Array[Index]
+        assert(Expected.R == Got.R, `Expected {Expected.R}, got {Got.R}`)
+        assert(Expected.G == Got.G, `Expected {Expected.G}, got {Got.G}`)
+        assert(Expected.B == Got.B, `Expected {Expected.B}, got {Got.B}`)
+    end
+end)
+
 RunClosure("DateTime", function()
     local DateTime = BaseEnvironment.DateTime.fromUnixTimestamp(math.random(1, 2^30))
     local Serialized = Server.DateSeconds.Write(DateTime)

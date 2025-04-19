@@ -33,6 +33,7 @@ export type Block = typeof(setmetatable({} :: {
     Content: {string},
     Operation: Operation,
     Variables: {[string]: boolean},
+    OperationOffset: number,
 }, Block))
 
 function Block.new<Parent>(Parent: Block?, Unique: string?): Block
@@ -49,7 +50,8 @@ function Block.new<Parent>(Parent: Block?, Unique: string?): Block
             Bytes = 0,
             Counts = 0
         },
-        Variables = {}
+        Variables = {},
+        OperationOffset = 0,
     }, Block)
 end
 
@@ -80,9 +82,11 @@ function Block._operation(self: Block, Method: Method, Bytes: number): string
 
     if self.Unique ~= DEFAULT_UNIQUE then
         self:Comment(`{Method} {Bytes}`)
-        self:Line(`local OPERATION_OFFSET = {self.Unique}`)
+        local OperationOffset = `OPERATION_OFFSET_{self.OperationOffset}`
+        self.OperationOffset += 1
+        self:Line(`local {OperationOffset} = {self.Unique}`)
         self:Line(`{self.Unique} += {Bytes}`)
-        return "OPERATION_OFFSET"
+        return OperationOffset
     end
 
     return `{self.Unique} + {Offset}` 
