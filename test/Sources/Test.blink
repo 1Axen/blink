@@ -24,6 +24,7 @@ type D = Color3
 export type Byte = u8
 
 export type Color = Color3
+export type ColorArray = Color3[]
 export type DateSeconds = DateTime
 export type DateMilliseconds = DateTimeMillis
 export type BrickkColor = BrickColor
