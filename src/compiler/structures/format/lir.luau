@@ -75,7 +75,7 @@ local function fmt_structure(fmt_builder: Builder, structure: lir.Structure<any>
         builder.append(fmt_builder, "{")
         separated(fmt_builder, fmt_rvalue, structure.values, ",")
         builder.append(fmt_builder, "}")
-    elseif structure.kind == "array" then
+    elseif structure.kind == "map" then
         builder.append(fmt_builder, "{")
         for index, value in structure.values do
             fmt_rvalue(fmt_builder, index)
