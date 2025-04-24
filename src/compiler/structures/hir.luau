@@ -59,8 +59,8 @@ export type Decl =
     | Function
 ;
 
-export type DeclId<T = Decl> = number & { __kind: "decl", __T: T}
-export type ScopeId = number & { __kind: "scope" }
+export type DeclId<T = Decl> = { __kind: "decl", __T: T}
+export type ScopeId = { __kind: "scope" }
 
 export type Hir = {
     read tys: {[TyId]: Ty},

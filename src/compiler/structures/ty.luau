@@ -445,7 +445,7 @@ export type Ty =
     | GenericType
     | Placeholder
 
-export type TyId<T = Ty> = number & { __kind: "ty", __T: T }
+export type TyId<T = Ty> = { __kind: "ty", __T: T }
 export type TyKind = index<Ty, "kind">
 
 return table.freeze({

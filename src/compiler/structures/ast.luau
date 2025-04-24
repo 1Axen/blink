@@ -304,7 +304,7 @@ export type Node =
     | GenericDef
 ;
 
-export type NodeId<T = Node> = number & { __kind: "node", __T: T }
+export type NodeId<T = Node> = { __kind: "node", __T: T }
 
 export type Block = {
     read id: NodeId,

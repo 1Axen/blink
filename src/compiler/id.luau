@@ -41,7 +41,7 @@ local NODE_FLAG = 0b00
 local SCOPE_FLAG = 0b01
 
 local function get_kind(id: Id): IdKind
-    local flag = bit32.extract(id, 30, 2)
+    local flag = bit32.extract(id :: any, 30, 2)
     if flag == TY_FLAG then
         return "Ty"
     elseif flag == DECL_FLAG then
@@ -56,15 +56,15 @@ local function get_kind(id: Id): IdKind
 end
 
 local function get_file(id: Id): number
-    return bit32.extract(id, 22, 8)
+    return bit32.extract(id :: any, 22, 8)
 end
 
 local function get_index(id: Id): number
-    return bit32.extract(id, 0, 22)
+    return bit32.extract(id :: any, 0, 22)
 end
 
 local function set_flag(id: Id, flag: number): Id
-    return bit32.replace(id, flag, 30, 2) :: any
+    return bit32.replace(id :: any, flag, 30, 2) :: any
 end
 
 --- Returns a NodeId with `file` and `index`
