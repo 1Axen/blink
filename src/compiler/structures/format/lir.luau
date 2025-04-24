@@ -202,9 +202,11 @@ local function fmt_binary(fmt_builder: Builder, binary: lir.BinaryOp<any>)
         symbol = "//"
     end
 
+    builder.append(fmt_builder, `(`)
     fmt_rvalue(fmt_builder, binary.left)
     builder.append(fmt_builder, ` {symbol} `)
     fmt_rvalue(fmt_builder, binary.right)
+    builder.append(fmt_builder, `)`)
 end
 
 function fmt_rvalue(fmt_builder: Builder, rvalue: lir.RValue<any>)
