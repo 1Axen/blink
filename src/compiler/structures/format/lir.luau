@@ -198,6 +198,8 @@ local function fmt_binary(fmt_builder: Builder, binary: lir.BinaryOp<any>)
         symbol = "/"
     elseif binary.kind == "mod" then
         symbol = "%"
+    elseif binary.kind == "idiv" then
+        symbol = "//"
     end
 
     fmt_rvalue(fmt_builder, binary.left)

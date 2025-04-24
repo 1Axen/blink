@@ -150,12 +150,23 @@ export type BinaryMod<T> = {
     right: RValue<T>
 }
 
+--- left // right
+export type BinaryIDiv<T> = {
+    __phantom_type: T,
+
+    type: "binary",
+    kind: "idiv",
+    left: RValue<T>,
+    right: RValue<T>
+}
+
 export type BinaryOp<T> =
     | BinaryAdd<T>
     | BinarySub<T>
     | BinaryMul<T>
     | BinaryDiv<T>
     | BinaryMod<T>
+    | BinaryIDiv<T>
 
 --- #%of
 export type UnaryLen<T> = {
