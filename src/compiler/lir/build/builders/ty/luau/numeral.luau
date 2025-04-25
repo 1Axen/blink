@@ -49,6 +49,11 @@ type WriteCtor = (cursor: Register<number>, value: RValue<number>) -> Call<numbe
     return types.unionof(table.unpack(combined_components))
 end]]
 
+
+local BYTE = constant.from_value(2^8)
+local SHORT = constant.from_value(2^16)
+local INTEGER = constant.from_value(2^32)
+
 local function size_to_byte_size(size: ty.NumSize): number
     if size == "8" then
         return 1
@@ -73,98 +78,70 @@ local function methods_from_numeral(ty: ty.Numeral): {read: ReadCtor, write: Wri
     return methods
 end
 
-local function read_u24(block: Builder): Register<number>
-    local lower = control.advance(constant.from_value(2))
-    local upper = control.advance(constant.from_value(1))
+local function read_24()
+    local lower_offset = control.advance(constant.from_value(1))
+    local lower = library.buffer.u8.read(lower_offset)
+    
+    local upper_offset = control.advance(constant.from_value(2))
+    local upper = binary.mul(library.buffer.u16.read(upper_offset), BYTE)
 
-    return block:store(library.bit32.bor(
-        library.buffer.u16.read(lower),
-        library.bit32.lshift(
-            library.buffer.u8.read(upper), 
-            constant.from_value(16)
-        )
-    ))
+    return binary.add(lower, upper)
+end
+
+local function read_u24(block: Builder): Register<number>
+    return block:store(read_24())
 end
 
 local function read_i24(block: Builder): Register<number>
-    local register = read_u24(block)
-
-    -- handle sign
-    block:if_branch(condition.greater_than_or(
-        register, 
-        constant.from_value(2^23)
-    ), function(block)
-        block:store(
-            binary.sub(
-                register, 
-                constant.from_value(2^24)
-            ),
-            register
-        )
-    end)
-
-    return register
+    local value = read_24()
+    value = binary.sub(value, constant.from_value(2^23))
+    return block:store(value)
 end
 
-local function write_24(block: Builder, value: RValue<number>)
-    local lower_cursor = block:store(control.allocate(constant.from_value(2)))
-    local upper_cursor = block:store(control.allocate(constant.from_value(1)))
-    local shifted_upper = library.bit32.lshift(value, constant.from_value(16))
+local function write_u24(block: Builder, value: RValue<number>)
+    local lower_offset = block:store(control.allocate(constant.from_value(1)))
+    block:call_lib(library.buffer.u8.write(lower_offset, value))
 
-    block:call_lib(library.buffer.u16.write(lower_cursor, value))
-    block:call_lib(library.buffer.u8.write(upper_cursor, shifted_upper))
+    local upper_offset = block:store(control.allocate(constant.from_value(2)))
+    block:call_lib(library.buffer.u16.write(upper_offset, binary.idiv(value, BYTE)))
+end
+
+local function write_i24(block: Builder, value: RValue<number>)
+    local register = block:store(binary.add(value, constant.from_value(2^23)))
+    write_u24(block, register :: RValue<number>)
+end
+
+local function read_48(block: Builder)
+    local lower_offset = control.advance(constant.from_value(2))
+    local lower = library.buffer.u16.read(lower_offset)
+
+    local upper_offset = control.advance(constant.from_value(4))
+    local upper = binary.mul(library.buffer.u32.read(upper_offset), SHORT)
+
+    return binary.add(lower, upper)
 end
 
 local function read_u48(block: Builder): Register<number>
-    local lower = library.buffer.u32.read(control.advance(constant.from_value(4)))
-    local upper = library.buffer.u16.read(control.advance(constant.from_value(2)))
-    local shifted_lower = binary.mul(constant.from_value(2^16), lower)
-    return block:store(binary.add(shifted_lower, upper))
+    return block:store(read_48())
 end
 
 local function write_u48(block: Builder, value: RValue<number>)
-    local lower_cursor = block:store(control.allocate(constant.from_value(4)))
-    local upper_cursor = block:store(control.allocate(constant.from_value(2)))
+    local lower_offset = block:store(control.allocate(constant.from_value(2)))
+    block:call_lib(library.buffer.u16.write(lower_offset, value))
 
-    local shifted_lower = binary.div(value, constant.from_value(2^16))
-    local shifted_upper = binary.mod(value, constant.from_value(2^16))
-
-    block:call_lib(library.buffer.u32.write(lower_cursor, shifted_lower))
-    block:call_lib(library.buffer.u16.write(upper_cursor, shifted_upper))
+    local upper_offset = block:store(control.allocate(constant.from_value(4)))
+    block:call_lib(library.buffer.u32.write(upper_offset, binary.idiv(value, SHORT)))
 end
 
 local function read_i48(block: Builder): Register<number>
-    local register = read_u48(block)
-
-    -- handle sign
-    block:if_branch(condition.greater_than_or(
-        register, 
-        constant.from_value(2^47)
-    ), function(block)
-        block:store(
-            binary.sub(
-                register, 
-                constant.from_value(2^48)
-            ),
-            register
-        )
-    end)
-
-    return register
+    local value = read_48()
+    value = binary.sub(value, constant.from_value(2^47))
+    return block:store(value)
 end
 
 local function write_i48(block: Builder, value: RValue<number>)
-    local register = block:store(value) :: Register<number>
-
-    -- handle sign
-    block:if_branch(condition.less_than(
-        value, 
-        constant.from_value(0)
-    ), function(block)
-        block:store(binary.add(register, constant.from_value(2^48)), register)
-    end)
-
-    write_u48(block, register)
+    local register = block:store(binary.add(value, constant.from_value(2^47)))
+    write_u48(block, register :: RValue<number>)
 end
 
 local function read_f16(block: Builder): Register<number>
@@ -202,6 +179,8 @@ local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral): Reg
         return read_u24(block)
     elseif format == "i24" then
         return read_i24(block)
+    elseif format == "i24" then
+        return read_i24(block)
     elseif format == "u48" then
         return read_u48(block)
     elseif format == "i48" then
@@ -230,8 +209,10 @@ local function build_write(props: WriteProps, block: Builder, ty: ty.Numeral, va
     --local format: concat_literal_union<ty.NumFormat, ty.NumSize> = (ty.format .. ty.size) :: any
     local format = (ty.format .. ty.size)
 
-    if format == "u24" or format == "i24" then
-        return write_24(block, value)
+    if format == "u24" then
+        return write_u24(block, value)
+    elseif format == "i24" then
+        return write_i24(block, value)
     elseif format == "u48" then
         return write_u48(block, value)
     elseif format == "i48" then
