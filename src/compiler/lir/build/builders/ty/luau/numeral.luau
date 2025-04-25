@@ -111,7 +111,7 @@ local function write_i24(block: Builder, value: RValue<number>)
     write_u24(block, register :: RValue<number>)
 end
 
-local function read_48(block: Builder)
+local function read_48()
     local lower_offset = control.advance(constant.from_value(2))
     local lower = library.buffer.u16.read(lower_offset)
 
