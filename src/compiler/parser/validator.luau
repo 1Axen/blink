@@ -277,10 +277,10 @@ local function stat_option(ctx: Context, stat: ast.StatOption): never?
     if opt_config == nil then
         return diagnostics.report.create("Error")
             .with_code(codes.analysis.UnknownOption)
-            .with_message(`Unknown option "{name}"`)
+            .with_message(`Unknown option "{name.value}"`)
             .with_label(diagnostics.label.create(name.span)
                 .with_color(diagnostics.style.color.red)
-                .with_message(`"{name}" is not a valid option`)
+                .with_message(`"{name.value}" is not a valid option`)
             )
         .finish()
         .error()
