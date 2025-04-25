@@ -13,7 +13,7 @@ export type Span = vector
 
 local function create(start: number, finish: number, file_id: number): vector
     -- TODO: Replace with luau style constructor once lune updates
-    return vector(start, finish, file_id) --vector.create(start, finish, file_id)
+    return vector.create(start, finish, file_id)
 end
 
 --- creates a span from a to b
