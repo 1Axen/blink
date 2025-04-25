@@ -13,6 +13,21 @@ local context = require("@lir/build/context")
 
 local panic = require("@util/panic")
 
+type function concat_literal_union(left: any, right: any)
+    local left_components: {string} = left:components()
+    local right_components: {string} = right:components()
+
+    local combined_components = {}
+    for _, left_singleton in left_components do
+        for _, right_singleton in right_components do
+            local combined_singleton = types.singleton(left_singleton:value() .. right_singleton:value())
+            table.insert(combined_components, combined_singleton)
+        end
+    end
+
+    return types.unionof(table.unpack(combined_components))
+end
+
 local types = require("../types")
 
 type TyBuilder = types.TyBuilder
@@ -33,22 +48,6 @@ type Allocate = lir.CtrlAllocate<number>
 
 type ReadCtor = (cursor: Advance) -> Call<number>
 type WriteCtor = (cursor: Register<number>, value: RValue<number>) -> Call<number>
-
---[[type function concat_literal_union(left: any, right: any)
-    local left_components: {singleton} = left:components()
-    local right_components: {singleton} = right:components()
-
-    local combined_components = {}
-    for _, left_singleton in left_components do
-        for _, right_singleton in right_components do
-            local combined_singleton = types.singleton(left_singleton:value() .. right_singleton:value())
-            table.insert(combined_components, combined_singleton)
-        end
-    end
-
-    return types.unionof(table.unpack(combined_components))
-end]]
-
 
 local BYTE = constant.from_value(2^8)
 local SHORT = constant.from_value(2^16)
@@ -172,13 +171,9 @@ local function validate(block: Builder, ty: ty.Numeral, value: RValue<number>)
 end
 
 local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral): Register<number>
-    --local format: concat_literal_union<ty.NumFormat, ty.NumSize> = (ty.format .. ty.size) :: any
-    local format = (ty.format .. ty.size)
-
+    local format: concat_literal_union<ty.NumFormat, ty.NumSize> = (ty.format .. ty.size) :: any
     if format == "u24" then
         return read_u24(block)
-    elseif format == "i24" then
-        return read_i24(block)
     elseif format == "i24" then
         return read_i24(block)
     elseif format == "u48" then
@@ -206,9 +201,7 @@ local function build_write(props: WriteProps, block: Builder, ty: ty.Numeral, va
         validate(block, ty, value)
     end
 
-    --local format: concat_literal_union<ty.NumFormat, ty.NumSize> = (ty.format .. ty.size) :: any
-    local format = (ty.format .. ty.size)
-
+    local format: concat_literal_union<ty.NumFormat, ty.NumSize> = (ty.format .. ty.size) :: any
     if format == "u24" then
         return write_u24(block, value)
     elseif format == "i24" then
