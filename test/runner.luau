@@ -6,6 +6,7 @@ local colorful = require("@vendor/colorful")
 fs.writeDir("./temp")
 
 do -- run all tests
+    require("@test/id.test")
     require("@test/fs.test")
     require("@test/path.test")
 end
