@@ -39,8 +39,13 @@ local SCOPE_FLAG = 0b01
 local TYPE_MASK = 2^3
 local INDEX_MASK = 2^10
 
-local function id_type(id: u32): IdKind
-    local flag = id % TYPE_MASK
+local function id_type(id: Id)
+    local id_u32 = (id :: any) :: u32
+    return id_u32 % TYPE_MASK
+end
+
+local function id_kind(id: Id): IdKind
+    local flag = id_type(id)
     if flag == TY_FLAG then
         return "Ty"
     elseif flag == DECL_FLAG then
@@ -90,7 +95,8 @@ local function create_node_id(file: number, index: number): NodeId
 end
 
 return table.freeze({
-    kind = id_type,
+    type = id_type,
+    kind = id_kind,
     file = id_file,
     index = id_index,
 
