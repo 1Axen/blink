@@ -2,7 +2,7 @@
   "luau-lsp.plugin.enabled": false,
   "luau-lsp.require.mode": "relativeToFile",
   "luau-lsp.sourcemap.rojoProjectFile": "default.project.json",
-  "luau-lsp.completion.imports.enabled": false,
+  "luau-lsp.completion.imports.enabled": true,
   "stylua.targetReleaseVersion": "latest",
   "luau-lsp.fflags.enableNewSolver": true,
   "luau-lsp.fflags.enableByDefault": true,
@@ -14,5 +14,6 @@
   "luau-lsp.sourcemap.autogenerate": false,
   "luau-lsp.diagnostics.workspace": true,
   "luau-lsp.completion.imports.suggestServices": false,
-  "luau-lsp.completion.imports.suggestRequires": false
+  "luau-lsp.completion.imports.suggestRequires": true,
+  "luau-lsp.completion.imports.stringRequires.enabled": true
 }
