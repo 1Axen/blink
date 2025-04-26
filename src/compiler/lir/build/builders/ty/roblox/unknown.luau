@@ -22,7 +22,7 @@ type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, instance: Instance): Register<unknown>
+local function build_read(props: ReadProps, block: Builder, instance: Instance, into: LValue<any>?): Register<unknown>
     return block:reserve()
 end
 

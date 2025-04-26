@@ -28,18 +28,22 @@ type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, map: Map): Register<{[any]: any}>
+local function build_read(props: ReadProps, block: Builder, map: Map, into: LValue<any>?): Register<{[any]: any}>
     local len = length.read(props, block, map)
-    local map_register = block:store(structure.map({}))
+    local register = block:store(structure.map({}))
 
     block:for_numeric(len, function(block)
         local key = ty_builder.read(props, block, map.index)
         local value = ty_builder.read(props, block, map.value)
-        local map_index = projection.field(map_register, key)
+        local map_index = projection.field(register, key)
         block:store(value, map_index)
     end)
 
-    return map_register
+    if into then
+        return block:store(register, into)
+    end
+
+    return register
 end
 
 local function build_write(props: WriteProps, block: Builder, map: Map, at: RValue<{[any]: any}>): ()

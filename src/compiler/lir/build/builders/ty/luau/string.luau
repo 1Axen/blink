@@ -26,10 +26,10 @@ type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, ty: String): Register<string>
+local function build_read(props: ReadProps, block: Builder, ty: String, into: LValue<any>?): Register<string>
     local len = length.read(props, block, ty)
     local cursor = control.advance(len)
-    return block:store(library.buffer.string.read(cursor, len))
+    return block:store(library.buffer.string.read(cursor, len), into)
 end
 
 local function build_write(props: WriteProps, block: Builder, ty: String, value: RValue<string>): ()

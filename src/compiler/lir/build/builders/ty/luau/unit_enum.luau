@@ -27,13 +27,13 @@ type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, enum: UnitEnum): Register<string>
+local function build_read(props: ReadProps, block: Builder, enum: UnitEnum, into: LValue<any>?)
     local total = #enum.variants
     -- account for serdesing from 0
     local format = conversion.to_min_numeral(total - 1)
 
     local stored_index = numeral.read(props, block, format)
-    local value_register = block:reserve() :: Register<string>
+    local value_register = (into or block:reserve()) :: Register<string>
 
     local out_of_bounds = condition.greater_than_or(
         stored_index,

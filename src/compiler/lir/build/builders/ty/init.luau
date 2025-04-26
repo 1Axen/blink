@@ -33,7 +33,7 @@ local ty_date_time_millis = require("./roblox/date_time_millis")
 local fmt_id = require("@format/id")
 
 type Ty = ty.Ty
-type TyId = ty.TyId
+type TyId = ty.TyId<any>
 
 type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
@@ -129,13 +129,13 @@ local function builder_from_ty(props: ReadProps | WriteProps, ty: Ty): TyBuilder
     return builder
 end
 
-local function build_read(props: ReadProps, block: Builder, ty_id: TyId): Register<any>
+local function build_read(props: ReadProps, block: Builder, ty_id: TyId, into: LValue<any>?): Register<any>
     print(`Building reader for {fmt_id(ty_id)}`)
     local ty = hir.ty_from_id(props.ctx.hir, ty_id)
     ty = try_replace_generic(props, ty)
 
     local builder = builder_from_ty(props, ty)
-    return builder.read(props, block, ty)
+    return builder.read(props, block, ty, into)
 end
 
 local function build_write(props: WriteProps, block: Builder, ty_id: TyId, value: RValue<any>): ()
@@ -147,11 +147,11 @@ local function build_write(props: WriteProps, block: Builder, ty_id: TyId, value
     return builder.write(props, block, ty, value)
 end
 
-local function build_read_ty(props: ReadProps, block: Builder, ty: Ty): Register<any>
+local function build_read_ty(props: ReadProps, block: Builder, ty: Ty, into: LValue<any>?): Register<any>
     ty = try_replace_generic(props, ty)
 
     local builder = builder_from_ty(props, ty)
-    return builder.read(props, block, ty)
+    return builder.read(props, block, ty, into)
 end
 
 local function build_write_ty(props: WriteProps, block: Builder, ty: Ty, value: RValue<any>): ()

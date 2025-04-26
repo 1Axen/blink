@@ -46,9 +46,9 @@ local function props_with_generics(base_props: ReadProps | WriteProps, generic_t
     return new_props
 end
 
-local function build_read(props: ReadProps, block: Builder, generic_type: GenericType): Register<any>
+local function build_read(props: ReadProps, block: Builder, generic_type: GenericType, into: LValue<any>?): Register<any>
     local new_props = props_with_generics(props, generic_type) :: ReadProps
-    return ty_builder.read_ty(new_props, block, generic_type.def)
+    return ty_builder.read_ty(new_props, block, generic_type.def, into)
 end
 
 local function build_write(props: WriteProps, block: Builder, generic_type: GenericType, value: RValue<any>): ()

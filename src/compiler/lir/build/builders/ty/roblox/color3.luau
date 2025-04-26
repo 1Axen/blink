@@ -25,12 +25,12 @@ type Register<T> = lir.RegisterId<T>
 
 local FORMAT = ty.numeral("32", "f")
 
-local function build_read(props: ReadProps, block: Builder, color3_ty: ty.Color3): Register<Color3>
+local function build_read(props: ReadProps, block: Builder, color3_ty: ty.Color3, into: LValue<any>?): Register<Color3>
     local hue = numeral.read(props, block, FORMAT)
     local sat = numeral.read(props, block, FORMAT)
     local val = numeral.read(props, block, FORMAT)
     local color3_ctor = library.Color3.from_HSV(hue, sat, val)
-    return block:store(color3_ctor)
+    return block:store(color3_ctor, into)
 end
 
 local function build_write(props: WriteProps, block: Builder, color3_ty: ty.Color3, value: RValue<Color3>): ()

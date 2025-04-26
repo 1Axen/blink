@@ -32,17 +32,21 @@ type LuauSet = {[string]: any}
 
 local FORMAT = numeral.u8
 
-local function build_read(props: ReadProps, block: Builder, set: Set): Register<LuauSet>
-    local set_register = block:store(structure.struct({})) :: Register<any>
+local function build_read(props: ReadProps, block: Builder, set: Set, into: LValue<any>?): Register<LuauSet>
+    local register = block:store(structure.struct({})) :: Register<any>
 
     for _, item in set.items do
         local value = numeral.read(props, block, FORMAT)
-        local field = projection.field(set_register, constant.from_value(item.value)) 
+        local field = projection.field(register, constant.from_value(item.value)) 
         local in_set = condition.equals(value, constant.one)
         block:store(in_set, field)
     end
 
-    return set_register
+    if into then
+        return block:store(register, into)
+    end
+
+    return register
 end
 
 local function build_write(props: WriteProps, block: Builder, set: Set, value: RValue<LuauSet>): ()

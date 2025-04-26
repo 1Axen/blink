@@ -61,7 +61,7 @@ local function to_tys(ctx: Context, cframe_ty: ty.CFrame): (ty.Vector, ty.Vector
     return pos_ty, rot_ty
 end
 
-local function build_read(props: ReadProps, block: Builder, cframe_ty: ty.CFrame): Register<CFrame>
+local function build_read(props: ReadProps, block: Builder, cframe_ty: ty.CFrame, into: LValue<any>?): Register<CFrame>
     local pos_ty, rot_ty = to_tys(props.ctx, cframe_ty)
 
     local pos = ty_vector.read(props, block, pos_ty)
@@ -86,7 +86,7 @@ local function build_read(props: ReadProps, block: Builder, cframe_ty: ty.CFrame
         cos(half_angle)
     )
 
-    return block:store(cframe_ctor)
+    return block:store(cframe_ctor, into)
 end
 
 local function build_write(props: WriteProps, block: Builder, cframe_ty: ty.CFrame, value: RValue<CFrame>): ()

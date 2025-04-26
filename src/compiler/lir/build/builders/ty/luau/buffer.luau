@@ -26,9 +26,9 @@ type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, buf: ty.Buffer): Register<buffer>
+local function build_read(props: ReadProps, block: Builder, buf: ty.Buffer, into: LValue<any>?): Register<buffer>
     local len = length.read(props, block, buf)
-    local register = block:store(library.buffer.create(len))
+    local register = block:store(library.buffer.create(len), into)
     local buffer_copy = library.buffer.copy(
         register, constant.zero, 
         globals.incoming.buffer, control.advance(len), len

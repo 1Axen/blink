@@ -87,14 +87,14 @@ local function read_24()
     return binary.add(lower, upper)
 end
 
-local function read_u24(block: Builder): Register<number>
-    return block:store(read_24())
+local function read_u24(block: Builder, into: LValue<any>?): Register<number>
+    return block:store(read_24(), into)
 end
 
-local function read_i24(block: Builder): Register<number>
+local function read_i24(block: Builder, into: LValue<any>?): Register<number>
     local value = read_24()
     value = binary.sub(value, constant.from_value(2^23))
-    return block:store(value)
+    return block:store(value, into)
 end
 
 local function write_u24(block: Builder, value: RValue<number>)
@@ -120,8 +120,8 @@ local function read_48()
     return binary.add(lower, upper)
 end
 
-local function read_u48(block: Builder): Register<number>
-    return block:store(read_48())
+local function read_u48(block: Builder, into: LValue<any>?): Register<number>
+    return block:store(read_48(), into)
 end
 
 local function write_u48(block: Builder, value: RValue<number>)
@@ -132,10 +132,10 @@ local function write_u48(block: Builder, value: RValue<number>)
     block:call_lib(library.buffer.u32.write(upper_offset, binary.idiv(value, SHORT)))
 end
 
-local function read_i48(block: Builder): Register<number>
+local function read_i48(block: Builder, into: LValue<any>?): Register<number>
     local value = read_48()
     value = binary.sub(value, constant.from_value(2^47))
-    return block:store(value)
+    return block:store(value, into)
 end
 
 local function write_i48(block: Builder, value: RValue<number>)
@@ -143,9 +143,9 @@ local function write_i48(block: Builder, value: RValue<number>)
     write_u48(block, register :: RValue<number>)
 end
 
-local function read_f16(block: Builder): Register<number>
+local function read_f16(block: Builder, into: LValue<any>?): Register<number>
     block:remark("f16 is not implemented")
-    return block:store(constant.zero)
+    return block:store(constant.zero, into)
 end
 
 local function write_f16(block: Builder, value: RValue<number>)
@@ -170,7 +170,7 @@ local function validate(block: Builder, ty: ty.Numeral, value: RValue<number>)
     end)
 end
 
-local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral): Register<number>
+local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral, into: LValue<any>?): Register<number>
     local format: concat_literal_union<ty.NumFormat, ty.NumSize> = (ty.format .. ty.size) :: any
     if format == "u24" then
         return read_u24(block)
@@ -190,7 +190,7 @@ local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral): Reg
     local cursor = control.advance(bytes)
     local methods = methods_from_numeral(ty)
     
-    local register = block:store(methods.read(cursor))
+    local register = block:store(methods.read(cursor), into)
     validate(block, ty, register)
 
     return register

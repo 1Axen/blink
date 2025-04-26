@@ -33,9 +33,9 @@ local function validate(props: WriteProps, block: Builder, ty: Literal, value: R
     end)
 end
 
-local function build_read<A>(props: ReadProps, block: Builder, literal: ty.Literal): Register<A>
+local function build_read<A>(props: ReadProps, block: Builder, literal: ty.Literal, into: LValue<any>?): Register<A>
     local constant = constant.from_ty((literal :: any) :: {kind: any, value: A})
-    return block:store(constant)
+    return block:store(constant, into)
 end
 
 local function build_write(props: WriteProps, block: Builder, literal: ty.Literal, value: RValue): ()

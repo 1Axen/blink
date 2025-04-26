@@ -57,7 +57,7 @@ local function validate(props: WriteProps, block: Builder, ty: ty.Enum, at: RVal
     end)
 end
 
-local function build_read(props: ReadProps, block: Builder, ty: ty.Enum): Register<EnumItem>
+local function build_read(props: ReadProps, block: Builder, ty: ty.Enum, into: LValue<any>?): Register<EnumItem>
     -- Enum[name]
     local name = ty_string.read(props, block, NAME_FORMAT, attributes)
     local enum = projection.field(
@@ -73,7 +73,7 @@ local function build_read(props: ReadProps, block: Builder, ty: ty.Enum): Regist
         {value :: any}
     ) :: lir.ProjNamecall<EnumItem>
     
-    return block:store(enum_item)
+    return block:store(enum_item, into)
 end
 
 local function build_write(props: WriteProps, block: Builder, ty: ty.Enum, value: RValue<EnumItem>): ()

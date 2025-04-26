@@ -29,7 +29,7 @@ export type WriteProps = {
 }
 
 export type TyBuilder = {
-    read read: (props: ReadProps, block: Builder, ty: Ty, target: LValue<any>?) -> Register<any>,
+    read read: (props: ReadProps, block: Builder, ty: Ty, into: LValue<any>?) -> Register<any>,
     read write: (props: WriteProps, block: Builder, ty: Ty, value: RValue<any>) -> ()
 }
 

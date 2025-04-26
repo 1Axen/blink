@@ -31,14 +31,14 @@ type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, enum: TaggedEnum): Register<any>
+local function build_read(props: ReadProps, block: Builder, enum: TaggedEnum, into: LValue<any>?)
     local total = #enum.variants
 
     -- account for serdesing from 0
     local format = conversion.to_min_numeral(total - 1)
 
     local stored_index = numeral.read(props, block, format)
-    local value_register = block:reserve()
+    local value_register = into or block:reserve()
 
     local out_of_bounds = condition.greater_than_or(
         stored_index,
@@ -56,8 +56,7 @@ local function build_read(props: ReadProps, block: Builder, enum: TaggedEnum): R
         )
 
         block:elseif_branch(is_variant, function(block)
-            local struct_register = struct.read(props, block, variant.value, attributes)
-            block:store(struct_register, value_register)
+            struct.read(props, block, variant.value, attributes, value_register)
         end)
     end
 

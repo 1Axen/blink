@@ -49,7 +49,7 @@ local function validate(ctx: Context, block: Builder, instance: Instance, value:
     end)
 end
 
-local function build_read(props: ReadProps, block: Builder, instance: Instance): Register<Instance>
+local function build_read(props: ReadProps, block: Builder, instance: Instance, into: LValue<any>?): Register<Instance>
     return block:reserve()
 end
 

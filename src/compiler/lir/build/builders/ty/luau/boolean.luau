@@ -35,7 +35,7 @@ local function validate(block: Builder, ty: Boolean, value: RValue<boolean>)
     end)
 end
 
-local function build_read(props: ReadProps, block: Builder, boolean: ty.Boolean): Register<boolean>
+local function build_read(props: ReadProps, block: Builder, boolean: ty.Boolean, into: LValue<any>?): Register<boolean>
     local bytes = constant.from_value(1)
     local advance = control.advance(bytes)
     local buffer_read = library.buffer.u8.read(advance)
@@ -43,7 +43,7 @@ local function build_read(props: ReadProps, block: Builder, boolean: ty.Boolean)
     local truthful = condition.equals(buffer_read, constant.from_value(1))
     local conversion = ternary(truthful, constant.from_value(true), constant.from_value(false)) 
 
-    return block:store(conversion)
+    return block:store(conversion, into)
 end
 
 local function build_write(props: WriteProps, block: Builder, boolean: ty.Boolean, value: RValue<boolean>): ()

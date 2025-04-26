@@ -32,11 +32,9 @@ type Register<T> = lir.RegisterId<T>
 
 local FORMAT = numeral.u8
 
-local function build_read(props: ReadProps, block: Builder, optional: Optional): Register<unknown>
-    local ctx = props.ctx
-
+local function build_read(props: ReadProps, block: Builder, optional: Optional, into: LValue<any>?)
     local byte_register = numeral.read(props, block, FORMAT)
-    local value_register = block:reserve()
+    local value_register = (into or block:reserve())
     
     local exists = condition.equals(byte_register, constant.one)
     block:if_branch(exists, function(block)
@@ -50,8 +48,6 @@ local function build_read(props: ReadProps, block: Builder, optional: Optional):
 end
 
 local function build_write(props: WriteProps, block: Builder, optional: Optional, value: RValue<any>): ()
-    local ctx = props.ctx
-
     local exists = condition.not_equals(value, constant.null)
     local cursor = block:store(control.allocate(constant.one))
     

@@ -25,7 +25,7 @@ type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, struct: Struct): Register<any>
+local function build_read(props: ReadProps, block: Builder, struct: Struct, into: LValue<any>?): Register<any>
     local register: Register<any> = block:store(structure.struct({}))
     for _, field in struct.fields do
         local name = field.name
@@ -33,6 +33,10 @@ local function build_read(props: ReadProps, block: Builder, struct: Struct): Reg
 
         local struct_index = projection.field(register, constant.from_value(name))
         block:store(value_register, struct_index)
+    end
+
+    if into then
+        return block:store(register, into)
     end
 
     return register

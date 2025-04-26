@@ -27,9 +27,9 @@ type Register<T> = lir.RegisterId<T>
 
 local FORMAT = ty_numeral.f64
 
-local function build_read(props: ReadProps, block: Builder, date_time: ty.DateTime): Register<DateTime>
+local function build_read(props: ReadProps, block: Builder, date_time: ty.DateTime, into: LValue<any>?): Register<DateTime>
     local timestamp = ty_numeral.read(props, block, FORMAT)
-    return block:store(library.DateTime.from_timestamp(timestamp))
+    return block:store(library.DateTime.from_timestamp(timestamp), into)
 end
 
 local function build_write(props: WriteProps, block: Builder, date_time: ty.DateTime, value: RValue<DateTime>): ()

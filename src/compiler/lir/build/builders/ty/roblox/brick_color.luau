@@ -27,9 +27,9 @@ type Register<T> = lir.RegisterId<T>
 
 local FORMAT = ty_numeral.u16
 
-local function build_read(props: ReadProps, block: Builder, brick_color: ty.BrickColor): Register<BrickColor>
+local function build_read(props: ReadProps, block: Builder, brick_color: ty.BrickColor, into: LValue<any>?): Register<BrickColor>
     local number = ty_numeral.read(props, block, FORMAT)
-    return block:store(library.BrickColor.new(number))
+    return block:store(library.BrickColor.new(number), into)
 end
 
 local function build_write(props: WriteProps, block: Builder, brick_color: ty.BrickColor, value: RValue<BrickColor>): ()

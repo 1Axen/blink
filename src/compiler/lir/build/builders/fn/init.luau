@@ -77,7 +77,7 @@ local function next_index(builder: Builder): number
     return index
 end
 
-local function store<T>(self: Builder, value: RValue<T>, into: LValue<T>?): Register<T>
+local function store<T, R>(self: Builder, value: RValue<T>, into: LValue<R>?): Register<T>
     local register = (into or register(self)) 
     local assign = statement.assign(register, value)
     table.insert(self.block.statements, assign)

@@ -98,12 +98,12 @@ local function validate(block: Builder, vec: ty.Vector, value: RValue<vector>)
     end)
 end
 
-local function build_read(props: ReadProps, block: Builder, vec: ty.Vector): Register<vector>
+local function build_read(props: ReadProps, block: Builder, vec: ty.Vector, into: LValue<any>?): Register<vector>
     local ty_x, ty_y, ty_z = to_axes(props.ctx, vec)
     local axis_x = read_axis(props, block, ty_x)
     local axis_y = read_axis(props, block, ty_y)
     local axis_z = read_axis(props, block, ty_z)
-    local register = block:store(library.vector.create(axis_x, axis_y, axis_z))
+    local register = block:store(library.vector.create(axis_x, axis_y, axis_z), into)
     validate(block, vec, register)
 
     return register

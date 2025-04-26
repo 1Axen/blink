@@ -24,11 +24,15 @@ type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, intersection: Intersection): Register<any>
+local function build_read(props: ReadProps, block: Builder, intersection: Intersection, into: LValue<any>?): Register<any>
     local register: Register<any> = block:store(structure.struct({}))
 
     ty_builder.read(props, block, intersection.left, register)
     ty_builder.read(props, block, intersection.right, register)
+
+    if into then
+        return block:store(register, into)
+    end
 
     return register
 end
