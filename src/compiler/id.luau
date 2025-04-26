@@ -69,20 +69,20 @@ local function id_set_type(id: Id, flag: number)
     return flag + ((id_u32 // TYPE_MASK) * 2^3)
 end
 
-local function to_ty_id(id: Id)
-    return id_set_type(id, TY_FLAG)
+local function to_ty_id(id: Id): TyId
+    return id_set_type(id, TY_FLAG) :: any
 end
 
-local function to_decl_id(id: Id)
-    return id_set_type(id, DECL_FLAG)
+local function to_decl_id(id: Id): DeclId
+    return id_set_type(id, DECL_FLAG) :: any
 end
 
-local function to_node_id(id: Id)
-    return id_set_type(id, NODE_FLAG)
+local function to_node_id(id: Id): NodeId
+    return id_set_type(id, NODE_FLAG) :: any
 end
 
-local function to_scope_id(id: Id)
-    return id_set_type(id, SCOPE_FLAG)
+local function to_scope_id(id: Id): ScopeId
+    return id_set_type(id, SCOPE_FLAG) :: any
 end
 
 local function create_node_id(file: number, index: number): NodeId
