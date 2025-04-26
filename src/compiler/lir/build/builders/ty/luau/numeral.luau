@@ -51,7 +51,6 @@ type WriteCtor = (cursor: Register<number>, value: RValue<number>) -> Call<nil>
 
 local BYTE = constant.from_value(2^8)
 local SHORT = constant.from_value(2^16)
-local INTEGER = constant.from_value(2^32)
 
 local function size_to_byte_size(size: ty.NumSize): number
     if size == "8" then

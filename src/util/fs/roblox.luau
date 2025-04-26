@@ -10,13 +10,6 @@ type File = file.File
 type Result<T, E> = result.Result<T, E>
 type IOError = types.IOError
 
-local function io_error(value: string): IOError
-    return {
-        kind = "io_error",
-        value = value
-    }
-end
-
 local function read_file(target: Path): Result<File, IOError>
     return panic("Unimplemented")
 end

@@ -161,7 +161,7 @@ local function move(from: Path, to: Path, options: types.WriteOptions?): Result<
     local from_str = path.to_string(from)
     local to_str = path.to_string(to)
 
-    local fs_success, fs_error = pcall(function()
+    local fs_success, _ = pcall(function()
         fs.move(from_str, to_str, options)
         return nil
     end)
@@ -177,7 +177,7 @@ local function copy(from: Path, to: Path, options: types.WriteOptions?): Result<
     local from_str = path.to_string(from)
     local to_str = path.to_string(to)
 
-    local fs_success, fs_error = pcall(function()
+    local fs_success, _ = pcall(function()
         fs.copy(from_str, to_str, options)
         return nil
     end)

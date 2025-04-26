@@ -1,7 +1,6 @@
 local fs = require("@util/fs")
 local file = require("@util/file")
 local path = require("@util/path")
-local panic = require("@util/panic")
 local result = require("@util/result")
 local runtime = require("@util/runtime")
 

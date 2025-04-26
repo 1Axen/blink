@@ -1,6 +1,5 @@
 local ty = require("@structures/ty")
 local lir = require("@structures/lir")
-local hir = require("@structures/hir")
 local attributes = require("@config/attributes")
 
 local numeral = require("./numeral")

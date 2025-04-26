@@ -106,7 +106,8 @@ local function tokenize(input: file.File): {Token}
     end
 
     local function lookahead(amount: number?): number
-        local amount = amount or 1
+        amount = amount or 1
+        
         local offset = (position + amount)
         if offset >= (length - 1) then
             return 0

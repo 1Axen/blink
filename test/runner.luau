@@ -1,7 +1,6 @@
 local fs = require("@lune/fs")
 local process = require("@lune/process")
 local test_kit = require("@vendor/test_kit")
-local colorful = require("@vendor/colorful")
 
 fs.writeDir("./temp")
 

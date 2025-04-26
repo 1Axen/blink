@@ -2,14 +2,9 @@
 --!native
 --!optimize 2
 
-local id = require("@compiler/id")
 local ty = require("@structures/ty")
 local hir = require("@structures/hir")
 local ast = require("@structures/ast")
-
-local panic = require("@util/panic")
-
-local report = require("./report")
 
 type Ty = ty.Ty
 type Hir = hir.Hir
@@ -20,9 +15,7 @@ type NodeId<T = Node> = ast.NodeId<T>
 
 type TyKind = ty.TyKind
 
-local follow = hir.follow
 local ty_from_id = hir.ty_from_id
-local node_from_id = hir.node_from_id
 
 local function flatten_optional(hir: Hir, optional: ty.Optional): ty.Optional
     local of = ty_from_id(hir, optional.of)

@@ -1,5 +1,4 @@
 local ast = require("@structures/ast")
-local hir = require("@structures/hir")
 
 local report = require("@hir/report")
 local attributes = require("@config/attributes")
