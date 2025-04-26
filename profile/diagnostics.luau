@@ -9,7 +9,7 @@ local lexer = require("@compiler/lexer")
 local diagnostics = require("@util/diagnostics")
 
 local code = fs.readFile("./blink/diagnostics.blink")
-local input = file.from_source(code)
+local input = file.from_source("diagnostics", code)
 local tokens = lexer.tokenize(input)
 
 diagnostics.report.create("Error", "diagnostics.blink", input)
