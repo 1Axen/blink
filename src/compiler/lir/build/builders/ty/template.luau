@@ -5,11 +5,6 @@ local lir = require("@structures/lir")
 local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
-local control = require("@builders/control")
-local library = require("@builders/library")
-local constant = require("@builders/constant")
-local condition = require("@builders/condition")
-local projection = require("@builders/projection")
 
 local context = require("@lir/build/context")
 
@@ -27,20 +22,22 @@ type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
-local function validate_read(ctx: Context, block: Builder, ty: Ty, at: LValue<any>)
+local function validate_read(props: ReadProps, block: Builder, ty: Ty, value: LValue<any>)
     
 end
 
-local function validate_write(ctx: Context, block: Builder, ty: Ty, at: LValue<any>)
+local function validate_write(props: WriteProps, block: Builder, ty: Ty, value: RValue<any>)
     
 end
 
 local function build_read(props: ReadProps, block: Builder, ty: Ty): Register<any>
-    return block:reserve()
+    local register = block:reserve()
+    validate_read(props, block, ty, register)
+    return register
 end
 
 local function build_write(props: WriteProps, block: Builder, ty: Ty, value: RValue<any>): ()
-    
+    validate_write(props, block, ty, value)
 end
 
 return table.freeze({
