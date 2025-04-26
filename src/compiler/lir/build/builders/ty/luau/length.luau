@@ -6,8 +6,7 @@ local primitives = require("@config/primitives")
 local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")
-local unary = require("@builders/unary")
-local control = require("@builders/control")
+local binary = require("@builders/binary")
 local library = require("@builders/library")
 local constant = require("@builders/constant")
 local condition = require("@builders/condition")
@@ -22,7 +21,11 @@ local conversion = require("@util/conversion")
 
 local types = require("../types")
 
-type VariableLengthTy = ty.Buffer | ty.String | ty.Array | ty.Map
+type VariableLengthTy = 
+    | ty.Map
+    | ty.Array 
+    | ty.String 
+    | ty.Buffer 
 
 type TyBuilder = types.TyBuilder
 type ReadProps = types.ReadProps
@@ -66,12 +69,6 @@ local function to_max_range(ty: VariableLengthTy): Range
     return panic(`Unhandled ty kind: "{ty.kind}"`)
 end
 
---- Returns the smallest possible numeral that can encode the ty's bounds/length
-local function to_min_range_numeral(ty: VariableLengthTy): ty.Numeral
-    local bounds = to_range(ty) or to_max_range(ty)
-    return conversion.to_min_numeral(bounds.max)
-end
-
 local function to_exact_length(ty: VariableLengthTy): number?
     local ty_range = to_range(ty)
     if ty_range == nil then
@@ -83,6 +80,14 @@ local function to_exact_length(ty: VariableLengthTy): number?
     end
 
     return ty_range.min
+end
+
+--- Returns the numeral and range offset
+local function to_relative_range(ty: VariableLengthTy): (ty.Numeral, lir.Constant<number>)
+    local range = to_range(ty) or to_max_range(ty)
+    local offset = range.min
+    local difference = (range.max - offset)
+    return conversion.to_min_numeral(difference), constant.from_value(offset)
 end
 
 local function validate_exact(block: Builder, ty: VariableLengthTy, value: RValue<number>)
@@ -122,9 +127,10 @@ local function read_length(props: ReadProps, block: Builder, ty: VariableLengthT
     if exact_length ~= nil then
         return constant.from_value(exact_length)
     end
-    
-    local range_numeral = to_min_range_numeral(ty)
-    local len_register = numeral.read(props, block, range_numeral)
+
+    local format, offset = to_relative_range(ty)
+    local len_register = numeral.read(props, block, format)
+    len_register = block:store(binary.add(len_register, offset), len_register)
     validate_range(block, ty, len_register)
 
     return len_register
@@ -145,8 +151,8 @@ local function write_length(props: WriteProps, block: Builder, ty: VariableLengt
         validate_range(block, ty, len_register)
     end
 
-    local range_numeral = to_min_range_numeral(ty)
-    numeral.write(props, block, range_numeral, len_register)
+    local format, offset = to_relative_range(ty)
+    numeral.write(props, block, format, binary.sub(value, offset))
 
     return len_register
 end
