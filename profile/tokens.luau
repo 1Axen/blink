@@ -2,10 +2,11 @@
 
 local fs = require("@lune/fs")
 local serde = require("@lune/serde")
-local lexer = require("../src/compiler/lexer")
+local file = require("@util/file")
+local lexer = require("@compiler/lexer")
 
-local code = fs.readFile("./blink/small.blink")
-local input = buffer.fromstring(code)
+local source = fs.readFile("./blink/small.blink")
+local input = file.from_source("small", source)
 local tokens = lexer.tokenize(input)
 
 fs.writeFile("./out/tokens.json", serde.encode("json", tokens, true))
