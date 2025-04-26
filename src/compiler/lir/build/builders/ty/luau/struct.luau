@@ -31,7 +31,7 @@ local function build_read(props: ReadProps, block: Builder, struct: Struct): Reg
         local name = field.name
         local value_register = ty_builder.read(props, block, field.value)
 
-        local struct_index = projection.field(register, constant.from_value(name) :: RValue<any>)
+        local struct_index = projection.field(register, constant.from_value(name))
         block:store(value_register, struct_index)
     end
 
@@ -41,7 +41,7 @@ end
 local function build_write(props: WriteProps, block: Builder, struct: Struct, value: RValue<any>): ()
     for _, field in struct.fields do
         local name = field.name
-        local struct_index = projection.field(value :: LValue<any>, constant.from_value(name) :: RValue<any>)
+        local struct_index = projection.field(value :: LValue<any>, constant.from_value(name))
         local field_register = block:store(struct_index)
         ty_builder.write(props, block, field.value, field_register)
     end

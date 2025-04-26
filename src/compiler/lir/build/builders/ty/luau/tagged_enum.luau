@@ -38,7 +38,7 @@ local function build_read(props: ReadProps, block: Builder, enum: TaggedEnum): R
     local format = conversion.to_min_numeral(total - 1)
 
     local stored_index = numeral.read(props, block, format)
-    local value_register = block:store()
+    local value_register = block:reserve()
 
     local out_of_bounds = condition.greater_than_or(
         stored_index,
@@ -72,7 +72,7 @@ local function build_write(props: WriteProps, block: Builder, enum: TaggedEnum, 
 
     -- account for serdesing from 0
     local format = conversion.to_min_numeral(total - 1)
-    local tag_register = block:store(projection.field(value :: any, tag :: RValue<any>))
+    local tag_register = block:store(projection.field(value :: any, tag))
 
     for index, variant in enum.variants do
         local key = hir.ty_from_id(ctx.hir, variant.key)

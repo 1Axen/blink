@@ -40,7 +40,7 @@ end
 
 local function build_write(props: WriteProps, block: Builder, buf: ty.Buffer, value: RValue<buffer>): ()
     local len = length.write(props, block, buf, library.buffer.len(value))
-    local cursor = block:store(control.allocate(len)) :: Register<number>
+    local cursor = block:store(control.allocate(len))
     local buffer_copy = library.buffer.copy(
         globals.outgoing.buffer, cursor, 
         value, constant.zero, len

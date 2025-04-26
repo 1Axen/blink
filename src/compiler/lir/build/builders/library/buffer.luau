@@ -36,14 +36,14 @@ end
 local function create(size: RValue<number>): Call<buffer>
     return projection.call(
         index("buffer", "create"),
-        {size} :: {RValue<any>}
+        {size}
     )
 end
 
 local function len(of: RValue<buffer>): Call<number>
     return projection.call(
         index("buffer", "len"),
-        {of} :: {RValue<any>}
+        {of}
     )
 end
 
@@ -66,7 +66,7 @@ local function readstring(
 ): Call<string>
     return projection.call(
         index("buffer", "readstring"),
-        {READ_BUFFER, advance, bytes} :: {RValue<any>}
+        {READ_BUFFER, advance, bytes}
     )
 end
 
@@ -77,7 +77,7 @@ local function writestring(
 ): Call<nil>
     return projection.call(
         index("buffer", `writestring`),
-        {WRITE_BUFFER, allocate, value, bytes} :: {RValue<any>}
+        {WRITE_BUFFER, allocate, value, bytes}
     )
 end
 

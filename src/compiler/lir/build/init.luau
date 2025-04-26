@@ -10,6 +10,7 @@ local lir = require("@structures/lir")
 
 local options = require("@config/options")
 
+local types = require("@builders/ty/types")
 local context = require("./context")
 local builders = require("@builders/init")
 
@@ -89,12 +90,12 @@ local function build_type(ctx: Context, decl_id: DeclId<hir.Type>): lir.Type
     local args = {builders.fn.argument(ty)}
     local attributes = decl.attributes
 
-    local read_props = {
-        ctx = ctx, 
+    local read_props: types.ReadProps = {
+        ctx = ctx,
         attributes = attributes
     }
 
-    local write_props  = {
+    local write_props: types.WriteProps  = {
         ctx = ctx, 
         validate = true,
         attributes = attributes, 
@@ -151,13 +152,13 @@ local function from_hir(hir: hir.Hir): lir.Lir
 
     for decl_id, decl in hir.decls do
         if decl.kind == "type" then
-            lir.types[decl_id] = build_type(ctx, decl_id)
+            lir.types[decl_id] = build_type(ctx, decl_id :: DeclId<hir.Type>)
             continue
         elseif decl.kind == "event" then
-            lir.events[decl_id] = build_event(ctx, decl_id)
+            lir.events[decl_id] = build_event(ctx, decl_id :: DeclId<hir.Event>)
             continue
         elseif decl.kind == "function" then
-            lir.functions[decl_id] = build_function(ctx, decl_id)
+            lir.functions[decl_id] = build_function(ctx, decl_id :: DeclId<hir.Function>)
             continue
         end
 

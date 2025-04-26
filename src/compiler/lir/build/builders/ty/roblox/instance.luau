@@ -50,7 +50,7 @@ local function validate(ctx: Context, block: Builder, instance: Instance, value:
 end
 
 local function build_read(props: ReadProps, block: Builder, instance: Instance): Register<Instance>
-    return block:store()
+    return block:reserve()
 end
 
 local function build_write(props: WriteProps, block: Builder, instance: Instance, value: RValue<Instance>): ()

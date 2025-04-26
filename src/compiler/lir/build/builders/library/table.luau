@@ -11,7 +11,7 @@ type RValue<T> = lir.RValue<T>
 local function create(size: RValue<number>): Call<{any}>
     return projection.call(
         constant.from_value("table.create"), 
-        {size} :: {RValue<any>}
+        {size}
     )
 end
 

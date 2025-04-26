@@ -78,7 +78,7 @@ local BUILDERS: {[ty.TyKind]: TyBuilder?} = {
     brick_color = ty_brick_color,
     roblox_enum = ty_enum,
     date_time_millis = ty_date_time_millis,
-}
+} :: any
 
 local function import_cyclic()
     ty_map = (require :: any)("./luau/map")

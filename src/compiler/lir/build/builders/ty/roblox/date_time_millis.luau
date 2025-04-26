@@ -34,7 +34,7 @@ local function build_read(props: ReadProps, block: Builder, date_time: DateTimeM
 end
 
 local function build_write(props: WriteProps, block: Builder, date_time: DateTimeMillis, value: RValue<DateTime>): ()
-    local timestamp = projection.index(value :: any, constant.from_value("UnixTimestampMillis")) :: lir.ProjIndex<number>
+    local timestamp = (projection.index(value :: any, constant.from_value("UnixTimestampMillis")) :: any) :: lir.ProjIndex<number>
     ty_numeral.write(props, block, FORMAT, timestamp)
 end
 

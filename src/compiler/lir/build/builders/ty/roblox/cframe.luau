@@ -36,7 +36,7 @@ local HALF = const(0.5)
 local VECTOR = ty.vector({})
 
 local function index_vector(vec: RValue<vector>, property: "x" | "y" | "z"): lir.ProjIndex<number>
-    return projection.index(vec :: any, const(property :: string)) :: lir.ProjIndex<number>
+    return projection.index(vec :: any, const(property :: string))
 end
 
 local function to_tys(ctx: Context, cframe_ty: ty.CFrame): (ty.Vector, ty.Vector)
@@ -71,10 +71,10 @@ local function build_read(props: ReadProps, block: Builder, cframe_ty: ty.CFrame
     -- div specifies RValue<number> but you can also div vectors
     -- div can't be typed correctly as RValue<number | vector>
     -- because of solver limitations
-    local axis = block:store(binary.div_vec(axis_angle, angle)) :: Register<vector>
+    local axis = block:store(binary.div_vec(axis_angle, angle))
 
-    local half_angle = block:store(binary.mul(angle, HALF)) :: Register<number>
-    local sin_angle = block:store(sin(half_angle)) :: Register<number>
+    local half_angle = block:store(binary.mul(angle, HALF))
+    local sin_angle = block:store(sin(half_angle))
 
     local cframe_ctor = library.CFrame.new_quat(
         index_vector(pos, "x"),

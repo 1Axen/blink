@@ -14,8 +14,8 @@ local context = require("@lir/build/context")
 local panic = require("@util/panic")
 
 type function concat_literal_union(left: any, right: any)
-    local left_components: {string} = left:components()
-    local right_components: {string} = right:components()
+    local left_components: {any} = left:components()
+    local right_components: {any} = right:components()
 
     local combined_components = {}
     for _, left_singleton in left_components do
@@ -47,7 +47,7 @@ type Advance = lir.CtrlAdvance<number>
 type Allocate = lir.CtrlAllocate<number>
 
 type ReadCtor = (cursor: Advance) -> Call<number>
-type WriteCtor = (cursor: Register<number>, value: RValue<number>) -> Call<number>
+type WriteCtor = (cursor: Register<number>, value: RValue<number>) -> Call<nil>
 
 local BYTE = constant.from_value(2^8)
 local SHORT = constant.from_value(2^16)

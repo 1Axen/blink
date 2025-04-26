@@ -58,8 +58,8 @@ export type ProjCall<T> = {
 
     type: "projection",
     kind: "call",
-    base: LValue<any> | Constant<string>,
-    args: {RValue<any>}
+    base: LValue<T> | Constant<T>,
+    args: {RValue<T>}
 }
 
 --- base[field]
@@ -68,8 +68,8 @@ export type ProjField<T> = {
 
     type: "projection",
     kind: "field",
-    base: LValue<any> | Constant<string>,
-    field: RValue<any>
+    base: LValue<T> | Constant<T>,
+    field: RValue<T>
 }
 
 --- base.index
@@ -78,8 +78,8 @@ export type ProjIndex<T> = {
 
     type: "projection",
     kind: "index",
-    base: LValue<any> | Constant<string>,
-    element: Constant<string>
+    base: LValue<T> | Constant<T>,
+    element: Constant<T>
 }
 
 --- base:method(args...)
@@ -88,9 +88,9 @@ export type ProjNamecall<T> = {
 
     type: "projection",
     kind: "namecall",
-    base: LValue<any> | Constant<string>,
-    method: Constant<string>,
-    args: {RValue<any>}
+    base: LValue<T> | Constant<T>,
+    method: Constant<T>,
+    args: {RValue<T>}
 }
 
 export type Projection<T> =
@@ -236,7 +236,7 @@ export type Map<T> = {
 
     type: "structure",
     kind: "map",
-    values: {[RValue<any>]: RValue<any>}
+    values: {[RValue<T>]: RValue<T>}
 }
 
 -- { values }
@@ -254,7 +254,7 @@ export type Struct<T> = {
 
     type: "structure",
     kind: "struct",
-    values: {[Constant<string>]: RValue<T>}
+    values: {[Constant<T>]: RValue<T>}
 }
 
 export type Structure<T> = 
@@ -273,7 +273,8 @@ export type LValue<T> =
 
 --- right side of an assign statement
 export type RValue<T> =
-    | Id<T>
+    | RegisterId<T>
+    | ArgumentId<T>
     | Structure<T>
     | Global<T>
     | Control<T>

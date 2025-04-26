@@ -140,7 +140,7 @@ local function write_length(props: WriteProps, block: Builder, ty: VariableLengt
         return constant.from_value(exact_length)
     end
 
-    local len_register = block:store(value) :: Register<number>
+    local len_register = block:store(value)
     if props.validate then
         validate_range(block, ty, len_register)
     end

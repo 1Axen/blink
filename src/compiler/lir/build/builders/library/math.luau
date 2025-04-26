@@ -11,14 +11,14 @@ type RValue<T> = lir.RValue<T>
 local function cos(n: RValue<number>): Call<number>
     return projection.call(
         constant.from_value("math.cos"), 
-        {n} :: {RValue<any>}
+        {n}
     )
 end
 
 local function sin(n: RValue<number>): Call<number>
     return projection.call(
         constant.from_value("math.sin"), 
-        {n} :: {RValue<any>}
+        {n}
     )
 end
 

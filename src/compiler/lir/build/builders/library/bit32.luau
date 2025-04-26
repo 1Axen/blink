@@ -11,21 +11,21 @@ type RValue<T> = lir.RValue<T>
 local function bor(...: RValue<number>): Call<number>
     return projection.call(
         constant.from_value("bit32.bor"),
-        {...} :: {RValue<any>}
+        {...}
     )
 end
 
 local function lshift(x: RValue<number>, disp: lir.Constant<number>): Call<number>
     return projection.call(
         constant.from_value("bit32.lshift"),
-        {x, disp} :: {RValue<any>}
+        {x, disp}
     )
 end
 
 local function rshift(x: RValue<number>, disp: lir.Constant<number>): Call<number>
     return projection.call(
         constant.from_value("bit32.rshift"),
-        {x, disp} :: {RValue<any>}
+        {x, disp}
     )
 end
 

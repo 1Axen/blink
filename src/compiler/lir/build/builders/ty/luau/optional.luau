@@ -36,7 +36,7 @@ local function build_read(props: ReadProps, block: Builder, optional: Optional):
     local ctx = props.ctx
 
     local byte_register = numeral.read(props, block, FORMAT)
-    local value_register = block:store()
+    local value_register = block:reserve()
     
     local exists = condition.equals(byte_register, constant.one)
     block:if_branch(exists, function(block)

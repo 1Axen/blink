@@ -3,9 +3,9 @@ local hir = require("@structures/hir")
 local ast = require("@structures/ast")
 local panic = require("@util/panic")
 
-type TyId = ty.TyId
-type DeclId = hir.DeclId
-type NodeId = ast.NodeId
+type TyId = ty.TyId<any>
+type DeclId = hir.DeclId<any>
+type NodeId = ast.NodeId<any>
 type ScopeId = hir.ScopeId
 
 

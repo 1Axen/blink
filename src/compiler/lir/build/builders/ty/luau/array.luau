@@ -33,7 +33,7 @@ local function build_read(props: ReadProps, block: Builder, array: ty.Array): Re
     
     block:for_numeric(len, function(block, index)
         local element = ty_builder.read(props, block, array.of)
-        local position = projection.field(array_register :: any, index :: any)
+        local position = projection.field(array_register :: any, index)
         block:store(element, position)
     end)
 

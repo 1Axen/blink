@@ -115,9 +115,9 @@ local function build_write(props: WriteProps, block: Builder, vec: ty.Vector, va
     end
 
     local ty_x, ty_y, ty_z = to_axes(props.ctx, vec)
-    write_axis(props, block, ty_x, projection.index(value :: any, constant.from_value("x")) :: any)
-    write_axis(props, block, ty_y, projection.index(value :: any, constant.from_value("y")) :: any)
-    write_axis(props, block, ty_z, projection.index(value :: any, constant.from_value("z")) :: any)
+    write_axis(props, block, ty_x, projection.index(value :: any, constant.from_value("x")))
+    write_axis(props, block, ty_y, projection.index(value :: any, constant.from_value("y")))
+    write_axis(props, block, ty_z, projection.index(value :: any, constant.from_value("z")))
 end
 
 return table.freeze({

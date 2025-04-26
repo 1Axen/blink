@@ -23,7 +23,7 @@ local function cframe_new_quat(
 ): Call<CFrame>
     return projection.call(
         constant.from_value("CFrame.new"), 
-        {x, y, z, quat_x, quat_y, quat_z, quat_w} :: any
+        {x, y, z, quat_x, quat_y, quat_z, quat_w}
     )
 end
 
@@ -32,7 +32,7 @@ local function cframe_to_axis_angle(at: RValue<CFrame>): Namecall<number>
         at :: LValue<any>,
         constant.from_value("ToAxisAngle"),
         {}
-    ) :: Namecall<number>
+    )
 end
 
 local function color3_from_HSV(
@@ -42,7 +42,7 @@ local function color3_from_HSV(
 ): Call<Color3>
     return projection.call(
         constant.from_value("Color3.fromHSV"),
-        {hue, sat, val} :: any
+        {hue, sat, val}
     )
 end
 
@@ -51,27 +51,27 @@ local function color3_to_HSV(at: RValue<Color3>): Namecall<number>
         at :: LValue<any>,
         constant.from_value("ToHSV"),
         {}
-    ) :: Namecall<number>
+    )
 end
 
 local function brick_color_new(number: RValue<number>): Call<BrickColor>
     return projection.call(
         constant.from_value("BrickColor.new"),
-        {number} :: any
+        {number}
     )
 end
 
 local function date_time_new(timestamp: RValue<number>): Call<DateTime>
     return projection.call(
         constant.from_value("DateTime.fromUnixTimestamp"),
-        {timestamp} :: any
+        {timestamp}
     )
 end
 
 local function date_time_millis_new(timestamp_millis: RValue<number>): Call<DateTime>
     return projection.call(
         constant.from_value("DateTime.fromUnixTimestampMillis"),
-        {timestamp_millis} :: any
+        {timestamp_millis}
     )
 end
 
@@ -80,7 +80,7 @@ local function instance_is_a(at: RValue<Instance>, class: Constant<string>): Nam
         at :: LValue<any>, 
         constant.from_value("IsA"), 
         {class} :: any
-    ) :: Namecall<boolean>
+    )
 end
 
 return table.freeze({

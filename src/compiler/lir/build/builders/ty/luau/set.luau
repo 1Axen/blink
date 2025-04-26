@@ -37,7 +37,7 @@ local function build_read(props: ReadProps, block: Builder, set: Set): Register<
 
     for _, item in set.items do
         local value = numeral.read(props, block, FORMAT)
-        local field = projection.field(set_register, constant.from_value(item.value) :: RValue<any>) 
+        local field = projection.field(set_register, constant.from_value(item.value)) 
         local in_set = condition.equals(value, constant.one)
         block:store(in_set, field)
     end
@@ -47,9 +47,9 @@ end
 
 local function build_write(props: WriteProps, block: Builder, set: Set, value: RValue<LuauSet>): ()
     for _, item in set.items do
-        local field = projection.field(value :: any, constant.from_value(item.value) :: RValue<any>)
+        local field = projection.field(value :: any, constant.from_value(item.value))
         local in_set = condition.equals(field, constant.truth)
-        local value_register = block:store(ternary(in_set, constant.one, constant.zero)) :: Register<number>
+        local value_register = block:store(ternary(in_set, constant.one, constant.zero))
         numeral.write(props, block, FORMAT, value_register)
     end
 end

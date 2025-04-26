@@ -36,7 +36,7 @@ local function validate_write(ctx: Context, block: Builder, ty: Ty, at: LValue<a
 end
 
 local function build_read(props: ReadProps, block: Builder, ty: Ty): Register<any>
-    return block:store()
+    return block:reserve()
 end
 
 local function build_write(props: WriteProps, block: Builder, ty: Ty, value: RValue<any>): ()

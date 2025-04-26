@@ -3,10 +3,8 @@
 local lir = require("@structures/lir")
 
 type RValue<T> = lir.RValue<T>
-type Advance = lir.CtrlAdvance<number>
-type Allocate = lir.CtrlAllocate<number>
 
-local function ctrl_advance(bytes: RValue<number>): Advance
+local function ctrl_advance(bytes: RValue<number>): lir.CtrlAdvance<number>
     return {
         __phantom_type = nil :: any,
         
@@ -16,7 +14,7 @@ local function ctrl_advance(bytes: RValue<number>): Advance
     }
 end
 
-local function ctrl_allocate(bytes: RValue<number>): Allocate
+local function ctrl_allocate(bytes: RValue<number>): lir.CtrlAllocate<number>
     return {
         __phantom_type = nil :: any,
 

@@ -7,11 +7,12 @@ type ProjField<T> = lir.ProjField<T>
 type ProjIndex<T> = lir.ProjIndex<T>
 type ProjNamecall<T> = lir.ProjNamecall<T>
 
-type RValue = lir.RValue<any>
-type LValue = lir.LValue<any>
+type RValue<T> = lir.RValue<T>
 type Constant<T> = lir.Constant<T>
 
-local function proj_call<T>(base: LValue | Constant<string>, args: {RValue}): ProjCall<any>
+type Base = lir.LValue<any> | Constant<string>
+
+local function proj_call<T>(base: Base, args: {RValue<T>}): any
     return {
         __phantom_type = nil :: any,
         type = "projection",
@@ -21,7 +22,7 @@ local function proj_call<T>(base: LValue | Constant<string>, args: {RValue}): Pr
     }
 end
 
-local function proj_field<T>(base: LValue | Constant<string>, field: RValue): ProjField<T>
+local function proj_field<T>(base: Base, field: RValue<T>): any
     return {
         __phantom_type = nil :: any,
         type = "projection",
@@ -31,7 +32,7 @@ local function proj_field<T>(base: LValue | Constant<string>, field: RValue): Pr
     }
 end
 
-local function proj_index<T>(base: LValue | Constant<string>, element: lir.Constant<string>): ProjIndex<T>
+local function proj_index<T>(base: Base, element: lir.Constant<string>): any
     return {
         __phantom_type = nil :: any,
         type = "projection",
@@ -41,7 +42,7 @@ local function proj_index<T>(base: LValue | Constant<string>, element: lir.Const
     }
 end
 
-local function proj_namecall<T>(base: LValue | Constant<string>, method: Constant<string>, args: {RValue}): ProjNamecall<T>
+local function proj_namecall<T>(base: Base, method: Constant<string>, args: {RValue<T>}): any
     return {
         __phantom_type = nil :: any,
         type = "projection",

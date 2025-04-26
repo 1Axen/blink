@@ -26,7 +26,7 @@ type Condition = lir.Condition<boolean>
 
 type LValue<T = any> = lir.LValue<T>
 type RValue<T = any> = lir.RValue<T>
-type Register<T = any> = lir.RegisterId<T>
+type Register<T> = lir.RegisterId<T>
 
 type Context = context.Context
 
@@ -77,11 +77,18 @@ local function next_index(builder: Builder): number
     return index
 end
 
-local function store<T>(self: Builder, value: RValue<T>?, into: LValue<T>?): Register<T>
-    local register = into or register(self) :: Register<T>
+local function store<T>(self: Builder, value: RValue<T>, into: LValue<T>?): Register<T>
+    local register = (into or register(self)) 
     local assign = statement.assign(register, value)
     table.insert(self.block.statements, assign)
     return register :: Register<T>
+end
+
+local function reserve(self: Builder): Register<any>
+    local register = register(self)
+    local assign = statement.assign(register)
+    table.insert(self.block.statements, assign)
+    return register
 end
 
 --- Store the result of `value` into `count` registers
@@ -97,8 +104,8 @@ local function store_mult(self: Builder, value: RValue, count: number): {LValue}
     return registers
 end
 
-local function call_lib(self: Builder, projection: lir.ProjCall<any>)
-    local call = statement.call(projection)
+local function call_lib(self: Builder, projection: lir.ProjCall<nil>)
+    local call = statement.call(projection :: any)
     table.insert(self.block.statements, call)
 end
 
@@ -208,6 +215,7 @@ export type Builder = {
     registers: {number},
 
     store: typeof(store),
+    reserve: typeof(reserve),
     store_mult: typeof(store_mult),
     
     --call_fn: typeof(call_fn),
@@ -252,6 +260,7 @@ local function create(name: string, args: {Argument}, rets: {Return}, body: Body
         registers = table.clone(REGISTERS_TEMPLATE),
 
         store = store,
+        reserve = reserve,
         store_mult = store_mult,
 
         call_fn = call_fn,

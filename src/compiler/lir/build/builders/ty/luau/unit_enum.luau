@@ -33,7 +33,7 @@ local function build_read(props: ReadProps, block: Builder, enum: UnitEnum): Reg
     local format = conversion.to_min_numeral(total - 1)
 
     local stored_index = numeral.read(props, block, format)
-    local value_register = block:store() :: Register<string>
+    local value_register = block:reserve() :: Register<string>
 
     local out_of_bounds = condition.greater_than_or(
         stored_index,

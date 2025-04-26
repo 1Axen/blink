@@ -26,14 +26,14 @@ end
 local function luau_typeof(of: RValue<any>): Call<string>
     return projection.call(
         constant.from_value("typeof"),
-        {of} :: any
+        {of}
     )
 end
 
 local function luau_tostring(value: RValue<any>): Call<string>
     return projection.call(
         constant.from_value("typeof"),
-        {value} :: any
+        {value}
     )
 end
 

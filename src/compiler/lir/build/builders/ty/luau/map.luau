@@ -35,7 +35,7 @@ local function build_read(props: ReadProps, block: Builder, map: Map): Register<
     block:for_numeric(len, function(block)
         local key = ty_builder.read(props, block, map.index)
         local value = ty_builder.read(props, block, map.value)
-        local map_index = projection.field(map_register :: Register<any>, key)
+        local map_index = projection.field(map_register, key)
         block:store(value, map_index)
     end)
 
