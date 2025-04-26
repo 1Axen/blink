@@ -20,8 +20,7 @@
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
-local ANSI = "%c[%dm"
-local RUNTIME = (game ~= nil) and "ROBLOX" or "Lune"
+local RUNTIME = if game then "ROBLOX" else "Lune"
 local RICHTEXT_TAGS = {
     --> colors
     [30] = `color="#000000"`,
@@ -48,8 +47,8 @@ local RICHTEXT_TAGS = {
 export type Styler = (text: string) -> string
 
 local function create_lune_styler(opener: number, closer: number): Styler
-    local open = string.format(ANSI, 27, opener)
-    local close = string.format(ANSI, 27, closer)
+    local open = string.format("%c[%dm", 27, opener)
+    local close = string.format("%c[%dm", 27, closer)
     return function(text: string)
         return `{open}{text}{close}`
     end
