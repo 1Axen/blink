@@ -66,7 +66,7 @@ end
 
 local function id_set_type(id: Id, flag: number)
     local id_u32 = (id :: any) :: u32
-    return (id_u32 // TYPE_MASK) + flag
+    return flag + ((id_u32 // TYPE_MASK) * 2^3)
 end
 
 local function to_ty_id(id: Id)
