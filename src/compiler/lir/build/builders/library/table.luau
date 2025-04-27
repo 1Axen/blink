@@ -15,6 +15,14 @@ local function create(size: RValue<number>): Call<{any}>
     )
 end
 
+local function insert<T>(into: RValue<{T}>, value: RValue<T>)
+    return projection.call(
+        constant.from_value("table.insert"), 
+        {into, value}
+    )
+end
+
 return table.freeze({
-    create = create
+    create = create,
+    insert = insert
 })
