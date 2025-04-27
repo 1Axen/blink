@@ -18,6 +18,8 @@ type Attributes = attributes.TypeAttributes
 export type ReadProps = {
     ctx: Context,
     generics: {TyId}?,
+    -- This is an ugly hack for instances
+    is_optional: boolean?,
     attributes: Attributes,
 }
 
@@ -27,6 +29,10 @@ export type WriteProps = {
     validate: boolean,
     attributes: Attributes,
 }
+
+export type Props = 
+    | ReadProps
+    | WriteProps
 
 export type TyBuilder = {
     read read: (props: ReadProps, block: Builder, ty: Ty, into: LValue<any>?) -> Register<any>,

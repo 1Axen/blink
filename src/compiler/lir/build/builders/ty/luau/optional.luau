@@ -37,10 +37,9 @@ local function build_read(props: ReadProps, block: Builder, optional: Optional, 
     
     local exists = condition.equals(byte_register, constant.one)
     block:if_branch(exists, function(block)
-        block:store(
-            ty_builder.read(props, block, optional.of),
-            value_register
-        )
+        props.is_optional = true
+        ty_builder.read(props, block, optional.of, value_register)
+        props.is_optional = false
     end)
 
     return value_register
