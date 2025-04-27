@@ -178,7 +178,7 @@ end
 local function fmt_tagged_enum(ty: ty.TaggedEnum): string
     local variants: {string} = {}
     for _, variant in ty.variants do
-        table.insert(variants, `{fmt_types.any(variant.key)}: {fmt_struct(variant.value)}`)
+        table.insert(variants, `{fmt_id(variant.key)}: {fmt_struct(variant.value)}`)
     end
 
     return `{PRIMITIVE_STYLE("enum")} {fmt_types.string(ty.tag)} \{{table.concat(variants, ", ")}\}`
