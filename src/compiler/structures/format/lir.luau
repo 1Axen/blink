@@ -238,6 +238,8 @@ end
 function fmt_lvalue(fmt_builder: Builder, lvalue: lir.LValue<any>)
     if lvalue.type == "projection" then
         fmt_projection(fmt_builder, lvalue)
+    elseif lvalue.type == "global" then
+        fmt_global(fmt_builder, lvalue)
     elseif lvalue.type == "id" then
         fmt_id(fmt_builder, lvalue)
     else

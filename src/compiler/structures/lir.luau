@@ -264,7 +264,8 @@ export type Structure<T> =
 ;
 
 --- left side of an assign statement
-export type LValue<T> = 
+export type LValue<T> =
+    | Global<T>
     | ProjField<T>
     | ProjIndex<T>
     | RegisterId<T>
