@@ -297,7 +297,7 @@ export type Intersection = {
     read right: TyId<IntersectionSide>
 }
 
-local function create_intersection(left: TyId, right: TyId): Intersection
+local function create_intersection(left: TyId<IntersectionSide>, right: TyId<IntersectionSide>): Intersection
     return {
         kind = "intersection",
         left = left,
