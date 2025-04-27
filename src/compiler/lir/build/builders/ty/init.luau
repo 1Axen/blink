@@ -46,6 +46,7 @@ type Attributes = attributes.TypeAttributes
 type TyBuilder = types.TyBuilder
 type ReadProps = types.ReadProps
 type WriteProps = types.WriteProps
+type Props = types.Props
 
 -- cyclical ty builders
 local ty_map: TyBuilder?;
@@ -98,7 +99,7 @@ local function import_cyclic()
     BUILDERS.intersection = ty_intersection
 end
 
-local function replace_generic(props: ReadProps | WriteProps, generic: ty.Generic): Ty
+local function replace_generic(props: Props, generic: ty.Generic): Ty
     local generics = props.generics
     if generics == nil then
         return panic(`Tried to subsitute generic but type has no generics`)
@@ -108,15 +109,15 @@ local function replace_generic(props: ReadProps | WriteProps, generic: ty.Generi
     return hir.ty_from_id(props.ctx.hir, target_id)
 end
 
-local function try_replace_generic(props: ReadProps | WriteProps, ty: Ty): Ty
-    if ty.kind ~= "generic" then
-        return ty
+local function try_replace_generic(props: Props, ty: Ty): Ty
+    if ty.kind == "generic" then
+        return replace_generic(props, ty)
     end
 
-    return replace_generic(props, ty)
+    return ty
 end
 
-local function builder_from_ty(props: ReadProps | WriteProps, ty: Ty): TyBuilder
+local function builder_from_ty(ty: Ty): TyBuilder
     if ty_map == nil then
         import_cyclic()
     end
@@ -129,41 +130,33 @@ local function builder_from_ty(props: ReadProps | WriteProps, ty: Ty): TyBuilder
     return builder
 end
 
-local function build_read(props: ReadProps, block: Builder, ty_id: TyId, into: LValue<any>?): Register<any>
+local function read_ty(props: ReadProps, block: Builder, ty: Ty, into: LValue<any>?): LValue<any>
+    ty = try_replace_generic(props, ty)
+    local builder = builder_from_ty(ty)
+    return builder.read(props, block, ty, into)
+end
+
+local function write_ty(props: WriteProps, block: Builder, ty: Ty, value: RValue<any>)
+    ty = try_replace_generic(props, ty)
+    local builder = builder_from_ty(ty)
+    builder.write(props, block, ty, value)
+end
+
+local function read_ty_id(props: ReadProps, block: Builder, ty_id: TyId, into: LValue<any>?)
     print(`Building reader for {fmt_id(ty_id)}`)
     local ty = hir.ty_from_id(props.ctx.hir, ty_id)
-    ty = try_replace_generic(props, ty)
-
-    local builder = builder_from_ty(props, ty)
-    return builder.read(props, block, ty, into)
+    return read_ty(props, block, ty, into)
 end
 
-local function build_write(props: WriteProps, block: Builder, ty_id: TyId, value: RValue<any>): ()
+local function write_ty_id(props: WriteProps, block: Builder, ty_id: TyId, value: RValue<any>)
     print(`Building writer for {fmt_id(ty_id)}`)
     local ty = hir.ty_from_id(props.ctx.hir, ty_id)
-    ty = try_replace_generic(props, ty)
-    
-    local builder = builder_from_ty(props, ty)
-    return builder.write(props, block, ty, value)
-end
-
-local function build_read_ty(props: ReadProps, block: Builder, ty: Ty, into: LValue<any>?): Register<any>
-    ty = try_replace_generic(props, ty)
-
-    local builder = builder_from_ty(props, ty)
-    return builder.read(props, block, ty, into)
-end
-
-local function build_write_ty(props: WriteProps, block: Builder, ty: Ty, value: RValue<any>): ()
-    ty = try_replace_generic(props, ty)
-
-    local builder = builder_from_ty(props, ty)
-    return builder.write(props, block, ty, value)
+    write_ty(props, block, ty, value)
 end
 
 return table.freeze({
-    read = build_read,
-    write = build_write,
-    read_ty = build_read_ty,
-    write_ty = build_write_ty,
+    read = read_ty_id,
+    write = write_ty_id,
+    read_ty = read_ty,
+    write_ty = write_ty,
 })
