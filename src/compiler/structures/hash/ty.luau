@@ -11,7 +11,7 @@ type Hir = hir.Hir
 
 local hash_ty: (owner: Hir, ty: ty.Ty) -> string
 
-local function hash_ty_id(owner: Hir, ty_id: ty.TyId): string
+local function hash_ty_id(owner: Hir, ty_id: ty.TyId<any>): string
     local ty = hir.ty_from_id(owner, ty_id)
     return hash_ty(owner, ty)
 end
