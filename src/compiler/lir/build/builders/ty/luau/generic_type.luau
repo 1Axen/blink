@@ -26,7 +26,6 @@ type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
-
 local function props_with_generics(base_props: ReadProps | WriteProps, generic_type: GenericType): ReadProps | WriteProps
     local args: {TyId} = {}
     local generics = base_props.generics
@@ -46,7 +45,7 @@ local function props_with_generics(base_props: ReadProps | WriteProps, generic_t
     return new_props
 end
 
-local function build_read(props: ReadProps, block: Builder, generic_type: GenericType, into: LValue<any>?): Register<any>
+local function build_read(props: ReadProps, block: Builder, generic_type: GenericType, into: LValue<any>?)
     local new_props = props_with_generics(props, generic_type) :: ReadProps
     return ty_builder.read_ty(new_props, block, generic_type.def, into)
 end
