@@ -2,9 +2,9 @@
 	"languageMode": "strict",
     "aliases": {
         "test": "test",
-        "util": "src/util",
+        "util": "libs",
         "vendor": "vendor",
-        "compiler": "src/compiler",
+        "compiler": "compiler",
         "lune": "~/.lune/.typedefs/0.9.0"
     }
 }
