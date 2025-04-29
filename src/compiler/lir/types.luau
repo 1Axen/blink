@@ -1,7 +1,7 @@
 --!strict
 
-local ty = require("@structures/ty")
-local hir = require("@structures/hir")
+local ty = require("@ty/types")
+local hir = require("@hir/types")
 
 local panic = require("@util/panic")
 

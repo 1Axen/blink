@@ -1,6 +1,6 @@
 --!strict
 
-local lir = require("@structures/lir")
+local lir = require("@lir/types")
 
 type TermIf = lir.TermIf
 type TermNone = lir.TermNone

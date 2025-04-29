@@ -1,6 +1,6 @@
 --!strict
 
-local lir = require("@structures/lir")
+local lir = require("@lir/types")
 local terminator = require("./terminator")
 
 type Terminator = lir.Terminator

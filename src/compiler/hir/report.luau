@@ -2,10 +2,10 @@ local span = require("@util/span")
 local range = require("@util/range")
 local diagnostics = require("@util/diagnostics")
 
-local fmt_range = require("@format/range")
+local fmt_range = require("@util/range/format")
 
-local ty = require("@structures/ty")
-local ast = require("@structures/ast")
+local ty = require("@ty/types")
+local ast = require("@ast/types")
 local codes = require("@config/codes")
 
 type TyKind = ty.TyKind

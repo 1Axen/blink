@@ -1,6 +1,6 @@
 --!strict
 
-local lir = require("@structures/lir")
+local lir = require("@lir/types")
 
 local constant = require("@builders/constant")
 local projection = require("@builders/projection")

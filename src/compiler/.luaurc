@@ -1,14 +1,12 @@
 {
     "languageMode": "strict",
     "aliases": {
+        "ty": "ty",
+        "ast": "ast",
         "lir": "lir",
         "hir": "hir",
         "parser": "parser",
-        "config": "config",
         "codegen": "codegen",
-
-        "hash": "structures/hash",
-        "format": "structures/format",
-        "structures": "structures"
+        "config": "config"
     }
 }

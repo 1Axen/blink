@@ -1,6 +1,6 @@
 --!strict
 
-local lir = require("@structures/lir")
+local lir = require("@lir/types")
 
 local function unary_len(of: lir.RValue<any>): lir.UnaryLen<number>
     return {

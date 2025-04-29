@@ -1,6 +1,6 @@
-local ty = require("@structures/ty")
-local lir = require("@structures/lir")
-local hir = require("@structures/hir")
+local ty = require("@ty/types")
+local lir = require("@lir/types")
+local hir = require("@hir/types")
 local attributes = require("@config/attributes")
 
 local fn = require("@builders/fn")

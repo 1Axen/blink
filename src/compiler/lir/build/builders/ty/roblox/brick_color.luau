@@ -1,5 +1,5 @@
-local ty = require("@structures/ty")
-local lir = require("@structures/lir")
+local ty = require("@ty/types")
+local lir = require("@lir/types")
 local attributes = require("@config/attributes")
 
 local ty_numeral = require("../luau/numeral")

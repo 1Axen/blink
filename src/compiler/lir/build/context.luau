@@ -1,6 +1,6 @@
-local ty = require("@structures/ty")
-local hir = require("@structures/hir")
-local lir = require("@structures/lir")
+local ty = require("@ty/types")
+local hir = require("@hir/types")
+local lir = require("@lir/types")
 
 type Lir = lir.Lir
 type Hir = hir.Hir

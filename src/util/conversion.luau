@@ -1,4 +1,4 @@
-local ty = require("@compiler/structures/ty")
+local ty = require("@compiler/ty/types")
 local panic = require("@util/panic")
 
 local U8 = (2 ^ 8) - 1

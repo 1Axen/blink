@@ -2,8 +2,8 @@
 --!native
 --!optimize 2
 
-local hir = require("@structures/hir")
-local lir = require("@structures/lir")
+local hir = require("@hir/types")
+local lir = require("@lir/types")
 
 local build = require("./build")
 local optimize = require("./optimize")

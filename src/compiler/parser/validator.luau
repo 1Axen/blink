@@ -4,7 +4,7 @@
 
 local id = require("@compiler/id")
 
-local ast = require("@structures/ast")
+local ast = require("@ast/types")
 local codes = require("@config/codes")
 local options = require("@config/options")
 local primitives = require("@config/primitives")
@@ -14,7 +14,7 @@ local range = require("@util/range")
 local symbols = require("@util/symbols")
 local diagnostics = require("@util/diagnostics")
 
-local fmt_ast = require("@format/ast")
+local fmt_ast = require("@ast/format")
 
 local report = require("./report")
 

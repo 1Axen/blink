@@ -4,7 +4,7 @@ local lexer = require("@compiler/lexer")
 local parser = require("@compiler/parser")
 local codegen = require("@compiler/codegen")
 
-local ast = require("@structures/ast")
+local ast = require("@ast/types")
 local codes = require("@config/codes")
 local compilation = require("@config/compilation")
 
@@ -16,9 +16,9 @@ local symbols = require("@util/symbols")
 local diagnostics = require("@util/diagnostics")
 local import_resolver = require("@util/import_resolver")
 
-local fmt_lir = require("@format/lir")
-local fmt_hir = require("@format/hir")
-local fmt_symbols = require("@format/symbols")
+local fmt_lir = require("@lir/format")
+local fmt_hir = require("@hir/format")
+local fmt_symbols = require("@util/symbols/format")
 
 type Ast = ast.Ast
 type Symbols = ast.Symbols

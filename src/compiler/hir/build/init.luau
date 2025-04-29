@@ -5,9 +5,9 @@
 local id = require("@compiler/id")
 local types = require("@config/compilation")
 
-local ty = require("@structures/ty")
-local hir = require("@structures/hir")
-local ast = require("@structures/ast")
+local ty = require("@ty/types")
+local hir = require("@hir/types")
+local ast = require("@ast/types")
 
 local bounds = require("@config/bounds")
 local primitives = require("@config/primitives")
@@ -18,7 +18,7 @@ local option = require("@util/option")
 local symbols = require("@util/symbols")
 
 local span = require("@util/span")
-local fmt_id = require("@format/id")
+local fmt_id = require("@compiler/id/format")
 
 local report = require("@hir/report")
 local attributes = require("./attributes")

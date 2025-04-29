@@ -1,6 +1,6 @@
 --!strict
 
-local lir = require("@structures/lir")
+local lir = require("@lir/types")
 
 local globals = require("@builders/globals")
 local constant = require("@builders/constant")

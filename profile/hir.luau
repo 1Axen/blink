@@ -7,7 +7,7 @@ local hir = require("@compiler/hir")
 local lexer = require("@compiler/lexer")
 local parser = require("@compiler/parser")
 
-local fmt_hir = require("@compiler/structures/format/hir")
+local fmt_hir = require("@compiler/hir/format")
 local input = file.from_source("bench.blink", fs.readFile("./blink/bench.blink"))
 
 local tokens = lexer.tokenize(input)

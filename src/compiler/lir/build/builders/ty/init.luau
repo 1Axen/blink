@@ -1,6 +1,6 @@
-local ty = require("@structures/ty")
-local hir = require("@structures/hir")
-local lir = require("@structures/lir")
+local ty = require("@ty/types")
+local hir = require("@hir/types")
+local lir = require("@lir/types")
 
 local attributes = require("@config/attributes")
 
@@ -30,7 +30,7 @@ local ty_date_time = require("./roblox/date_time")
 local ty_brick_color = require("./roblox/brick_color")
 local ty_date_time_millis = require("./roblox/date_time_millis")
 
-local fmt_id = require("@format/id")
+local fmt_id = require("@compiler/id/format")
 
 type Ty = ty.Ty
 type TyId = ty.TyId<Ty>

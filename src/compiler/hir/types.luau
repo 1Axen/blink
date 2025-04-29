@@ -1,7 +1,7 @@
 --!strict
 
-local ty = require("@structures/ty")
-local ast = require("@structures/ast")
+local ty = require("@ty/types")
+local ast = require("@ast/types")
 
 local options = require("@config/options")
 local attributes = require("@config/attributes")

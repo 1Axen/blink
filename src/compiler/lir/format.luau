@@ -1,10 +1,10 @@
-local lir = require("@structures/lir")
+local lir = require("@lir/types")
 
 local panic = require("@util/panic")
 local builder = require("@util/builder")
 
-local fmt_ty = require("@format/ty")
-local fmt_types = require("@format/types")
+local fmt_ty = require("@ty/format")
+local fmt_types = require("@util/format_types")
 
 local colorful = require("@vendor/colorful")
 

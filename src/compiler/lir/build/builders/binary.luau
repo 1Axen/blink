@@ -1,6 +1,6 @@
 --!strict
 
-local lir = require("@structures/lir")
+local lir = require("@lir/types")
 
 type RValue<T> = lir.RValue<T>
 type BinaryAdd<T> = lir.BinaryAdd<T>

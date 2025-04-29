@@ -1,6 +1,6 @@
 --!strict
 
-local lir = require("@structures/lir")
+local lir = require("@lir/types")
 
 type ProjCall<T> = lir.ProjCall<T>
 type ProjField<T> = lir.ProjField<T>

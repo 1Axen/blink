@@ -1,6 +1,6 @@
 local id = require("@compiler/id")
-local ty = require("@structures/ty")
-local hir = require("@structures/hir")
+local ty = require("@ty/types")
+local hir = require("@hir/types")
 
 local range = require("@util/range")
 local panic = require("@util/panic")

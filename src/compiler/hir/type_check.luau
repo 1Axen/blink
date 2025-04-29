@@ -3,9 +3,9 @@
 --!optimize 2
 
 local id = require("@compiler/id")
-local ty = require("@structures/ty")
-local hir = require("@structures/hir")
-local ast = require("@structures/ast")
+local ty = require("@ty/types")
+local hir = require("@hir/types")
+local ast = require("@ast/types")
 
 local report = require("./report")
 

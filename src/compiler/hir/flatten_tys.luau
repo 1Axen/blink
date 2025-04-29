@@ -2,9 +2,9 @@
 --!native
 --!optimize 2
 
-local ty = require("@structures/ty")
-local hir = require("@structures/hir")
-local ast = require("@structures/ast")
+local ty = require("@ty/types")
+local hir = require("@hir/types")
+local ast = require("@ast/types")
 
 type Ty = ty.Ty
 type Hir = hir.Hir

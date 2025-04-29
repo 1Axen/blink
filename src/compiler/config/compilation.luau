@@ -1,4 +1,4 @@
-local ast = require("@structures/ast")
+local ast = require("@ast/types")
 
 local TARGETS = table.freeze({
     shared = true,

@@ -1,10 +1,10 @@
 local id = require("@compiler/id")
-local ty = require("@structures/ty")
-local hir = require("@structures/hir")
+local ty = require("@ty/types")
+local hir = require("@hir/types")
 
-local fmt_ty = require("@format/ty")
-local fmt_id = require("@format/id")
-local fmt_types = require("@format/types")
+local fmt_ty = require("@ty/format")
+local fmt_id = require("@compiler/id/format")
+local fmt_types = require("@util/format_types")
 
 local span = require("@util/span")
 local style = require("@util/style")

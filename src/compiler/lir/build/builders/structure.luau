@@ -1,6 +1,6 @@
 --!strict
 
-local lir = require("@structures/lir")
+local lir = require("@lir/types")
 
 type RValue<T = any> = lir.RValue<T>
 type Constant<T> = lir.Constant<T>
