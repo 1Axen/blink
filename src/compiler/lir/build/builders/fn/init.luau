@@ -3,9 +3,9 @@ local lir = require("@structures/lir")
 
 local panic = require("@util/panic")
 
-local block = require("./block")
 local statement = require("./statement")
 local terminator = require("./terminator")
+local basic_block = require("./basic_block")
 
 local context = require("@lir/build/context")
 
@@ -128,8 +128,8 @@ end
 
 local function branch(self: Builder, cond: Condition, body: Body, chained: boolean)
     local current = self.block
-    local truthy_block = block.create(next_index(self), current.scope + 1)
-    local falsey_block = block.create(next_index(self), current.scope, current.terminator)
+    local truthy_block = basic_block.create(next_index(self), current.scope + 1)
+    local falsey_block = basic_block.create(next_index(self), current.scope, current.terminator)
 
     current.terminator = terminator.ifbr(cond, truthy_block, falsey_block, chained)
     truthy_block.terminator = terminator.goto(falsey_block)
@@ -169,8 +169,8 @@ end
 
 local function for_numeric(self: Builder, iterations: RValue<number>, body: NumericLoopBody)
     local prev_block = self.block
-    local loop_block = block.create(next_index(self), prev_block.scope + 1)
-    local after_block = block.create(next_index(self), prev_block.scope, prev_block.terminator)
+    local loop_block = basic_block.create(next_index(self), prev_block.scope + 1)
+    local after_block = basic_block.create(next_index(self), prev_block.scope, prev_block.terminator)
 
     loop_block.terminator = terminator.goto(after_block)
 
@@ -189,8 +189,8 @@ end
 
 local function for_generic(self: Builder, target: index<lir.LoopGeneric, "target">, body: GenericLoopBody)
     local prev_block = self.block
-    local loop_block = block.create(next_index(self), prev_block.scope + 1)
-    local after_block = block.create(next_index(self), prev_block.scope, prev_block.terminator)
+    local loop_block = basic_block.create(next_index(self), prev_block.scope + 1)
+    local after_block = basic_block.create(next_index(self), prev_block.scope, prev_block.terminator)
 
     loop_block.terminator = terminator.goto(after_block)
 
@@ -252,7 +252,7 @@ local function create(name: string, args: {Argument}, rets: {Return}, body: Body
         }
     end
 
-    local entry = block.create(1)
+    local entry = basic_block.create(1)
     local builder: Builder = {
         index = 2,
         block = entry,
