@@ -33,7 +33,7 @@ local ty_date_time_millis = require("./roblox/date_time_millis")
 local fmt_id = require("@format/id")
 
 type Ty = ty.Ty
-type TyId = ty.TyId<any>
+type TyId = ty.TyId<Ty>
 
 type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>

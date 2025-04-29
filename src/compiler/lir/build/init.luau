@@ -38,7 +38,7 @@ local TYPE_PREFIX = "type_"
 local EVENT_PREFIX = "event_"
 local FUNCTION_PREFIX = "function_"
 
-local function options_from_decl_id(ctx: Context, decl_id: DeclId<any>): options.FileOptions
+local function options_from_decl_id(ctx: Context, decl_id: DeclId<Decl>): options.FileOptions
     local file_id = id.file(decl_id)
     if file_id == nil then
         return panic(`Expected declaration to be linked to a file`)
