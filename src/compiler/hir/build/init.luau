@@ -50,12 +50,13 @@ type Context = {
     read file_id: number,
 
     scope: ScopeId,
+    symbols: Symbols,
     generics: Generics?,
 }
 
 local block: (ctx: Context, node: ast.Block) -> ()
 local statement: (ctx: Context, stat: ast.Statement) -> DeclId?
-local expression: (ctx: Context, expr: ast.Expression, node_id: NodeId?, generics: Generics?) -> TyId<Ty>
+local expression: (ctx: Context, expr: ast.Expression, node_id: NodeId?, generics: Generics?) -> TyId<any>
 
 local function path_to_segments(path: ast.Path): {string}
     local segments: {string} = {}
@@ -184,7 +185,7 @@ local function ty_vector(ctx: Context, expr: ast.ExprReference): ty.Vector
         magnitude = range_node_to_range_class(expr_range, primitives.vector.range)
     end
 
-    local axes: {TyId<ty.Numeral>} = {}
+    local axes: {ty.Axis} = {}
     if expr_generics then
         local values = expr_generics.values
         if #values > 3 then
@@ -192,7 +193,7 @@ local function ty_vector(ctx: Context, expr: ast.ExprReference): ty.Vector
         end
 
         for index, value in values do
-            axes[index] = expression(ctx, value)
+            axes[index] = expression(ctx, value) :: ty.Axis
         end
     end
 
@@ -218,7 +219,7 @@ local function ty_roblox_enum(ctx: Context, expr_generics: ast.GenericsArgs?): t
         end
 
         local generic = values[1]
-        enum_type = expression(ctx, generic)
+        enum_type = expression(ctx, generic) :: TyId<ty.StringLiteral>
     end
 
     return ty.roblox_enum(enum_type)
@@ -237,7 +238,7 @@ local function ty_cframe(ctx: Context, expr_generics: ast.GenericsArgs?): ty.CFr
         end
 
         for index, value in values do
-            local ty_id = expression(ctx, value)
+            local ty_id = expression(ctx, value) :: TyId<ty.Numeral>
             generics[index] = ty_id
         end
     end
@@ -265,7 +266,7 @@ local function ty_instance(ctx: Context, expr_generics: ast.GenericsArgs?): ty.I
             return report.extra_generics(expr_generics, 1)
         end
 
-        class = expression(ctx, values[1])
+        class = expression(ctx, values[1]) :: TyId<ty.StringLiteral>
     end
 
     return ty.instance(class)
@@ -367,8 +368,8 @@ local function ty_struct(ctx: Context, expr: ast.ExprStruct): ty.Struct
 end
 
 local function ty_intersection(ctx: Context, expr: ast.ExprUnion): ty.Intersection
-    local left = expression(ctx, expr.left)
-    local right = expression(ctx, expr.right)
+    local left = expression(ctx, expr.left) :: TyId<ty.IntersectionSide>
+    local right = expression(ctx, expr.right) :: TyId<ty.IntersectionSide>
     return ty.intersection(left, right)
 end
 
@@ -380,14 +381,14 @@ end
 local function ty_tagged_enum(ctx: Context, expr: ast.ExprTaggedEnum): ty.TaggedEnum
     local tag = expr.tag.value
     local variants: {ty.Variant} = {}
-    for index, variant in expr.variants do
-        local key = expression(ctx, variant.key)
-        local value = ty_struct(ctx, variant.value)
+    for index, node in expr.variants do
+        local key = expression(ctx, node.key) :: TyId<ty.Literal>
+        local value = ty_struct(ctx, node.value)
         local variant = ty.variant(key, value)
 
         -- add tag field to variant struct
         local struct = variant.value
-        table.insert(struct.fields, 1, ty.field(tag, key))
+        table.insert(struct.fields, 1, ty.field(tag, key :: TyId))
 
         variants[index] = variant
     end
@@ -412,7 +413,7 @@ local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference, expr_
     -- Phase 1:
     if ctx.generics then
         local path_string = path_to_string(expr.path)
-        local generic = ctx.generics.values[path_string]
+        local generic = ctx.generics.values[path_string] :: TyId
         if generic then
             -- The type is the generic
             local node_id = id.ty_id.to_node_id(expr_ty_id)
@@ -437,7 +438,7 @@ local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference, expr_
 
     local decl_node_id = decl_node.id
     local decl_id = id.node_id.to_decl_id(decl_node_id)
-    local decl = decl_from_id_optional(ctx, decl_id)
+    local decl = decl_from_id_optional(ctx, decl_id) :: hir.Type?
 
     -- Phase 3:
     local generics: {TyId<Ty>} = {}
@@ -532,13 +533,13 @@ function expression(ctx: Context, expr: ast.Expression | ast.Identifier, node_id
 
         new_ty = ty_from_reference(ctx, expr, path)
     elseif expr.kind == "identifier" then
-        new_ty = ty_string_literal(ctx, expr :: ast.ExprString)
+        new_ty = ty_string_literal(ctx, expr :: any)
     else
         panic(`Unhandled expression "{expr.kind}"`)
     end
 
     if generics then
-        new_ty = ty.generic_type(new_ty, generics.args)
+        new_ty = ty.generic_type(new_ty, generics.args :: {TyId})
         ctx.generics = nil
     end
 
@@ -583,8 +584,8 @@ local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
             local generic = ty.generic(name.value, index)  
 
             ctx.hir.tys[ty_id] = generic
-            args[index] = ty_id
-            values[name.value] = ty_id
+            args[index] = ty_id :: TyId<ty.Generic>
+            values[name.value] = ty_id :: TyId<ty.Generic>
         end
 
         generics = {

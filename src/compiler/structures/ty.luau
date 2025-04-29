@@ -25,7 +25,9 @@ local function create_numeral(size: NumSize, format: NumFormat, bounds: Range?):
     }
 end
 
-type Axis = TyId<Numeral | NumberLiteral>
+export type Axis = 
+    | TyId<Numeral> 
+    | TyId<NumberLiteral>
 
 export type Vector = {
     read kind: "vector",

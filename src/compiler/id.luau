@@ -3,9 +3,13 @@ local hir = require("@structures/hir")
 local ast = require("@structures/ast")
 local panic = require("@util/panic")
 
-type TyId = ty.TyId<ty.Ty>
-type DeclId = hir.DeclId<hir.Decl>
-type NodeId = ast.NodeId<ast.Node>
+type Ty = ty.Ty
+type Decl = hir.Decl
+type Node = ast.Node
+
+type TyId<T = Ty> = ty.TyId<>
+type DeclId<T = Decl> = hir.DeclId<T>
+type NodeId<T = Node> = ast.NodeId<T>
 type ScopeId = hir.ScopeId
 
 type u32 = number
@@ -105,19 +109,19 @@ return table.freeze({
     to_scope_id = to_scope_id,
 
     ty_id = table.freeze({
-        to_node_id = to_node_id :: (TyId) -> NodeId,
+        to_node_id = to_node_id :: <T>(TyId<T>) -> NodeId,
     }),
     decl_id = table.freeze({
-        to_node_id = to_node_id :: (DeclId) -> NodeId,
+        to_node_id = to_node_id :: <T>(DeclId<T>) -> NodeId,
     }),
     scope_id = table.freeze({
         to_node_id = to_node_id :: (ScopeId) -> NodeId,
     }),
     node_id = table.freeze({
         create = create_node_id,
-        to_ty_id = to_ty_id :: (NodeId) -> TyId,
-        to_decl_id = to_decl_id :: (NodeId) -> DeclId,
-        to_scope_id = to_scope_id :: (NodeId) -> ScopeId,
+        to_ty_id = to_ty_id :: <T>(NodeId<T>) -> TyId,
+        to_decl_id = to_decl_id :: <T>(NodeId<T>) -> DeclId,
+        to_scope_id = to_scope_id :: <T>(NodeId<T>) -> ScopeId,
     }),
 
     TY_FLAG = TY_FLAG,

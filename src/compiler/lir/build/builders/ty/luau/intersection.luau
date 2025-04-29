@@ -27,8 +27,8 @@ type Register<T> = lir.RegisterId<T>
 local function build_read(props: ReadProps, block: Builder, intersection: Intersection, into: LValue<any>?): Register<any>
     local register: Register<any> = block:store(structure.struct({}))
 
-    ty_builder.read(props, block, intersection.left, register)
-    ty_builder.read(props, block, intersection.right, register)
+    ty_builder.read(props, block, intersection.left :: ty.TyId, register)
+    ty_builder.read(props, block, intersection.right :: ty.TyId, register)
 
     if into then
         return block:store(register, into)
@@ -38,8 +38,8 @@ local function build_read(props: ReadProps, block: Builder, intersection: Inters
 end
 
 local function build_write(props: WriteProps, block: Builder, intersection: Intersection, value: RValue<any>): ()
-    ty_builder.write(props, block, intersection.left, value)
-    ty_builder.write(props, block, intersection.right, value)
+    ty_builder.write(props, block, intersection.left :: ty.TyId, value)
+    ty_builder.write(props, block, intersection.right :: ty.TyId, value)
 end
 
 return table.freeze({

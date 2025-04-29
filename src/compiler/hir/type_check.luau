@@ -13,7 +13,7 @@ type Ty = ty.Ty
 type Hir = hir.Hir
 type Node = ast.Node
 
-type TyId<T = Ty> = ty.TyId
+type TyId<T = Ty> = ty.TyId<T>
 type NodeId<T = Node> = ast.NodeId<T>
 
 type TyKind = ty.TyKind
@@ -31,7 +31,7 @@ local function ty_id_to_ty_kind(hir: Hir, ty_id: TyId): TyKind
     return ty_from_id(hir, ty_id).kind
 end
 
-local function assert_ty_kind(hir: Hir, ty_id: TyId, kind: TyKind)
+local function assert_ty_kind<T>(hir: Hir, ty_id: TyId<T>, kind: TyKind)
     local ty_kind = ty_id_to_ty_kind(hir, ty_id)
     if ty_kind ~= kind then
         local node = node_from_ty_id(hir, ty_id)
@@ -40,7 +40,7 @@ local function assert_ty_kind(hir: Hir, ty_id: TyId, kind: TyKind)
     end
 end
 
-local function assert_vector_axis_ty(hir: Hir, ty_id: TyId)
+local function assert_vector_axis_ty<T>(hir: Hir, ty_id: TyId<T>)
     local ty: Ty = ty_from_id(hir, ty_id)
     if ty.kind ~= "numeral" then
         return
@@ -59,7 +59,7 @@ local function assert_vector_axis_ty(hir: Hir, ty_id: TyId)
     end
 end
 
-local function assert_ty_kinds(hir: Hir, ty_id: TyId, kinds: {TyKind})
+local function assert_ty_kinds<T>(hir: Hir, ty_id: TyId<T>, kinds: {TyKind})
     local ty_kind = ty_id_to_ty_kind(hir, ty_id)
     if table.find(kinds, ty_kind) == nil then
         local node = node_from_ty_id(hir, ty_id)
@@ -94,12 +94,14 @@ local function check_intersection(hir: Hir, ty: ty.Intersection)
     right = follow(hir, right)
 
     if left.kind ~= "struct" and left.kind ~= "intersection" then
-        local node_id = id.ty_id.to_node_id(ty.left)
+        --TODO: Remove cast (Luau bug)
+        local node_id = id.ty_id.to_node_id(ty.left :: ty.TyId)
         local node = node_from_id(hir, node_id)
         --TODO: Remove cast (Luau bug)
         report.invalid_union(node :: any, left.kind, left.kind, right.kind)
     elseif right.kind ~= "struct" and right.kind ~= "intersection" then
-        local node_id = id.ty_id.to_node_id(ty.right)
+        --TODO: Remove cast (Luau bug)
+        local node_id = id.ty_id.to_node_id(ty.right :: ty.TyId)
         local node = node_from_id(hir, node_id)
         --TODO: Remove cast (Luau bug)
         report.invalid_union(node :: any, right.kind, left.kind, right.kind)

@@ -87,7 +87,7 @@ end
 
 function fmt_statement(stat: ast.Statement): string
     if stat.kind == "type" then
-        local name = stat.name
+        local name = stat.name :: ast.Identifier
         local generics = stat.generics
         return `{fmt_identifier(name)}{if generics then fmt_generics(generics) else ""}`
     end

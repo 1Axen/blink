@@ -14,6 +14,10 @@ local panic = require("@util/panic")
 local fmt_ty: (ty: ty.Ty) -> string
 local PRIMITIVE_STYLE = style.color.bright_purple
 
+local function fmt_ty_id<T>(ty_id: ty.TyId<T>)
+    return fmt_id(ty_id)
+end
+
 local function fmt_opt_range(range: range.Range?): string
     if range == nil then
         return ""
@@ -32,15 +36,15 @@ local function fmt_vector(ty: ty.Vector): string
         result ..= "<"
 
         if ty.x then
-            result ..= `{fmt_id(ty.x)}, `
+            result ..= `{fmt_ty_id(ty.x :: ty.TyId)}, `
         end
 
         if ty.y then
-            result ..= `{fmt_id((ty :: any).y :: any)}, `
+            result ..= `{fmt_ty_id(ty.y :: ty.TyId)}, `
         end
 
         if ty.z then
-            result ..= `{fmt_id((ty :: any).z :: any)}`
+            result ..= `{fmt_ty_id(ty.z :: ty.TyId)}`
         end
 
          result ..= ">"
@@ -79,7 +83,7 @@ end
 local function fmt_enum(ty: ty.Enum): string
     local result = PRIMITIVE_STYLE("Enum")
     if ty.type then
-        result ..= `<{fmt_id(ty.type)}>`
+        result ..= `<{fmt_ty_id(ty.type)}>`
     end
 
     return result
@@ -95,11 +99,11 @@ local function fmt_cframe(ty: ty.CFrame): string
         result ..= "<"
 
         if ty.position then
-            result ..= `{fmt_id(ty.position)}, `
+            result ..= `{fmt_ty_id(ty.position)}, `
         end
 
         if ty.rotation then
-            result ..= fmt_id((ty :: any).rotation :: any)
+            result ..= fmt_ty_id(ty.rotation :: any)
         end
 
         result ..= ">"
@@ -123,14 +127,14 @@ end
 local function fmt_instance(ty: ty.Instance): string
     local result = PRIMITIVE_STYLE("Instance")
     if ty.class then
-        result ..= `<{fmt_id(ty.class)}>`
+        result ..= `<{fmt_ty_id(ty.class)}>`
     end
 
     return result
 end
 
 local function fmt_field(ty: ty.Field): string
-    return `{ty.name}: {fmt_id(ty.value)}`
+    return `{ty.name}: {fmt_ty_id(ty.value)}`
 end
 
 local function fmt_set(ty: ty.Set): string
@@ -143,15 +147,15 @@ local function fmt_set(ty: ty.Set): string
 end
 
 local function fmt_map(ty: ty.Map): string
-    return `{PRIMITIVE_STYLE("map")} \{[{fmt_id(ty.index)}]: {fmt_id(ty.value)}\}{fmt_opt_range(ty.size)}`
+    return `{PRIMITIVE_STYLE("map")} \{[{fmt_ty_id(ty.index)}]: {fmt_ty_id(ty.value)}\}{fmt_opt_range(ty.size)}`
 end
 
 local function fmt_array(ty: ty.Array): string
-    return `\{{fmt_id(ty.of)}\}{fmt_opt_range(ty.size)}`
+    return `\{{fmt_ty_id(ty.of)}\}{fmt_opt_range(ty.size)}`
 end
 
 local function fmt_intersection(ty: ty.Intersection): string
-    return `{fmt_id(ty.left)} & {fmt_id(ty.right)}`
+    return `{fmt_ty_id(ty.left)} & {fmt_ty_id(ty.right)}`
 end
 
 local function fmt_struct(ty: ty.Struct): string
@@ -164,7 +168,7 @@ local function fmt_struct(ty: ty.Struct): string
 end
 
 local function fmt_optional(ty: ty.Optional): string
-    return `{fmt_id(ty.of)}?`
+    return `{fmt_ty_id(ty.of)}?`
 end
 
 local function fmt_generic(ty: ty.Generic): string
@@ -178,7 +182,7 @@ end
 local function fmt_tagged_enum(ty: ty.TaggedEnum): string
     local variants: {string} = {}
     for _, variant in ty.variants do
-        table.insert(variants, `{fmt_id(variant.key)}: {fmt_struct(variant.value)}`)
+        table.insert(variants, `{fmt_ty_id(variant.key)}: {fmt_struct(variant.value)}`)
     end
 
     return `{PRIMITIVE_STYLE("enum")} {fmt_types.string(ty.tag)} \{{table.concat(variants, ", ")}\}`
@@ -191,7 +195,7 @@ end
 local function fmt_placeholder(ty: ty.Placeholder): string
     local args: {string} = {}
     for _, arg in ty.args or {} do
-        table.insert(args, fmt_id(arg))
+        table.insert(args, fmt_ty_id(arg))
     end
 
     return `{style.color.black(`@{table.concat(ty.path, ".")}`)}<{table.concat(args, ", ")}>`
@@ -200,7 +204,7 @@ end
 local function fmt_generic_type(ty: ty.GenericType): string
     local args: {string} = {}
     for _, arg in ty.args do
-        table.insert(args, fmt_id(arg))
+        table.insert(args, fmt_ty_id(arg))
     end
 
     return `{PRIMITIVE_STYLE("GT")} ({style.modifer.dim(fmt_ty(ty.def))}, \{{table.concat(args, ", ")}\})`

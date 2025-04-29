@@ -91,7 +91,7 @@ local function expr_reference(ctx: Context, expr: ast.ExprReference): never?
 end
 
 local function expr_set(ctx: Context, expr: ast.ExprSet): never?
-    local entries: {[string]: ast.Identifier} = {}
+    local entries: {[string]: report.Entry} = {}
     for _, entry in expr.values do
         local previous = entries[entry.value]
         if previous then
@@ -119,7 +119,7 @@ local function expr_pack(ctx: Context, expr: ast.ExprPack): never?
 end
 
 local function expr_enum(ctx: Context, expr: ast.ExprEnum): never?
-    local variants: {[string]: ast.Identifier} = {}
+    local variants: {[string]: report.Entry} = {}
     for _, variant in expr.variants do
         local value = variant.value
         local previous = variants[value]
@@ -134,7 +134,7 @@ local function expr_enum(ctx: Context, expr: ast.ExprEnum): never?
 end
 
 local function expr_struct(ctx: Context, expr: ast.ExprStruct): never?
-    local fields: {[string]: ast.Identifier} = {}
+    local fields: {[string]: report.Entry} = {}
     for _, field in expr.fields do
         local name = field.name
         local value = name.value

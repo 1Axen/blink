@@ -108,7 +108,7 @@ local function seperated<T>(ctx: Context, t: (Context) -> T, seperator: TokenKin
 end
 
 local function path_segment(ctx: Context): ast.PathSegment
-    local word = expect(ctx, "word")
+    local word = expect(ctx, "word" :: "word")
     return {
         kind = "segment",
         span = word.span,
@@ -132,7 +132,7 @@ local function path(ctx: Context): ast.Path
         end
 
         --> consume dot
-        expect(ctx, ".")
+        expect(ctx, "." :: ".")
     end
 
     return {
@@ -144,7 +144,7 @@ local function path(ctx: Context): ast.Path
 end
 
 local function identifier(ctx: Context): ast.Identifier
-    local word = expect(ctx, "word")
+    local word = expect(ctx, "word" :: "word")
     return {
         id = next_node_id(ctx),
         span = word.span,
@@ -194,7 +194,7 @@ local function structure(ctx: Context, fields: {[string]: {expr: (ctx: Context) 
             report.expect_one_of_ident(name.span, key, all_keys)
         end
 
-        local _assign = expect(ctx, ":")
+        local _assign = expect(ctx, ":" :: ":")
         local value = field.expr(ctx)
 
         result[key] = value
@@ -210,7 +210,7 @@ local function structure(ctx: Context, fields: {[string]: {expr: (ctx: Context) 
             break
         end
 
-        expect(ctx, ",")
+        expect(ctx, "," :: ",")
     end
 
     local close = peek(ctx)
@@ -237,9 +237,9 @@ local function generic(ctx: Context): ast.GenericDef
 end
 
 local function generics(ctx: Context): ast.GenericsDef
-    local open = expect(ctx, "<")
+    local open = expect(ctx, "<" :: "<")
     local values: {ast.GenericDef} = seperated(ctx, generic, ",", ">")
-    local close = expect(ctx, ">")
+    local close = expect(ctx, ">" :: ">")
 
     return {
         kind = "generics",
@@ -270,7 +270,7 @@ local function expr_boolean(ctx: Context): ast.ExprBoolean
 end
 
 local function expr_number(ctx: Context): ast.ExprNumber
-    local number = expect(ctx, "number")
+    local number = expect(ctx, "number" :: "number")
     local value = span.value(number.span)
     local literal = tonumber(value)
 
@@ -287,7 +287,7 @@ local function expr_number(ctx: Context): ast.ExprNumber
 end
 
 local function expr_string(ctx: Context): ast.ExprString
-    local str = expect(ctx, "string")
+    local str = expect(ctx, "string" :: "string")
     return {
         id = DUMMY_ID,
         span = str.span,
@@ -334,14 +334,14 @@ local function expr_range(ctx: Context): ast.Range
 
         local second = peek(ctx)
         if second.kind == ".." then
-            expect(ctx, "..")
+            expect(ctx, ".." :: "..")
             max = expr_number(ctx)
         else
             -- exact range
             max = min
         end
     elseif first.kind == ".." then
-        expect(ctx, "..")
+        expect(ctx, ".." :: "..")
         max = expr_number(ctx)
     else
         return report.expect_one_of(first, {"..", "number"})
@@ -363,10 +363,10 @@ local function expr_reference(ctx: Context): ast.ExprReference
     --> generics
     local generics: ast.GenericsArgs?
     if peek_kind(ctx) == "<" then
-        local open = expect(ctx, "<")
+        local open = expect(ctx, "<" :: "<")
         local values = seperated(ctx, expression, ",", ">")
 
-        local close = expect(ctx, ">")
+        local close = expect(ctx, ">" :: ">")
         node_span = span.merge(path.span, close.span)
         generics = {
             span = span.merge(open.span, close.span),
@@ -378,10 +378,10 @@ local function expr_reference(ctx: Context): ast.ExprReference
     --> range
     local range: ast.Range?
     if peek_kind(ctx) == "(" then
-        expect(ctx, "(")
+        expect(ctx, "(" :: "(")
         range = expr_range(ctx)
 
-        local close = expect(ctx, ")")
+        local close = expect(ctx, ")" :: ")")
         node_span = span.merge(node_span, close.span)
     end
 
@@ -397,7 +397,7 @@ end
 
 local function expr_field(ctx: Context): ast.ExprField
     local name = string_or_identifier(ctx)
-    expect(ctx, ":")
+    expect(ctx, ":" :: ":")
     local value = expression(ctx)
 
     return {
@@ -410,11 +410,11 @@ local function expr_field(ctx: Context): ast.ExprField
 end
 
 local function expr_struct(ctx: Context): ast.ExprStruct
-    local keyword = expect(ctx, "struct")
-    expect(ctx, "{")
+    local keyword = expect(ctx, "struct" :: "struct")
+    expect(ctx, "{" :: "{")
 
     local fields = seperated(ctx, expr_field, ",", "}")
-    local close = expect(ctx, "}")
+    local close = expect(ctx, "}" :: "}")
 
     return {
         id = DUMMY_ID,
@@ -426,9 +426,9 @@ end
 
 --- Bit annoying but needed for tagged enum variants
 local function expr_inlined_struct(ctx: Context): ast.ExprStruct
-    local open = expect(ctx, "{")
+    local open = expect(ctx, "{" :: "{")
     local fields = seperated(ctx, expr_field, ",", "}")
-    local close = expect(ctx, "}")
+    local close = expect(ctx, "}" :: "}")
 
     return {
         id = DUMMY_ID,
@@ -439,28 +439,28 @@ local function expr_inlined_struct(ctx: Context): ast.ExprStruct
 end
 
 local function expr_map(ctx: Context): ast.ExprMap
-    local keyword = expect(ctx, "map")
+    local keyword = expect(ctx, "map" :: "map")
     
     --> open "{" delim
-    expect(ctx, "{")
+    expect(ctx, "{" :: "{")
 
     --> index
-    expect(ctx, "[")
+    expect(ctx, "[" :: "[")
     local index = expression(ctx)
-    expect(ctx, "]")
+    expect(ctx, "]" :: "]")
 
     --> value
-    expect(ctx, ":")
+    expect(ctx, ":" :: ":")
     local value = expression(ctx)
 
     --> close delim
-    expect(ctx, "}")
+    expect(ctx, "}" :: "}")
 
     local range: ast.Range?;
     if peek_kind(ctx) == "(" then
-        expect(ctx, "(")
+        expect(ctx, "(" :: "(")
         range = expr_range(ctx)
-        expect(ctx, ")")
+        expect(ctx, ")" :: ")")
     end
 
     return {
@@ -474,11 +474,11 @@ local function expr_map(ctx: Context): ast.ExprMap
 end
 
 local function expr_set(ctx: Context): ast.ExprSet
-    local keyword = expect(ctx, "set")
-    expect(ctx, "{")
+    local keyword = expect(ctx, "set" :: "set")
+    expect(ctx, "{" :: "{")
 
     local values = seperated(ctx, string_or_identifier, ",", "}")
-    local close = expect(ctx, "}")
+    local close = expect(ctx, "}" :: "}")
 
     return {
         id = DUMMY_ID,
@@ -517,13 +517,13 @@ local function expr_enum_tag_variant(ctx: Context): ast.ExprTaggedEnumVariant
 end
 
 local function expr_enum(ctx: Context): ast.ExprEnum | ast.ExprTaggedEnum
-    local keyword = expect(ctx, "enum")
+    local keyword = expect(ctx, "enum" :: "enum")
     
     local function unit(): ast.ExprEnum
-        expect(ctx, "{")
+        expect(ctx, "{" :: "{")
 
         local variants = seperated(ctx, string_or_identifier, ",", "}")
-        local close = expect(ctx, "}")
+        local close = expect(ctx, "}" :: "}")
 
         return {
             id = DUMMY_ID,
@@ -535,10 +535,10 @@ local function expr_enum(ctx: Context): ast.ExprEnum | ast.ExprTaggedEnum
 
     local function tagged(): ast.ExprTaggedEnum
         local tag = expr_string(ctx)
-        expect(ctx, "{")
+        expect(ctx, "{" :: "{")
 
         local variants = seperated(ctx, expr_enum_tag_variant, ",", "}")
-        local close = expect(ctx, "}")
+        local close = expect(ctx, "}" :: "}")
 
         return {
             id = DUMMY_ID,
@@ -563,7 +563,7 @@ local function expr_pack_parameter(ctx: Context): ast.ExprPackParameter
     local following = lookahead(ctx)
     if following.kind == ":" then
         name = any_identifier(ctx)
-        local _ = expect(ctx, ":")
+        local _ = expect(ctx, ":" :: ":")
     end
 
     local value = expression(ctx)
@@ -580,9 +580,9 @@ local function expr_pack_parameter(ctx: Context): ast.ExprPackParameter
 end
 
 local function expr_pack(ctx: Context): ast.ExprPack
-    local open = expect(ctx, "(")
+    local open = expect(ctx, "(" :: "(")
     local values = seperated(ctx, expr_pack_parameter, ",", ")")
-    local close = expect(ctx, ")")
+    local close = expect(ctx, ")" :: ")")
 
     return {
         id = DUMMY_ID,
@@ -614,15 +614,15 @@ end
 local function expr_array(ctx: Context, of: ast.Expression): ast.ExprArray
     local range: ast.Range;
     
-    local open = expect(ctx, "[")
+    local open = expect(ctx, "[" :: "[")
     local node_span = open.span
 
     local lookahead_kind = peek_kind(ctx)
     if lookahead_kind == ".." or lookahead_kind == "number" then
-        range = expr_range(ctx, "[")
+        range = expr_range(ctx, "[" :: "[")
     end
 
-    local close = expect(ctx, "]")
+    local close = expect(ctx, "]" :: "]")
     node_span = span.merge(node_span, close.span)
 
     return {
@@ -646,7 +646,7 @@ local function expr_union(ctx: Context, left: ast.Expression, right: ast.Express
 end
 
 local function expr_optional(ctx: Context, of: ast.Expression): ast.ExprOptional
-    local optional = expect(ctx, "?")
+    local optional = expect(ctx, "?" :: "?")
     return {
         id = DUMMY_ID,
         span = span.merge(of.span, optional.span),
@@ -666,16 +666,16 @@ local function expr_pack_or_single(ctx: Context): ast.ExprPack
 end
 
 local function attribute(ctx: Context): ast.Attribute
-    local at = expect(ctx, "@")
+    local at = expect(ctx, "@" :: "@")
     local name = any_identifier(ctx)
     local node_span = span.merge(at.span, name.span)
 
     local args: {ast.ExprLiteral} = {}
     if peek_kind(ctx) == "(" then
-        local _open = expect(ctx, "(")
+        local _open = expect(ctx, "(" :: "(")
         args = seperated(ctx, expr_literal, ",", ")")
 
-        local close = expect(ctx, ")")
+        local close = expect(ctx, ")" :: ")")
         node_span = span.merge(node_span, close.span)
     end
 
@@ -690,7 +690,7 @@ end
 local function stat_type(ctx: Context): ast.StatType
     local attributes = consume_attributes(ctx)
 
-    local keyword = expect(ctx, "type")
+    local keyword = expect(ctx, "type" :: "type")
     local name = identifier(ctx)
 
     local generics = 
@@ -698,7 +698,7 @@ local function stat_type(ctx: Context): ast.StatType
         then generics(ctx) 
         else nil
 
-    local _assign = expect(ctx, "=")
+    local _assign = expect(ctx, "=" :: "=")
     local value = expression(ctx)
 
     return {
@@ -718,9 +718,9 @@ end
 local function stat_event(ctx: Context): ast.StatEvent
     local attributes = consume_attributes(ctx)
 
-    local keyword = expect(ctx, "event")
+    local keyword = expect(ctx, "event" :: "event")
     local name = identifier(ctx)
-    local open = expect(ctx, "{")
+    local open = expect(ctx, "{" :: "{")
 
     local event_structure = structure(ctx, {
         from = {expr = identifier, optional = false},
@@ -730,7 +730,7 @@ local function stat_event(ctx: Context): ast.StatEvent
         data = {expr = expr_pack_or_single, optional = true},
     }, open)
 
-    local close = expect(ctx, "}")
+    local close = expect(ctx, "}" :: "}")
 
     return {
         id = DUMMY_ID,
@@ -748,12 +748,12 @@ local function stat_event(ctx: Context): ast.StatEvent
 end
 
 local function stat_scope(ctx: Context): ast.StatScope
-    local keyword = expect(ctx, "scope")
+    local keyword = expect(ctx, "scope" :: "scope")
     local name = identifier(ctx)
 
-    local _open = expect(ctx, "{")
+    local _open = expect(ctx, "{" :: "{")
     local scope_block = block(ctx, true)
-    local close = expect(ctx, "}")
+    local close = expect(ctx, "}" :: "}")
 
     return {
         id = DUMMY_ID,
@@ -766,10 +766,10 @@ local function stat_scope(ctx: Context): ast.StatScope
 end
 
 local function stat_option(ctx: Context): ast.StatOption
-    local keyword = expect(ctx, "option")
+    local keyword = expect(ctx, "option" :: "option")
     local name = identifier(ctx)
 
-    local _assign = expect(ctx, "=")
+    local _assign = expect(ctx, "=" :: "=")
     local value = expression(ctx)
     local stat_span = span.merge(keyword.span, value.span)
 
@@ -786,9 +786,9 @@ end
 local function stat_function(ctx: Context): ast.StatFunction
     local attributes = consume_attributes(ctx)
 
-    local keyword = expect(ctx, "function")
+    local keyword = expect(ctx, "function" :: "function")
     local name = identifier(ctx)
-    local open = expect(ctx, "{")
+    local open = expect(ctx, "{" :: "{")
 
     local function_structure = structure(ctx, {
         yield = {expr = identifier, optional = false},
@@ -796,7 +796,7 @@ local function stat_function(ctx: Context): ast.StatFunction
         ["return"] = {expr = expr_pack_or_single, optional = true},
     }, open)
 
-    local close = expect(ctx, "}")
+    local close = expect(ctx, "}" :: "}")
 
     return {
         id = DUMMY_ID,
@@ -812,7 +812,7 @@ local function stat_function(ctx: Context): ast.StatFunction
 end
 
 local function stat_import(ctx: Context): ast.StatImport
-    local keyword = expect(ctx, "import")
+    local keyword = expect(ctx, "import" :: "import")
 
     local path = expr_string(ctx)
     local full_span = span.merge(keyword.span, path.span)
@@ -820,7 +820,7 @@ local function stat_import(ctx: Context): ast.StatImport
     local name: ast.Identifier?;
     local token = peek(ctx)
     if token.kind == "as" then
-        expect(ctx, "as")
+        expect(ctx, "as" :: "as")
         name = identifier(ctx)
         full_span = span.merge(full_span, name.span)
     end

@@ -62,7 +62,7 @@ local function fmt_type(decl: hir.Type, fmt_builder: Builder)
         builder.append(fmt_builder, `{FIELD_STYLE("generics:")} \{`)
 
         for index, generic in decl.generics do
-            builder.append(fmt_builder, fmt_id(generic))
+            builder.append(fmt_builder, fmt_id(generic :: ty.TyId))
             
             if #decl.generics > index then
                 builder.append(fmt_builder, ", ")
