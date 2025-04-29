@@ -1,4 +1,3 @@
-local id = require("@compiler/id")
 local ty = require("@ty/types")
 local hir = require("@hir/types")
 

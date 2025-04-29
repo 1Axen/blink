@@ -1,11 +1,8 @@
 local ty = require("@ty/types")
-local hir = require("@hir/types")
 
 local fmt_id = require("@compiler/id/format")
 local fmt_types = require("@util/format_types")
 local fmt_range = require("@util/range/format")
-
-local id = require("@compiler/id")
 
 local style = require("@util/style")
 local range = require("@util/range")

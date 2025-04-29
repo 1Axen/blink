@@ -14,11 +14,7 @@ local primitives = require("@config/primitives")
 
 local range = require("@util/range")
 local panic = require("@util/panic")
-local option = require("@util/option")
 local symbols = require("@util/symbols")
-
-local span = require("@util/span")
-local fmt_id = require("@compiler/id/format")
 
 local report = require("@hir/report")
 local attributes = require("./attributes")
@@ -133,18 +129,6 @@ end
 
 local function ty_boolean_literal(ctx: Context, expr: ast.ExprBoolean): ty.BooleanLiteral
     return ty.boolean_literal(expr.value)
-end
-
-local function ty_literal(ctx: Context, expr: ast.ExprLiteral): ty.Literal
-    if expr.kind == "number" then
-        return ty_number_literal(ctx, expr)
-    elseif expr.kind == "string" then
-        return ty_string_literal(ctx, expr)
-    elseif expr.kind == "boolean" then
-        return ty_boolean_literal(ctx, expr)
-    end
-
-    return panic(`Unhandled literal kind: "{expr.kind}"`)
 end
 
 local function ty_numeral(ctx: Context, identifier: string, expr_range: ast.Range?): ty.Numeral

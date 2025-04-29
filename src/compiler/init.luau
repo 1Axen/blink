@@ -2,7 +2,6 @@ local hir = require("@compiler/hir")
 local lir = require("@compiler/lir")
 local lexer = require("@compiler/lexer")
 local parser = require("@compiler/parser")
-local codegen = require("@compiler/codegen")
 
 local ast = require("@ast/types")
 local codes = require("@config/codes")
@@ -18,7 +17,6 @@ local import_resolver = require("@util/import_resolver")
 
 local fmt_lir = require("@lir/format")
 local fmt_hir = require("@hir/format")
-local fmt_symbols = require("@util/symbols/format")
 
 type Ast = ast.Ast
 type Symbols = ast.Symbols

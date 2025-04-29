@@ -4,7 +4,6 @@
 
 local file = require("@util/file")
 local span = require("@util/span")
-local panic = require("@util/panic")
 
 export type TokenBase<Kind> = {
     read kind: Kind,
