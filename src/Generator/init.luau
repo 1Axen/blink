@@ -1274,19 +1274,7 @@ function Generator.Generate(FileContext: Context, AbstractSyntaxTree: Parser.Bod
 	Return.Push(`{Casing.StepReplication} = StepReplication,`, 1, 1)
 
 	if not Options.ManualReplication then
-		if Context == "Server" then
-			Replication.Push("RunService.Heartbeat:Connect(StepReplication)")
-		elseif Context == "Client" then
-			Replication.Push("local Elapsed = 0")
-			local Connection = Blocks.Connection("RunService.Heartbeat", "DeltaTime: number")
-				:Line("Elapsed += DeltaTime")
-				:Compare("Elapsed", "(1 / 61)", "GreaterOrEquals")
-					:Line("Elapsed -= (1 / 61)")
-					:Line("StepReplication()")
-				:End()
-			:End()
-			Replication.PushLines(Connection.Content)
-		end
+		Replication.Push("RunService.Heartbeat:Connect(StepReplication)")
 	end
 
 	--> Parse declarations
