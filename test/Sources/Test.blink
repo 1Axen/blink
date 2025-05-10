@@ -17,7 +17,7 @@ struct ImportReference {
 }
 
 type A = CFrame
-type B = CFrame[10]
+type B = CFrame[..10]
 type C = CFrame?
 type D = Color3
 

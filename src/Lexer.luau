@@ -63,7 +63,7 @@ local TOKENS = {
     {`^%({NUMBER}{DOTS}{NUMBER}%)`, "Range"},
     {`^%[{NUMBER}%]`, "Array"},
     {`^%[{NUMBER}{DOTS}%]`, "Array"},
-    {`^%[{NUMBER}{DOTS}%]`, "Array"},
+    {`^%[{DOTS}{NUMBER}%]`, "Array"},
     {`^%[{NUMBER}{DOTS}{NUMBER}%]`, "Array"},
 
     {"^%(", "OpenParentheses"},
