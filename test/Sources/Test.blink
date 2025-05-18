@@ -171,54 +171,47 @@ event SendOccupiedCell {
 event ClientPollEvent {
     From: Client,
     Type: Reliable,
-    Call: SingleSync,
-    Poll: true,
+    Call: Polling,
     Data: MergeStruct
 }
 
 event ClientUnreliablePollEvent {
     From: Client,
     Type: Unreliable,
-    Call: SingleSync,
-    Poll: true,
+    Call: Polling,
     Data: MergeStruct
 }
 
 event ClientEmptyPollEvent {
     From: Client,
     Type: Reliable,
-    Call: SingleSync,
-    Poll: true,
+    Call: Polling,
 }
 
 event ClientEmptyUnreliablePollEvent {
     From: Client,
     Type: Unreliable,
-    Call: SingleSync,
-    Poll: true,
+    Call: Polling,
 }
 
 event ServerPollEvent {
     From: Server,
     Type: Reliable,
-    Call: SingleSync,
-    Poll: true,
+    Call: Polling,
     Data: MergeStruct
 }
 
 event ServerUnreliablePollEvent {
     From: Server,
     Type: Unreliable,
-    Call: SingleSync,
-    Poll: true,
+    Call: Polling,
     Data: MergeStruct
 }
 
 event ServerEmptyPollEvent {
     From: Server,
     Type: Reliable,
-    Call: SingleSync,
-    Poll: true,
+    Call: Polling,
 }
 
 event ServerEmptyUnreliablePollEvent {

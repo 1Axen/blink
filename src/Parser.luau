@@ -161,7 +161,7 @@ export type Tuple = Node<"Tuple", {
 export type Event = Node<"Event", {
     From: "Client" | "Server",
     Type: "Reliable" | "Unreliable",
-    Call: "SingleSync" | "SingleAsync" | "ManySync" | "ManyAsync",
+    Call: "SingleSync" | "SingleAsync" | "ManySync" | "ManyAsync" | "Polling",
     Poll: boolean?,
     Data: (TypeNode | Tuple)? 
 }, {}>
@@ -198,7 +198,7 @@ local OPTIONS: {[string]: Lexer.Types} = {
 local EVENT: {EventOption} = {
     {Key = "From", Type = "Identifier", Values = {"Client", "Server"}},
     {Key = "Type", Type = "Identifier", Values = {"Reliable", "Unreliable"}},
-    {Key = "Call", Type = "Identifier", Values = {"SingleSync", "SingleAsync", "ManySync", "ManyAsync"}},
+    {Key = "Call", Type = "Identifier", Values = {"SingleSync", "SingleAsync", "ManySync", "ManyAsync", "Polling"}},
     {Key = "Poll", Type = "Boolean", Values = {true, false}, Optional = true},
     {Key = "Data", Type = "Identifier", Values = {}, Optional = true},
 }
