@@ -1,0 +1,112 @@
+import { Callout } from 'nextra/components'
+
+# Events
+Events are Blink's version of Roblox's `RelibaleEvent` and `UnreliableEvent`.<br/>
+They are the main way to communicate between client and server.
+
+## Usage in Blink
+
+Events can be defined using the `event` keyword.
+```ts copy
+event MyEvent {
+    From: Server,
+    Type: Reliable,
+    Call: SingleAsync,
+    Data: f64
+}
+```
+
+#### `From`
+Determines the side from which the event is fired. <br/>
+Currently Blink supports either `Server` or `Client`.
+
+#### `Type`
+Determines the type (reliability) of the event.
+* `Reliable` - Events are guaranteed to arrive at their destination in the order they were sent in.
+* `Unreliable` - Events are not guaranteed to arrive at their destination or to arrive in the order they were sent in. They also have a maximum size of 1000 bytes.
+
+#### `Call`
+Determines the listening API exposed on the receiving side.
+* `SingleSync` - Events can only have one listener, but that listener cannot yield.
+* `ManySync` - Events can have many listeners, but those listeners cannot yield.
+* `SingleAsync` - Events can only have one listener, and that listener may yield.
+* `ManyAsync` - Events can have many listeners, and those listeners may yield.
+* `Polling` - Events are iterated through `Event.Iter()`.
+
+<Callout type="error">
+    Sync events should be avoided unless performance is critical.<br/>
+    Yielding or erroring in sync event can cause <b>undefined and sometimes game-breaking behaviour</b>.
+</Callout>
+
+#### `Data`
+Determines the data that is sent through the event, can be any [type](./4-types/0-overview.mdx).<br/>
+This field can be omitted if no data is required.
+
+##### Type Packs
+Multiple data values are supported through the usage of a type pack (commonly referred to as a tuple).
+Type packs can be defined as a list of [types](./4-types/0-overview.mdx) seperated by a comma within parenthesis.<br/>
+For example, a type pack of different [number types](./4-types/2-numbers.mdx) can be written like so:
+```ts  copy
+event MyTypePackEvent {
+    From: Server,
+    Type: Reliable,
+    Call: SingleAsync,
+    Data: (u8, u16, u32)
+}
+```
+
+## Usage in Luau
+
+### Firing an Event
+```lua filename="client.luau" copy
+blink.MyEvent.Fire(5)
+blink.MyTypePackEvent.Fire(2^8 - 1, 2^16 - 1, 2^32 - 1)
+```
+```lua filename="server.luau" copy
+blink.MyEvent.Fire(Player, 5)
+blink.MyEvent.FireAll(Player, 5)
+blink.MyEvent.FireList((Player), 5)
+blink.MyEvent.FireExcept(Player, 5)
+```
+
+### Listening to an Event
+```lua filename="client.luau" copy
+blink.MyEvent.On(function(Value)
+    -- ...
+end)
+
+blink.MyTypePackEvent.On(function(Foo, Bar, FooBar)
+    -- ...
+end)
+```
+```lua filename="server.luau" copy
+blink.MyEvent.On(function(Player, Value)
+    -- ...
+end)
+
+blink.MyTypePackEvent.On(function(Player, Foo, Bar, FooBar)
+    -- ...
+end)
+```
+```lua filename="disconnect.luau" copy
+local Disconnect = blink.MyEvent.On(...)
+Disconnect()
+```
+
+### Iterating an Event (Polling)
+```lua filename="client.luau" copy
+for Index, Value in MyEvent.Iter() do
+    -- ...
+end
+for Index, Foo, Bar, FooBar in MyTypePackEvent.Iter() do
+    -- ...
+end
+```
+```lua filename="server.luau" copy
+for Index, Player, Value in MyEvent.Iter() do
+    -- ...
+end
+for Index, Player, Foo, Bar, FooBar in MyTypePackEvent.Iter() do
+    -- ...
+end
+```

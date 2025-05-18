@@ -1,0 +1,29 @@
+import { Callout } from 'nextra/components'
+
+# Vectors
+Vectors represent a vector in 3D space, most often as a point in 3D space.<br/>
+They can be defined using the `vector` type.
+
+## Bounding Vectors
+The length (magnitude) of vectors can be bounded by placing [a range](./1-ranges.mdx) within parenthesis after the type.<br/>
+For example, if you wanted to create a unit vector (length between `0` and `1`) you can do:
+```ts copy
+vector(0..1)
+```
+
+## Specifying Encoding
+Vectors can be passed a [number type](./2-numbers.mdx) within angular brackets after the type, to be used for encoding.
+For example, an `i16` vector can be defined like so:
+```ts copy
+type VectorI16 = vector<i16>
+```
+<Callout type="warning">
+    Since Luau stores vectors as three `f32`s internally, any encoding larger than a `f32` (ex. `f64`) will have no real effect on the numerical precision of the vector.
+</Callout>
+
+## Example Usage
+```ts
+type Position = vector
+type UnitVector = vector(0..1)
+type VectorU8 = vector<u8>
+```

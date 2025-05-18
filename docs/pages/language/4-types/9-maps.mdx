@@ -1,0 +1,28 @@
+import { Callout } from 'nextra/components'
+
+# Maps
+Maps are key-value pair tables that have keys of one type, and values of the same or different type.<br/>
+They can be defined using the `map` type. For example, a map of `string` keys and `f64` values would look like:
+```ts copy
+map StringToNumber = { [string]: f64 }
+```
+
+## Bounding Maps
+The numbers of elements in a map can be bounded by placing [a range](./1-ranges.mdx) within parenthesis after the type.<br/>
+For example, if you wanted to bound the numbers of elements between `1` and `100` you can do:
+```ts copy
+map StringToNumber = { [string]: f64 }(1..100)
+```
+
+## Generics
+Maps support the use of generics. Generics can be a powerful tool for code reuse.<br/>
+For example a map template can be defined as:
+```ts copy
+map Map<K, V> = {[K]: V}
+map StringToNumber = Map<string, number>
+```
+
+## Example Usage
+```ts copy
+map UserIdToUsername = { [f64]: string }
+```

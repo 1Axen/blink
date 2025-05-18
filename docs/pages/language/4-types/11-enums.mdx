@@ -1,0 +1,69 @@
+import { Callout } from 'nextra/components'
+
+# Enums
+Blink supports two types of enums, unit and tagged enums.
+
+## Unit Enums
+Units enums represent a set of possible values.<br/>
+They are defined using the `enum` type. 
+For example, a unit enum representing the state of a character:
+```ts copy
+type CharacterStatus = enum { Idling, Walking, Running, Jumping, Falling }
+```
+
+## Tagged Enums
+Tagged enums are a set of possible variants, each with some data attached.<br/>
+They are defined using the `enum` type, then a string which is used for the tag field name, followed by the variants.
+Each variant is defined by a tag, followed by a struct. Variants are separated by a comma.
+
+```ts copy
+enum MouseEvent = "Type" {
+    Move {
+        Delta: vector,
+        Position: vector,
+    },
+    Drag {
+        Delta: vector,
+        Position: vector,
+    },
+    Click {
+        Button: enum { Left, Right, Middle },
+        Position: vector
+    }
+}
+```
+
+Tagged enums are a very powerful way to represent many different types of data.<br/>
+While not supported by blink, a union type can be substituted using tagged enums:
+``` ts copy
+enum Union = "Type" {
+    Number {
+        Value: f64
+    },
+    String {
+        Value: string
+    }
+}
+```
+This would result in the following Luau type:
+```lua copy
+type Union = 
+    | {Type: "Number", Value: number}
+    | {Type: "String", Value: string}
+```
+
+### Generics
+Like [maps](./8-maps.mdx), tagged enums also support generics.<br/>
+For example, a tagged enum union template can be defined as:
+```ts copy
+enum Union<A, B> = "Type" {
+    A {
+        Value: A
+    },
+    B {
+        Value: B
+    },
+}
+
+enum NumberStringUnion = Union<number, string>
+```

@@ -1,0 +1,52 @@
+import { Callout } from 'nextra/components'
+
+# Functions
+Functions are Blink's version of Roblox's `RemoteFunction`.<br/>
+They provide a way for the client to request information from the server.
+
+## Usage in Blink
+
+Functions can be defined using the `function` keyword.
+```ts copy
+function MyFunction {
+    Yield: Coroutine,
+    Data: f64,
+    Return: f64
+}
+```
+
+#### `Yield`
+Determines the library used to handle yielding to the requester.<br/>
+* `Coroutine` - The builtin Luau coroutine library.
+* `Future` - The user provided future library, use of redblox's future library is recommended.
+* `Promise` - The user provided promise library, use of evaera's promise library (or forks of it) is recommended.
+
+#### `Data`
+The data sent to the server by the client.<br/>
+For more information take a look at the [data field](./5-events.mdx#data) for events.
+
+#### `Return`
+The data returned by the server to the client.<br/>
+For more information take a look at the [data field](./5-events.mdx#data) for events.
+
+## Usage in Luau
+
+### Invoking a Function
+```lua filename="client-coroutine.luau" copy
+local Value = blink.MyFunction.Invoke(5)
+```
+```lua filename="client-future.luau" copy
+local Future = blink.MyFunction.Invoke(5)
+local Value = Future:Await()
+```
+```lua filename="client-promise.luau" copy
+local Promise = blink.MyFunction.Invoke(5)
+local Value = Promise:await()
+```
+
+### Listening to a Function
+```lua filename="server.luau" copy
+blink.MyFunction.On(function(Player, Value)
+    return Value * 2
+end)
+```

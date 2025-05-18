@@ -1,0 +1,20 @@
+import { Callout } from 'nextra/components'
+
+# CFrames
+CFrames represent a point and rotation about it in 3D space, most often as a point in 3D space.<br/>
+They can be defined using the `CFrame` type.
+
+```ts copy
+type Location = CFrame
+```
+
+## Specifying Encoding
+CFrames can be passed two [number types](./2-numbers.mdx) within angular brackets after the type, to be used for the positional and rotational encoding respectively.
+For example, a CFrame which uses an `i16` for it's positional encoding and a `f16` for it's rotational encoding can be defined like so:
+```ts copy
+type MyCFrame = CFrame<i16, f16>
+```
+<Callout type="warning">
+    The numerical precision limitations of [vectors](./6-vectors.mdx#specifying-encoding) also apply to CFrames.<br/>
+    Furthermore, using an [integer type](./2-numbers.mdx#unsigned-integers) for the rotational encoding will result in the rotation being zeroed out.
+</Callout>

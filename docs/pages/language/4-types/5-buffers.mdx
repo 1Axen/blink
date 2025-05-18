@@ -1,0 +1,18 @@
+import { Callout } from 'nextra/components'
+
+# Buffers
+Buffers can be defined using the `buffer` type.<br/>
+Buffers allow you to pass your own custom serialized data while still taking advantage of blink's batching.
+
+## Bounding Buffers
+The length of buffers can be bounded by placing [a range](./1-ranges.mdx) within parenthesis after the type.<br/>
+For example, if you wanted to bound a buffer between `0` and `900` bytes, you can do:
+```ts copy
+buffer(..900)
+```
+
+## Example Usage
+```ts copy
+type BinaryBlob = buffer
+type UnreliableEventBuffer = buffer(..950)
+```

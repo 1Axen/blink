@@ -1,0 +1,21 @@
+import { Callout } from 'nextra/components'
+
+# Arrays
+Arrays are a list of homogeneous types.<br/>
+They can be defined as a type followed by square brackets.<br/>
+For example an array of `string`s would be:
+```ts copy
+string[]
+```
+
+## Bounding Arrays
+The length of arrays can be bounded by placing [a range](./1-ranges.mdx) within the square brackets.<br/>
+For example, if you wanted to bound the length of an array between `25` and `50` elements you can do:
+```ts copy
+string[25..50]
+```
+
+## Example Usage
+```ts copy
+type UserIds = f64[1..50]
+```

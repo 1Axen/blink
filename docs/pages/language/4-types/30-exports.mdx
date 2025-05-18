@@ -1,0 +1,29 @@
+import { Callout } from 'nextra/components'
+
+# Exports
+Blink supports exporting write and read functions for a specific type.<br/>
+Exports can be a powerful way to leverage your blink types in various use-cases like: automatic ECS replication.<br/>
+An export can be defined by prefixing the `export` keyword to a type's definition, for example:
+```ts copy
+export struct MyInterface = {
+    field: u8,
+}
+```
+
+<Callout type="info">
+    Exports do not currently support Instances and Unknowns.
+</Callout>
+
+## Usage in Luau
+The Luau facing API looks like so:
+```lua
+type MyInterfaceExport = {
+    Read: (buffer) -> MyInterface,
+    Write: (MyInterface) -> buffer
+}
+```
+And a game script can use it like so:
+```lua filename="example.lua" copy
+local Serialized = blink.MyInterface.Write(MyInterface)
+local Deserialized = blink.MyInterface.Read(Serialized)
+```
