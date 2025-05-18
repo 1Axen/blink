@@ -11,7 +11,15 @@ const config: DocsThemeConfig = {
 			}
 		}
 	},
-  logo: <span>Blink</span>,
+  logo: (
+      <>
+        <img
+          width="40"
+          height="40"
+          src="https://raw.githubusercontent.com/1Axen/blink/main/docs/public/letter.png"
+        />
+      </>
+  ),
   project: {
     link: 'https://github.com/1Axen/blink',
   },
@@ -21,6 +29,7 @@ const config: DocsThemeConfig = {
   },
   head: (
     <>
+      <link rel="shortcut icon" href="https://raw.githubusercontent.com/1Axen/blink/main/docs/public/letter.png" type="img/png"/>
       <meta property="og:description" content="An IDL compiler written in Luau for ROBLOX buffer networking." />
     </>
   )
