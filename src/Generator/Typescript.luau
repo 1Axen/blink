@@ -95,7 +95,8 @@ local function GetTypescriptType(State: State, Declaration: Type): (string, stri
 		for _, Field in Value.Values do
 			local Name = Field.Name
 			local FieldType = GetTypescriptType(State, Field)
-			table.insert(Fields, `{FormatKey(Name)}: {FieldType}`)
+			local Optional = Field.Type == "Optional" and "?" or ""
+			table.insert(Fields, `{FormatKey(Name)}{Optional}: {FieldType}`)
 		end
 
 		Type = `\{ {table.concat(Fields, ", ")}\ }`
