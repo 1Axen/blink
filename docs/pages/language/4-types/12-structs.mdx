@@ -8,7 +8,7 @@ struct Entity {
     Health: u8(0..100),
     Position: vector,
     Rotation: u8,
-    Animations: {
+    Animations: struct {
         First: u8?,
         Second: u8,
         Third: u8
