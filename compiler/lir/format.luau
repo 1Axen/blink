@@ -52,7 +52,7 @@ local function fmt_global(fmt_builder: Builder, global: lir.Global<any>)
     builder.append(fmt_builder, ID_STYLE(`@{global.identifier}`))
 end
 
-local function fmt_return(fmt_builder: Builder, retrn: lir.Return)
+local function fmt_return(fmt_builder: Builder, retrn: lir.Return, index: number)
     builder.append(fmt_builder, fmt_ty(retrn.ty))
 end
 
@@ -264,17 +264,23 @@ local function fmt_loop(fmt_builder: Builder, loop: lir.Loop)
 
         local target = loop.target
         if 
-            target.kind == "field" 
-            or target.kind == "index" 
+            target.type == "projection"
+            and (
+                target.kind == "field" 
+                or target.kind == "index"
+            )
         then
             fmt_projection(fmt_builder, target :: any)
         elseif 
-            target.kind == "register" 
-            or target.kind == "argument" 
+            target.type == "id"
+            and (
+                target.kind == "register" 
+                or target.kind == "argument"
+            )
         then
             fmt_id(fmt_builder, target :: any)
         else
-            panic(`Unhandled loop target kind "{target.kind}"`)
+            panic(`Unhandled loop target type "{target.type}"`)
         end
 
         builder.append(fmt_builder, ")")
