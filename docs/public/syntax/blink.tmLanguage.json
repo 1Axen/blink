@@ -104,7 +104,8 @@
 					"patterns": [
 						{ "include": "#numbers" },
 						{ "include": "#delimiters" },
-						{ "include": "#strIdentifiers" }
+						{ "include": "#strIdentifiers" },
+						{ "include": "#types" }
 					]
 				},
 				{
