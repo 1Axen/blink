@@ -206,7 +206,7 @@ Maps support the use of generics. Generics can be a powerful tool for code reuse
 For example a map template can be defined as:
 ```blink copy
 map Map<K, V> = {[K]: V}
-map StringToNumber = Map<string, number>
+map StringToNumber = Map<string, f64>
 ```
 
 ### Example Usage
@@ -290,7 +290,7 @@ enum Union<A, B> = "Type" {
     },
 }
 
-enum NumberStringUnion = Union<number, string>
+enum NumberStringUnion = Union<f64, string>
 ```
 
 ## Structs
