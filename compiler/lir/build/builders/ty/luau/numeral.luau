@@ -28,11 +28,11 @@ type function concat_literal_union(left: any, right: any)
     return types.unionof(table.unpack(combined_components))
 end
 
-local types = require("../types")
+local builder_types = require("../types")
 
-type TyBuilder = types.TyBuilder
-type ReadProps = types.ReadProps
-type WriteProps = types.WriteProps
+type TyBuilder = builder_types.TyBuilder
+type ReadProps = builder_types.ReadProps
+type WriteProps = builder_types.WriteProps
 
 type Builder = fn.Builder
 type Context = context.Context
