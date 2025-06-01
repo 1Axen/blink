@@ -23,7 +23,7 @@ export type ConstantValue =
     | nil
 
 export type Constant<T = ConstantValue> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "constant",
     value: T
@@ -31,7 +31,7 @@ export type Constant<T = ConstantValue> = {
 
 --- An index into the arguments table
 export type ArgumentId<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "id",
     kind: "argument",
@@ -40,7 +40,7 @@ export type ArgumentId<T> = {
 
 --- An index into the register table
 export type RegisterId<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "id",
     kind: "register",
@@ -54,7 +54,7 @@ export type Id<T> =
 
 --- base(args...)
 export type ProjCall<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "projection",
     kind: "call",
@@ -64,7 +64,7 @@ export type ProjCall<T> = {
 
 --- base[field]
 export type ProjField<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "projection",
     kind: "field",
@@ -74,7 +74,7 @@ export type ProjField<T> = {
 
 --- base.index
 export type ProjIndex<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "projection",
     kind: "index",
@@ -84,7 +84,7 @@ export type ProjIndex<T> = {
 
 --- base:method(args...)
 export type ProjNamecall<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "projection",
     kind: "namecall",
@@ -102,7 +102,7 @@ export type Projection<T> =
 
 --- left + right
 export type BinaryAdd<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "binary",
     kind: "add",
@@ -112,7 +112,7 @@ export type BinaryAdd<T> = {
 
 --- left - right
 export type BinarySub<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "binary",
     kind: "sub",
@@ -122,7 +122,7 @@ export type BinarySub<T> = {
 
 --- left * right
 export type BinaryMul<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "binary",
     kind: "mul",
@@ -132,7 +132,7 @@ export type BinaryMul<T> = {
 
 --- left / right
 export type BinaryDiv<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "binary",
     kind: "div",
@@ -142,7 +142,7 @@ export type BinaryDiv<T> = {
 
 --- left % right
 export type BinaryMod<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "binary",
     kind: "mod",
@@ -152,7 +152,7 @@ export type BinaryMod<T> = {
 
 --- left // right
 export type BinaryIDiv<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "binary",
     kind: "idiv",
@@ -170,7 +170,7 @@ export type BinaryOp<T> =
 
 --- #%of
 export type UnaryLen<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "unary",
     kind: "len",
@@ -182,7 +182,7 @@ export type UnaryOp<T> =
     
 --- advance(bytes)
 export type CtrlAdvance<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "control",
     kind: "advance",
@@ -191,7 +191,7 @@ export type CtrlAdvance<T> = {
 
 --- allocate(bytes)
 export type CtrlAllocate<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "control",
     kind: "allocate",
@@ -204,7 +204,7 @@ export type Control<T> =
 ;
 
 export type Global<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "global",
     identifier: string
@@ -212,7 +212,7 @@ export type Global<T> = {
 
 --- left == / ~=/ >= / > / < / <= right
 export type Condition<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "condition",
     kind: "equals" | "not_equals" | "less_than" | "less_than_or" | "greater_than" | "greater_than_or",
@@ -222,7 +222,7 @@ export type Condition<T> = {
 
 --- if cond then left else right
 export type Ternary<T> = {
-    __phantom_type: T,
+    write __phantom_type: T,
 
     type: "ternary",
     cond: Condition<T>,
@@ -232,7 +232,7 @@ export type Ternary<T> = {
 
 -- { values }
 export type Map<T> = {
-    __phantom_type: {T},
+    write __phantom_type: {T},
 
     type: "structure",
     kind: "map",
@@ -241,7 +241,7 @@ export type Map<T> = {
 
 -- { values }
 export type Array<T> = {
-    __phantom_type: {T},
+    write __phantom_type: {T},
 
     type: "structure",
     kind: "array",
@@ -250,7 +250,7 @@ export type Array<T> = {
 
 -- { values }
 export type Struct<T> = {
-    __phantom_type: {T},
+    write __phantom_type: {T},
 
     type: "structure",
     kind: "struct",
