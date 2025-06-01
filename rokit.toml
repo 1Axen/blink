@@ -6,6 +6,7 @@
 [tools]
 act = "nektos/act@0.2.78"
 lune = "filiptibell/lune@0.9.3"
+stylua = "JohnnyMorganz/StyLua@2.1.0"
 darklua = "seaofvoices/darklua@0.16.0"
 rojo = "rojo-rbx/rojo@7.5.1"
 run-in-roblox = "rojo-rbx/run-in-roblox@0.3.0"
