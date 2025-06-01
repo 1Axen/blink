@@ -39,13 +39,13 @@ Determines the listening API exposed on the receiving side.
 </Callout>
 
 #### `Data`
-Determines the data that is sent through the event, can be any [type](./4-types/0-overview.mdx).<br/>
+Determines the data that is sent through the event, can be any [type](./4-types.mdx).<br/>
 This field can be omitted if no data is required.
 
 ##### Type Packs
 Multiple data values are supported through the usage of a type pack (commonly referred to as a tuple).
-Type packs can be defined as a list of [types](./4-types/0-overview.mdx) seperated by a comma within parenthesis.<br/>
-For example, a type pack of different [number types](./4-types/2-numbers.mdx) can be written like so:
+Type packs can be defined as a list of [types](./4-types.mdx) seperated by a comma within parenthesis.<br/>
+For example, a type pack of different [number types](./4-types#numbers) can be written like so:
 ```ts  copy
 event MyTypePackEvent {
     From: Server,
