@@ -1,11 +1,11 @@
 export type Runtime = "ROBLOX" | "Lune"
 
 local function get_runtime(): Runtime
-    if typeof(game) == "Instance" then
-        return "ROBLOX"
-    end
+	if typeof(game) == "Instance" then
+		return "ROBLOX"
+	end
 
-    return "Lune"
+	return "Lune"
 end
 
 return get_runtime

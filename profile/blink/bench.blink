@@ -1,7 +1,17 @@
-type array = u8[0..255]
-type fixed_array = u8[16]
+-- type foo = buzz<u8>
+-- type bar = buzz<string>
 
---[[
+-- type buzz<T> = T[]
+
+-- type tree<T> = struct {
+--     value: T,
+--     forest: forest<T>
+-- }
+
+-- type forest<T> = tree<T>[]
+
+-- type byte_forest = forest<u8>
+
 type vec3 = vector
 type vec2 = vector<f32, f32, 0>
 type vec1 = vector<f32, 0, 0>
@@ -26,6 +36,9 @@ type fixed_blob = buffer(32)
 type bool = boolean
 type username = string(0..20)
 
+type array = u8[0..255]
+type fixed_array = u8[16]
+
 type optional = username?
 
 type alpha = Enum<"AlphaMode">
@@ -39,13 +52,6 @@ type timestamp_millis = DateTimeMillis
 
 type any = unknown
 type mesh = Instance<"MeshPart">
-
-type opt<T> = enum "has_value" {
-    true {
-        value: T
-    },
-    false {}
-}
 
 type entity<C, T> = struct {
     id: u8,
@@ -65,13 +71,13 @@ type shotgun = weapon & struct {
     pellets: u8
 }
 
-type node<T> = struct {
-    value: T,
-    next: node<T>?
-}
+-- type node<T> = struct {
+--     value: T,
+--     next: node<T>?
+-- }
 
-type byte_linked_list = node<u8>
-type dword_linked_list = node<u32>
+-- type byte_linked_list = node<u8>
+-- type dword_linked_list = node<u32>
 
 type class = enum {
     "Tank",
@@ -80,13 +86,12 @@ type class = enum {
     "Marksman",
 }
 
-@stable
 type purchase = struct {
     price: u32,
     product: f64,
 }
 
-@stable
+-- @stable
 type player_data = struct {
     class: class,
     coins: u8,
@@ -106,6 +111,9 @@ type game_flags_packet = set {
     PlayerDamage,
     FriendlyDamage,
 }
+
+type leaderboard = map {[f64]: u16}(10)
+type player_to_data = map {[f64]: player_data}(0..255)
 
 event purchase_item {
     from: Client,
@@ -138,4 +146,3 @@ event give_money {
     call: SingleSync,
     data: (Instance<"Player">, u32)
 }
-]]

@@ -1,7 +1,7 @@
 --!strict
 
-local fs = require("@lune/fs")
 local file = require("@util/file")
+local fs = require("@lune/fs")
 
 local hir = require("@compiler/hir")
 local lexer = require("@compiler/lexer")
@@ -12,6 +12,6 @@ local input = file.from_source("bench.blink", fs.readFile("./blink/bench.blink")
 
 local tokens = lexer.tokenize(input)
 local ast = parser.parse(input, tokens)
-local file_hir = hir.from_files({[input.id] = ast})
+local file_hir = hir.from_files({ [input.id] = ast })
 
 print(fmt_hir(file_hir))

@@ -1,60 +1,60 @@
 --!strict
 
-local ty = require("@ty/types")
 local lir = require("@lir/types")
+local ty = require("@ty/types")
 
 type Literal = ty.Literal
 type Constant<T = ConstantValue> = lir.Constant<T>
 type ConstantValue = lir.ConstantValue
 
-local deduped_constants: {[any]: Constant} = {}
+local deduped_constants: { [any]: Constant } = {}
 
 local NIL_SYMBOL = newproxy()
 
 local function hash_value(value: ConstantValue): any
-    if value == nil then
-        return NIL_SYMBOL
-    end
+	if value == nil then
+		return NIL_SYMBOL
+	end
 
-    return value
+	return value
 end
 
 local function create_or_reuse(value: ConstantValue): Constant
-    local existing = deduped_constants[value]
-    if existing then
-        return existing
-    end
+	local existing = deduped_constants[value]
+	if existing then
+		return existing
+	end
 
-    local constant: Constant = {
-        __phantom_type = nil :: any,
-        
-        type = "constant",
-        value = value
-    }
+	local constant: Constant = {
+		__phantom_type = nil :: any,
 
-    local hash = hash_value(value)
-    deduped_constants[hash] = constant
+		type = "constant",
+		value = value,
+	}
 
-    return constant
+	local hash = hash_value(value)
+	deduped_constants[hash] = constant
+
+	return constant
 end
 
-local function from_ty<A>(ty: {kind: index<ty.Literal, "kind">, value: A}): Constant<A>
-    return create_or_reuse(ty.value)
+local function from_ty<A>(ty: { kind: index<ty.Literal, "kind">, value: A }): Constant<A>
+	return create_or_reuse(ty.value)
 end
 
 local function from_value<T>(value: T): Constant<T>
-    return create_or_reuse(value)
+	return create_or_reuse(value)
 end
 
 return table.freeze({
-    from_ty = from_ty,
-    from_value = from_value,
+	from_ty = from_ty,
+	from_value = from_value,
 
-    truth = from_value(true),
-    falsity = from_value(true),
+	truth = from_value(true),
+	falsity = from_value(true),
 
-    one = from_value(1),
-    zero = from_value(0),
+	one = from_value(1),
+	zero = from_value(0),
 
-    null = from_value(nil)
+	null = from_value(nil),
 })

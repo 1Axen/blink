@@ -1,9 +1,9 @@
 --!strict
 
-local fs = require("@lune/fs")
-local serde = require("@lune/serde")
 local file = require("@util/file")
+local fs = require("@lune/fs")
 local lexer = require("@compiler/lexer")
+local serde = require("@lune/serde")
 
 local source = fs.readFile("./blink/small.blink")
 local input = file.from_source("small", source)

@@ -1,210 +1,210 @@
 local ty = require("@ty/types")
 
 local fmt_id = require("@compiler/id/format")
-local fmt_types = require("@util/format_types")
 local fmt_range = require("@util/range/format")
+local fmt_types = require("@util/format_types")
 
-local style = require("@util/style")
-local range = require("@util/range")
 local panic = require("@util/panic")
+local range = require("@util/range")
+local style = require("@util/style")
 
 local fmt_ty: (ty: ty.Ty) -> string
 local PRIMITIVE_STYLE = style.color.bright_purple
 
 local function fmt_ty_id<T>(ty_id: ty.TyId<T>)
-    return fmt_id(ty_id)
+	return fmt_id(ty_id)
 end
 
 local function fmt_opt_range(range: range.Range?): string
-    if range == nil then
-        return ""
-    end
+	if range == nil then
+		return ""
+	end
 
-    return fmt_range(range)
+	return fmt_range(range)
 end
 
 local function fmt_numeral(ty: ty.Numeral): string
-    return PRIMITIVE_STYLE(`{ty.format}{ty.size}`) .. fmt_opt_range(ty.bounds)
+	return PRIMITIVE_STYLE(`{ty.format}{ty.size}`) .. fmt_opt_range(ty.bounds)
 end
 
 local function fmt_vector(ty: ty.Vector): string
-    local result = PRIMITIVE_STYLE("vector")
-    if ty.x or ty.y or ty.z then
-        result ..= "<"
+	local result = PRIMITIVE_STYLE("vector")
+	if ty.x or ty.y or ty.z then
+		result ..= "<"
 
-        if ty.x then
-            result ..= `{fmt_ty_id(ty.x :: ty.TyId)}, `
-        end
+		if ty.x then
+			result ..= `{fmt_ty_id(ty.x :: ty.TyId)}, `
+		end
 
-        if ty.y then
-            result ..= `{fmt_ty_id(ty.y :: ty.TyId)}, `
-        end
+		if ty.y then
+			result ..= `{fmt_ty_id(ty.y :: ty.TyId)}, `
+		end
 
-        if ty.z then
-            result ..= `{fmt_ty_id(ty.z :: ty.TyId)}`
-        end
+		if ty.z then
+			result ..= `{fmt_ty_id(ty.z :: ty.TyId)}`
+		end
 
-         result ..= ">"
-    end
+		result ..= ">"
+	end
 
-    local range = fmt_opt_range(ty.magnitude)
-    result ..= range
+	local range = fmt_opt_range(ty.magnitude)
+	result ..= range
 
-    return result
+	return result
 end
 
 local function fmt_buffer(ty: ty.Buffer): string
-    return `{PRIMITIVE_STYLE("buffer")}{fmt_opt_range(ty.length)}`
+	return `{PRIMITIVE_STYLE("buffer")}{fmt_opt_range(ty.length)}`
 end
 
 local function fmt_string(ty: ty.String): string
-    return `{PRIMITIVE_STYLE("string")}{fmt_opt_range(ty.length)}`
+	return `{PRIMITIVE_STYLE("string")}{fmt_opt_range(ty.length)}`
 end
 
 local function fmt_boolean(ty: ty.Boolean): string
-    return PRIMITIVE_STYLE(`boolean`)
+	return PRIMITIVE_STYLE(`boolean`)
 end
 
 local function fmt_string_literal(ty: ty.StringLiteral): string
-    return fmt_types.string(ty.value)
+	return fmt_types.string(ty.value)
 end
 
 local function fmt_number_literal(ty: ty.NumberLiteral): string
-    return fmt_types.number(ty.value)
+	return fmt_types.number(ty.value)
 end
 
 local function fmt_boolean_literal(ty: ty.BooleanLiteral): string
-    return fmt_types.boolean(ty.value)
+	return fmt_types.boolean(ty.value)
 end
 
 local function fmt_enum(ty: ty.Enum): string
-    local result = PRIMITIVE_STYLE("Enum")
-    if ty.type then
-        result ..= `<{fmt_ty_id(ty.type)}>`
-    end
+	local result = PRIMITIVE_STYLE("Enum")
+	if ty.type then
+		result ..= `<{fmt_ty_id(ty.type)}>`
+	end
 
-    return result
+	return result
 end
 
 local function fmt_color3(ty: ty.Color3): string
-    return PRIMITIVE_STYLE("Color3")
+	return PRIMITIVE_STYLE("Color3")
 end
 
 local function fmt_cframe(ty: ty.CFrame): string
-    local result = PRIMITIVE_STYLE("CFrame")
-    if ty.position or ty.rotation then
-        result ..= "<"
+	local result = PRIMITIVE_STYLE("CFrame")
+	if ty.position or ty.rotation then
+		result ..= "<"
 
-        if ty.position then
-            result ..= `{fmt_ty_id(ty.position)}, `
-        end
+		if ty.position then
+			result ..= `{fmt_ty_id(ty.position)}, `
+		end
 
-        if ty.rotation then
-            result ..= fmt_ty_id(ty.rotation :: any)
-        end
+		if ty.rotation then
+			result ..= fmt_ty_id(ty.rotation :: any)
+		end
 
-        result ..= ">"
-    end
+		result ..= ">"
+	end
 
-    return result
+	return result
 end
 
 local function fmt_date_time(ty: ty.DateTime): string
-    return PRIMITIVE_STYLE("DateTime")
+	return PRIMITIVE_STYLE("DateTime")
 end
 
 local function fmt_date_time_millis(ty: ty.DateTimeMillis): string
-    return PRIMITIVE_STYLE("DateTimeMillis")
+	return PRIMITIVE_STYLE("DateTimeMillis")
 end
 
 local function fmt_brick_color(ty: ty.BrickColor): string
-    return PRIMITIVE_STYLE("BrickColor")
+	return PRIMITIVE_STYLE("BrickColor")
 end
 
 local function fmt_instance(ty: ty.Instance): string
-    local result = PRIMITIVE_STYLE("Instance")
-    if ty.class then
-        result ..= `<{fmt_ty_id(ty.class)}>`
-    end
+	local result = PRIMITIVE_STYLE("Instance")
+	if ty.class then
+		result ..= `<{fmt_ty_id(ty.class)}>`
+	end
 
-    return result
+	return result
 end
 
 local function fmt_field(ty: ty.Field): string
-    return `{ty.name}: {fmt_ty_id(ty.value)}`
+	return `{ty.name}: {fmt_ty_id(ty.value)}`
 end
 
 local function fmt_set(ty: ty.Set): string
-    local items = {}
-    for index, literal in ty.items do
-        items[index] = literal.value    
-    end
+	local items = {}
+	for index, literal in ty.items do
+		items[index] = literal.value
+	end
 
-    return `{PRIMITIVE_STYLE("set")} \{"{table.concat(items, "\", ")}"\}`
+	return `{PRIMITIVE_STYLE("set")} \{"{table.concat(items, '", ')}"\}`
 end
 
 local function fmt_map(ty: ty.Map): string
-    return `{PRIMITIVE_STYLE("map")} \{[{fmt_ty_id(ty.index)}]: {fmt_ty_id(ty.value)}\}{fmt_opt_range(ty.size)}`
+	return `{PRIMITIVE_STYLE("map")} \{[{fmt_ty_id(ty.index)}]: {fmt_ty_id(ty.value)}\}{fmt_opt_range(ty.size)}`
 end
 
 local function fmt_array(ty: ty.Array): string
-    return `\{{fmt_ty_id(ty.of)}\}{fmt_opt_range(ty.size)}`
+	return `\{{fmt_ty_id(ty.of)}\}{fmt_opt_range(ty.size)}`
 end
 
 local function fmt_intersection(ty: ty.Intersection): string
-    return `{fmt_ty_id(ty.left)} & {fmt_ty_id(ty.right)}`
+	return `{fmt_ty_id(ty.left)} & {fmt_ty_id(ty.right)}`
 end
 
 local function fmt_struct(ty: ty.Struct): string
-    local fields: {string} = {}
-    for _, field in ty.fields do
-        table.insert(fields, fmt_field(field))
-    end
+	local fields: { string } = {}
+	for _, field in ty.fields do
+		table.insert(fields, fmt_field(field))
+	end
 
-    return `{PRIMITIVE_STYLE("struct")} \{{table.concat(fields, ", ")}\}`
+	return `{PRIMITIVE_STYLE("struct")} \{{table.concat(fields, ", ")}\}`
 end
 
 local function fmt_optional(ty: ty.Optional): string
-    return `{fmt_ty_id(ty.of)}?`
+	return `{fmt_ty_id(ty.of)}?`
 end
 
 local function fmt_generic(ty: ty.Generic): string
-    return `{`@{style.color.black(ty.name)}`}:{fmt_types.number(ty.index)}`
+	return `{`@{style.color.black(ty.name)}`}:{fmt_types.number(ty.index)}`
 end
 
 local function fmt_unit_enum(ty: ty.UnitEnum): string
-    return `{PRIMITIVE_STYLE("enum")} \{{table.concat(ty.variants, ", ")}\}`
+	return `{PRIMITIVE_STYLE("enum")} \{{table.concat(ty.variants, ", ")}\}`
 end
 
 local function fmt_tagged_enum(ty: ty.TaggedEnum): string
-    local variants: {string} = {}
-    for _, variant in ty.variants do
-        table.insert(variants, `{fmt_ty_id(variant.key)}: {fmt_struct(variant.value)}`)
-    end
+	local variants: { string } = {}
+	for _, variant in ty.variants do
+		table.insert(variants, `{fmt_ty_id(variant.key)}: {fmt_struct(variant.value)}`)
+	end
 
-    return `{PRIMITIVE_STYLE("enum")} {fmt_types.string(ty.tag)} \{{table.concat(variants, ", ")}\}`
+	return `{PRIMITIVE_STYLE("enum")} {fmt_types.string(ty.tag)} \{{table.concat(variants, ", ")}\}`
 end
 
 local function fmt_unknown(ty: ty.Unknown): string
-    return PRIMITIVE_STYLE("unknown")
+	return PRIMITIVE_STYLE("unknown")
 end
 
 local function fmt_placeholder(ty: ty.Placeholder): string
-    local args: {string} = {}
-    for _, arg in ty.args or {} do
-        table.insert(args, fmt_ty_id(arg))
-    end
+	local args: { string } = {}
+	for _, arg in ty.args or {} do
+		table.insert(args, fmt_ty_id(arg))
+	end
 
-    return `{style.color.black(`@{table.concat(ty.path, ".")}`)}<{table.concat(args, ", ")}>`
+	return `{style.color.black(`@{table.concat(ty.path, ".")}`)}<{table.concat(args, ", ")}>`
 end
 
 local function fmt_generic_type(ty: ty.GenericType): string
-    local args: {string} = {}
-    for _, arg in ty.args do
-        table.insert(args, fmt_ty_id(arg))
-    end
+	local args: { string } = {}
+	for _, arg in ty.args do
+		table.insert(args, fmt_ty_id(arg))
+	end
 
-    return `{PRIMITIVE_STYLE("GT")} ({style.modifer.dim(fmt_ty(ty.def))}, \{{table.concat(args, ", ")}\})`
+	return `{PRIMITIVE_STYLE("GT")} ({style.modifer.dim(fmt_ty(ty.def))}, \{{table.concat(args, ", ")}\})`
 end
 
 function fmt_ty(ty: ty.Ty): string
@@ -222,12 +222,12 @@ function fmt_ty(ty: ty.Ty): string
 		return fmt_unit_enum(ty)
 	elseif ty.kind == "tagged_enum" then
 		return fmt_tagged_enum(ty)
-    elseif ty.kind == "intersection" then
-        return fmt_intersection(ty)
+	elseif ty.kind == "intersection" then
+		return fmt_intersection(ty)
 	elseif ty.kind == "generic" then
 		return fmt_generic(ty :: ty.Generic)
-    elseif ty.kind == "placeholder" then
-        return fmt_placeholder(ty)
+	elseif ty.kind == "placeholder" then
+		return fmt_placeholder(ty)
 	elseif ty.kind == "generic_type" then
 		return fmt_generic_type(ty :: ty.GenericType)
 	elseif ty.kind == "numeral" then
@@ -236,35 +236,35 @@ function fmt_ty(ty: ty.Ty): string
 		return fmt_string(ty :: ty.String)
 	elseif ty.kind == "buffer" then
 		return fmt_buffer(ty)
-    elseif ty.kind == "vector" then
-        return fmt_vector(ty :: ty.Vector)
-    elseif ty.kind == "boolean" then
-        return fmt_boolean(ty)
-    elseif ty.kind == "string_literal" then
-        return fmt_string_literal(ty :: ty.StringLiteral)
-    elseif ty.kind == "number_literal" then
+	elseif ty.kind == "vector" then
+		return fmt_vector(ty :: ty.Vector)
+	elseif ty.kind == "boolean" then
+		return fmt_boolean(ty)
+	elseif ty.kind == "string_literal" then
+		return fmt_string_literal(ty :: ty.StringLiteral)
+	elseif ty.kind == "number_literal" then
 		return fmt_number_literal(ty)
-    elseif ty.kind == "boolean_literal" then
+	elseif ty.kind == "boolean_literal" then
 		return fmt_boolean_literal(ty :: ty.BooleanLiteral)
-    elseif ty.kind == "roblox_enum" then
-        return fmt_enum(ty)
-    elseif ty.kind == "cframe" then
-        return fmt_cframe(ty :: ty.CFrame)
-    elseif ty.kind == "color3" then
-        return fmt_color3(ty)
-    elseif ty.kind == "instance" then
-        return fmt_instance(ty :: ty.Instance)
-    elseif ty.kind == "date_time" then
-        return fmt_date_time(ty)
-    elseif ty.kind == "date_time_millis" then
-        return fmt_date_time_millis(ty)
-    elseif ty.kind == "brick_color" then
-        return fmt_brick_color(ty)
-    elseif ty.kind == "unknown" then
-        return fmt_unknown(ty)
-    end
+	elseif ty.kind == "roblox_enum" then
+		return fmt_enum(ty)
+	elseif ty.kind == "cframe" then
+		return fmt_cframe(ty :: ty.CFrame)
+	elseif ty.kind == "color3" then
+		return fmt_color3(ty)
+	elseif ty.kind == "instance" then
+		return fmt_instance(ty :: ty.Instance)
+	elseif ty.kind == "date_time" then
+		return fmt_date_time(ty)
+	elseif ty.kind == "date_time_millis" then
+		return fmt_date_time_millis(ty)
+	elseif ty.kind == "brick_color" then
+		return fmt_brick_color(ty)
+	elseif ty.kind == "unknown" then
+		return fmt_unknown(ty)
+	end
 
-    return panic(`Unhandled ty kind {ty.kind}`)
+	return panic(`Unhandled ty kind {ty.kind}`)
 end
 
 return fmt_ty

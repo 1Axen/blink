@@ -5,53 +5,44 @@ local lir = require("@lir/types")
 local constant = require("@builders/constant")
 local projection = require("@builders/projection")
 
-local math_lib = require("@self/math")
 local bit32_lib = require("@self/bit32")
+local buffer_lib = require("@self/buffer")
+local coroutine_lib = require("@self/coroutine")
+local math_lib = require("@self/math")
+local roblox_lib = require("@self/roblox")
 local table_lib = require("@self/table")
 local vector_lib = require("@self/vector")
-local buffer_lib = require("@self/buffer")
-local roblox_lib = require("@self/roblox")
-local coroutine_lib = require("@self/coroutine")
 
 type Call<T> = lir.ProjCall<T>
 type RValue<T> = lir.RValue<T>
 
 local function luau_error(message: string): Call<nil>
-    return projection.call(
-        constant.from_value("error"),
-        {constant.from_value(message)} :: any
-    )
+	return projection.call(constant.from_value("error"), { constant.from_value(message) } :: any)
 end
 
 local function luau_typeof(of: RValue<any>): Call<string>
-    return projection.call(
-        constant.from_value("typeof"),
-        {of}
-    )
+	return projection.call(constant.from_value("typeof"), { of })
 end
 
 local function luau_tostring(value: RValue<any>): Call<string>
-    return projection.call(
-        constant.from_value("typeof"),
-        {value}
-    )
+	return projection.call(constant.from_value("typeof"), { value })
 end
 
 return table.freeze({
-    error = luau_error,
-    typeof = luau_typeof,
-    tostring = luau_tostring,
+	error = luau_error,
+	typeof = luau_typeof,
+	tostring = luau_tostring,
 
-    math = math_lib,
-    bit32 = bit32_lib,
-    table = table_lib,
-    vector = vector_lib,
-    buffer = buffer_lib,
-    coroutine = coroutine_lib,
+	math = math_lib,
+	bit32 = bit32_lib,
+	table = table_lib,
+	vector = vector_lib,
+	buffer = buffer_lib,
+	coroutine = coroutine_lib,
 
-    CFrame = roblox_lib.CFrame,
-    Color3 = roblox_lib.Color3,
-    DateTime = roblox_lib.DateTime,
-    Instance = roblox_lib.Instance,
-    BrickColor = roblox_lib.BrickColor,
+	CFrame = roblox_lib.CFrame,
+	Color3 = roblox_lib.Color3,
+	DateTime = roblox_lib.DateTime,
+	Instance = roblox_lib.Instance,
+	BrickColor = roblox_lib.BrickColor,
 })

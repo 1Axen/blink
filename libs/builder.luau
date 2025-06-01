@@ -15,29 +15,29 @@ local GROWTH_FACTOR = 1.5
 local DEFAULT_LENGTH = 1024
 
 --> keep a list of buffers to recycle instead of creating new ones
-local recycling_bin: {buffer} = {}
+local recycling_bin: { buffer } = {}
 
 local function borrow_buffer(): buffer
-    if #recycling_bin == 0 then
-        return buffer.create(DEFAULT_LENGTH)
-    end
+	if #recycling_bin == 0 then
+		return buffer.create(DEFAULT_LENGTH)
+	end
 
-    return table.remove(recycling_bin, 1) :: buffer
+	return table.remove(recycling_bin, 1) :: buffer
 end
 
 local function return_buffer(buf: buffer, position: number)
-    table.insert(recycling_bin, buf)
+	table.insert(recycling_bin, buf)
 end
 
 local function create(): Builder
-    local recycled_buffer = borrow_buffer()
+	local recycled_buffer = borrow_buffer()
 
 	return {
 		indent = 0,
 		buffer = recycled_buffer,
 		length = buffer.len(recycled_buffer),
 		position = 0,
-		tab_width = TAB_WIDTH
+		tab_width = TAB_WIDTH,
 	}
 end
 
@@ -92,7 +92,7 @@ local function append_line(builder: Builder, str: string)
 	write(builder, "\n")
 end
 
-local function append_lines(builder: Builder, lines: {string})
+local function append_lines(builder: Builder, lines: { string })
 	for _, line in lines do
 		append_line(builder, line)
 	end
@@ -107,8 +107,8 @@ local function set_tab_width(builder: Builder, width: number)
 end
 
 local function to_string(builder: Builder): string
-    local str = buffer.readstring(builder.buffer, 0, builder.position)
-    return_buffer(builder.buffer, builder.position)
+	local str = buffer.readstring(builder.buffer, 0, builder.position)
+	return_buffer(builder.buffer, builder.position)
 	return str
 end
 

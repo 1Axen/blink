@@ -1,5 +1,3 @@
-option output = "../out/small"
-
 import "./dependency" as external
 
 type health = u8[0.0..100]
@@ -13,7 +11,7 @@ type keywords = enum {
 type opt<T> = enum "exists" {
     true {
         value: T,
-        exists: "hi"
+        -- exists: "hi"
     },
     false {}
 }

@@ -5,9 +5,9 @@ local test_kit = require("@vendor/test_kit")
 fs.writeDir("./temp")
 
 do -- run all tests
-    require("@test/id.test")
-    require("@test/fs.test")
-    require("@test/path.test")
+	require("@test/id.test")
+	require("@test/fs.test")
+	require("@test/path.test")
 end
 
 fs.removeDir("./temp")

@@ -1,12 +1,12 @@
-local ty = require("@ty/types")
-local lir = require("@lir/types")
 local attributes = require("@config/attributes")
+local lir = require("@lir/types")
+local ty = require("@ty/types")
 
 local ty_numeral = require("../luau/numeral")
 
+local constant = require("@builders/constant")
 local fn = require("@builders/fn")
 local library = require("@builders/library")
-local constant = require("@builders/constant")
 local projection = require("@builders/projection")
 
 local context = require("@lir/build/context")
@@ -28,17 +28,24 @@ type Register<T> = lir.RegisterId<T>
 
 local FORMAT = ty_numeral.f64
 
-local function build_read(props: ReadProps, block: Builder, date_time: DateTimeMillis, into: LValue<any>?): Register<DateTime>
-    local timestamp = ty_numeral.read(props, block, FORMAT)
-    return block:store(library.DateTime.from_timestamp_millis(timestamp), into)
+local function build_read(
+	props: ReadProps,
+	block: Builder,
+	date_time: DateTimeMillis,
+	into: LValue<any>?
+): Register<DateTime>
+	local timestamp = ty_numeral.read(props, block, FORMAT)
+	return block:store(library.DateTime.from_timestamp_millis(timestamp), into)
 end
 
 local function build_write(props: WriteProps, block: Builder, date_time: DateTimeMillis, value: RValue<DateTime>): ()
-    local timestamp = (projection.index(value :: any, constant.from_value("UnixTimestampMillis")) :: any) :: lir.ProjIndex<number>
-    ty_numeral.write(props, block, FORMAT, timestamp)
+	local timestamp = (
+		projection.index(value :: any, constant.from_value("UnixTimestampMillis")) :: any
+	) :: lir.ProjIndex<number>
+	ty_numeral.write(props, block, FORMAT, timestamp)
 end
 
 return table.freeze({
-    read = build_read,
-    write = build_write,
+	read = build_read,
+	write = build_write,
 })

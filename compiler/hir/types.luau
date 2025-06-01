@@ -1,10 +1,10 @@
 --!strict
 
-local ty = require("@ty/types")
 local ast = require("@ast/types")
+local ty = require("@ty/types")
 
-local options = require("@config/options")
 local attributes = require("@config/attributes")
+local options = require("@config/options")
 
 local panic = require("@util/panic")
 
@@ -15,104 +15,104 @@ type TyId<T = Ty> = ty.TyId<T>
 type NodeId<T = Node> = ast.NodeId<T>
 
 export type Parameter = {
-    name: string?,
-    value: TyId
+	name: string?,
+	value: TyId,
 }
 
 export type Type = {
-    read kind: "type",
-    read name: string,
-    read scope: ScopeId,
-    read attributes: attributes.TypeAttributes,
+	read kind: "type",
+	read name: string,
+	read scope: ScopeId,
+	read attributes: attributes.TypeAttributes,
 
-    read ty: TyId,
-    read generics: {TyId<ty.Generic>}?
-} 
+	read ty: TyId,
+	read generics: { TyId<ty.Generic> }?,
+}
 
 export type Event = {
-    read kind: "event",
-    read name: string,
-    read scope: ScopeId,
-    read attributes: attributes.SharedAttributes,
+	read kind: "event",
+	read name: string,
+	read scope: ScopeId,
+	read attributes: attributes.SharedAttributes,
 
-    read from: "Server" | "Client" | "Both",
-    read type: "Reliable" | "Unreliable",
-    read call: "ManySync" | "SingleSync" | "ManyAsync" | "SingleAsync",
-    read poll: boolean,
-    read data: {Parameter}?
+	read from: "Server" | "Client" | "Both",
+	read type: "Reliable" | "Unreliable",
+	read call: "ManySync" | "SingleSync" | "ManyAsync" | "SingleAsync",
+	read poll: boolean,
+	read data: { Parameter }?,
 }
 
 export type Function = {
-    read kind: "function",
-    read name: string,
-    read scope: ScopeId,
-    read attributes: attributes.SharedAttributes,
+	read kind: "function",
+	read name: string,
+	read scope: ScopeId,
+	read attributes: attributes.SharedAttributes,
 
-    read yield: "Coroutine" | "Promise" | "Future",
-    read data: {Parameter}?,
-    read ret: {Parameter}?
+	read yield: "Coroutine" | "Promise" | "Future",
+	read data: { Parameter }?,
+	read ret: { Parameter }?,
 }
 
+--stylua: ignore
 export type Decl = 
     | Type
     | Event
     | Function
-;
 
-export type DeclId<T = Decl> = { __kind: "decl", __T: T}
+export type DeclId<T = Decl> = { __kind: "decl", __T: T }
 export type ScopeId = { __kind: "scope" }
 
 export type Hir = {
-    read tys: {[TyId]: Ty},
-    read decls: {[DeclId]: Decl},
-    read nodes: {[NodeId]: Node},
-    read scopes: {[ScopeId]: string},
-    --- [file_id]: FileOptions
-    read options: {[number]: options.FileOptions}
+	read tys: { [TyId]: Ty },
+	read decls: { [DeclId]: Decl },
+	read nodes: { [NodeId]: Node },
+	read scopes: { [ScopeId]: string },
+	--- [file_id]: FileOptions
+	read options: { [number]: options.FileOptions },
 }
 
 local function ty_from_id<T>(hir: Hir, ty_id: TyId<T>): T
-    local ty = hir.tys[ty_id]
-    if ty == nil then
-        return panic("Expected ty_id to point to a ty")
-    end
+	local ty = hir.tys[ty_id]
+	if ty == nil then
+		return panic("Expected ty_id to point to a ty")
+	end
 
-    return ty
+	return ty
 end
 
 local function decl_from_id<T>(hir: Hir, decl_id: DeclId<T>): T
-    local decl = hir.decls[decl_id]
-    if decl == nil then
-        return panic("Expected decl_id to point to a decl")
-    end
+	local decl = hir.decls[decl_id]
+	if decl == nil then
+		return panic("Expected decl_id to point to a decl")
+	end
 
-    return decl
+	return decl
 end
 
 local function node_from_id<T>(hir: Hir, node_id: NodeId<T>): T
-    local node = hir.nodes[node_id]
-    if node == nil then
-        return panic("Expected node_id to point to a node")
-    end
+	local node = hir.nodes[node_id]
+	if node == nil then
+		return panic("Expected node_id to point to a node")
+	end
 
-    return node
+	return node
 end
 
 local function follow(hir: Hir, ty: ty.Ty): ty.Ty
-    if ty.kind == "optional" then
-        local of = ty_from_id(hir, ty.of)
-        return follow(hir, of)
-    elseif ty.kind == "generic_type" then
-        return follow(hir, ty.def)
-    end
+	if ty.kind == "optional" then
+		local of = ty_from_id(hir, ty.of)
+		return follow(hir, of)
+	elseif ty.kind == "generic_type" then
+		return follow(hir, ty.def)
+	end
 
-    -- SOLVER BUG
-    return ty :: any
+	-- SOLVER BUG
+	return ty :: any
 end
 
 return table.freeze({
-    follow = follow,
-    ty_from_id = ty_from_id,
-    decl_from_id = decl_from_id,
-    node_from_id = node_from_id,
+	follow = follow,
+	ty_from_id = ty_from_id,
+	decl_from_id = decl_from_id,
+	node_from_id = node_from_id,
 })

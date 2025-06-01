@@ -9,20 +9,14 @@ type Call<T> = lir.ProjCall<T>
 type RValue<T> = lir.RValue<T>
 
 local function cos(n: RValue<number>): Call<number>
-    return projection.call(
-        constant.from_value("math.cos"), 
-        {n}
-    )
+	return projection.call(constant.from_value("math.cos"), { n })
 end
 
 local function sin(n: RValue<number>): Call<number>
-    return projection.call(
-        constant.from_value("math.sin"), 
-        {n}
-    )
+	return projection.call(constant.from_value("math.sin"), { n })
 end
 
 return table.freeze({
-    cos = cos,
-    sin = sin
+	cos = cos,
+	sin = sin,
 })

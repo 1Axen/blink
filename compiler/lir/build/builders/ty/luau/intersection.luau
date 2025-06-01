@@ -1,8 +1,8 @@
 --!strict
 
-local ty = require("@ty/types")
-local lir = require("@lir/types")
 local attributes = require("@config/attributes")
+local lir = require("@lir/types")
+local ty = require("@ty/types")
 
 local fn = require("@builders/fn")
 local structure = require("@builders/structure")
@@ -24,25 +24,30 @@ type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, intersection: Intersection, into: LValue<any>?): Register<any>
-    local register: Register<any> = block:store(structure.struct({}))
+local function build_read(
+	props: ReadProps,
+	block: Builder,
+	intersection: Intersection,
+	into: LValue<any>?
+): Register<any>
+	local register: Register<any> = block:store(structure.struct({}))
 
-    ty_builder.read(props, block, intersection.left :: ty.TyId, register)
-    ty_builder.read(props, block, intersection.right :: ty.TyId, register)
+	ty_builder.read(props, block, intersection.left :: ty.TyId, register)
+	ty_builder.read(props, block, intersection.right :: ty.TyId, register)
 
-    if into then
-        return block:store(register, into)
-    end
+	if into then
+		return block:store(register, into)
+	end
 
-    return register
+	return register
 end
 
 local function build_write(props: WriteProps, block: Builder, intersection: Intersection, value: RValue<any>): ()
-    ty_builder.write(props, block, intersection.left :: ty.TyId, value)
-    ty_builder.write(props, block, intersection.right :: ty.TyId, value)
+	ty_builder.write(props, block, intersection.left :: ty.TyId, value)
+	ty_builder.write(props, block, intersection.right :: ty.TyId, value)
 end
 
 return table.freeze({
-    read = build_read,
-    write = build_write,
+	read = build_read,
+	write = build_write,
 })

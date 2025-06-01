@@ -4,10 +4,8 @@
 
 local lir = require("@lir/types")
 
-local function optimize(lir: lir.Lir)
-    
-end
+local function optimize(lir: lir.Lir) end
 
 return table.freeze({
-    lir = optimize
+	lir = optimize,
 })

@@ -1,7 +1,7 @@
-local ty = require("@ty/types")
+local attributes = require("@config/attributes")
 local hir = require("@hir/types")
 local lir = require("@lir/types")
-local attributes = require("@config/attributes")
+local ty = require("@ty/types")
 
 local fn = require("@builders/fn")
 
@@ -26,36 +26,39 @@ type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
-local function props_with_generics(base_props: ReadProps | WriteProps, generic_type: GenericType): ReadProps | WriteProps
-    local args: {TyId} = {}
-    local generics = base_props.generics
-    
-    for index, generic_id in generic_type.args do
-        local generic_ty = hir.ty_from_id(base_props.ctx.hir, generic_id)
-        if generic_ty.kind == "generic" and generics then
-            generic_id = generics[generic_ty.index]
-        end
+local function props_with_generics(
+	base_props: ReadProps | WriteProps,
+	generic_type: GenericType
+): ReadProps | WriteProps
+	local args: { TyId } = {}
+	local generics = base_props.generics
 
-        args[index] = generic_id
-    end
-    
-    local new_props = table.clone(base_props)
-    new_props.generics = args
-    
-    return new_props
+	for index, generic_id in generic_type.args do
+		local generic_ty = hir.ty_from_id(base_props.ctx.hir, generic_id)
+		if generic_ty.kind == "generic" and generics then
+			generic_id = generics[generic_ty.index]
+		end
+
+		args[index] = generic_id
+	end
+
+	local new_props = table.clone(base_props)
+	new_props.generics = args
+
+	return new_props
 end
 
 local function build_read(props: ReadProps, block: Builder, generic_type: GenericType, into: LValue<any>?)
-    local new_props = props_with_generics(props, generic_type) :: ReadProps
-    return ty_builder.read_ty(new_props, block, generic_type.def, into)
+	local new_props = props_with_generics(props, generic_type) :: ReadProps
+	return ty_builder.read_ty(new_props, block, generic_type.def, into)
 end
 
 local function build_write(props: WriteProps, block: Builder, generic_type: GenericType, value: RValue<any>): ()
-    local new_props = props_with_generics(props, generic_type) :: WriteProps
-    ty_builder.write_ty(new_props, block, generic_type.def, value)
+	local new_props = props_with_generics(props, generic_type) :: WriteProps
+	ty_builder.write_ty(new_props, block, generic_type.def, value)
 end
 
 return table.freeze({
-    read = build_read,
-    write = build_write,
+	read = build_read,
+	write = build_write,
 })

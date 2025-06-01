@@ -1,16 +1,16 @@
 local id = 0
 
 local function next_id(): number
-    local current = id
-    id += 1
-    return current
+	local current = id
+	id += 1
+	return current
 end
 
 local function next_category(): number
-    id /= 1000
-    id *= 1000
-    id += 1000
-    return id
+	id /= 1000
+	id *= 1000
+	id += 1000
+	return id
 end
 
 next_category()
@@ -46,7 +46,7 @@ type_checking.FewAttributeParameters = next_id()
 type_checking.ExtraAttributeParameters = next_id()
 
 return table.freeze({
-    parser = parser,
-    analysis = analysis,
-    type_checking = type_checking
+	parser = parser,
+	analysis = analysis,
+	type_checking = type_checking,
 })

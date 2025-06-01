@@ -13,20 +13,20 @@ local tokens = lexer.tokenize(input)
 local ast = parser.parse(input, tokens)
 
 local function clean(tbl: any, cache)
-    for key, value in tbl do
-        if cache[value] then
-            continue
-        end
+	for key, value in tbl do
+		if cache[value] then
+			continue
+		end
 
-        if type(value) == "table" then
-            cache[value] = true
-            clean(value, cache)
-        end
+		if type(value) == "table" then
+			cache[value] = true
+			clean(value, cache)
+		end
 
-        if key == "span" then
-            tbl[key] = nil
-        end
-    end
+		if key == "span" then
+			tbl[key] = nil
+		end
+	end
 end
 
 clean(ast.body, {})

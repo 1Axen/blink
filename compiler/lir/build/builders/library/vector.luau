@@ -11,20 +11,14 @@ type RValue<T> = lir.RValue<T>
 type Axis = lir.RValue<number>
 
 local function create(x: Axis, y: Axis, z: Axis): Call<vector>
-    return projection.call(
-        constant.from_value("vector.create"), 
-        {x, y, z}
-    )
+	return projection.call(constant.from_value("vector.create"), { x, y, z })
 end
 
 local function magnitude(vec: lir.RValue<vector>): Call<number>
-    return projection.call(
-        constant.from_value("vector.magnitude"), 
-        {vec}
-    )
+	return projection.call(constant.from_value("vector.magnitude"), { vec })
 end
 
 return table.freeze({
-    create = create,
-    magnitude = magnitude,
+	create = create,
+	magnitude = magnitude,
 })

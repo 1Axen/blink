@@ -2,16 +2,17 @@
 
 local fs = require("@lune/fs")
 
+local diagnostics = require("@util/diagnostics")
 local file = require("@util/file")
+local lexer = require("@compiler/lexer")
 local span = require("@util/span")
 local style = require("@util/style")
-local lexer = require("@compiler/lexer")
-local diagnostics = require("@util/diagnostics")
 
 local code = fs.readFile("./blink/diagnostics.blink")
 local input = file.from_source("diagnostics", code)
 local tokens = lexer.tokenize(input)
 
+--stylua: ignore
 diagnostics.report.create("Error", "diagnostics.blink", input)
     .with_code(1)
     .with_message("A test error")
