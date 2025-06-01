@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs'
 import nextra from 'nextra'
 import { BUNDLED_LANGUAGES, getHighlighter } from 'shiki'
 
@@ -6,6 +7,9 @@ const withNextra = nextra({
   themeConfig: './theme.config.tsx',
   mdxOptions: {
      rehypePrettyCodeOptions: {
+      theme: JSON.parse(
+        readFileSync('./public/syntax/mocha.json', 'utf8')
+      ),
       getHighlighter: options =>
         getHighlighter({
           ...options,
@@ -15,7 +19,7 @@ const withNextra = nextra({
               id: 'blink',
               scopeName: 'source.blink',
               aliases: [],
-              path: '../../public/blink.tmLanguage.json'
+              path: '../../public/syntax/blink.tmLanguage.json'
             }
           ]
         })
