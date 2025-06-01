@@ -5,13 +5,13 @@ local lir = require("@lir/types")
 local constant = require("@builders/constant")
 local projection = require("@builders/projection")
 
-local math_lib = require("./math")
-local bit32_lib = require("./bit32")
-local table_lib = require("./table")
-local vector_lib = require("./vector")
-local buffer_lib = require("./buffer")
-local roblox_lib = require("./roblox")
-local coroutine_lib = require("./coroutine")
+local math_lib = require("@self/math")
+local bit32_lib = require("@self/bit32")
+local table_lib = require("@self/table")
+local vector_lib = require("@self/vector")
+local buffer_lib = require("@self/buffer")
+local roblox_lib = require("@self/roblox")
+local coroutine_lib = require("@self/coroutine")
 
 type Call<T> = lir.ProjCall<T>
 type RValue<T> = lir.RValue<T>

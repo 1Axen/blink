@@ -4,7 +4,7 @@ local path = require("@util/path")
 local result = require("@util/result")
 local runtime = require("@util/runtime")
 
-local aliases = require("./aliases")
+local aliases = require("@self/aliases")
 
 local RUNTIME = runtime()
 local EXTENSIONS = {

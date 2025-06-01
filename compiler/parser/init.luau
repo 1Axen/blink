@@ -2,7 +2,7 @@
 --!native
 --!optimize 2
 
-local validator = require("./validator")
+local validator = require("@self/validator")
 
 local id = require("@compiler/id")
 local lexer = require("@compiler/lexer")
@@ -14,7 +14,7 @@ local panic = require("@util/panic")
 local symbols = require("@util/symbols")
 local diagnostics = require("@util/diagnostics")
 
-local report = require("./report")
+local report = require("@self/report")
 
 type Token = lexer.Token
 type TokenAny = lexer.TokenBase<any>

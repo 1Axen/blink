@@ -5,8 +5,8 @@
 local hir = require("@hir/types")
 local lir = require("@lir/types")
 
-local build = require("./build")
-local optimize = require("./optimize")
+local build = require("@self/build")
+local optimize = require("@self/optimize")
 
 export type Lir = lir.Lir
 

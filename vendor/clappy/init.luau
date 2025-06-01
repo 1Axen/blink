@@ -1,6 +1,6 @@
-local types = require("./types")
-local parser = require("./parser")
-local colorful = require("../colorful")
+local types = require("@self/types")
+local parser = require("@self/parser")
+local colorful = require("@vendor/colorful")
 
 local process = require("@lune/process")
 

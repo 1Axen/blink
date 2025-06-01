@@ -11,7 +11,7 @@ local lir = require("@lir/types")
 local options = require("@config/options")
 
 local types = require("@builders/ty/types")
-local context = require("./context")
+local context = require("@self/context")
 local builders = require("@builders/init")
 
 local panic = require("@util/panic")

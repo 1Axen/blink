@@ -5,9 +5,9 @@
 local hir = require("@hir/types")
 local ast = require("@ast/types")
 
-local build = require("./build")
-local type_check = require("./type_check")
-local flatten_tys = require("./flatten_tys")
+local build = require("@self/build")
+local type_check = require("@self/type_check")
+local flatten_tys = require("@self/flatten_tys")
 
 export type Hir = hir.Hir
 

@@ -17,7 +17,7 @@ local panic = require("@util/panic")
 local symbols = require("@util/symbols")
 
 local report = require("@hir/report")
-local attributes = require("./attributes")
+local attributes = require("@self/attributes")
 
 type Ty = ty.Ty
 type Decl = hir.Decl

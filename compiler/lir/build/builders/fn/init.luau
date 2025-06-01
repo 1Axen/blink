@@ -3,9 +3,9 @@ local lir = require("@lir/types")
 
 local panic = require("@util/panic")
 
-local statement = require("./statement")
-local terminator = require("./terminator")
-local basic_block = require("./basic_block")
+local statement = require("@self/statement")
+local terminator = require("@self/terminator")
+local basic_block = require("@self/basic_block")
 
 local context = require("@lir/build/context")
 

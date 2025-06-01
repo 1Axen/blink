@@ -1,6 +1,6 @@
 --!strict
 
-local expect = require("./expect")
+local expect = require("@self/expect")
 local colorful = require("@vendor/colorful")
 
 type Case = {
@@ -74,6 +74,8 @@ local function TEST(name: string, fn: () -> ())
 		focus = false,
 	} :: Test
 
+	-- LUAU
+	assert(test)
 	table.insert(tests, test)
 
 	local err: string?

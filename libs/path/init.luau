@@ -1,5 +1,5 @@
 local runtime = require("@util/runtime")
-local component = require("./component")
+local component = require("@self/component")
 
 local CWD: string;
 local RUNTIME = runtime()
