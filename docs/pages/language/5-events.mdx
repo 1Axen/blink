@@ -7,7 +7,7 @@ They are the main way to communicate between client and server.
 ## Usage in Blink
 
 Events can be defined using the `event` keyword.
-```ts copy
+```blink copy
 event MyEvent {
     From: Server,
     Type: Reliable,
@@ -46,7 +46,7 @@ This field can be omitted if no data is required.
 Multiple data values are supported through the usage of a type pack (commonly referred to as a tuple).
 Type packs can be defined as a list of [types](./4-types.mdx) seperated by a comma within parenthesis.<br/>
 For example, a type pack of different [number types](./4-types#numbers) can be written like so:
-```ts  copy
+```blink  copy
 event MyTypePackEvent {
     From: Server,
     Type: Reliable,

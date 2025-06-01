@@ -5,7 +5,7 @@ Scopes allow you to group similiar types together for better per-file organizati
 
 ## Defining Scopes
 You can define a scope using the `scope` keyword followed by the scope name.
-```ts copy
+```blink copy
 scope ExampleScope {
     type InScopeType = u8
     event InScopeEvent {
@@ -22,7 +22,7 @@ struct Example {
 ```
 <Callout type="info">
     Scopes automatically capture any definitions within their parent scopes.
-    ```ts copy
+    ```blink copy
     type Outer = u8
     scope CaptureExample {
         type Inner = Outer

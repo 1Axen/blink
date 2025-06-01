@@ -78,12 +78,12 @@ For this reason, the table below lists the maximum accurately representable inte
 
 The values of numbers can be bounded by placing [a range](#ranges) within parenthesis after the type.<br/>
 An example health `u8` number type from `0` to `100` can be written like:
-```ts copy
+```blink copy
 u8(0..100)
 u8(..100)
 ```
 ### Example Usage
-```ts copy
+```blink copy
 type Health = u8(0..100)
 type UserId = f64
 ```
@@ -94,12 +94,12 @@ Strings are Luau's text container, in blink a string can be defined using the `s
 ### Bounding Strings
 The length of strings can be bounded by placing [a range](#ranges) within parenthesis after the type.<br/>
 For example, if you wanted to bound a string between `3` and `20` characters you can do:
-```ts copy
+```blink copy
 string(3..20)
 ```
 
 ### Example Usage
-```ts copy
+```blink copy
 type UUID = string(36)
 type Username = string(3..20)
 ```
@@ -112,7 +112,7 @@ Booleans are a `true` or `false` value.<br/>
 They can be defined using the `boolean` type.
 
 ### Example Usage
-```ts
+```blink
 type Success = boolean
 ```
 
@@ -123,12 +123,12 @@ Buffers allow you to pass your own custom serialized data while still taking adv
 ### Bounding Buffers
 The length of buffers can be bounded by placing [a range](#ranges) within parenthesis after the type.<br/>
 For example, if you wanted to bound a buffer between `0` and `900` bytes, you can do:
-```ts copy
+```blink copy
 buffer(..900)
 ```
 
 ### Example Usage
-```ts copy
+```blink copy
 type BinaryBlob = buffer
 type UnreliableEventBuffer = buffer(..950)
 ```
@@ -140,14 +140,14 @@ They can be defined using the `vector` type.
 ### Bounding Vectors
 The length (magnitude) of vectors can be bounded by placing [a range](#ranges) within parenthesis after the type.<br/>
 For example, if you wanted to create a unit vector (length between `0` and `1`) you can do:
-```ts copy
+```blink copy
 vector(0..1)
 ```
 
 ### Specifying Encoding
 Vectors can be passed a [number type](#numbers) within angular brackets after the type, to be used for encoding.
 For example, an `i16` vector can be defined like so:
-```ts copy
+```blink copy
 type VectorI16 = vector<i16>
 ```
 <Callout type="warning">
@@ -155,7 +155,7 @@ type VectorI16 = vector<i16>
 </Callout>
 
 ### Example Usage
-```ts
+```blink
 type Position = vector
 type UnitVector = vector(0..1)
 type VectorU8 = vector<u8>
@@ -163,7 +163,7 @@ type VectorU8 = vector<u8>
 
 ## Optionals
 Types can be made optional by appending a `?` after the <b>entire type</b>, like so:
-```ts copy
+```blink copy
 type Username = string(3..20)?
 ```
 
@@ -171,53 +171,53 @@ type Username = string(3..20)?
 Arrays are a list of homogeneous types.<br/>
 They can be defined as a type followed by square brackets.<br/>
 For example an array of `string`s would be:
-```ts copy
+```blink copy
 string[]
 ```
 
 ### Bounding Arrays
 The length of arrays can be bounded by placing [a range](#ranges) within the square brackets.<br/>
 For example, if you wanted to bound the length of an array between `25` and `50` elements you can do:
-```ts copy
+```blink copy
 string[25..50]
 ```
 
 ### Example Usage
-```ts copy
+```blink copy
 type UserIds = f64[1..50]
 ```
 
 ## Maps
 Maps are key-value pair tables that have keys of one type, and values of the same or different type.<br/>
 They can be defined using the `map` type. For example, a map of `string` keys and `f64` values would look like:
-```ts copy
+```blink copy
 map StringToNumber = { [string]: f64 }
 ```
 
 ### Bounding Maps
 The numbers of elements in a map can be bounded by placing [a range](#ranges) within parenthesis after the type.<br/>
 For example, if you wanted to bound the numbers of elements between `1` and `100` you can do:
-```ts copy
+```blink copy
 map StringToNumber = { [string]: f64 }(1..100)
 ```
 
 ### Generics
 Maps support the use of generics. Generics can be a powerful tool for code reuse.<br/>
 For example a map template can be defined as:
-```ts copy
+```blink copy
 map Map<K, V> = {[K]: V}
 map StringToNumber = Map<string, number>
 ```
 
 ### Example Usage
-```ts copy
+```blink copy
 map UserIdToUsername = { [f64]: string }
 ```
 
 ## Sets
 Sets are a map of static string keys to `true`.
 They can be defined using the `set` type. For example, a set of feature flags would look like:
-```ts copy
+```blink copy
 set Flags = {
     FeatureA,
     FeatureB,
@@ -232,7 +232,7 @@ Blink supports two types of enums, unit and tagged enums.
 Units enums represent a set of possible values.<br/>
 They are defined using the `enum` type. 
 For example, a unit enum representing the state of a character:
-```ts copy
+```blink copy
 type CharacterStatus = enum { Idling, Walking, Running, Jumping, Falling }
 ```
 
@@ -241,7 +241,7 @@ Tagged enums are a set of possible variants, each with some data attached.<br/>
 They are defined using the `enum` type, then a string which is used for the tag field name, followed by the variants.
 Each variant is defined by a tag, followed by a struct. Variants are separated by a comma.
 
-```ts copy
+```blink copy
 enum MouseEvent = "Type" {
     Move {
         Delta: vector,
@@ -280,7 +280,7 @@ type Union =
 #### Generics
 Like [maps](#maps), tagged enums also support generics.<br/>
 For example, a tagged enum union template can be defined as:
-```ts copy
+```blink copy
 enum Union<A, B> = "Type" {
     A {
         Value: A
@@ -296,7 +296,7 @@ enum NumberStringUnion = Union<number, string>
 ## Structs
 Structs are a fixed set of statically named keys and values.<br/>
 They can be defined using the `struct` type. For example, a struct representing a theoretical game entity would look like:
-```ts copy
+```blink copy
 struct Entity {
     Health: u8(0..100),
     Position: vector,
@@ -312,7 +312,7 @@ struct Entity {
 ### Merging
 Structs can "merge" other structs into themselves, this is equivalent to a table union in Luau.<br/>
 A merge is defined using two dots followed by the identifier of the target struct.
-```ts copy
+```blink copy
 struct foo {
     foo: u8
 }
@@ -334,7 +334,7 @@ type foo_bar = { foo: number, bar: string }
 ### Generics
 Structs, like [maps](#maps) and [tagged enums](#tagged-enums), support the use of generics.<br/>
 For example, a packet fragment can be typed using generic structs:
-```ts copy
+```blink copy
 struct Fragment<T> {
     Index: u8,
     Sequence: u16,
@@ -354,7 +354,7 @@ For unions, use [tagged enums](#tagged-enums) instead.
 
 ## Instances
 Blink supports Roblox instances. They can be defined using the `Instance` type.
-```ts copy
+```blink copy
 type AnInstance = Instance
 ```
 <Callout type="error">
@@ -365,7 +365,7 @@ type AnInstance = Instance
 
 ### Specifying Class
 Instances can be further narrowed by specifying their class, for example:
-```ts copy
+```blink copy
 type Player = Instance(Player)
 ```
 
@@ -378,14 +378,14 @@ type Player = Instance(Player)
 CFrames represent a point and rotation about it in 3D space, most often as a point in 3D space.<br/>
 They can be defined using the `CFrame` type.
 
-```ts copy
+```blink copy
 type Location = CFrame
 ```
 
 ### Specifying Encoding
 CFrames can be passed two [number types](#numbers) within angular brackets after the type, to be used for the positional and rotational encoding respectively.
 For example, a CFrame which uses an `i16` for it's positional encoding and a `f16` for it's rotational encoding can be defined like so:
-```ts copy
+```blink copy
 type MyCFrame = CFrame<i16, f16>
 ```
 <Callout type="warning">
@@ -404,7 +404,7 @@ Blink also supports a handful of other ROBLOX types like:
 Blink supports exporting write and read functions for a specific type.<br/>
 Exports can be a powerful way to leverage your blink types in various use-cases like: automatic ECS replication.<br/>
 An export can be defined by prefixing the `export` keyword to a type's definition, for example:
-```ts copy
+```blink copy
 export struct MyInterface = {
     field: u8,
 }

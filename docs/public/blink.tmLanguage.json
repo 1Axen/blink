@@ -1,0 +1,279 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Blink",
+	"scopeName": "source.blink",
+	"patterns": [
+		{ "include": "#comments" },
+		{ "include": "#scope" },
+		{ "include": "#brackets" },
+		{ "include": "#autoClosingPairs" },
+		{ "include": "#surroundingPairs" },
+		{ "include": "#typeKeywords" },
+		{ "include": "#keywords" },
+		{ "include": "#types" },
+		{ "include": "#setting" },
+		{ "include": "#operators" },
+		{ "include": "#symbols" },
+		{ "include": "#tokenizer" }
+	],
+	"repository": {
+		"comments": {
+			"patterns": [
+				{
+					"begin": "--\\[([=]*)\\[",
+					"end": "\\]([=]*)\\]",
+					"captures": {
+						"0": { "name": "comment.block.documentation.blink" },
+						"1": { "name": "comment.block.documentation.blink" }
+					},
+					"name": "comment.block.documentation.blink"
+				},
+				{
+					"match": "--.*$",
+					"name": "comment.line.double-dash.blink"
+				}
+			]
+		},
+		"scope": {
+			"patterns": [
+				{
+					"begin": "\\b(scope)\\b\\s+([a-zA-Z_]*)\\b\\s+(\\{)",
+					"end": "(\\})",
+					"beginCaptures": {
+						"1": { "name": "keyword.control.blink" },
+						"2": { "name": "storage.type.namespace.blink" },
+						"3": { "name": "punctuation.section.braces.blink" }
+					},
+					"endCaptures": { "1": { "name": "punctuation.section.braces.blink" } },
+					"patterns": [ { "include": "source.blink" } ]
+				}
+			]
+		},
+		"brackets": {
+			"patterns": [
+				{
+					"begin": "\\{",
+					"end": "\\}",
+					"name": "punctuation.section.braces.blink",
+					"patterns": [
+						{ "include": "#types" },
+						{ "include": "#typeKeywords" },
+						{ "include": "#operators" },
+						{ "include": "#setting" },
+						{ "include": "#symbols" },
+						{ "include": "#comments" },
+						{ "include": "#brackets" },
+						{
+							"match": "([a-zA-Z_]\\w*):",
+							"captures": { "1": { "name": "variable.other.blink" } }
+						},
+						{
+							"match": "([a-zA-Z_]\\w*)\\s*,",
+							"captures": {
+								"1": { "name": "variable.other.blink" },
+								"2": { "name": "variable.other.blink" }
+							},
+							"name": "meta.array-assignment.blink"
+						},
+						{
+							"match": "([a-zA-Z_]\\w*)\\s*",
+							"captures": { "1": { "name": "variable.other.blink" } },
+							"name": "meta.array-assignment.blink"
+						}
+					]
+				},
+				{
+					"begin": "\\[",
+					"end": "\\]",
+					"name": "punctuation.section.brackets.blink",
+					"patterns": [
+						{ "include": "#types" },
+						{ "include": "#numbers" },
+						{ "include": "#delimiters" },
+						{ "include": "#strIdentifiers" },
+						{
+							"match": "([a-zA-Z_]\\w*)",
+							"captures": { "1": { "name": "variable.other.blink" } }
+						}
+					]
+				},
+				{
+					"begin": "\\(",
+					"end": "\\)",
+					"name": "punctuation.section.parens.blink",
+					"patterns": [
+						{ "include": "#numbers" },
+						{ "include": "#delimiters" },
+						{ "include": "#strIdentifiers" }
+					]
+				},
+				{
+					"begin": "<",
+					"end": ">",
+					"name": "punctuation.section.chevrons.blink",
+					"patterns": [
+						{ "include": "#numbers" },
+						{ "include": "#delimiters" },
+						{ "include": "#strIdentifiers" },
+						{
+							"match": "([a-zA-Z_]\\w*)\\s*,?",
+							"captures": { "1": { "name": "storage.type.blink" } }
+						}
+					]
+				}
+			]
+		},
+		"autoClosingPairs": {
+			"patterns": [
+				{ "include": "#brackets" },
+				{
+					"begin": "\"",
+					"end": "\"",
+					"name": "string.quoted.double.blink"
+				},
+				{
+					"begin": "'",
+					"end": "'",
+					"name": "string.quoted.single.blink"
+				}
+			]
+		},
+		"surroundingPairs": {
+			"patterns": [
+				{ "include": "#brackets" },
+				{
+					"begin": "\"",
+					"end": "\"",
+					"name": "string.quoted.double.blink"
+				},
+				{
+					"begin": "'",
+					"end": "'",
+					"name": "string.quoted.single.blink"
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [
+				{
+					"match": "\\b(?:event|option|type|function|import|export|as|scope)\\b",
+					"name": "keyword.control.blink"
+				}
+			]
+		},
+		"typeKeywords": {
+			"patterns": [
+				{
+					"match": "\\b(?:enum|map|struct|set)\\b",
+					"name": "keyword.control.blink"
+				}
+			]
+		},
+		"types": {
+			"patterns": [
+				{
+					"match": "\\b(?:u8|u16|u32|i8|i16|i32|f16|f32|f64|boolean|string|buffer|unknown|Instance|Color3|vector|CFrame|BrickColor|DateTime|DateTimeMillis)\\b",
+					"name": "storage.type.blink"
+				}
+			]
+		},
+		"setting": {
+			"patterns": [
+				{
+					"match": "\\b(?:Server|Client|Reliable|Unreliable|SingleSync|SingleAsync|ManySync|ManyAsync|Polling|Coroutine|Future|Promise|Pascal|Camel|Snake)\\b",
+					"name": "entity.name.type.enum.blink"
+				}
+			]
+		},
+		"operators": {
+			"patterns": [
+				{
+					"match": "\\b(?::|true|false)\\b",
+					"name": "constant.language.boolean.blink"
+				}
+			]
+		},
+		"symbols": {
+			"patterns": [
+				{
+					"match": "[=:]|\\.\\.+",
+					"name": "keyword.operator.blink"
+				},
+				{
+					"match": "\\?",
+					"name": "keyword.operator.optional.blink"
+				},
+				{
+					"match": ",",
+					"name": "punctuation.separator.comma.blink"
+				}
+			]
+		},
+		"tokenizer": {
+			"patterns": [
+				{ "include": "#whitespace" },
+				{ "include": "#numbers" },
+				{ "include": "#delimiters" },
+				{ "include": "#strIdentifiers" },
+				{ "include": "#identifiersKeywords" }
+			]
+		},
+		"whitespace": {
+			"patterns": [
+				{
+					"match": "[ \\t\\r\\n]+",
+					"name": "text.whitespace.blink"
+				},
+				{
+					"begin": "--\\[([=]*)\\[",
+					"end": "$",
+					"captures": { "1": { "name": "punctuation.definition.comment.blink" } },
+					"name": "comment.block.documentation.blink"
+				},
+				{
+					"match": "--.*$",
+					"name": "comment.line.double-dash.blink"
+				}
+			]
+		},
+		"numbers": {
+			"patterns": [
+				{
+					"match": "\\d+?",
+					"name": "constant.numeric.blink"
+				}
+			]
+		},
+		"delimiters": {
+			"patterns": [
+				{
+					"match": "[{}()\\[\\]]",
+					"name": "punctuation.section.blink"
+				}
+			]
+		},
+		"strIdentifiers": {
+			"patterns": [
+				{
+					"match": "\"\\w+\"",
+					"name": "string.quoted.double.blink"
+				}
+			]
+		},
+		"identifiersKeywords": {
+			"patterns": [
+				{ "include": "#symbols" },
+				{ "include": "#types" },
+				{ "include": "#keywords" },
+				{
+					"match": "([a-zA-Z_]\\w*):",
+					"captures": { "1": { "name": "variable.other.readwrite.blink" } }
+				},
+				{
+					"match": "[a-zA-Z_]\\w*",
+					"name": "variable.other.blink"
+				}
+			]
+		}
+	}
+}
