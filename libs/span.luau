@@ -12,7 +12,6 @@ local option = require("@util/option")
 export type Span = vector
 
 local function create(start: number, finish: number, file_id: number): vector
-    -- TODO: Replace with luau style constructor once lune updates
     return vector.create(start, finish, file_id)
 end
 
