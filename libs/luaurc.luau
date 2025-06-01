@@ -103,7 +103,7 @@ local function is_valid_schema(schema: JSONLuaurc): boolean
             return false
         end
 
-        for key, value in lint do
+        for key, value in lint :: {[string]: boolean} do
             if LINTS[key] ~= true then
                 return false
             end
