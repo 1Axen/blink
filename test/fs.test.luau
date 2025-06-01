@@ -4,7 +4,7 @@ local path = require("@util/path")
 local file = require("@util/file")
 local tesk_kit = require("@vendor/test_kit")
 
-local TEST, CASE, SKIP, FOCUS, expect = tesk_kit.test()
+local TEST, CASE, _, _, expect = tesk_kit.test()
 
 local TEMP = path.from_string("./temp")
 local FILE = path.join(TEMP, path.from_string(`./file.txt`))

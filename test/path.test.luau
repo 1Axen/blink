@@ -1,5 +1,5 @@
 local tesk_kit = require("@vendor/test_kit")
-local TEST, CASE, SKIP, FOCUS, expect = tesk_kit.test()
+local TEST, CASE, SKIP, _, expect = tesk_kit.test()
 
 local ALIAS_PATH = "@alias/../file.luau"
 local RELATIVE_PATH = "./.././../././././abc.txt"

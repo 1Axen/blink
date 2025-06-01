@@ -1,7 +1,7 @@
 local id = require("@compiler/id")
 local tesk_kit = require("@vendor/test_kit")
 
-local TEST, CASE, SKIP, FOCUS, expect = tesk_kit.test()
+local TEST, CASE, _, _, expect = tesk_kit.test()
 
 TEST("compiler ids", function()
     local flags = {id.TY_FLAG, id.DECL_FLAG, id.NODE_FLAG, id.SCOPE_FLAG}
