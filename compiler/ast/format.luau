@@ -16,11 +16,6 @@ end
 
 local function fmt_generic(node: ast.GenericDef): string
     local name = node.name
-    if node.default then
-        --return `{name.value} = {fmt_expression(node.default)}`
-        return `{name.value}`
-    end
-
     return `{name.value}`
 end
 
