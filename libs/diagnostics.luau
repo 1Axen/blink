@@ -2,10 +2,10 @@
 
 --> A fancy diagnostics & error reporting library based on zesterer/ariadne
 
-local builder = require("@util/builder")
 local file = require("@util/file")
 local option = require("@util/option")
 local span = require("@util/span")
+local string_builder = require("@util/string_builder")
 local style = require("@util/style")
 
 type Span = span.Span
@@ -120,31 +120,34 @@ local function create_report_builder(kind: ReportKind): ReportBuilder
 	end
 
 	function report_builder.finish()
-		local report = builder.create()
-		builder.append_line(report, `[{kind} {string.format("%04i", code)}] {file_name or DEFAULT_FILE}: {message}`)
-		builder.indent(report)
+		local report = string_builder.create()
+		string_builder.append_line(
+			report,
+			`[{kind} {string.format("%04i", code)}] {file_name or DEFAULT_FILE}: {message}`
+		)
+		string_builder.indent(report)
 
 		for _, label in labels do
 			local value = span.value(label.span)
-			builder.append_line(report, style.modifer.dim(`({label.span.x}..{label.span.y}:{label.span.z}) `))
+			string_builder.append_line(report, style.modifer.dim(`({label.span.x}..{label.span.y}:{label.span.z}) `))
 
 			if string.find(value, "\n") then
 				local lines = string.split(value :: string, "\n")
-				builder.append_lines(report, lines)
+				string_builder.append_lines(report, lines)
 			else
-				builder.append_line(report, value :: string)
+				string_builder.append_line(report, value :: string)
 			end
 
-			builder.append_line(report, label.color(`─▸ {label.message}`))
+			string_builder.append_line(report, label.color(`─▸ {label.message}`))
 		end
 
 		for _, note in notes do
-			builder.append(report, style.color.green("Note"))
-			builder.append(report, ": ")
-			builder.append_line(report, note)
+			string_builder.append(report, style.color.green("Note"))
+			string_builder.append(report, ": ")
+			string_builder.append_line(report, note)
 		end
 
-		local display = builder.to_string(report)
+		local display = string_builder.to_string(report)
 
 		return {
 			print = function()

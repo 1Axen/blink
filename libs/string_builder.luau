@@ -2,7 +2,7 @@
 --!native
 --!optimize 2
 
-export type Builder = {
+export type StringBuilder = {
 	indent: number,
 	buffer: buffer,
 	length: number,
@@ -29,7 +29,7 @@ local function return_buffer(buf: buffer, position: number)
 	table.insert(recycling_bin, buf)
 end
 
-local function create(): Builder
+local function create(): StringBuilder
 	local recycled_buffer = borrow_buffer()
 
 	return {
@@ -41,7 +41,7 @@ local function create(): Builder
 	}
 end
 
-local function write(builder: Builder, str: string)
+local function write(builder: StringBuilder, str: string)
 	local bytes = #str
 	if bytes == 0 then
 		return
@@ -70,43 +70,43 @@ local function write(builder: Builder, str: string)
 	builder.position = (position + bytes)
 end
 
-local function indent(builder: Builder)
+local function indent(builder: StringBuilder)
 	builder.indent += 1
 end
 
-local function dedent(builder: Builder)
+local function dedent(builder: StringBuilder)
 	builder.indent -= 1
 end
 
-local function append_indent(builder: Builder)
+local function append_indent(builder: StringBuilder)
 	write(builder, string.rep(" ", builder.tab_width * builder.indent))
 end
 
-local function append(builder: Builder, str: string)
+local function append(builder: StringBuilder, str: string)
 	write(builder, str)
 end
 
-local function append_line(builder: Builder, str: string)
+local function append_line(builder: StringBuilder, str: string)
 	append_indent(builder)
 	append(builder, str)
 	write(builder, "\n")
 end
 
-local function append_lines(builder: Builder, lines: { string })
+local function append_lines(builder: StringBuilder, lines: { string })
 	for _, line in lines do
 		append_line(builder, line)
 	end
 end
 
-local function set_indent(builder: Builder, indent: number)
+local function set_indent(builder: StringBuilder, indent: number)
 	builder.indent = indent
 end
 
-local function set_tab_width(builder: Builder, width: number)
+local function set_tab_width(builder: StringBuilder, width: number)
 	builder.tab_width = width
 end
 
-local function to_string(builder: Builder): string
+local function to_string(builder: StringBuilder): string
 	local str = buffer.readstring(builder.buffer, 0, builder.position)
 	return_buffer(builder.buffer, builder.position)
 	return str
