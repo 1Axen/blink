@@ -17,7 +17,7 @@
 	"luau-lsp.fflags.enableByDefault": false,
 	"luau-lsp.fflags.sync": false,
 	"luau-lsp.platform.type": "roblox",
-	"luau-lsp.completion.imports.requireStyle": "alwaysRelative",
+	"luau-lsp.completion.imports.requireStyle": "auto",
 	"luau-lsp.completion.enableFragmentAutocomplete": true,
 	"luau-lsp.sourcemap.enabled": false,
 	"luau-lsp.sourcemap.autogenerate": false,
