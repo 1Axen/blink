@@ -21,7 +21,7 @@
 	"luau-lsp.completion.enableFragmentAutocomplete": true,
 	"luau-lsp.sourcemap.enabled": false,
 	"luau-lsp.sourcemap.autogenerate": false,
-	"luau-lsp.diagnostics.workspace": false,
+	"luau-lsp.diagnostics.workspace": true,
 	"luau-lsp.completion.imports.suggestServices": false,
 	"luau-lsp.completion.imports.suggestRequires": true,
 	"luau-lsp.completion.imports.stringRequires.enabled": true,
