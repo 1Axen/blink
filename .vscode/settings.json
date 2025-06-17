@@ -27,7 +27,8 @@
 	"luau-lsp.completion.imports.stringRequires.enabled": true,
 	"luau-lsp.fflags.override": {
 		"LuauEagerGeneralization4": "true",
-		"LuauEnableWriteOnlyProperties": "true"
+		"LuauEnableWriteOnlyProperties": "true",
+		"LuauGeneralizationCannotMutateAcrossModules": "true"
 	},
 	
 	"luau-lsp.ignoreGlobs": [
