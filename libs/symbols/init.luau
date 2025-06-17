@@ -44,14 +44,9 @@ end
 
 local function search<T>(self: Symbols<T>, path: { string }): T?
 	local node: Symbols<T>? = self
-	local segments = table.clone(path)
 
-	while node ~= nil do
-		local segment = table.remove(segments, 1)
-		if segment == nil then
-			break
-		end
-
+	for index = #path, 1, -1 do
+		local segment = path[index]
 		local child = node.children[segment] :: any
 		if child then
 			node = child
@@ -64,6 +59,10 @@ local function search<T>(self: Symbols<T>, path: { string }): T?
 		end
 
 		node = node.parent :: any
+
+		if node == nil then
+			break
+		end
 	end
 
 	return nil
