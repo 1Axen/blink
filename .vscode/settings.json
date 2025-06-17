@@ -25,6 +25,11 @@
 	"luau-lsp.completion.imports.suggestServices": false,
 	"luau-lsp.completion.imports.suggestRequires": true,
 	"luau-lsp.completion.imports.stringRequires.enabled": true,
+	"luau-lsp.fflags.override": {
+		"LuauEagerGeneralization4": "true",
+		"LuauEnableWriteOnlyProperties": "true"
+	},
+	
 	"luau-lsp.ignoreGlobs": [
 		"**/_Index/**",
 		"vendor/**"
