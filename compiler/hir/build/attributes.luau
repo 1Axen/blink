@@ -1,10 +1,8 @@
 local ast = require("@ast/types")
-
 local attributes = require("@config/attributes")
 local compilation = require("@config/compilation")
 local report = require("@hir/report")
-
-local exhaustive_match = require("@util/exhaustive_match")
+local weak_exhaustive_match = require("../../../libs/weak_exhaustive_match")
 
 type Attribute = ast.Attribute
 type Attributes = { Attribute }
@@ -97,7 +95,7 @@ local function shared_attributes(ast_attributes: Attributes): SharedAttributes
 		elseif name == "target" then
 			value = attr_target(attribute)
 		else
-			exhaustive_match.type_only(name)
+			weak_exhaustive_match(name)
 			return report.invalid_attribute(attribute)
 		end
 
@@ -125,7 +123,7 @@ local function type_attributes(ast_attributes: Attributes): TypeAttributes
 		elseif name == "target" then
 			value = attr_target(attribute)
 		else
-			exhaustive_match.type_only(name)
+			weak_exhaustive_match(name)
 			return report.invalid_attribute(attribute)
 		end
 
