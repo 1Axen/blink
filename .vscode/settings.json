@@ -14,7 +14,7 @@
 	"luau-lsp.sourcemap.rojoProjectFile": "default.project.json",
 	"luau-lsp.completion.imports.enabled": true,
 	"luau-lsp.fflags.enableNewSolver": true,
-	"luau-lsp.fflags.enableByDefault": true,
+	"luau-lsp.fflags.enableByDefault": false,
 	"luau-lsp.fflags.sync": false,
 	"luau-lsp.platform.type": "roblox",
 	"luau-lsp.completion.imports.requireStyle": "alwaysRelative",
