@@ -6,7 +6,7 @@ type StringBuilder = string_builder.StringBuilder
 type Symbols<T> = symbols.Symbols<T>
 
 local function fmt_symbols<T>(symbls: Symbols<T>, previous: StringBuilder?): string
-	local fmt_builder = previous or string_builder.create()
+	local fmt_builder = previous or string_builder.create({})
 	if previous == nil then
 		string_builder.append_line(fmt_builder, colorful.color.blueBright("<ROOT>"))
 		string_builder.indent(fmt_builder)

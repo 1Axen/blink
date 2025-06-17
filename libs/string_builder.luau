@@ -2,17 +2,42 @@
 --!native
 --!optimize 2
 
-export type StringBuilder = {
-	indent: number,
-	buffer: buffer,
-	length: number,
-	position: number,
-	tab_width: number,
+export type Config = {
+	read tab_width: number,
+	read use_spaces: boolean,
 }
 
-local TAB_WIDTH = 4
+export type StringBuilder = {
+	buffer: buffer,
+	indent: number,
+	length: number,
+	position: number,
+} & Config
+
 local GROWTH_FACTOR = 1.5
 local DEFAULT_LENGTH = 1024
+
+local DEFAULT_CONFIG: Config = {
+	tab_width = 4,
+	use_spaces = false,
+}
+
+type function optional_keys(table: type)
+	local new_table = types.newtable()
+	for key, prop in table:properties() do
+		if prop.read then
+			local value = types.unionof(prop.read, types.singleton(nil))
+			new_table:setreadproperty(key, value)
+		end
+
+		if prop.write then
+			local value = types.unionof(prop.write, types.singleton(nil))
+			new_table:setwriteproperty(key, value)
+		end
+	end
+
+	return new_table
+end
 
 --> keep a list of buffers to recycle instead of creating new ones
 local recycling_bin: { buffer } = {}
@@ -29,15 +54,15 @@ local function return_buffer(buf: buffer, position: number)
 	table.insert(recycling_bin, buf)
 end
 
-local function create(): StringBuilder
+local function create(config: optional_keys<Config>): StringBuilder
 	local recycled_buffer = borrow_buffer()
-
 	return {
-		indent = 0,
 		buffer = recycled_buffer,
 		length = buffer.len(recycled_buffer),
+		indent = 0,
 		position = 0,
-		tab_width = TAB_WIDTH,
+		tab_width = config.tab_width or DEFAULT_CONFIG.tab_width,
+		use_spaces = config.use_spaces or DEFAULT_CONFIG.use_spaces,
 	}
 end
 
@@ -79,7 +104,11 @@ local function dedent(builder: StringBuilder)
 end
 
 local function append_indent(builder: StringBuilder)
-	write(builder, string.rep(" ", builder.tab_width * builder.indent))
+	if builder.use_spaces then
+		write(builder, string.rep(" ", builder.tab_width * builder.indent))
+	else
+		write(builder, string.rep("\t", builder.indent))
+	end
 end
 
 local function append(builder: StringBuilder, str: string)
@@ -98,14 +127,6 @@ local function append_lines(builder: StringBuilder, lines: { string })
 	end
 end
 
-local function set_indent(builder: StringBuilder, indent: number)
-	builder.indent = indent
-end
-
-local function set_tab_width(builder: StringBuilder, width: number)
-	builder.tab_width = width
-end
-
 local function finalize(builder: StringBuilder): string
 	local str = buffer.readstring(builder.buffer, 0, builder.position)
 	return_buffer(builder.buffer, builder.position)
@@ -120,7 +141,5 @@ return table.freeze({
 	append_line = append_line,
 	append_lines = append_lines,
 	append_indent = append_indent,
-	set_indent = set_indent,
-	set_tab_width = set_tab_width,
 	finalize = finalize,
 })

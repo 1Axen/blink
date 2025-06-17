@@ -201,7 +201,7 @@ local function fmt_scopes(scopes: { [hir.ScopeId]: string }, fmt_builder: String
 end
 
 local function fmt_hir(hir: hir.Hir): string
-	local fmt_builder = string_builder.create()
+	local fmt_builder = string_builder.create({})
 
 	fmt_tys(hir, fmt_builder)
 	fmt_decls(hir.decls, fmt_builder)

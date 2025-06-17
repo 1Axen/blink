@@ -120,7 +120,7 @@ local function create_report_builder(kind: ReportKind): ReportBuilder
 	end
 
 	function report_builder.finish()
-		local report = string_builder.create()
+		local report = string_builder.create({})
 		string_builder.append_line(
 			report,
 			`[{kind} {string.format("%04i", code)}] {file_name or DEFAULT_FILE}: {message}`
