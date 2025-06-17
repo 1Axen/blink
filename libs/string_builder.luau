@@ -106,7 +106,7 @@ local function set_tab_width(builder: StringBuilder, width: number)
 	builder.tab_width = width
 end
 
-local function to_string(builder: StringBuilder): string
+local function finalize(builder: StringBuilder): string
 	local str = buffer.readstring(builder.buffer, 0, builder.position)
 	return_buffer(builder.buffer, builder.position)
 	return str
@@ -122,5 +122,5 @@ return table.freeze({
 	append_indent = append_indent,
 	set_indent = set_indent,
 	set_tab_width = set_tab_width,
-	to_string = to_string,
+	finalize = finalize,
 })

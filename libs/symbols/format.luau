@@ -24,7 +24,7 @@ local function fmt_symbols<T>(symbls: Symbols<T>, previous: StringBuilder?): str
 		string_builder.dedent(fmt_builder)
 	end
 
-	return string_builder.to_string(fmt_builder)
+	return string_builder.finalize(fmt_builder)
 end
 
 return fmt_symbols

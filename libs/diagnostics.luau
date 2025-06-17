@@ -147,7 +147,7 @@ local function create_report_builder(kind: ReportKind): ReportBuilder
 			string_builder.append_line(report, note)
 		end
 
-		local display = string_builder.to_string(report)
+		local display = string_builder.finalize(report)
 
 		return {
 			print = function()

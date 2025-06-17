@@ -382,7 +382,7 @@ local function fmt_lir(lir: lir.Lir): string
 		string_builder.append_line(fmt_builder, "")
 	end
 
-	return string_builder.to_string(fmt_builder)
+	return string_builder.finalize(fmt_builder)
 end
 
 return fmt_lir

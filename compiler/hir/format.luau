@@ -207,7 +207,7 @@ local function fmt_hir(hir: hir.Hir): string
 	fmt_decls(hir.decls, fmt_builder)
 	fmt_scopes(hir.scopes, fmt_builder)
 
-	return string_builder.to_string(fmt_builder)
+	return string_builder.finalize(fmt_builder)
 end
 
 return fmt_hir
