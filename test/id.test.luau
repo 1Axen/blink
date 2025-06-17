@@ -1,46 +1,49 @@
-local id = require("@compiler/id")
-local tesk_kit = require("@vendor/test_kit")
+type Tiniest = typeof(require("@vendor/tiniest/tiniest_for_lune").configure({}))
 
-local TEST, CASE, _, _, expect = tesk_kit.test()
+return function(tiniest: Tiniest)
+	local describe = tiniest.describe
+	local test = tiniest.test
+	local expect = tiniest.expect
 
-TEST("compiler ids", function()
-	local flags = { id.TY_FLAG, id.DECL_FLAG, id.NODE_FLAG, id.SCOPE_FLAG }
+	local id = require("@compiler/id")
 
-	CASE("getters", function()
-		local flag = flags[math.random(1, #flags)]
-		local file = math.random(0, 2 ^ 7 - 1)
-		local index = math.random(0, 2 ^ 22 - 1)
+	describe("methods", function()
+		local flags = { id.TY_FLAG, id.DECL_FLAG, id.NODE_FLAG, id.SCOPE_FLAG }
 
-		local example_id: id.Id = (flag + (file * 2 ^ 3) + (index * 2 ^ 10)) :: any
+		test("getters", function()
+			for _, flag in flags do
+				local file = math.random(0, 2 ^ 7 - 1)
+				local index = math.random(0, 2 ^ 22 - 1)
+				local test_id: id.Id = (flag + (file * 2 ^ 3) + (index * 2 ^ 10)) :: any
 
-		expect(id.type(example_id)).to_equal(flag)
-		expect(id.file(example_id)).to_equal(file)
-		expect(id.index(example_id)).to_equal(index)
+				expect(id.type(test_id)).is(flag)
+				expect(id.file(test_id)).is(file)
+				expect(id.index(test_id)).is(index)
+			end
+		end)
+
+		test("constructor", function()
+			local file = math.random(0, 2 ^ 7 - 1)
+			local index = math.random(0, 2 ^ 22 - 1)
+			local node_id = id.node_id.create(file, index)
+
+			expect(id.type(node_id)).is(id.NODE_FLAG)
+			expect(id.file(node_id)).is(file)
+			expect(id.index(node_id)).is(index)
+		end)
+
+		test("conversion", function()
+			local file = math.random(0, 2 ^ 7 - 1)
+			local index = math.random(0, 2 ^ 22 - 1)
+
+			local node_id = id.node_id.create(file, index)
+			local ty_id = id.to_ty_id(node_id)
+			local decl_id = id.to_decl_id(node_id)
+			local scope_id = id.to_scope_id(node_id)
+
+			expect(id.type(ty_id)).is(id.TY_FLAG)
+			expect(id.type(decl_id)).is(id.DECL_FLAG)
+			expect(id.type(scope_id)).is(id.SCOPE_FLAG)
+		end)
 	end)
-
-	CASE("constructor", function()
-		local file = math.random(0, 2 ^ 7 - 1)
-		local index = math.random(0, 2 ^ 22 - 1)
-		local node_id = id.node_id.create(file, index)
-
-		expect(id.type(node_id)).to_equal(id.NODE_FLAG)
-		expect(id.file(node_id)).to_equal(file)
-		expect(id.index(node_id)).to_equal(index)
-	end)
-
-	CASE("conversion", function()
-		local file = math.random(0, 2 ^ 7 - 1)
-		local index = math.random(0, 2 ^ 22 - 1)
-
-		local node_id = id.node_id.create(file, index)
-		local ty_id = id.to_ty_id(node_id)
-		local decl_id = id.to_decl_id(node_id)
-		local scope_id = id.to_scope_id(node_id)
-
-		expect(id.type(ty_id)).to_equal(id.TY_FLAG)
-		expect(id.type(decl_id)).to_equal(id.DECL_FLAG)
-		expect(id.type(scope_id)).to_equal(id.SCOPE_FLAG)
-	end)
-end)
-
-return nil
+end
