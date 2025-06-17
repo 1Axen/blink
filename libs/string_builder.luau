@@ -22,6 +22,16 @@ local DEFAULT_CONFIG: Config = {
 	use_spaces = false,
 }
 
+local FINALIZED_METATABLE = {
+	__index = function()
+		error("Attempted to use String Builder after it's been finalized")
+	end,
+	__newindex = function()
+		error("Attempted to use String Builder after it's been finalized")
+	end,
+	__metatable = "This metatable is locked",
+}
+
 type function optional_keys(table: type)
 	local new_table = types.newtable()
 	for key, prop in table:properties() do
@@ -50,7 +60,7 @@ local function borrow_buffer(): buffer
 	return table.remove(recycling_bin, 1) :: buffer
 end
 
-local function return_buffer(buf: buffer, position: number)
+local function return_buffer(buf: buffer)
 	table.insert(recycling_bin, buf)
 end
 
@@ -129,7 +139,8 @@ end
 
 local function finalize(builder: StringBuilder): string
 	local str = buffer.readstring(builder.buffer, 0, builder.position)
-	return_buffer(builder.buffer, builder.position)
+	return_buffer(builder.buffer)
+	setmetatable(builder, FINALIZED_METATABLE)
 	return str
 end
 
