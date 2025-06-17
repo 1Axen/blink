@@ -18,6 +18,7 @@ local symbols = require("@util/symbols")
 
 local attributes = require("@self/attributes")
 local report = require("@hir/report")
+local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 
 type Ty = ty.Ty
 type Decl = hir.Decl
@@ -528,7 +529,7 @@ function expression(
 	elseif expr.kind == "identifier" then
 		new_ty = ty_string_literal(ctx, expr :: any)
 	else
-		panic(`Unhandled expression "{expr.kind}"`)
+		return strong_exhaustive_match(expr.kind)
 	end
 
 	if generics then

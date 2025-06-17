@@ -15,6 +15,7 @@ local context = require("@self/context")
 local types = require("@builders/ty/types")
 
 local panic = require("@util/panic")
+local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 
 type Lir = lir.Lir
 type Hir = hir.Hir
@@ -151,18 +152,19 @@ local function from_hir(hir: hir.Hir): lir.Lir
 	populate_ty_fns(ctx)
 
 	for decl_id, decl in hir.decls do
-		if decl.kind == "type" then
+		local kind = decl.kind
+		if kind == "type" then
 			lir.types[decl_id] = build_type(ctx, decl_id :: DeclId<hir.Type>)
 			continue
-		elseif decl.kind == "event" then
+		elseif kind == "event" then
 			lir.events[decl_id] = build_event(ctx, decl_id :: DeclId<hir.Event>)
 			continue
-		elseif decl.kind == "function" then
+		elseif kind == "function" then
 			lir.functions[decl_id] = build_function(ctx, decl_id :: DeclId<hir.Function>)
 			continue
+		else
+			strong_exhaustive_match(kind)
 		end
-
-		panic(`Unhandled declaration kind "{decl.kind}"`)
 	end
 
 	return lir

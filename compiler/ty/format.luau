@@ -4,8 +4,8 @@ local fmt_id = require("@compiler/id/format")
 local fmt_range = require("@util/range/format")
 local fmt_types = require("@util/format_types")
 
-local panic = require("@util/panic")
 local range = require("@util/range")
+local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 local style = require("@util/style")
 
 local fmt_ty: (ty: ty.Ty) -> string
@@ -262,9 +262,9 @@ function fmt_ty(ty: ty.Ty): string
 		return fmt_brick_color(ty)
 	elseif ty.kind == "unknown" then
 		return fmt_unknown(ty)
+	else
+		return strong_exhaustive_match(ty.kind)
 	end
-
-	return panic(`Unhandled ty kind {ty.kind}`)
 end
 
 return fmt_ty

@@ -16,8 +16,8 @@ local numeral = require("./numeral")
 local context = require("@lir/build/context")
 
 local conversion = require("@util/conversion")
-local panic = require("@util/panic")
 local range = require("@util/range")
+local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 
 local types = require("../types")
 
@@ -46,9 +46,9 @@ local function to_range(ty: VariableLengthTy): Range?
 		return ty.size
 	elseif ty.kind == "map" then
 		return ty.size
+	else
+		return strong_exhaustive_match(ty.kind)
 	end
-
-	return panic(`Unhandled ty kind: "{ty.kind}"`)
 end
 
 local function to_max_range(ty: VariableLengthTy): Range
@@ -60,9 +60,9 @@ local function to_max_range(ty: VariableLengthTy): Range
 		return bounds.array
 	elseif ty.kind == "map" then
 		return bounds.map
+	else
+		return strong_exhaustive_match(ty.kind)
 	end
-
-	return panic(`Unhandled ty kind: "{ty.kind}"`)
 end
 
 local function to_exact_length(ty: VariableLengthTy): number?

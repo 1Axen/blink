@@ -15,6 +15,7 @@ local span = require("@util/span")
 local symbols = require("@util/symbols")
 
 local report = require("@self/report")
+local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 
 type Token = lexer.Token
 type TokenAny = lexer.TokenBase<any>
@@ -299,17 +300,18 @@ end
 
 local function string_or_identifier(ctx: Context): ast.Identifier | ast.ExprString
 	local token = peek(ctx)
-	if token.kind ~= "word" and token.kind ~= "string" then
+	local kind = token.kind
+	if kind ~= "word" and kind ~= "string" then
 		return report.expect_one_of(token, { "word", "string" })
 	end
 
-	if token.kind == "string" then
+	if kind == "string" then
 		return expr_string(ctx)
-	elseif token.kind == "word" then
+	elseif kind == "word" then
 		return identifier(ctx)
+	else
+		return strong_exhaustive_match(kind)
 	end
-
-	return panic(`Unhandled token kind: "{token.kind}"`)
 end
 
 local function expr_literal(ctx: Context): ast.ExprLiteral

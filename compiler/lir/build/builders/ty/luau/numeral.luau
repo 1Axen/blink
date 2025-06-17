@@ -12,6 +12,7 @@ local library = require("@builders/library")
 local context = require("@lir/build/context")
 
 local panic = require("@util/panic")
+local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 
 type function concat_literal_union(left: any, right: any)
 	local left_components: { any } = left:components()
@@ -57,13 +58,17 @@ local function size_to_byte_size(size: ty.NumSize): number
 		return 1
 	elseif size == "16" then
 		return 2
+	elseif size == "24" then
+		return 3
 	elseif size == "32" then
 		return 4
+	elseif size == "48" then
+		return 6
 	elseif size == "64" then
 		return 8
+	else
+		return strong_exhaustive_match(size)
 	end
-
-	return panic(`Unhandled numeral size: "{size}"`)
 end
 
 local function methods_from_numeral(ty: ty.Numeral): { read: ReadCtor, write: WriteCtor }

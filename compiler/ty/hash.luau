@@ -1,8 +1,7 @@
 local hir = require("@hir/types")
-local ty = require("@ty/types")
-
-local panic = require("@util/panic")
 local range = require("@util/range")
+local strong_exhaustive_match = require("@util/strong_exhaustive_match")
+local ty = require("@ty/types")
 
 local md5 = require("@vendor/md5")
 
@@ -241,7 +240,7 @@ function hash_ty(owner: Hir, ty: ty.Ty): string
 	elseif ty.kind == "unknown" then
 		hash = hash_unknown(owner, ty)
 	else
-		return panic(`Unhandled ty kind {ty.kind}`)
+		return strong_exhaustive_match(ty.kind)
 	end
 
 	return (md5(hash))

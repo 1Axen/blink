@@ -5,6 +5,7 @@ local panic = require("@util/panic")
 
 local fmt_ty = require("@ty/format")
 local fmt_types = require("@util/format_types")
+local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 
 local colorful = require("@vendor/colorful")
 
@@ -47,7 +48,7 @@ local function fmt_id(fmt_builder: Builder, id: lir.Id<any>)
 	elseif id.kind == "register" then
 		builder.append(fmt_builder, ID_STYLE("$"))
 	else
-		panic(`Unhandled id kind "{id.kind}"`)
+		strong_exhaustive_match(id.kind)
 	end
 
 	builder.append(fmt_builder, ID_STYLE(tostring(id.index)))
@@ -118,20 +119,16 @@ local function fmt_projection(fmt_builder: Builder, projection: lir.Projection<a
 		builder.append(fmt_builder, "(")
 		separated(fmt_builder, fmt_rvalue, projection.args, ",")
 		builder.append(fmt_builder, ")")
-
-		return
 	elseif projection.kind == "index" then
 		builder.append(fmt_builder, ".")
 		builder.append(fmt_builder, INDEX_STYLE(tostring(projection.element.value)))
-		return
 	elseif projection.kind == "field" then
 		builder.append(fmt_builder, "[")
 		fmt_rvalue(fmt_builder, projection.field)
 		builder.append(fmt_builder, "]")
-		return
+	else
+		strong_exhaustive_match(projection.kind)
 	end
-
-	panic(`Unhandled projection kind "{projection.kind}"`)
 end
 
 local function fmt_condition(fmt_builder: Builder, condition: lir.Condition<any>)
@@ -236,7 +233,7 @@ function fmt_rvalue(fmt_builder: Builder, rvalue: lir.RValue<any>)
 	elseif rvalue.type == "projection" then
 		fmt_projection(fmt_builder, rvalue)
 	else
-		panic(`Unhandled rvalue kind "{rvalue.type}"`)
+		strong_exhaustive_match(rvalue.type)
 	end
 end
 
@@ -268,19 +265,12 @@ local function fmt_loop(fmt_builder: Builder, loop: lir.Loop)
 		builder.append(fmt_builder, ", ")
 
 		local target = loop.target
-		if target.type == "projection" and (target.kind == "field" or target.kind == "index") then
-			fmt_projection(fmt_builder, target :: any)
-		elseif target.type == "id" and (target.kind == "register" or target.kind == "argument") then
-			fmt_id(fmt_builder, target :: any)
-		else
-			panic(`Unhandled loop target type "{target.type}"`)
-		end
+		fmt_rvalue(fmt_builder, target :: any)
 
 		builder.append(fmt_builder, ")")
-		return
 	elseif loop.kind == "numeric" then
 		builder.append(fmt_builder, "for(")
-		fmt_id(fmt_builder, loop.index :: any)
+		fmt_id(fmt_builder, loop.index)
 		builder.append(fmt_builder, ", ")
 		fmt_rvalue(fmt_builder, loop.iterations :: any)
 		builder.append(fmt_builder, ")")
@@ -290,7 +280,6 @@ end
 local function fmt_statement(fmt_builder: Builder, statement: lir.Statement)
 	if statement.kind == "call" then
 		fmt_projection(fmt_builder, statement.call)
-		return
 	elseif statement.kind == "assign" then
 		fmt_lvalue(fmt_builder, statement.into)
 		builder.append(fmt_builder, " = ")
@@ -300,21 +289,16 @@ local function fmt_statement(fmt_builder: Builder, statement: lir.Statement)
 		else
 			builder.append(fmt_builder, "_")
 		end
-
-		return
 	elseif statement.kind == "remark" then
 		builder.append(fmt_builder, colorful.modifier.dim(`REMARK {statement.text}`))
-		return
 	elseif statement.kind == "multi_assign" then
 		separated(fmt_builder, fmt_lvalue, statement.into, ",")
 
 		builder.append(fmt_builder, " = ")
 		fmt_rvalue(fmt_builder, statement.value)
-
-		return
+	else
+		strong_exhaustive_match(statement.kind)
 	end
-
-	panic(`Unhandled statement kind "{statement.kind}"`)
 end
 
 local function fmt_terminator(fmt_builder: Builder, terminator: lir.Terminator)
@@ -337,7 +321,7 @@ local function fmt_terminator(fmt_builder: Builder, terminator: lir.Terminator)
 		builder.append(fmt_builder, `{TERM_STYLE("return")} `)
 		separated(fmt_builder, fmt_rvalue, terminator.values, ",")
 	else
-		panic(`Unhandled terminator kind "{terminator.kind}"`)
+		strong_exhaustive_match(terminator.kind)
 	end
 end
 
