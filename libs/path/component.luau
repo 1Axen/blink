@@ -23,12 +23,12 @@ end
 
 local function from_slice(slice: string): Component
 	if slice == SIBLING then
-		return { kind = "sibling" :: "sibling" }
+		return { kind = "sibling" }
 	elseif slice == PARENT then
-		return { kind = "parent" :: "parent" }
+		return { kind = "parent" }
 	end
 
-	return { kind = "normal" :: "normal", value = slice }
+	return { kind = "normal", value = slice }
 end
 
 local function from_slices(slices: { string }): { Component }

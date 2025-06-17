@@ -140,7 +140,7 @@ local function tokenize(input: file.File): { Token }
 
 		--> eof
 		if first == 0 then
-			return create_token("eof" :: "eof", span.create(start, start, id))
+			return create_token("eof", span.create(start, start, id))
 		end
 
 		--> whitespace is lost when lexed, lossy lexer :(
@@ -208,7 +208,7 @@ local function tokenize(input: file.File): { Token }
 				return create_token(value :: TokenKind, value_span)
 			end
 
-			return create_token("word" :: "word", value_span)
+			return create_token("word", value_span)
 		elseif is_digit(first :: number) or first == HYPHEN then
 			local char = first :: number
 			local decimal = false
@@ -230,7 +230,7 @@ local function tokenize(input: file.File): { Token }
 			until not (is_digit(char) or char == UNDERSCORE or (char == DOT and decimal == false))
 
 			local finish = last_position()
-			return create_token("number" :: "number", span.create(start, finish, id))
+			return create_token("number", span.create(start, finish, id))
 		elseif first == QOUTE then
 			local char = advance_peek()
 			while char ~= 0 and char ~= QOUTE do
@@ -242,50 +242,50 @@ local function tokenize(input: file.File): { Token }
 			local finish = last_position()
 
 			-- we don't care about the quotation marks
-			return create_token("string" :: "string", span.create(start + 1, finish - 1, id))
+			return create_token("string", span.create(start + 1, finish - 1, id))
 		end
 
 		advance()
 
 		local value_span = span.create(start, start, id)
 		if first == string.byte("{") then
-			return create_token("{" :: "{", value_span)
+			return create_token("{", value_span)
 		elseif first == string.byte("<") then
-			return create_token("<" :: "<", value_span)
+			return create_token("<", value_span)
 		elseif first == string.byte("(") then
-			return create_token("(" :: "(", value_span)
+			return create_token("(", value_span)
 		elseif first == string.byte("[") then
-			return create_token("[" :: "[", value_span)
+			return create_token("[", value_span)
 		elseif first == string.byte("}") then
-			return create_token("}" :: "}", value_span)
+			return create_token("}", value_span)
 		elseif first == string.byte(">") then
-			return create_token(">" :: ">", value_span)
+			return create_token(">", value_span)
 		elseif first == string.byte(")") then
-			return create_token(")" :: ")", value_span)
+			return create_token(")", value_span)
 		elseif first == string.byte("]") then
-			return create_token("]" :: "]", value_span)
+			return create_token("]", value_span)
 		elseif first == string.byte(":") then
-			return create_token(":" :: ":", value_span)
+			return create_token(":", value_span)
 		elseif first == string.byte(",") then
-			return create_token("," :: ",", value_span)
+			return create_token(",", value_span)
 		elseif first == string.byte("?") then
-			return create_token("?" :: "?", value_span)
+			return create_token("?", value_span)
 		elseif first == string.byte("=") then
-			return create_token("=" :: "=", value_span)
+			return create_token("=", value_span)
 		elseif first == DOT then
 			if peek() == DOT then
 				advance()
-				return create_token(".." :: "..", span.create(start, last_position(), id))
+				return create_token("..", span.create(start, last_position(), id))
 			end
 
-			return create_token("." :: ".", value_span)
+			return create_token(".", value_span)
 		elseif first == string.byte("&") then
-			return create_token("&" :: "&", value_span)
+			return create_token("&", value_span)
 		elseif first == string.byte("@") then
-			return create_token("@" :: "@", value_span)
+			return create_token("@", value_span)
 		end
 
-		return create_token("error" :: "error", value_span)
+		return create_token("error", value_span)
 	end
 
 	while true do

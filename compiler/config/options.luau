@@ -6,22 +6,22 @@ export type Option = {
 }
 
 local options: { [string]: Option } = {
-	typescript = { kind = "boolean" :: "boolean" },
-	shared_output = { kind = "string" :: "string" },
-	client_output = { kind = "string" :: "string" },
-	server_output = { kind = "string" :: "string" },
+	typescript = { kind = "boolean" },
+	shared_output = { kind = "string" },
+	client_output = { kind = "string" },
+	server_output = { kind = "string" },
 
 	casing = {
-		kind = "string" :: "string",
+		kind = "string",
 		values = { "PascalCase", "camelCase", "snake_case" },
 	},
 
-	future_library = { kind = "string" :: "string" },
-	promise_library = { kind = "string" :: "string" },
+	future_library = { kind = "string" },
+	promise_library = { kind = "string" },
 
-	polling = { kind = "boolean" :: "boolean" },
-	remote_folder = { kind = "string" :: "string" },
-	manual_replication = { kind = "boolean" :: "boolean" },
+	polling = { kind = "boolean" },
+	remote_folder = { kind = "string" },
+	manual_replication = { kind = "boolean" },
 }
 
 export type FileOptions = {
