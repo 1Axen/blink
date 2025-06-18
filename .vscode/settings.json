@@ -34,5 +34,5 @@
 	"luau-lsp.ignoreGlobs": [
 		"**/_Index/**",
 		"vendor/**"
-	],
+	]
 }
