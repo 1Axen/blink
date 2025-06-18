@@ -1,4 +1,5 @@
 local hir = require("@hir/types")
+local id = require("@compiler/id")
 local lir = require("@lir/types")
 local ty = require("@ty/types")
 
@@ -6,35 +7,31 @@ type Lir = lir.Lir
 type Hir = hir.Hir
 
 type TyId = ty.TyId
-type FnId = lir.FnId
 
 export type Context = {
 	read hir: Hir,
 	read lir: Lir,
-	read tys: { [TyId]: {
-		read: FnId,
-		write: FnId,
-	} },
-
-	fn_id: number,
 }
 
 local function create(hir: Hir, lir: Lir): Context
-	return {
+	return table.freeze({
 		hir = hir,
 		lir = lir,
-		tys = {},
-		fn_id = 0,
-	}
+	})
 end
 
-local function next_id(ctx: Context): FnId
-	local current = ctx.fn_id
-	ctx.fn_id += 1
-	return current :: any
+local function fn_set(ctx: Context, ty_id: TyId, read: lir.Fn, write: lir.Fn): lir.SetId
+	local set_id = id.to_set_id(ty_id)
+	local set: lir.Set = {
+		read = read,
+		write = write,
+	}
+
+	ctx.lir.sets[set_id] = set
+	return set_id
 end
 
 return table.freeze({
 	create = create,
-	next_id = next_id,
+	fn_set = fn_set,
 })

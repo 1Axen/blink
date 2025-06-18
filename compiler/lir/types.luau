@@ -383,7 +383,7 @@ export type TermLoop = {
 export type TermCall = {
 	type: "terminator",
 	kind: "call",
-	fn: FnId,
+	fn: SetId,
 	args: { RValue<any> },
 	destination: BasicBlock,
 }
@@ -420,45 +420,47 @@ export type Fn = {
 	blocks: { BasicBlock },
 }
 
-export type FnId = any & { __fn: true }
+export type SetId = any & { __fn_set: true }
 
 export type Type = {
 	type: "type",
 	decl: hir.Type,
-	read: FnId,
-	write: FnId,
+	set: SetId,
 }
 
 export type Event = {
 	type: "event",
 	decl: hir.Event,
-	read: FnId,
-	write: FnId,
+	set: SetId,
 }
 
 export type Function = {
 	type: "function",
 	decl: hir.Function,
-	read: FnId,
-	write: FnId,
+	set: SetId,
+}
+
+export type Set = {
+	read: Fn,
+	write: Fn,
 }
 
 export type Lir = {
-	fns: { [FnId]: Fn },
+	sets: { [SetId]: Set },
 	types: { [hir.DeclId]: Type },
 	events: { [hir.DeclId]: Event },
 	functions: { [hir.DeclId]: Function },
 }
 
-local function fn_from_id(lir: Lir, fn_id: FnId): Fn
-	local fn = lir.fns[fn_id]
-	if fn == nil then
-		return panic("Expected fn_id to point to a fn")
+local function set_from_id(lir: Lir, set_id: SetId): Set
+	local set = lir.sets[set_id]
+	if set == nil then
+		return panic("Expected set_id to point to a set")
 	end
 
-	return fn
+	return set
 end
 
 return table.freeze({
-	fn_from_id = fn_from_id,
+	set_from_id = set_from_id,
 })

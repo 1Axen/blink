@@ -14,7 +14,7 @@ local loop = require("@builders/loop")
 type Ty = ty.Ty
 
 type Fn = lir.Fn
-type FnId = lir.FnId
+type FnId = lir.SetId
 
 type Return = lir.Return
 type Argument = lir.Argument
@@ -41,7 +41,7 @@ for index = 1, MAX_REGISTERS do
 	REGISTERS_TEMPLATE[index] = (index - 1)
 end
 
-local function returnn(ty: Ty): lir.Return
+local function rreturn(ty: Ty): lir.Return
 	return {
 		kind = "return",
 		ty = ty,
@@ -297,6 +297,6 @@ end
 
 return table.freeze({
 	create = create,
-	returnn = returnn,
+	rreturn = rreturn,
 	argument = argument,
 })

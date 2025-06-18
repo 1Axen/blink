@@ -49,7 +49,7 @@ local function term_loop(loop: Loop, destination: BasicBlock): TermLoop
 	}
 end
 
-local function term_call(fn: lir.FnId, args: { RValue }, destination: BasicBlock): TermCall
+local function term_call(fn: lir.SetId, args: { RValue }, destination: BasicBlock): TermCall
 	return {
 		type = "terminator",
 		kind = "call",

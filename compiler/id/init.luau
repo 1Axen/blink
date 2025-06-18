@@ -1,5 +1,6 @@
 local ast = require("@ast/types")
 local hir = require("@hir/types")
+local lir = require("@lir/types")
 local panic = require("@util/panic")
 local ty = require("@ty/types")
 
@@ -7,6 +8,7 @@ type Ty = ty.Ty
 type Decl = hir.Decl
 type Node = ast.Node
 
+type SetId = lir.SetId
 type TyId<T = Ty> = ty.TyId<>
 type DeclId<T = Decl> = hir.DeclId<T>
 type NodeId<T = Node> = ast.NodeId<T>
@@ -21,24 +23,33 @@ Ids are u32s, their format is as follows:
 * 3 bits 7 bits  22 bits
 
 Type flags:
-* 0b00 - Node
-* 0b01 - Scope
-* 0b10 - Def
-* 0b11 - Ty
+* 0b000 - Node
+* 0b001 - Scope
+* 0b010 - Def
+* 0b011 - Ty
+* 0b100 - Set
 ]=]
 --stylua: ignore
 export type Id = 
     | TyId
+	| SetId
     | DeclId
     | NodeId
     | ScopeId
 
-export type IdKind = "Ty" | "Decl" | "Node" | "Scope"
+--stylua: ignore
+export type IdKind = 
+	| "Ty" 
+	| "Set"
+	| "Decl" 
+	| "Node" 
+	| "Scope"
 
-local TY_FLAG = 0b11
-local DECL_FLAG = 0b10
-local NODE_FLAG = 0b00
-local SCOPE_FLAG = 0b01
+local TY_FLAG = 0b011
+local SET_FLAG = 0b100
+local DECL_FLAG = 0b010
+local NODE_FLAG = 0b000
+local SCOPE_FLAG = 0b001
 
 local TYPE_MASK = 2 ^ 3
 local INDEX_MASK = 2 ^ 10
@@ -52,6 +63,8 @@ local function id_kind(id: Id): IdKind
 	local flag = id_type(id)
 	if flag == TY_FLAG then
 		return "Ty"
+	elseif flag == SET_FLAG then
+		return "Set"
 	elseif flag == DECL_FLAG then
 		return "Decl"
 	elseif flag == SCOPE_FLAG then
@@ -82,6 +95,10 @@ local function to_ty_id(id: Id): TyId
 	return id_set_type(id, TY_FLAG) :: any
 end
 
+local function to_set_id(id: Id): SetId
+	return id_set_type(id, SET_FLAG) :: any
+end
+
 local function to_decl_id(id: Id): DeclId
 	return id_set_type(id, DECL_FLAG) :: any
 end
@@ -105,6 +122,7 @@ return table.freeze({
 	index = id_index,
 
 	to_ty_id = to_ty_id,
+	to_set_id = to_set_id,
 	to_decl_id = to_decl_id,
 	to_node_id = to_node_id,
 	to_scope_id = to_scope_id,
@@ -126,6 +144,7 @@ return table.freeze({
 	}),
 
 	TY_FLAG = TY_FLAG,
+	SET_FLAG = SET_FLAG,
 	DECL_FLAG = DECL_FLAG,
 	NODE_FLAG = NODE_FLAG,
 	SCOPE_FLAG = SCOPE_FLAG,

@@ -377,8 +377,9 @@ end
 local function fmt_lir(lir: lir.Lir): string
 	local fmt_builder = string_builder.create({})
 
-	for fn_id, fn in lir.fns do
-		fmt_fn(fmt_builder, fn)
+	for _, set in lir.sets do
+		fmt_fn(fmt_builder, set.read)
+		fmt_fn(fmt_builder, set.write)
 		string_builder.append_line(fmt_builder, "")
 	end
 
