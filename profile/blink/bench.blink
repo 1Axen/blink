@@ -1,17 +1,3 @@
--- type foo = buzz<u8>
--- type bar = buzz<string>
-
--- type buzz<T> = T[]
-
--- type tree<T> = struct {
---     value: T,
---     forest: forest<T>
--- }
-
--- type forest<T> = tree<T>[]
-
--- type byte_forest = forest<u8>
-
 type vec3 = vector
 type vec2 = vector<f32, f32, 0>
 type vec1 = vector<f32, 0, 0>
@@ -71,13 +57,21 @@ type shotgun = weapon & struct {
     pellets: u8
 }
 
--- type node<T> = struct {
---     value: T,
---     next: node<T>?
--- }
+type node<T> = struct {
+    value: T,
+    next: node<T>?
+}
 
--- type byte_linked_list = node<u8>
--- type dword_linked_list = node<u32>
+type byte_linked_list = node<u8>
+type dword_linked_list = node<u32>
+
+type tree<T> = struct {
+    value: T,
+    forest: forest<T>
+}
+
+type forest<T> = tree<T>[]
+type byte_forest = forest<u8>
 
 type class = enum {
     "Tank",
