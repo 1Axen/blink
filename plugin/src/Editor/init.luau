@@ -203,6 +203,9 @@ local function GetPrediction(): CompletionItem?
     return Item
 end
 
+local DOTS = "%.%."
+local NUMBER = "%-?%d*%.?%d+"
+
 local function UpdateColors()
     local Source = Input.Text
     local RichText = {}
@@ -234,9 +237,9 @@ local function UpdateColors()
             String = Color(Value, IsField and THEME.Text or THEME.Identifier)
         elseif Type == "Array" or Type == "Range" then
             --> Exact size array/range
-            local Single = string.match(Value, "%[(%d+)%]") or string.match(Value, "%((%d+)%)")
-            local Lower = string.match(Value, "%[(%d+)") or string.match(Value, "%((%d+)") 
-            local Upper = string.match(Value, "(%d+)%]") or string.match(Value, "(%d+)%)")
+            local Single = string.match(Value, `%[({NUMBER})%]`) or string.match(Value, `%(({NUMBER})%)`)
+            local Lower = string.match(Value, `%[({NUMBER}){DOTS}`) or string.match(Value, `%(({NUMBER}){DOTS}`) 
+            local Upper = string.match(Value, `{DOTS}({NUMBER})%]`) or string.match(Value, `{DOTS}({NUMBER})%)`)
 
             if Single then
                 String = string.gsub(Value, Single, Color(Single, THEME.Number))
