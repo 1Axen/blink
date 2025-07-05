@@ -162,16 +162,11 @@ local function validate(block: Builder, ty: ty.Numeral, value: RValue<number>)
 		return
 	end
 
-	local lower = condition.less_than(value, constant.from_value(bounds.min))
-	local upper = condition.greater_than(value, constant.from_value(bounds.max))
+	local lower = condition.less_than(value, constant.from_value(bounds.max))
+	local upper = condition.greater_than(value, constant.from_value(bounds.min))
 
-	block:if_branch(lower, function(block)
-		block:call_lib(library.error(`Expected number to be greater than or equal to {bounds.min}`))
-	end)
-
-	block:if_branch(upper, function(block)
-		block:call_lib(library.error(`Expected number to be less than or equal to {bounds.max}`))
-	end)
+	block:call_lib(library.assert(lower, `Expected number to be greater than or equal to {bounds.min}`))
+	block:call_lib(library.assert(upper, `Expected number to be less than or equal to {bounds.max}`))
 end
 
 local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral, into: LValue<any>?): Register<number>

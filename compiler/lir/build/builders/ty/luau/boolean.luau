@@ -30,9 +30,7 @@ local function validate(block: Builder, ty: Boolean, value: RValue<boolean>)
 	local type = constant.from_value("boolean")
 	local equals = condition.not_equals(value, type)
 
-	block:if_branch(equals, function(block)
-		block:call_lib(library.error(`Expected a boolean`))
-	end)
+	block:call_lib(library.assert(equals, "Expected a boolean"))
 end
 
 local function build_read(props: ReadProps, block: Builder, boolean: ty.Boolean, into: LValue<any>?): Register<boolean>

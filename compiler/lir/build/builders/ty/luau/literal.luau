@@ -26,11 +26,9 @@ type Register<T = any> = lir.RegisterId<T>
 
 local function validate(props: WriteProps, block: Builder, ty: Literal, value: RValue)
 	local constant = constant.from_ty(ty :: any)
-	local equals = condition.not_equals(value, constant :: any)
+	local equals = condition.equals(value, constant :: any)
 
-	block:if_branch(equals, function(block)
-		block:call_lib(library.error(`Expected "{ty.value}"`))
-	end)
+	block:call_lib(library.assert(equals, `Expected "{ty.value}"`))
 end
 
 local function build_read<A>(props: ReadProps, block: Builder, literal: ty.Literal, into: LValue<any>?): Register<A>
