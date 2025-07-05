@@ -369,9 +369,7 @@ builders = {
 
 			local out_of_bounds = condition.greater_than_or(stored_index, constant.from_value(total))
 
-			block:if_branch(out_of_bounds, function(block: fn.Builder)
-				block:call_lib(library.error(`Invalid enum variant`))
-			end)
+			block:call_lib(library.assert(out_of_bounds, "Invalid enum variant"))
 
 			for index, variant in enum.variants do
 				local is_variant = condition.equals(stored_index, constant.from_value(index - 1))

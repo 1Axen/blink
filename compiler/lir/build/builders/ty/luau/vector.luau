@@ -79,23 +79,20 @@ local function validate(block: Builder, vec: ty.Vector, value: RValue<vector>)
 	if bounds.min == bounds.max then
 		local exact_length = constant.from_value(bounds.min)
 		local is_exact_length = condition.equals(magnitude, exact_length)
-		block:if_branch(is_exact_length, function(block)
-			block:call_lib(library.error(`Expected vector length to be exactly {bounds.min}`))
-		end)
+
+		block:call_lib(library.assert(is_exact_length, `Expected vector length to be exactly {bounds.min}`))
 
 		return
 	end
 
-	local lower = condition.less_than(magnitude, constant.from_value(bounds.min))
-	local upper = condition.greater_than(magnitude, constant.from_value(bounds.max))
+	local lower = condition.less_than(magnitude, constant.from_value(bounds.max))
+	local upper = condition.greater_than(magnitude, constant.from_value(bounds.min))
 
-	block:if_branch(lower, function(block)
-		block:call_lib(library.error(`Expected vector length to be greater than or equal to {bounds.min}`))
-	end)
+	-- If lower is false, then it is above the max
+	block:call_lib(library.assert(lower, `Expected vector length to be greater than or equal to {bounds.min}`))
 
-	block:if_branch(upper, function(block)
-		block:call_lib(library.error(`Expected vector length to be less than or equal to {bounds.max}`))
-	end)
+	-- If upper is false, then it is below the minimum
+	block:call_lib(library.assert(upper, `Expected vector length to be less than or equal to {bounds.max}`))
 end
 
 local function build_read(props: ReadProps, block: Builder, vec: ty.Vector, into: LValue<any>?): Register<vector>
