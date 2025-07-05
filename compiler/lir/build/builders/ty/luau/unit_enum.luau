@@ -35,11 +35,8 @@ local function build_read(props: ReadProps, block: Builder, enum: UnitEnum, into
 	local stored_index = numeral.read(props, block, format)
 	local value_register = (into or block:reserve()) :: Register<string>
 
-	local out_of_bounds = condition.greater_than_or(stored_index, constant.from_value(total))
-
-	block:if_branch(out_of_bounds, function(block)
-		block:call_lib(library.error(`Invalid enum variant`))
-	end)
+	local within_bounds = condition.less_than_or(stored_index, constant.from_value(total))
+	block:call_lib(library.assert(within_bounds, "Invalid enum variant"))
 
 	for index, variant in enum.variants do
 		local is_variant = condition.equals(stored_index, constant.from_value(index - 1))
