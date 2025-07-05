@@ -33,4 +33,8 @@ end
 
 table.insert(options, "--ignore=vendor/**")
 table.insert(options, "./compiler/init.luau")
-process.exec("luau-lsp", options, { stdio = "forward" })
+local result = process.exec("luau-lsp", options, { stdio = "forward" })
+
+if result.code ~= 0 then
+	process.exit(result.code)
+end
