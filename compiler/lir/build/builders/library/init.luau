@@ -20,6 +20,10 @@ local function luau_error(message: string): Call<nil>
 	return projection.call(constant.from_value("error"), { constant.from_value(message) } :: any)
 end
 
+local function luau_assert(condition: RValue<boolean>, message: string): Call<nil>
+	return projection.call(constant.from_value("assert"), { condition, constant.from_value(message) :: any })
+end
+
 local function luau_typeof(of: RValue<any>): Call<string>
 	return projection.call(constant.from_value("typeof"), { of })
 end
@@ -30,6 +34,7 @@ end
 
 return table.freeze({
 	error = luau_error,
+	assert = luau_assert,
 	typeof = luau_typeof,
 	tostring = luau_tostring,
 
