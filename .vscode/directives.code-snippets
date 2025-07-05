@@ -1,0 +1,12 @@
+{
+	"top of file things": {
+		"scope": "luau, lua",
+		"prefix": "snippet",
+		"body": [
+			"--!strict",
+			"--!native",
+			"--!optimize 2"
+		],
+		"description": "strict, native, optimize"
+	}
+}

@@ -11,20 +11,20 @@
 	"files.eol": "\n",
 
 	"luau-lsp.plugin.enabled": false,
-	"luau-lsp.sourcemap.rojoProjectFile": "default.project.json",
-	"luau-lsp.completion.imports.enabled": true,
 	"luau-lsp.fflags.enableNewSolver": true,
 	"luau-lsp.fflags.enableByDefault": false,
 	"luau-lsp.fflags.sync": false,
-	"luau-lsp.platform.type": "roblox",
-	"luau-lsp.completion.imports.requireStyle": "auto",
-	"luau-lsp.completion.enableFragmentAutocomplete": true,
+	
 	"luau-lsp.sourcemap.enabled": false,
-	"luau-lsp.sourcemap.autogenerate": false,
+	
 	"luau-lsp.diagnostics.workspace": false,
+
+	"luau-lsp.platform.type": "roblox",
 	"luau-lsp.completion.imports.suggestServices": false,
 	"luau-lsp.completion.imports.suggestRequires": true,
+	
 	"luau-lsp.completion.imports.stringRequires.enabled": true,
+	
 	"luau-lsp.fflags.override": {
 		"LuauEagerGeneralization4": "true",
 		"LuauEnableWriteOnlyProperties": "true",
@@ -34,6 +34,8 @@
 	"luau-lsp.ignoreGlobs": [
 		"**/_Index/**",
 		"vendor/**",
-		".typedefs/**"
+		".typedefs/**",
+		"**/out/**",
+		"*.d.luau"
 	]
 }
