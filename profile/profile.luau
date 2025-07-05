@@ -13,6 +13,10 @@ local parser = require("@compiler/parser")
 
 local OUT_PATH = "./out/performance.txt"
 
+if fs.isDir("./out") == false then
+	fs.writeDir("./out")
+end
+
 local function fs_append(path: string, text: string)
 	local contents = fs.isFile(path) and fs.readFile(path) or ""
 	fs.writeFile(path, contents .. text)

@@ -12,4 +12,9 @@ local result = compiler.compile_from_path(input_path, {
 })
 
 assert(result)
+
+if fs.isDir("./out") == false then
+	fs.writeDir("./out")
+end
+
 fs.writeFile("./out/output.luau", result.targets.shared)
