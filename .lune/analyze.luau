@@ -1,3 +1,5 @@
+local fs = require("@lune/fs")
+local net = require("@lune/net")
 local process = require("@lune/process")
 
 local FFLAGS = {
@@ -6,6 +8,16 @@ local FFLAGS = {
 	"LuauEnableWriteOnlyProperties",
 	"LuauGeneralizationCannotMutateAcrossModules",
 }
+
+if not fs.isFile(".typedefs/globalTypes.None.d.luau") then
+	local response = net.request(
+		"https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/refs/heads/main/scripts/globalTypes.None.d.luau"
+	)
+
+	assert(response.ok, response.statusMessage)
+
+	fs.writeFile(".typedefs/globalTypes.None.d.luau", response.body)
+end
 
 local options = {
 	"analyze",
