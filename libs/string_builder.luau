@@ -9,9 +9,17 @@ export type Config = {
 
 export type StringBuilder = {
 	buffer: buffer,
-	indent: number,
 	length: number,
 	position: number,
+	indentation: number,
+
+	indent: (self: StringBuilder) -> (),
+	dedent: (self: StringBuilder) -> (),
+	append: (self: StringBuilder, str: string) -> (),
+	append_line: (self: StringBuilder, str: string) -> (),
+	append_lines: (self: StringBuilder, lines: { string }) -> (),
+	append_indent: (self: StringBuilder) -> (),
+	finalize: (self: StringBuilder) -> string,
 } & Config
 
 local GROWTH_FACTOR = 1.5
@@ -64,18 +72,6 @@ local function return_buffer(buf: buffer)
 	table.insert(recycling_bin, buf)
 end
 
-local function create(config: optional_keys<Config>): StringBuilder
-	local recycled_buffer = borrow_buffer()
-	return {
-		buffer = recycled_buffer,
-		length = buffer.len(recycled_buffer),
-		indent = 0,
-		position = 0,
-		tab_width = config.tab_width or DEFAULT_CONFIG.tab_width,
-		use_spaces = config.use_spaces or DEFAULT_CONFIG.use_spaces,
-	}
-end
-
 local function write(builder: StringBuilder, str: string)
 	local bytes = #str
 	if bytes == 0 then
@@ -106,18 +102,18 @@ local function write(builder: StringBuilder, str: string)
 end
 
 local function indent(builder: StringBuilder)
-	builder.indent += 1
+	builder.indentation += 1
 end
 
 local function dedent(builder: StringBuilder)
-	builder.indent -= 1
+	builder.indentation -= 1
 end
 
 local function append_indent(builder: StringBuilder)
 	if builder.use_spaces then
-		write(builder, string.rep(" ", builder.tab_width * builder.indent))
+		write(builder, string.rep(" ", builder.tab_width * builder.indentation))
 	else
-		write(builder, string.rep("\t", builder.indent))
+		write(builder, string.rep("\t", builder.indentation))
 	end
 end
 
@@ -142,6 +138,26 @@ local function finalize(builder: StringBuilder): string
 	return_buffer(builder.buffer)
 	setmetatable(builder, FINALIZED_METATABLE)
 	return str
+end
+
+local function create(config: optional_keys<Config>): StringBuilder
+	local recycled_buffer = borrow_buffer()
+	return {
+		buffer = recycled_buffer,
+		length = buffer.len(recycled_buffer),
+		position = 0,
+		indentation = 0,
+		tab_width = config.tab_width or DEFAULT_CONFIG.tab_width,
+		use_spaces = config.use_spaces or DEFAULT_CONFIG.use_spaces,
+
+		indent = indent,
+		dedent = dedent,
+		append = append,
+		append_line = append_line,
+		append_lines = append_lines,
+		append_indent = append_indent,
+		finalize = finalize,
+	}
 end
 
 return table.freeze({

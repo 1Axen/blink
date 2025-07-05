@@ -1,3 +1,5 @@
+option shared_output = "lol"
+
 type vec3 = vector
 type vec2 = vector<f32, f32, 0>
 type vec1 = vector<f32, 0, 0>
@@ -85,7 +87,7 @@ type purchase = struct {
     product: f64,
 }
 
--- @stable
+@stable
 type player_data = struct {
     class: class,
     coins: u8,

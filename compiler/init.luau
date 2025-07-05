@@ -4,6 +4,7 @@ local lir = require("@compiler/lir")
 local parser = require("@compiler/parser")
 
 local ast = require("@self/ast/types")
+local codegen = require("@self/codegen")
 local codes = require("@self/config/codes")
 local compilation = require("@self/config/compilation")
 
@@ -204,14 +205,16 @@ local function compile_from_path(entry_path: Path, compiler_options: Options): R
 	do
 		-- local entry_options = files_hir.options[0]
 		-- if entry_options.shared_output then
-		--     targets.shared = codegen.from_lir(files_lir, "shared")
+		-- 	targets.shared = codegen.from_lir(files_lir, "shared")
 		-- end
 		-- if entry_options.client_output then
-		--     targets.client = codegen.from_lir(files_lir, "client")
+		-- 	targets.client = codegen.from_lir(files_lir, "client")
 		-- end
 		-- if entry_options.server_output then
-		--     targets.server = codegen.from_lir(files_lir, "server")
+		-- 	targets.server = codegen.from_lir(files_lir, "server")
 		-- end
+
+		targets.shared = codegen.from_lir(files_lir, "shared")
 	end
 	local codegen_elapsed = (os.clock() - codegen_pin)
 
