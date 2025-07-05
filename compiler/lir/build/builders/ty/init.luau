@@ -1,36 +1,24 @@
-local hir = require("@hir/types")
-local lir = require("@lir/types")
-local ty = require("@ty/types")
-
 local attributes = require("@config/attributes")
-
+local binary = require("@builders/binary")
+local condition = require("@builders/condition")
+local constant = require("@builders/constant")
 local context = require("@lir/build/context")
+local control = require("@builders/control")
+local conversion = require("@util/conversion")
 local fn = require("@builders/fn")
-
+local hir = require("@hir/types")
+local length = require("@builders/ty/luau/length")
+local library = require("@builders/library")
+local lir = require("@lir/types")
 local panic = require("@util/panic")
-
-local types = require("@self/types")
-
-local ty_set = require("@self/luau/set")
-local ty_unit_enum = require("@self/luau/unit_enum")
-
-local ty_boolean = require("@self/luau/boolean")
-local ty_buffer = require("@self/luau/buffer")
+local projection = require("@builders/projection")
+local structure = require("@builders/structure")
+local ternary = require("@builders/ternary")
+local ty = require("@ty/types")
 local ty_literal = require("@self/luau/literal")
 local ty_numeral = require("@self/luau/numeral")
-local ty_string = require("@self/luau/string")
-local ty_vector = require("@self/luau/vector")
-
-local ty_brick_color = require("@self/roblox/brick_color")
-local ty_cframe = require("@self/roblox/cframe")
-local ty_color3 = require("@self/roblox/color3")
-local ty_date_time = require("@self/roblox/date_time")
-local ty_date_time_millis = require("@self/roblox/date_time_millis")
-local ty_enum = require("@self/roblox/enum")
-local ty_instance = require("@self/roblox/instance")
-local ty_unknown = require("@self/roblox/unknown")
-
-local fmt_id = require("@compiler/id/format")
+local types = require("@self/types")
+local unary = require("@builders/unary")
 
 type Ty = ty.Ty
 type TyId = ty.TyId<Ty>
@@ -41,63 +29,14 @@ type Register<T> = lir.RegisterId<T>
 
 type Builder = fn.Builder
 type Context = context.Context
-type Attributes = attributes.TypeAttributes
+type Attributes = attributes.Attributes
 
 type TyBuilder = types.TyBuilder
 type ReadProps = types.ReadProps
 type WriteProps = types.WriteProps
 type Props = types.Props
 
--- cyclical ty builders
-local ty_map: TyBuilder?
-local ty_array: TyBuilder?
-local ty_struct: TyBuilder?
-local ty_optional: TyBuilder?
-local ty_tagged_enum: TyBuilder?
-local ty_generic_type: TyBuilder?
-local ty_intersection: TyBuilder?
-
-local BUILDERS: { [ty.TyKind]: TyBuilder? } = {
-	set = ty_set,
-	unit_enum = ty_unit_enum,
-
-	buffer = ty_buffer,
-	string = ty_string,
-	vector = ty_vector,
-	numeral = ty_numeral,
-	boolean = ty_boolean,
-
-	string_literal = ty_literal,
-	number_literal = ty_literal,
-	boolean_literal = ty_literal,
-
-	cframe = ty_cframe,
-	color3 = ty_color3,
-	unknown = ty_unknown,
-	instance = ty_instance,
-	date_time = ty_date_time,
-	brick_color = ty_brick_color,
-	roblox_enum = ty_enum,
-	date_time_millis = ty_date_time_millis,
-} :: any
-
-local function import_cyclic()
-	ty_map = (require :: any)("./luau/map")
-	ty_array = (require :: any)("./luau/array")
-	ty_struct = (require :: any)("./luau/struct")
-	ty_optional = (require :: any)("./luau/optional")
-	ty_tagged_enum = (require :: any)("./luau/tagged_enum")
-	ty_generic_type = (require :: any)("./luau/generic_type")
-	ty_intersection = (require :: any)("./luau/intersection")
-
-	BUILDERS.map = ty_map
-	BUILDERS.array = ty_array
-	BUILDERS.struct = ty_struct
-	BUILDERS.optional = ty_optional
-	BUILDERS.tagged_enum = ty_tagged_enum
-	BUILDERS.generic_type = ty_generic_type
-	BUILDERS.intersection = ty_intersection
-end
+local OPTIONAL_FORMAT = ty_numeral.u8
 
 local function replace_generic(props: Props, generic: ty.Generic): Ty
 	local generics = props.generics
@@ -106,6 +45,10 @@ local function replace_generic(props: Props, generic: ty.Generic): Ty
 	end
 
 	local target_id = generics[generic.index]
+	if target_id == nil then
+		return panic(`Generic "{generic.name}" is uninhabited`)
+	end
+
 	return hir.ty_from_id(props.ctx.hir, target_id)
 end
 
@@ -117,12 +60,31 @@ local function try_replace_generic(props: Props, ty: Ty): Ty
 	return ty
 end
 
-local function builder_from_ty(ty: Ty): TyBuilder
-	if ty_map == nil then
-		import_cyclic()
+local function initialize_generics(props: Props, generic_type: ty.GenericType): { TyId }
+	local generics = {}
+	local prop_generics = props.generics
+
+	for index, ty_id in generic_type.args do
+		local ty = hir.ty_from_id(props.ctx.hir, ty_id)
+		if ty.kind == "generic" and prop_generics then
+			ty_id = prop_generics[ty.index]
+		end
+
+		generics[index] = ty_id
 	end
 
-	local builder = BUILDERS[ty.kind]
+	return generics
+end
+
+local function props_with_generics(base_props: Props, generic_type: ty.GenericType): Props
+	local new_props = table.clone(base_props)
+	new_props.generics = initialize_generics(base_props, generic_type)
+	return new_props
+end
+
+local builders: { [ty.TyKind]: TyBuilder? }
+local function builder_from_ty(ty: Ty): TyBuilder
+	local builder = builders[ty.kind]
 	if builder == nil then
 		return panic(`Unhandled ty kind: "{ty.kind}"`)
 	end
@@ -142,21 +104,353 @@ local function write_ty(props: WriteProps, block: Builder, ty: Ty, value: RValue
 	builder.write(props, block, ty, value)
 end
 
-local function read_ty_id(props: ReadProps, block: Builder, ty_id: TyId, into: LValue<any>?)
-	print(`Building reader for {fmt_id(ty_id)}`)
-	local ty = hir.ty_from_id(props.ctx.hir, ty_id)
-	return read_ty(props, block, ty, into)
+local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id: TyId, generics: { TyId }?): lir.FnSet
+	local lirr = ctx.lir
+	do
+		local existing = lirr.tys[ty_id]
+		if existing then
+			return existing
+		end
+	end
+
+	-- pre store the ids
+	local read_fn_id = context.next_fn_id(ctx)
+	local write_fn_id = context.next_fn_id(ctx)
+	local fn_set: lir.FnSet = {
+		read = read_fn_id,
+		write = write_fn_id,
+	}
+
+	local hirr = ctx.hir
+	local ty: Ty = hir.ty_from_id(hirr, ty_id)
+	if ty.kind == "reference" then
+		ty_id = ty.to
+		generics = generics or ty.args
+		ty = hir.ty_from_id(hirr, ty.to)
+	end
+
+	if ty.kind == "generic_type" then
+		generics = generics or ty.args
+
+		local hash = ty.body :: number
+		for index, generic_ty_id: TyId in ty.args do
+			local generic_ty = hir.ty_from_id(hirr, generic_ty_id) :: Ty
+			if generic_ty.kind == "generic" then
+				generic_ty_id = generics[generic_ty.index]
+			end
+
+			hash += (index + 1) * (generic_ty_id :: number)
+		end
+
+		local existing = ctx.hashed_tys[hash]
+		if existing then
+			return existing
+		end
+
+		ctx.hashed_tys[hash] = fn_set
+		ty = hir.ty_from_id(hirr, ty.body) :: Ty
+	end
+
+	lirr.tys[ty_id] = fn_set
+
+	-- build reader & writer
+	local name = tostring(ty_id)
+	local decl = hirr.types[ty_id :: hir.DeclId]
+	if decl ~= nil then
+		name = decl.name
+	end
+
+	local read_fn = fn.create(ctx, `read_{name}`, {}, { fn.rreturn(ty) }, function(block)
+		local props: ReadProps = {
+			ctx = ctx,
+			generics = generics,
+			attributes = attributes,
+		}
+
+		local value_register = read_ty(props, block, ty)
+		block:rtrn({ value_register })
+	end)
+
+	local write_fn = fn.create(ctx, `write_{name}`, { fn.argument(ty) }, {}, function(block)
+		local props: WriteProps = {
+			ctx = ctx,
+			validate = true,
+			generics = generics,
+			attributes = attributes,
+		}
+
+		write_ty(props, block, ty, block:argument(1))
+	end)
+
+	context.store_fn(ctx, read_fn, read_fn_id)
+	context.store_fn(ctx, write_fn, write_fn_id)
+
+	return fn_set
+end
+
+local function read_ty_id(props: ReadProps, block: Builder, ty_id: TyId, into: LValue<any>?): LValue<any>
+	local tyy = hir.ty_from_id(props.ctx.hir, ty_id)
+	if tyy.kind == "reference" then
+		ty_id = tyy.to
+		tyy = hir.ty_from_id(props.ctx.hir, tyy.to)
+	end
+
+	if ty.is_possibly_recursive(tyy) then
+		local fn_set = from_ty_id(props.ctx, props.attributes, ty_id, props.generics)
+		local register = into or block:reserve()
+		block:call_fn(fn_set.read, {}, { register })
+		return register
+	end
+
+	return read_ty(props, block, tyy, into)
 end
 
 local function write_ty_id(props: WriteProps, block: Builder, ty_id: TyId, value: RValue<any>)
-	print(`Building writer for {fmt_id(ty_id)}`)
-	local ty = hir.ty_from_id(props.ctx.hir, ty_id)
-	write_ty(props, block, ty, value)
+	local tyy = hir.ty_from_id(props.ctx.hir, ty_id)
+	if tyy.kind == "reference" then
+		ty_id = tyy.to
+		tyy = hir.ty_from_id(props.ctx.hir, tyy.to)
+	end
+
+	if ty.is_possibly_recursive(tyy) then
+		local fn_set = from_ty_id(props.ctx, props.attributes, ty_id, props.generics)
+		block:call_fn(fn_set.write, { value }, {})
+	else
+		write_ty(props, block, tyy, value)
+	end
 end
 
+builders = {
+	set = require("@self/luau/set"),
+	unit_enum = require("@self/luau/unit_enum"),
+
+	buffer = require("@self/luau/buffer"),
+	string = require("@self/luau/string"),
+	vector = require("@self/luau/vector"),
+	numeral = ty_numeral,
+	boolean = require("@self/luau/boolean"),
+
+	string_literal = ty_literal,
+	number_literal = ty_literal,
+	boolean_literal = ty_literal,
+
+	cframe = require("@self/roblox/cframe"),
+	color3 = require("@self/roblox/color3"),
+	unknown = require("@self/roblox/unknown"),
+	instance = require("@self/roblox/instance"),
+	date_time = require("@self/roblox/date_time"),
+	brick_color = require("@self/roblox/brick_color"),
+	roblox_enum = require("@self/roblox/enum"),
+	date_time_millis = require("@self/roblox/date_time_millis"),
+
+	map = table.freeze({
+		read = function(props: ReadProps, block: Builder, map: ty.Map, into: LValue<any>?): Register<{ [any]: any }>
+			local len = length.read(props, block, map)
+			local register = block:store(structure.map({}))
+
+			block:for_numeric(len, function(block)
+				local key = read_ty_id(props, block, map.index)
+				local value = read_ty_id(props, block, map.value)
+				local map_index = projection.field(register, key)
+				block:store(value, map_index)
+			end)
+
+			if into then
+				return block:store(register, into)
+			end
+
+			return register
+		end,
+		write = function(props: WriteProps, block: Builder, map: ty.Map, at: RValue<{ [any]: any }>): ()
+			local elements_register = block:store(constant.zero)
+			local increase_elements = binary.add(elements_register, constant.one)
+			block:for_generic(at, function(block)
+				block:store(increase_elements, elements_register)
+			end)
+
+			length.write(props, block, map, elements_register)
+
+			block:for_generic(at, function(block, key, value)
+				write_ty_id(props, block, map.index, key)
+				write_ty_id(props, block, map.value, value)
+			end)
+		end,
+	}),
+
+	array = table.freeze({
+		read = function(props: ReadProps, block: Builder, array: ty.Array, into: LValue<any>?): Register<{ any }>
+			local len = length.read(props, block, array)
+			local register = block:store(library.table.create(len))
+
+			block:for_numeric(len, function(block, index)
+				local element = read_ty_id(props, block, array.of)
+				local position = projection.field(register :: any, index)
+				block:store(element, position)
+			end)
+
+			if into then
+				return block:store(register, into)
+			end
+
+			return register
+		end,
+		write = function(props: WriteProps, block: Builder, array: ty.Array, value: RValue<{ any }>): ()
+			length.write(props, block, array, unary.len(value :: any))
+			block:for_generic(value :: any, function(block, _, value)
+				write_ty_id(props, block, array.of, value)
+			end)
+		end,
+	}),
+
+	struct = table.freeze({
+		read = function(props: ReadProps, block: Builder, struct: ty.Struct, into: LValue<any>?): Register<any>
+			local register: Register<any> = block:store(structure.struct({}))
+			for _, field in struct.fields do
+				local name = field.name
+				local value_register = read_ty_id(props, block, field.value)
+
+				local struct_index = projection.field(register, constant.from_value(name))
+				block:store(value_register, struct_index)
+			end
+
+			if into then
+				return block:store(register, into)
+			end
+
+			return register
+		end,
+
+		write = function(props: WriteProps, block: Builder, struct: ty.Struct, value: RValue<any>): ()
+			for _, field in struct.fields do
+				local name = field.name
+				local struct_index = projection.field(value :: LValue<any>, constant.from_value(name))
+				local field_register = block:store(struct_index)
+				write_ty_id(props, block, field.value, field_register)
+			end
+		end,
+	}),
+
+	optional = table.freeze({
+		read = function(props: ReadProps, block: Builder, optional: ty.Optional, into: LValue<any>?)
+			local byte_register = ty_numeral.read(props, block, OPTIONAL_FORMAT)
+			local value_register = (into or block:reserve())
+
+			local exists = condition.equals(byte_register, constant.one)
+			block:if_branch(exists, function(block)
+				props.is_optional = true
+				read_ty_id(props, block, optional.of, value_register)
+				props.is_optional = false
+			end)
+
+			return value_register
+		end,
+		write = function(props: WriteProps, block: Builder, optional: ty.Optional, value: RValue<any>): ()
+			local exists = condition.not_equals(value, constant.null)
+			local cursor = block:store(control.allocate(constant.one))
+
+			block:if_branch(exists, function(block)
+				write_ty_id(props, block, optional.of, value)
+			end)
+
+			local as_number = ternary(exists, constant.one, constant.zero)
+			block:call_lib(library.buffer.u8.write(cursor, as_number))
+		end,
+	}),
+
+	tagged_enum = table.freeze({
+		read = function(props: ReadProps, block: Builder, enum: ty.TaggedEnum, into: LValue<any>?)
+			local total = #enum.variants
+
+			-- account for serdesing from 0
+			local format = conversion.to_min_numeral(total - 1)
+
+			local stored_index = ty_numeral.read(props, block, format)
+			local value_register = into or block:reserve()
+
+			local out_of_bounds = condition.greater_than_or(stored_index, constant.from_value(total))
+
+			block:if_branch(out_of_bounds, function(block: fn.Builder)
+				block:call_lib(library.error(`Invalid enum variant`))
+			end)
+
+			for index, variant in enum.variants do
+				local is_variant = condition.equals(stored_index, constant.from_value(index - 1))
+
+				block:elseif_branch(is_variant, function(block)
+					builders.struct.read(props, block, variant.value, attributes, value_register)
+				end)
+			end
+
+			return value_register
+		end,
+		write = function(props: WriteProps, block: Builder, enum: ty.TaggedEnum, value: RValue<any>): ()
+			local ctx = props.ctx
+
+			local tag = constant.from_value(enum.tag)
+			local total = #enum.variants
+
+			-- account for serdesing from 0
+			local format = conversion.to_min_numeral(total - 1)
+			local tag_register = block:store(projection.field(value :: any, tag))
+
+			for index, variant in enum.variants do
+				local key = hir.ty_from_id(ctx.hir, variant.key)
+				local is_variant = condition.equals(tag_register, constant.from_ty(key :: any))
+
+				local function store_variant(block: Builder)
+					ty_numeral.write(props, block, format, constant.from_value(index - 1))
+					builders.struct.write(props, block, variant.value, value)
+				end
+
+				if index == 1 then
+					block:if_branch(is_variant, store_variant)
+				elseif index > 1 then
+					block:elseif_branch(is_variant, store_variant)
+				end
+			end
+
+			block:else_branch(function(block)
+				block:call_lib(library.error(`Invalid enum variant`))
+			end)
+		end,
+	}),
+
+	generic_type = table.freeze({
+		read = function(props: ReadProps, block: Builder, generic_type: ty.GenericType, into: LValue<any>?)
+			local read_props = props_with_generics(props, generic_type) :: ReadProps
+			return read_ty_id(read_props, block, generic_type.body, into)
+		end,
+		write = function(props: WriteProps, block: Builder, generic_type: ty.GenericType, value: RValue<any>): ()
+			local write_props = props_with_generics(props, generic_type) :: WriteProps
+			write_ty_id(write_props, block, generic_type.body, value)
+		end,
+	}),
+
+	intersection = table.freeze({
+		read = function(
+			props: ReadProps,
+			block: Builder,
+			intersection: ty.Intersection,
+			into: LValue<any>?
+		): Register<any>
+			local register: Register<any> = block:store(structure.struct({}))
+
+			read_ty_id(props, block, intersection.left :: TyId, register)
+			read_ty_id(props, block, intersection.right :: TyId, register)
+
+			if into then
+				return block:store(register, into)
+			end
+
+			return register
+		end,
+		write = function(props: WriteProps, block: Builder, intersection: ty.Intersection, value: RValue<any>): ()
+			write_ty_id(props, block, intersection.left :: TyId, value)
+			write_ty_id(props, block, intersection.right :: TyId, value)
+		end,
+	}),
+}
+
 return table.freeze({
-	read = read_ty_id,
-	write = write_ty_id,
-	read_ty = read_ty,
-	write_ty = write_ty,
+	from_ty_id = from_ty_id,
 })

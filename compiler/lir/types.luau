@@ -1,18 +1,20 @@
 --!strict
 
 local hir = require("@hir/types")
+local panic = require("@util/panic")
 local ty = require("@ty/types")
 
-local panic = require("@util/panic")
+type Ty = ty.Ty
+type TyId = ty.TyId
 
 export type Return = {
 	kind: "return",
-	ty: ty.Ty,
+	ty: Ty,
 }
 
 export type Argument = {
 	kind: "argument",
-	ty: ty.Ty,
+	ty: Ty,
 	name: string?,
 }
 
@@ -383,8 +385,9 @@ export type TermLoop = {
 export type TermCall = {
 	type: "terminator",
 	kind: "call",
-	fn: SetId,
+	fn: FnId,
 	args: { RValue<any> },
+	rets: { LValue<any> },
 	destination: BasicBlock,
 }
 
@@ -405,7 +408,6 @@ export type Terminator =
 
 export type BasicBlock = {
 	type: "block",
-	index: number,
 	scope: number,
 	statements: { Statement },
 	terminator: Terminator,
@@ -413,6 +415,7 @@ export type BasicBlock = {
 
 export type Fn = {
 	type: "fn",
+	id: FnId,
 	name: string,
 
 	rets: { Return },
@@ -420,47 +423,48 @@ export type Fn = {
 	blocks: { BasicBlock },
 }
 
-export type SetId = any & { __fn_set: true }
+export type FnId = number | { __fn: true }
+
+export type FnSet = {
+	read: FnId,
+	write: FnId,
+}
 
 export type Type = {
 	type: "type",
 	decl: hir.Type,
-	set: SetId,
+	set: FnSet,
 }
 
 export type Event = {
 	type: "event",
 	decl: hir.Event,
-	set: SetId,
+	set: FnSet,
 }
 
 export type Function = {
 	type: "function",
 	decl: hir.Function,
-	set: SetId,
-}
-
-export type Set = {
-	read: Fn,
-	write: Fn,
+	set: FnSet,
 }
 
 export type Lir = {
-	sets: { [SetId]: Set },
+	fns: { [FnId]: Fn },
+	tys: { [TyId]: FnSet },
 	types: { [hir.DeclId]: Type },
 	events: { [hir.DeclId]: Event },
 	functions: { [hir.DeclId]: Function },
 }
 
-local function set_from_id(lir: Lir, set_id: SetId): Set
-	local set = lir.sets[set_id]
-	if set == nil then
-		return panic("Expected set_id to point to a set")
+local function fn_from_id(lir: Lir, fn_id: FnId): Fn
+	local fn = lir.fns[fn_id]
+	if fn == nil then
+		return panic("Expected fn id to point to a fn")
 	end
 
-	return set
+	return fn
 end
 
 return table.freeze({
-	set_from_id = set_from_id,
+	fn_from_id = fn_from_id,
 })

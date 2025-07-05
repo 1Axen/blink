@@ -19,7 +19,7 @@ type WriteProps = types.WriteProps
 
 type Builder = fn.Builder
 type Context = context.Context
-type Attributes = attributes.TypeAttributes
+type Attributes = attributes.Attributes
 
 type Buffer = ty.Buffer
 type LValue<T> = lir.LValue<T>

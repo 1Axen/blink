@@ -2,11 +2,11 @@
 --!native
 --!optimize 2
 
-local id = require("@compiler/id")
 local types = require("@config/compilation")
 
 local ast = require("@ast/types")
 local hir = require("@hir/types")
+local id = require("@compiler/id")
 local ty = require("@ty/types")
 
 local bounds = require("@config/bounds")
@@ -23,16 +23,13 @@ local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 type Ty = ty.Ty
 type Decl = hir.Decl
 type Node = ast.Node
-
 type Hir = hir.Hir
 type Ast = ast.Ast
 
 type TyId<T = Ty> = ty.TyId<T>
-type DeclId<T = Decl> = hir.DeclId<T>
-type NodeId<T = Node> = ast.NodeId<T>
+type DeclId = hir.DeclId
+type NodeId = ast.NodeId
 type ScopeId = hir.ScopeId
-
-type TyKind = ty.TyKind
 
 type Range = range.Range
 type Symbols = ast.Symbols
@@ -51,8 +48,8 @@ type Context = {
 	generics: Generics?,
 }
 
-local block: (ctx: Context, node: ast.Block) -> ()
-local statement: (ctx: Context, stat: ast.Statement) -> DeclId?
+local TY_PLACEHOLDER = ty.placeholder()
+
 local expression: (ctx: Context, expr: ast.Expression, node_id: NodeId?, generics: Generics?) -> TyId<any>
 
 local function path_to_segments(path: ast.Path): { string }
@@ -68,35 +65,16 @@ local function path_to_string(path: ast.Path): string
 	return table.concat(path_to_segments(path), ".")
 end
 
-local function decl_from_id_optional(ctx: Context, decl_id: DeclId): Decl?
-	return ctx.hir.decls[decl_id]
-end
-
 local function store_node(ctx: Context, node: Node): NodeId
 	ctx.hir.nodes[node.id] = node
 	return node.id
-end
-
---- Creates an inner scope and returns the `scope_id` of the previous scope
-local function inner_scope(ctx: Context, scope_id: ScopeId, scope_name: string): ScopeId
-	local hir = ctx.hir
-	local prev = ctx.scope
-	local name = hir.scopes[prev]
-	if name ~= nil then
-		scope_name = `{name}_{scope_name}`
-	end
-
-	ctx.scope = scope_id
-	hir.scopes[scope_id] = scope_name
-
-	return prev
 end
 
 local function assert_identifier_one_of(ctx: Context, ident: ast.Identifier, valid: { string }): ast.Identifier
 	local value = ident.value
 	if table.find(valid, value) == nil then
 		--TODO: Remove cast when Luau solver bug is fixed
-		return report.expect_one_of(ident :: any, valid, value)
+		return report.expect_one_of(ident, valid, value)
 	end
 
 	return ident
@@ -255,7 +233,7 @@ local function ty_instance(ctx: Context, expr_generics: ast.GenericsArgs?): ty.I
 end
 
 --- Returns a `ty` from a `reference` **to a primitive (u8, string, buffer, etc.)**
-local function ty_from_reference(ctx: Context, expr: ast.ExprReference, path: string): Ty
+local function ty_primitive(ctx: Context, expr: ast.ExprReference, path: string): Ty
 	if
 		path == "u8"
 		or path == "u16"
@@ -304,7 +282,7 @@ end
 local function ty_set(ctx: Context, expr: ast.ExprSet): ty.Set
 	local items: { ty.StringLiteral } = {}
 	for _, value in expr.values do
-		table.insert(items, ty_string_literal(ctx, (value :: any) :: ast.ExprString))
+		table.insert(items, ty_string_literal(ctx, value :: ast.ExprString))
 	end
 
 	return ty.set(items)
@@ -386,35 +364,28 @@ local function ty_tagged_enum(ctx: Context, expr: ast.ExprTaggedEnum): ty.Tagged
 end
 
 --- Returns the `ty_id` of the `ty` referenced
-local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference, expr_ty_id: TyId): TyId<Ty>
+local function ty_reference(ctx: Context, expr: ast.ExprReference, node_id: NodeId): Ty
 	--[[
         Phases:
         1 - Check if the reference is a generic parameter, return the generic parameter if it is, otherwise Continue
         2 - Check whether the reference exists, continue if it does, otherwise report an unknown reference
         3 - If any generics were passed alongside the reference convert them into an array of corresponding ty's
-
-        4 - Check whether the reference exiusts, return a placeholder to it if it doesn't, otherwise continue
-        5 - If any generics were passed then check whether the referenced ty accepts generics, if it does then continue to 5.1, else report extra generics
-        5.1 - Validate whether the exact amount of generics were passed, report too few or too many if not, else create a new ty (generic type) and return it
-        6 - Return the referenced ty
+        4 - If any generics were passed then check whether the referenced ty accepts generics, if it does then continue to 5.1, else report extra generics
+        4.1 - Validate whether the exact amount of generics were passed, report too few or too many if not, else create a new ty (generic type) and return it
+        5 - Return the referenced ty
     --]]
 
 	-- Phase 1:
 	if ctx.generics then
 		local path_string = path_to_string(expr.path)
-		local generic = ctx.generics.values[path_string] :: TyId
-		if generic then
-			-- The type is the generic
-			local node_id = id.ty_id.to_node_id(expr_ty_id)
-			local expr_node = hir.node_from_id(ctx.hir, node_id)
-			if expr_node.kind == "type" then
-				local generic_ty = hir.ty_from_id(ctx.hir, generic) :: ty.Generic
-				local new_ty: ty.GenericType = ty.generic_type(generic_ty, { generic })
-				ctx.hir.tys[expr_ty_id] = new_ty
-				return expr_ty_id
+		local generic_ty_id = ctx.generics.values[path_string]
+		if generic_ty_id then
+			local node = hir.node_from_id(ctx.hir, node_id)
+			if node.kind == "type" then
+				return ty.generic_type(generic_ty_id :: TyId, { generic_ty_id })
 			end
 
-			return generic
+			return hir.ty_from_id(ctx.hir, generic_ty_id)
 		end
 	end
 
@@ -425,12 +396,8 @@ local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference, expr_
 		return report.unknown_reference(expr)
 	end
 
-	local decl_node_id = decl_node.id
-	local decl_id = id.node_id.to_decl_id(decl_node_id)
-	local decl = decl_from_id_optional(ctx, decl_id) :: hir.Type?
-
 	-- Phase 3:
-	local generics: { TyId<Ty> } = {}
+	local generics: { TyId } = {}
 	local expr_generics = expr.generics
 	if expr_generics then
 		for index, value in expr_generics.values do
@@ -438,17 +405,13 @@ local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference, expr_
 		end
 	end
 
-	-- Phase 4:
-	if decl == nil then
-		local placeholder = ty.placeholder(path_segments, generics)
-		ctx.hir.tys[expr_ty_id] = placeholder
-		return expr_ty_id
-	end
+	local decl_id = decl_node.id :: DeclId
+	local type_decl = hir.decl_from_id(ctx.hir, decl_id)
 
-	-- Phase 5:
-	local decl_generics = decl.generics
+	-- Phase 4:
+	local decl_generics = type_decl.generics
 	if decl_generics then
-		-- Phase 5.1:
+		-- Phase 4.1:
 		local n_decl_generics = #decl_generics
 		if expr_generics == nil then
 			return report.few_none_generics(expr.path, n_decl_generics)
@@ -460,18 +423,12 @@ local function ty_id_from_reference(ctx: Context, expr: ast.ExprReference, expr_
 		elseif n_expr_generics < n_decl_generics then
 			return report.few_generics(expr_generics, n_decl_generics)
 		end
-
-		local decl_ty = hir.ty_from_id(ctx.hir, decl.ty) :: ty.GenericType
-		local new_ty: ty.GenericType = ty.generic_type(decl_ty.def, generics)
-		ctx.hir.tys[expr_ty_id] = new_ty
-
-		return expr_ty_id
 	elseif expr_generics then
 		return report.extra_generics(expr_generics, 0)
 	end
 
-	-- Phase 6:
-	return decl.ty
+	-- Phase 5:
+	return ty.reference(type_decl.ty_id, generics)
 end
 
 function expression(
@@ -481,7 +438,10 @@ function expression(
 	generics: Generics?
 ): TyId<Ty>
 	node_id = node_id or store_node(ctx, expr)
-	local ty_id = id.node_id.to_ty_id(node_id)
+
+	local tys = ctx.hir.tys
+	local ty_id = node_id :: TyId
+	tys[ty_id] = TY_PLACEHOLDER
 
 	if generics ~= nil then
 		ctx.generics = generics
@@ -498,8 +458,7 @@ function expression(
 	elseif expr.kind == "array" then
 		new_ty = ty_array(ctx, expr)
 	elseif expr.kind == "union" then
-		--TODO: Remove cast when Luau bug is fixed
-		new_ty = ty_intersection(ctx, expr) :: Ty
+		new_ty = ty_intersection(ctx, expr)
 	elseif expr.kind == "string" then
 		new_ty = ty_string_literal(ctx, expr)
 	elseif expr.kind == "struct" then
@@ -508,24 +467,20 @@ function expression(
 		new_ty = ty_number_literal(ctx, expr)
 	elseif expr.kind == "boolean" then
 		--TODO: Remove cast when Luau bug is fixed
-		new_ty = ty_boolean_literal(ctx, expr :: any)
+		new_ty = ty_boolean_literal(ctx, expr :: ast.ExprBoolean)
 	elseif expr.kind == "tagged_enum" then
-		--TODO: Remove cast when Luau bug is fixed
-		new_ty = ty_tagged_enum(ctx, expr :: any)
+		new_ty = ty_tagged_enum(ctx, expr)
 	elseif expr.kind == "optional" then
 		--TODO: Remove cast when Luau bug is fixed
-		new_ty = ty_optional(ctx, expr :: any)
+		new_ty = ty_optional(ctx, expr :: ast.ExprOptional)
 	elseif expr.kind == "reference" then
-		--TODO: Remove when Luau bug is fixed
-		expr = expr :: ast.ExprReference
-
 		local path = path_to_string(expr.path)
-		local primitive = (primitives :: any)[path]
-		if primitive == nil then
-			return ty_id_from_reference(ctx, expr, ty_id)
+		local primitive = (primitives :: { [string]: any? })[path]
+		if primitive then
+			new_ty = ty_primitive(ctx, expr, path)
+		else
+			new_ty = ty_reference(ctx, expr, node_id)
 		end
-
-		new_ty = ty_from_reference(ctx, expr, path)
 	elseif expr.kind == "identifier" then
 		new_ty = ty_string_literal(ctx, expr :: any)
 	else
@@ -533,12 +488,17 @@ function expression(
 	end
 
 	if generics then
-		new_ty = ty.generic_type(new_ty, generics.args :: { TyId })
+		local expr_node_id = store_node(ctx, expr)
+		local expr_ty_id = expr_node_id :: TyId
+
+		tys[expr_ty_id] = new_ty
+		new_ty = ty.generic_type(expr_ty_id, generics.args :: { TyId })
+
 		ctx.generics = nil
 	end
 
 	--> store ty
-	ctx.hir.tys[ty_id] = new_ty
+	tys[ty_id] = new_ty
 
 	return ty_id
 end
@@ -547,10 +507,10 @@ local function expr_pack(ctx: Context, expr: ast.ExprPack): { hir.Parameter }
 	local parameters: { hir.Parameter } = {}
 	for index, expr in expr.values do
 		local name = if expr.name then expr.name.value else nil
-		local value = expression(ctx, expr.value)
+		local ty_id = expression(ctx, expr.value)
 		local parameter: hir.Parameter = {
 			name = name,
-			value = value,
+			ty_id = ty_id,
 		}
 
 		table.insert(parameters, parameter)
@@ -560,244 +520,208 @@ local function expr_pack(ctx: Context, expr: ast.ExprPack): { hir.Parameter }
 end
 
 local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
-	local scope = ctx.scope
-
-	--> set generics
+	--> lower generics
 	local args: { TyId<ty.Generic> }?
-	local generics: Generics?
-	local generics_def = stat.generics
-
-	if generics_def then
-		local values: { [string]: TyId<ty.Generic> } = {}
+	if stat.generics then
 		args = {}
 
-		for index, value in generics_def.values do
-			local name = value.name
+		for index, value in stat.generics.values do
 			local node_id = store_node(ctx, value)
-			local ty_id = id.node_id.to_ty_id(node_id)
-			local generic = ty.generic(name.value, index)
+			local ty_id = node_id :: TyId<ty.Generic>
 
-			ctx.hir.tys[ty_id] = generic
-			args[index] = ty_id :: TyId<ty.Generic>
-			values[name.value] = ty_id :: TyId<ty.Generic>
+			local name = value.name.value
+			local generic = ty.generic(name, index)
+
+			args[index] = ty_id
+			ctx.hir.tys[ty_id :: TyId] = generic
 		end
-
-		generics = {
-			args = args,
-			values = values,
-		}
 	end
 
 	--> lower expression
 	local node_id = store_node(ctx, stat)
-	local ty_id = expression(ctx, stat.value, node_id, generics)
 
 	return {
+		id = node_id :: DeclId,
 		kind = "type",
 		name = stat.name.value,
-		scope = scope,
-		attributes = attributes.type(stat.attributes),
+		scope = ctx.scope,
+		attributes = attributes.from_nodes(stat.attributes),
 
-		ty = ty_id,
+		ty_id = node_id :: TyId,
 		generics = args,
 	}
 end
 
-local function stat_scope(ctx: Context, stat: ast.StatScope)
-	local name = stat.name.value
-	local scope_id = id.node_id.to_scope_id(stat.id)
-
-	--> set inner scope
-	local parent = ctx.symbols
-	local previous = inner_scope(ctx, scope_id, name)
-
-	local scope_symbols = symbols.child(parent, name)
-	if scope_symbols == nil then
-		panic(`Scope "{name}" doesn't have symbols`)
-		return
-	end
-
-	ctx.symbols = scope_symbols
-
-	--> traverse scope stats
-	block(ctx, stat.body)
-
-	--> return previous scope
-	ctx.scope = previous
-	ctx.symbols = parent
-end
-
 local function stat_event(ctx: Context, stat: ast.StatEvent): hir.Event
 	local name = stat.name.value
-	local from = assert_identifier_one_of(ctx, stat.from, { "Client", "Server", "Both" }).value
-	local call =
-		assert_identifier_one_of(ctx, stat.call, { "ManySync", "SingleSync", "ManyAsync", "SingleAsync" }).value
-	local poll = if stat.poll then stat.poll.value else false
-	local data = if stat.data then expr_pack(ctx, stat.data) else nil
-	local reliability = assert_identifier_one_of(ctx, stat.type, { "Reliable", "Unreliable" }).value
+	local from =
+		assert_identifier_one_of(ctx, stat.from, { "Client", "Server", "Both" }).value :: index<hir.Event, "from">
+	local call = assert_identifier_one_of(
+		ctx,
+		stat.call,
+		{ "ManySync", "SingleSync", "ManyAsync", "SingleAsync", "Polling" }
+	).value :: index<hir.Event, "call">
+	local reliability =
+		assert_identifier_one_of(ctx, stat.type, { "Reliable", "Unreliable" }).value :: index<hir.Event, "type">
 
 	return {
+		id = stat.id :: DeclId,
 		kind = "event",
 		scope = ctx.scope,
-		attributes = attributes.shared(stat.attributes),
+		attributes = attributes.from_nodes(stat.attributes),
 
 		name = name,
-		from = from :: any,
-		type = reliability :: any,
-		call = call :: any,
-		poll = poll,
-		data = data,
+		from = from,
+		type = reliability,
+		call = call,
 	}
 end
 
 local function stat_function(ctx: Context, stat: ast.StatFunction): hir.Function
 	local name = stat.name.value
-	local yield = assert_identifier_one_of(ctx, stat.yield, { "Coroutine", "Promise", "Future" }).value
-	local data = if stat.data then expr_pack(ctx, stat.data) else nil
-	local ret = if stat.ret then expr_pack(ctx, stat.ret) else nil
+	local yield =
+		assert_identifier_one_of(ctx, stat.yield, { "Coroutine", "Promise", "Future" }).value :: index<hir.Function, "yield">
 
 	return {
+		id = stat.id :: DeclId,
 		kind = "function",
 		scope = ctx.scope,
-		attributes = attributes.shared(stat.attributes),
+		attributes = attributes.from_nodes(stat.attributes),
 
 		name = name,
-		yield = yield :: any,
-		data = data,
-		ret = ret,
+		yield = yield,
 	}
 end
 
-function statement(ctx: Context, stat: ast.Statement): DeclId?
-	--> assign node_id
-	local node_id = store_node(ctx, stat)
+type Collection = {
+	read types: { hir.Type },
+	read events: { hir.Event },
+	read functs: { hir.Function },
+}
 
-	--> process node
-	local decl: Decl?
-	if stat.kind == "type" then
-		decl = stat_type(ctx, stat)
-	elseif stat.kind == "scope" then
-		stat_scope(ctx, stat)
-	elseif stat.kind == "event" then
-		decl = stat_event(ctx, stat)
-	elseif stat.kind == "function" then
-		decl = stat_function(ctx, stat)
-	end
+local function traverse_block(ctx: Context, block: ast.Block, prev_collection: Collection?): Collection
+	local ctx_hir = ctx.hir
+	local collection: Collection = prev_collection or {
+		types = {},
+		events = {},
+		functs = {},
+	}
 
-	if decl == nil then
-		return nil
-	end
-
-	local decl_id = id.node_id.to_decl_id(node_id)
-	ctx.hir.decls[decl_id] = decl
-
-	return decl_id
-end
-
-function block(ctx: Context, block: ast.Block)
 	for _, stat in block.statements do
-		statement(ctx, stat)
+		local node_id = store_node(ctx, stat)
+		local decl_id = node_id :: DeclId
+
+		if stat.kind == "type" then
+			local decl = stat_type(ctx, stat)
+			ctx_hir.types[decl_id] = decl
+			table.insert(collection.types, decl)
+		elseif stat.kind == "event" then
+			local decl = stat_event(ctx, stat)
+			ctx_hir.events[decl_id] = decl
+			table.insert(collection.events, decl)
+		elseif stat.kind == "function" then
+			local decl = stat_function(ctx, stat)
+			ctx_hir.functs[decl_id] = decl
+			table.insert(collection.functs, decl)
+		elseif stat.kind == "scope" then
+			local body = stat.body
+			local name = stat.name.value
+			local scope_id = stat.id :: ScopeId
+
+			local prev_id = ctx.scope
+			local symbols = symbols.child(ctx.symbols, name)
+			if symbols == nil then
+				panic(`expected previous scope to have symbols`)
+			end
+
+			local prev_scope = ctx_hir.scopes[prev_id]
+			if prev_scope ~= nil then
+				name = `{prev_scope.name}_{name}`
+			end
+
+			ctx.scope = scope_id
+			ctx_hir.scopes[scope_id] = {
+				name = name,
+				symbols = assert(symbols),
+			}
+
+			traverse_block(ctx, body, collection)
+
+			ctx.scope = prev_id
+		end
+	end
+
+	return collection
+end
+
+local function switch_scope(ctx: Context, scope_id: ScopeId)
+	if scope_id ~= ctx.scope then
+		ctx.scope = scope_id
+		ctx.symbols = ctx.hir.scopes[scope_id].symbols
 	end
 end
 
-local function substitute_placeholders(ctx: Context): never?
-	--[[
-        Phases:
-        1: Get the AST node of the placeholder ty
-        2: Get the declaration which the placeholder is of
-        3: Get the ty and generics of the declaration
-        4: Check whether the ty is self-recursive, report if it is, otherwise continue
-        5: If the ty has generics, validate the amount of generics passed to it, report if they are too many/few, otherwise create a new `generic type` ty
-        6: Replace the placeholder in the tys map with the declaration ty or created `generic type` ty
-    --]]
+local function build_tys(ctx: Context, collection: Collection)
+	local hirr = ctx.hir
 
-	local tys = ctx.hir.tys
-	for ty_id, placeholder in tys do
-		local file_id = id.file(ty_id)
-		if file_id ~= ctx.file_id then
-			continue
-		end
+	for _, decl_type in collection.types do
+		local decl_id = decl_type.id
+		local node_id = decl_id :: NodeId
+		local stat_node = hir.node_from_id(hirr, node_id) :: ast.StatType
 
-		if placeholder.kind ~= "placeholder" then
-			continue
-		end
-
-		local path = placeholder.path
-		local args = placeholder.args
-
-		-- Phase 1:
-		local node = hir.node_from_id(ctx.hir, id.ty_id.to_node_id(ty_id))
-		local expr_node: ast.ExprReference
-
-		if node.kind == "reference" then
-			expr_node = node
-		elseif node.kind == "type" then
-			expr_node = node.value :: any
-		end
-
-		local expr_generics = expr_node.generics
-
-		-- Phase 2:
-		local decl_node: ast.StatType = symbols.search(ctx.symbols, path) :: any
-		local decl_node_id = decl_node.id
-		local decl_id = id.node_id.to_decl_id(decl_node_id)
-		local decl: hir.Type = hir.decl_from_id(ctx.hir, decl_id) :: any
-
-		-- Phase 3:
-		local decl_ty = hir.ty_from_id(ctx.hir, decl.ty)
-		local decl_generics = decl.generics
-
-		-- Phase: 4
-		if decl_ty == placeholder then
-			return report.self_recursive_type(decl_node)
-		elseif decl_ty.kind == "optional" and decl_ty.of == ty_id then
-			return report.self_recursive_type(decl_node)
-		end
-
-		-- Phase: 5
+		local generics: Generics?
+		local decl_generics = decl_type.generics
 		if decl_generics then
-			local n_decl_generics = #decl_generics
-			if args == nil then
-				return report.few_none_generics(expr_node.path, n_decl_generics)
+			local values: index<Generics, "values"> = {}
+			for _, ty_id in decl_generics do
+				local generic = hir.ty_from_id(hirr, ty_id)
+				values[generic.name] = ty_id
 			end
 
-			if expr_generics == nil then
-				return panic("placeholder has args but origin node doesn't")
-			end
-
-			local n_args = #args
-			if n_args < n_decl_generics then
-				return report.few_generics(expr_generics, n_decl_generics)
-			elseif n_args > n_decl_generics then
-				return report.extra_generics(expr_generics, n_decl_generics)
-			end
-
-			decl_ty = hir.follow(ctx.hir, decl_ty)
-			decl_ty = ty.generic_type(decl_ty, args)
+			generics = {
+				args = decl_generics,
+				values = values,
+			}
 		end
 
-		-- Phase: 6
-		tys[ty_id] = decl_ty
+		switch_scope(ctx, decl_type.scope)
+		expression(ctx, stat_node.value, node_id, generics)
 	end
 
-	return nil
+	for _, decl_event in collection.events do
+		local node = hir.node_from_id(hirr, decl_event.id :: NodeId) :: ast.StatEvent
+		if node.data == nil then
+			continue
+		end
+
+		switch_scope(ctx, decl_event.scope)
+		decl_event.data = expr_pack(ctx, node.data)
+	end
+
+	for _, decl_funct in collection.functs do
+		local node = hir.node_from_id(hirr, decl_funct.id :: NodeId) :: ast.StatFunction
+		if node.data ~= nil then
+			switch_scope(ctx, decl_funct.scope)
+			decl_funct.data = expr_pack(ctx, node.data)
+		end
+
+		if node.ret ~= nil then
+			switch_scope(ctx, decl_funct.scope)
+			decl_funct.ret = expr_pack(ctx, node.ret)
+		end
+	end
 end
 
-local function struct_ast(new_hir: Hir, file_id: number, ast: Ast)
-	local ast_context: Context = {
-		hir = new_hir,
+local function traverse_ast(hirr: Hir, file_id: number, ast: Ast)
+	local context: Context = {
+		hir = hirr,
 		symbols = ast.symbols,
 		file_id = file_id,
-
-		scope = id.node_id.to_scope_id(ast.body.id),
-		generics = nil :: any,
+		scope = ast.body.id :: ScopeId,
 	}
 
-	--> traverse the ast
-	block(ast_context, ast.body)
-
-	-- substitute placeholders with their final values
-	substitute_placeholders(ast_context)
+	local collection = traverse_block(context, ast.body)
+	build_tys(context, collection)
 end
 
 --[=[
@@ -805,20 +729,24 @@ end
     @param `files` - A map of `file_id` to an `AST`. A `file_id` of **0** must always correspond to the **entry file**.
 ]=]
 local function from_files(files: types.FilesMap): Hir
-	local new_hir: Hir = {
+	local hirr: Hir = {
 		tys = {},
-		decls = {},
 		nodes = {},
+
+		types = {},
+		events = {},
+		functs = {},
 		scopes = {},
+
 		options = {},
 	}
 
 	-- traverse file asts
 	for file_id, file_ast in files do
-		struct_ast(new_hir, file_id, file_ast)
+		traverse_ast(hirr, file_id, file_ast)
 	end
 
-	return new_hir
+	return hirr
 end
 
 return table.freeze({

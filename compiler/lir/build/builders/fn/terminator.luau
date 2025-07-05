@@ -10,6 +10,7 @@ type TermCall = lir.TermCall
 type TermReturn = lir.TermReturn
 
 type Loop = lir.Loop
+type LValue = lir.LValue<any>
 type RValue = lir.RValue<any>
 type Condition = lir.Condition<boolean>
 type BasicBlock = lir.BasicBlock
@@ -49,12 +50,13 @@ local function term_loop(loop: Loop, destination: BasicBlock): TermLoop
 	}
 end
 
-local function term_call(fn: lir.SetId, args: { RValue }, destination: BasicBlock): TermCall
+local function term_call(fn: lir.FnId, args: { RValue }, rets: { LValue }, destination: BasicBlock): TermCall
 	return {
 		type = "terminator",
 		kind = "call",
 		fn = fn,
 		args = args,
+		rets = rets,
 		destination = destination,
 	}
 end

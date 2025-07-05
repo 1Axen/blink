@@ -13,7 +13,7 @@ type Register<T> = lir.RegisterId<T>
 
 type Builder = fn.Builder
 type Context = context.Context
-type Attributes = attributes.TypeAttributes
+type Attributes = attributes.Attributes
 
 export type ReadProps = {
 	ctx: Context,

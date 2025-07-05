@@ -23,7 +23,7 @@ local function path_to_string(path: ast.Path): string
 	return table.concat(path_to_segments(path), ".")
 end
 
-local function report_expect(node: { span: span.Span }, expected: string, got: string): never
+local function report_expect(node: ast.Node, expected: string, got: string): never
 	return diagnostics.report
 		.create("Error")
 		.with_code(codes.type_checking.InvalidType)
@@ -38,7 +38,7 @@ local function report_expect(node: { span: span.Span }, expected: string, got: s
 		.error()
 end
 
-local function report_expect_one_of(node: { span: span.Span }, expected: { string }, got: string): never
+local function report_expect_one_of(node: ast.Node, expected: { string }, got: string): never
 	local fmted_expected = `"{table.concat(expected, '", "')}"`
 	return diagnostics.report
 		.create("Error")
@@ -131,22 +131,28 @@ local function report_unrepresentable_range(node: ast.Range, bounds: range.Range
 		.error()
 end
 
-local function report_self_recursive_type(node: ast.StatType): never
+local function report_cyclical_type(declared_at: ast.StatType, used_at: ast.Node): never
 	return diagnostics.report
 		.create("Error")
 		.with_code(codes.type_checking.SelfRecursiveType)
 		.with_message("Self-recursive type cannot be resolved")
 		.with_label(
 			diagnostics.label
-				.create(node.span)
+				.create(declared_at.span)
+				.with_color(diagnostics.style.color.blue)
+				.with_message("Declared here")
+		)
+		.with_label(
+			diagnostics.label
+				.create(used_at.span)
 				.with_color(diagnostics.style.color.red)
-				.with_message("Remove self-recursion")
+				.with_message("Self-recursion here")
 		)
 		.finish()
 		.error()
 end
 
-local function report_optional_value(expr: ast.Expression): never
+local function report_optional_value(expr: ast.Node): never
 	return diagnostics.report
 		.create("Error")
 		.with_code(codes.type_checking.OptionalInMap)
@@ -162,7 +168,7 @@ local function report_optional_value(expr: ast.Expression): never
 		.error()
 end
 
-local function report_optional_indexer(expr: ast.Expression): never
+local function report_optional_indexer(expr: ast.Node): never
 	return diagnostics.report
 		.create("Error")
 		.with_code(codes.type_checking.OptionalInMap)
@@ -178,7 +184,7 @@ local function report_optional_indexer(expr: ast.Expression): never
 		.error()
 end
 
-local function report_invalid_intersection(expr: ast.Expression, got: TyKind, left: TyKind, right: TyKind): never
+local function report_invalid_intersection(expr: ast.Node, got: TyKind, left: TyKind, right: TyKind): never
 	return diagnostics.report
 		.create("Error")
 		.with_code(codes.type_checking.InvalidType)
@@ -254,7 +260,7 @@ local function report_extra_attribute_parameters(node: ast.Attribute, maximum: n
 		.error()
 end
 
-local function report_cannot_represent_vector_axis(expr: ast.Expression): never
+local function report_cannot_represent_vector_axis(expr: ast.Node): never
 	return diagnostics.report
 		.create("Error")
 		.with_code(codes.type_checking.InvalidGenericParameter)
@@ -281,10 +287,10 @@ return table.freeze({
 	optional_value = report_optional_value,
 	optional_indexer = report_optional_indexer,
 
-	invalid_union = report_invalid_intersection,
+	invalid_intersection = report_invalid_intersection,
 	unknown_reference = report_unknown_reference,
 	unrepresentable_range = report_unrepresentable_range,
-	self_recursive_type = report_self_recursive_type,
+	self_recursive_type = report_cyclical_type,
 
 	cannot_represent_vector_axis = report_cannot_represent_vector_axis,
 

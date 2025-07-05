@@ -10,11 +10,12 @@ local terminator = require("@self/terminator")
 local context = require("@lir/build/context")
 
 local loop = require("@builders/loop")
+local projection = require("@builders/projection")
 
 type Ty = ty.Ty
 
 type Fn = lir.Fn
-type FnId = lir.SetId
+type FnId = lir.FnId
 
 type Return = lir.Return
 type Argument = lir.Argument
@@ -71,12 +72,6 @@ local function register<T>(builder: Builder): Register<T>
 	}
 end
 
-local function next_index(builder: Builder): number
-	local index = builder.index
-	builder.index += 1
-	return index
-end
-
 local function store<T, R>(self: Builder, value: RValue<T>, into: LValue<R>?): Register<T>
 	local register = (into or register(self))
 	local assign = statement.assign(register, value)
@@ -109,27 +104,14 @@ local function call_lib(self: Builder, projection: lir.ProjCall<nil>)
 	table.insert(self.block.statements, call)
 end
 
-local function call_fn(self: Builder, ctx: Context, fn_id: FnId, args: { RValue }, rets: number): { LValue }
-	-- local call = projection.call(base, args)
-
-	-- local current = self.block
-	-- local destination = block.create(current.scope, current.terminator)
-	-- current.terminator = terminator.call(fn_id, args, destination)
-
-	-- self.block = destination
-	-- table.insert(self.blocks, destination)
-
-	error("unimplemented")
-end
-
 local function remark(self: Builder, text: string)
 	table.insert(self.block.statements, statement.remark(text))
 end
 
 local function branch(self: Builder, cond: Condition, body: Body, chained: boolean)
 	local current = self.block
-	local truthy_block = basic_block.create(next_index(self), current.scope + 1)
-	local falsey_block = basic_block.create(next_index(self), current.scope, current.terminator)
+	local truthy_block = basic_block.create(current.scope + 1)
+	local falsey_block = basic_block.create(current.scope, current.terminator)
 
 	current.terminator = terminator.ifbr(cond, truthy_block, falsey_block, chained)
 	truthy_block.terminator = terminator.goto(falsey_block)
@@ -169,8 +151,8 @@ end
 
 local function for_numeric(self: Builder, iterations: RValue<number>, body: NumericLoopBody)
 	local prev_block = self.block
-	local loop_block = basic_block.create(next_index(self), prev_block.scope + 1)
-	local after_block = basic_block.create(next_index(self), prev_block.scope, prev_block.terminator)
+	local loop_block = basic_block.create(prev_block.scope + 1)
+	local after_block = basic_block.create(prev_block.scope, prev_block.terminator)
 
 	loop_block.terminator = terminator.goto(after_block)
 
@@ -189,8 +171,8 @@ end
 
 local function for_generic(self: Builder, target: index<lir.LoopGeneric, "target">, body: GenericLoopBody)
 	local prev_block = self.block
-	local loop_block = basic_block.create(next_index(self), prev_block.scope + 1)
-	local after_block = basic_block.create(next_index(self), prev_block.scope, prev_block.terminator)
+	local loop_block = basic_block.create(prev_block.scope + 1)
+	local after_block = basic_block.create(prev_block.scope, prev_block.terminator)
 
 	loop_block.terminator = terminator.goto(after_block)
 
@@ -208,8 +190,18 @@ local function for_generic(self: Builder, target: index<lir.LoopGeneric, "target
 	table.insert(self.blocks, after_block)
 end
 
+local function call_fn(self: Builder, fn_id: FnId, args: { RValue }, rets: { LValue })
+	local prev_block = self.block
+	local next_block = basic_block.create(prev_block.scope, prev_block.terminator)
+
+	prev_block.terminator = terminator.call(fn_id, args, rets, next_block)
+
+	self.block = next_block
+	table.insert(self.blocks, next_block)
+end
+
 export type Builder = {
-	index: number,
+	ctx: Context,
 	block: BasicBlock,
 	blocks: { BasicBlock },
 	registers: { number },
@@ -218,7 +210,7 @@ export type Builder = {
 	reserve: typeof(reserve),
 	store_mult: typeof(store_mult),
 
-	--call_fn: typeof(call_fn),
+	call_fn: typeof(call_fn),
 	call_lib: typeof(call_lib),
 
 	remark: typeof(remark),
@@ -235,7 +227,7 @@ export type Builder = {
 	argument: (self: Builder, index: number) -> lir.ArgumentId<any>,
 }
 
-local function create(name: string, args: { Argument }, rets: { Return }, body: Body): Fn
+local function create(ctx: Context, name: string, args: { Argument }, rets: { Return }, body: Body): Fn
 	local function argument_id(self: Builder, index: number): lir.ArgumentId<any>
 		if index > #args then
 			return panic(`Attempted to get argument id #{index}, but fn only has {#args} arguments`)
@@ -252,9 +244,9 @@ local function create(name: string, args: { Argument }, rets: { Return }, body: 
 		}
 	end
 
-	local entry = basic_block.create(1)
+	local entry = basic_block.create()
 	local builder: Builder = {
-		index = 2,
+		ctx = ctx,
 		block = entry,
 		blocks = { entry },
 		registers = table.clone(REGISTERS_TEMPLATE),
@@ -287,8 +279,8 @@ local function create(name: string, args: { Argument }, rets: { Return }, body: 
 	--> return fn
 	return {
 		type = "fn",
+		id = 0,
 		name = name,
-
 		rets = rets,
 		args = args,
 		blocks = builder.blocks,

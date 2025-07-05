@@ -4,27 +4,23 @@
 
 local ast = require("@ast/types")
 local hir = require("@hir/types")
-local id = require("@compiler/id")
 local ty = require("@ty/types")
 
-local report = require("./report")
+local report = require("@hir/report")
 
 type Ty = ty.Ty
 type Hir = hir.Hir
 type Node = ast.Node
-
 type TyId<T = Ty> = ty.TyId<T>
-type NodeId<T = Node> = ast.NodeId<T>
-
 type TyKind = ty.TyKind
+type NodeId = ast.NodeId
 
 local follow = hir.follow
 local ty_from_id = hir.ty_from_id
 local node_from_id = hir.node_from_id
 
 local function node_from_ty_id(hir: Hir, ty_id: TyId): Node
-	local node_id = id.ty_id.to_node_id(ty_id)
-	return node_from_id(hir, node_id)
+	return node_from_id(hir, ty_id :: NodeId)
 end
 
 local function ty_id_to_ty_kind(hir: Hir, ty_id: TyId): TyKind
@@ -35,8 +31,7 @@ local function assert_ty_kind<T>(hir: Hir, ty_id: TyId<T>, kind: TyKind)
 	local ty_kind = ty_id_to_ty_kind(hir, ty_id)
 	if ty_kind ~= kind then
 		local node = node_from_ty_id(hir, ty_id)
-		--TODO: Remove cast when Luau solver bug is fixed
-		report.expect(node :: any, kind, ty_kind)
+		report.expect(node, kind, ty_kind)
 	end
 end
 
@@ -51,8 +46,7 @@ local function assert_vector_axis_ty<T>(hir: Hir, ty_id: TyId<T>)
 
 	if (format == "f" and size > 32) or (format ~= "f" and size > 24) then
 		local node = node_from_ty_id(hir, ty_id)
-		--TODO: Remove cast when Luau solver bug is fixed
-		report.cannot_represent_vector_axis(node :: any)
+		report.cannot_represent_vector_axis(node)
 	end
 end
 
@@ -60,26 +54,21 @@ local function assert_ty_kinds<T>(hir: Hir, ty_id: TyId<T>, kinds: { TyKind })
 	local ty_kind = ty_id_to_ty_kind(hir, ty_id)
 	if table.find(kinds, ty_kind) == nil then
 		local node = node_from_ty_id(hir, ty_id)
-		--TODO: Remove cast when Luau solver bug is fixed
-		report.expect_one_of(node :: any, kinds :: { string }, ty_kind)
+		report.expect_one_of(node, kinds :: { string }, ty_kind)
 	end
 end
 
 local function check_map(hir: Hir, ty: ty.Map)
 	local index = ty_from_id(hir, ty.index)
 	if index.kind == "optional" then
-		local node_id = id.ty_id.to_node_id(ty.index)
-		local node = node_from_id(hir, node_id)
-		--TODO: Remove cast (Luau bug)
-		report.optional_indexer(node :: any)
+		local node = node_from_ty_id(hir, ty.index)
+		report.optional_indexer(node)
 	end
 
 	local value = ty_from_id(hir, ty.value)
 	if value.kind == "optional" then
-		local node_id = id.ty_id.to_node_id(ty.value)
-		local node = node_from_id(hir, node_id)
-		--TODO: Remove cast (Luau bug)
-		report.optional_value(node :: any)
+		local node = node_from_ty_id(hir, ty.value)
+		report.optional_value(node)
 	end
 end
 
@@ -92,16 +81,12 @@ local function check_intersection(hir: Hir, ty: ty.Intersection)
 
 	if left.kind ~= "struct" and left.kind ~= "intersection" then
 		--TODO: Remove cast (Luau bug)
-		local node_id = id.ty_id.to_node_id(ty.left :: ty.TyId)
-		local node = node_from_id(hir, node_id)
-		--TODO: Remove cast (Luau bug)
-		report.invalid_union(node :: any, left.kind, left.kind, right.kind)
+		local node = node_from_ty_id(hir, ty.left :: TyId)
+		report.invalid_intersection(node, left.kind, left.kind, right.kind)
 	elseif right.kind ~= "struct" and right.kind ~= "intersection" then
 		--TODO: Remove cast (Luau bug)
-		local node_id = id.ty_id.to_node_id(ty.right :: ty.TyId)
-		local node = node_from_id(hir, node_id)
-		--TODO: Remove cast (Luau bug)
-		report.invalid_union(node :: any, right.kind, left.kind, right.kind)
+		local node = node_from_ty_id(hir, ty.right :: TyId)
+		report.invalid_intersection(node, right.kind, left.kind, right.kind)
 	end
 end
 
@@ -161,12 +146,4 @@ local function check_ty(hir: Hir, ty: ty.Ty)
 	end
 end
 
-local function type_check_hir(hir: Hir)
-	for ty_id, ty in hir.tys do
-		check_ty(hir, ty)
-	end
-end
-
-return table.freeze({
-	hir = type_check_hir,
-})
+return check_ty

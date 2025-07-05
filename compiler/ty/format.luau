@@ -190,12 +190,16 @@ local function fmt_unknown(ty: ty.Unknown): string
 end
 
 local function fmt_placeholder(ty: ty.Placeholder): string
+	return style.color.black("placeholder")
+end
+
+local function fmt_reference(ty: ty.Reference): string
 	local args: { string } = {}
-	for _, arg in ty.args or {} do
+	for _, arg in ty.args do
 		table.insert(args, fmt_ty_id(arg))
 	end
 
-	return `{style.color.black(`@{table.concat(ty.path, ".")}`)}<{table.concat(args, ", ")}>`
+	return `&({fmt_ty_id(ty.to)}, {table.concat(args, ", ")})`
 end
 
 local function fmt_generic_type(ty: ty.GenericType): string
@@ -204,7 +208,7 @@ local function fmt_generic_type(ty: ty.GenericType): string
 		table.insert(args, fmt_ty_id(arg))
 	end
 
-	return `{PRIMITIVE_STYLE("GT")} ({style.modifer.dim(fmt_ty(ty.def))}, \{{table.concat(args, ", ")}\})`
+	return `{PRIMITIVE_STYLE("GT")} ({style.modifer.dim(fmt_ty_id(ty.body))}, \{{table.concat(args, ", ")}\})`
 end
 
 function fmt_ty(ty: ty.Ty): string
@@ -262,6 +266,8 @@ function fmt_ty(ty: ty.Ty): string
 		return fmt_brick_color(ty)
 	elseif ty.kind == "unknown" then
 		return fmt_unknown(ty)
+	elseif ty.kind == "reference" then
+		return fmt_reference(ty)
 	else
 		return strong_exhaustive_match(ty.kind)
 	end

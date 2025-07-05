@@ -1,6 +1,7 @@
 --!strict
 --!native
 --!optimize 2
+local panic = require("@util/panic")
 
 export type Symbols<T> = {
 	name: string,
@@ -8,6 +9,12 @@ export type Symbols<T> = {
 	values: { [string]: T },
 	children: { [string]: Symbols<T> },
 }
+
+local function assert_not_duplicate(symbols: Symbols<any>, name: string)
+	if symbols.children[name] ~= nil then
+		panic(`Symbols object "{symbols.name}" already has a child "{name}"`)
+	end
+end
 
 local function create<T>(name: string): Symbols<T>
 	return {
@@ -23,7 +30,7 @@ local function child<T>(self: Symbols<T>, name: string): Symbols<T>?
 end
 
 local function inner<T>(self: Symbols<T>, name: string): Symbols<T>
-	assert(self.children[name] == nil, `Symbols object "{self.name}" already has a child "{name}"`)
+	assert_not_duplicate(self, name)
 
 	local symbols = create(name)
 	self.children[name] = symbols
@@ -32,9 +39,16 @@ local function inner<T>(self: Symbols<T>, name: string): Symbols<T>
 	return symbols
 end
 
+--- Sets `child`'s parent to `self`, and adds `child` as a child of `self`
+local function adopt<T>(self: Symbols<T>, child: Symbols<T>, name: string)
+	assert_not_duplicate(self, name)
+	child.parent = self
+	self.children[name] = child
+end
+
 --- Adds the `target` symbols object to `self`'s children without setting `target`'s parent.
 local function reference<T>(self: Symbols<T>, target: Symbols<T>, name: string)
-	assert(self.children[name] == nil, `Symbols object "{self.name}" already has a child "{name}"`)
+	assert_not_duplicate(self, name)
 	self.children[name] = target
 end
 
@@ -70,6 +84,7 @@ end
 
 return table.freeze({
 	create = create,
+	adopt = adopt,
 	inner = inner,
 	set = set,
 	child = child,

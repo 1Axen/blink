@@ -20,7 +20,7 @@ type WriteProps = types.WriteProps
 
 type Builder = fn.Builder
 type Context = context.Context
-type Attributes = attributes.TypeAttributes
+type Attributes = attributes.Attributes
 
 type UnitEnum = ty.UnitEnum
 type LValue<T> = lir.LValue<T>

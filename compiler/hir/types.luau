@@ -12,45 +12,52 @@ type Ty = ty.Ty
 type Node = ast.Node
 
 type TyId<T = Ty> = ty.TyId<T>
-type NodeId<T = Node> = ast.NodeId<T>
+type NodeId = ast.NodeId
 
 export type Parameter = {
 	name: string?,
-	value: TyId,
+	ty_id: TyId,
 }
 
 export type Type = {
+	read id: DeclId,
 	read kind: "type",
 	read name: string,
 	read scope: ScopeId,
-	read attributes: attributes.TypeAttributes,
+	read attributes: attributes.Attributes,
 
-	read ty: TyId,
+	read ty_id: TyId,
 	read generics: { TyId<ty.Generic> }?,
 }
 
 export type Event = {
+	read id: DeclId,
 	read kind: "event",
 	read name: string,
 	read scope: ScopeId,
-	read attributes: attributes.SharedAttributes,
+	read attributes: attributes.Attributes,
 
 	read from: "Server" | "Client" | "Both",
 	read type: "Reliable" | "Unreliable",
-	read call: "ManySync" | "SingleSync" | "ManyAsync" | "SingleAsync",
-	read poll: boolean,
-	read data: { Parameter }?,
+	read call: "ManySync" | "SingleSync" | "ManyAsync" | "SingleAsync" | "Polling",
+	data: { Parameter }?,
 }
 
 export type Function = {
+	read id: DeclId,
 	read kind: "function",
 	read name: string,
 	read scope: ScopeId,
-	read attributes: attributes.SharedAttributes,
+	read attributes: attributes.Attributes,
 
 	read yield: "Coroutine" | "Promise" | "Future",
-	read data: { Parameter }?,
-	read ret: { Parameter }?,
+	data: { Parameter }?,
+	ret: { Parameter }?,
+}
+
+export type Scope = {
+	read name: string,
+	read symbols: ast.Symbols,
 }
 
 --stylua: ignore
@@ -59,14 +66,18 @@ export type Decl =
     | Event
     | Function
 
-export type DeclId<T = Decl> = { __kind: "decl", __T: T }
-export type ScopeId = { __kind: "scope" }
+export type DeclId = { write __kind: "decl" }
+export type ScopeId = { write __kind: "scope" }
 
 export type Hir = {
 	read tys: { [TyId]: Ty },
-	read decls: { [DeclId]: Decl },
 	read nodes: { [NodeId]: Node },
-	read scopes: { [ScopeId]: string },
+
+	read types: { [DeclId]: Type },
+	read events: { [DeclId]: Event },
+	read functs: { [DeclId]: Function },
+	read scopes: { [ScopeId]: Scope },
+
 	--- [file_id]: FileOptions
 	read options: { [number]: options.FileOptions },
 }
@@ -80,8 +91,8 @@ local function ty_from_id<T>(hir: Hir, ty_id: TyId<T>): T
 	return ty
 end
 
-local function decl_from_id<T>(hir: Hir, decl_id: DeclId<T>): T
-	local decl = hir.decls[decl_id]
+local function type_from_id(hir: Hir, decl_id: DeclId): Type
+	local decl = hir.types[decl_id]
 	if decl == nil then
 		return panic("Expected decl_id to point to a decl")
 	end
@@ -89,7 +100,7 @@ local function decl_from_id<T>(hir: Hir, decl_id: DeclId<T>): T
 	return decl
 end
 
-local function node_from_id<T>(hir: Hir, node_id: NodeId<T>): T
+local function node_from_id(hir: Hir, node_id: NodeId): Node
 	local node = hir.nodes[node_id]
 	if node == nil then
 		return panic("Expected node_id to point to a node")
@@ -103,7 +114,8 @@ local function follow(hir: Hir, ty: ty.Ty): ty.Ty
 		local of = ty_from_id(hir, ty.of)
 		return follow(hir, of)
 	elseif ty.kind == "generic_type" then
-		return follow(hir, ty.def)
+		local body = ty_from_id(hir, ty.body)
+		return follow(hir, body)
 	end
 
 	-- SOLVER BUG
@@ -112,7 +124,8 @@ end
 
 return table.freeze({
 	follow = follow,
+
 	ty_from_id = ty_from_id,
-	decl_from_id = decl_from_id,
+	decl_from_id = type_from_id,
 	node_from_id = node_from_id,
 })

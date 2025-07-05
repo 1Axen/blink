@@ -6,16 +6,14 @@ local ast = require("@ast/types")
 local hir = require("@hir/types")
 
 local build = require("@self/build")
-local flatten_tys = require("@self/flatten_tys")
-local type_check = require("@self/type_check")
+local constraints = require("@self/constraints")
 
 export type Hir = hir.Hir
 
 local function hir_from_files(files: { [number]: ast.Ast }): Hir
-	local hir = build.from_files(files)
-	type_check.hir(hir)
-	flatten_tys.hir(hir)
-	return hir
+	local hirr = build.from_files(files)
+	constraints.apply(hirr)
+	return hirr
 end
 
 return table.freeze({

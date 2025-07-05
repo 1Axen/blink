@@ -20,7 +20,7 @@ type WriteProps = types.WriteProps
 
 type Builder = fn.Builder
 type Context = context.Context
-type Attributes = attributes.TypeAttributes
+type Attributes = attributes.Attributes
 
 type LValue<T> = lir.LValue<T>
 type RValue<T> = lir.RValue<T>
@@ -95,7 +95,7 @@ local function build_write(props: WriteProps, block: Builder, cframe_ty: ty.CFra
 	ty_vector.write(props, block, pos_ty, position)
 
 	-- rotation
-	local axis_angle = block:store_mult(library.CFrame.to_axis_angle(value) :: any, 3) :: { Register<number> }
+	local axis_angle = block:store_mult(library.CFrame.to_axis_angle(value) :: any, 2) :: { Register<number> }
 	local rotation = block:store(binary.mul_vec(axis_angle[1] :: any, axis_angle[2]))
 	ty_vector.write(props, block, rot_ty, rotation)
 end

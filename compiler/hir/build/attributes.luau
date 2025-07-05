@@ -2,13 +2,11 @@ local ast = require("@ast/types")
 local attributes = require("@config/attributes")
 local compilation = require("@config/compilation")
 local report = require("@hir/report")
-local weak_exhaustive_match = require("../../../libs/weak_exhaustive_match")
+local weak_exhaustive_match = require("@util/weak_exhaustive_match")
 
-type Attribute = ast.Attribute
-type Attributes = { Attribute }
-
-type TypeAttributes = attributes.TypeAttributes
-type SharedAttributes = attributes.SharedAttributes
+type Attributes = attributes.Attributes
+type AttributeNode = ast.Attribute
+type AttributeNodes = { AttributeNode }
 
 local TARGETS: { [string]: true } = compilation.TARGETS :: any
 local PROFILES: { [string]: true } = compilation.PROFILES :: any
@@ -27,7 +25,7 @@ local function set_to_array<T>(set: { [T]: true }, sort_comp: ((a: T, b: T) -> b
 	return array
 end
 
-local function expect_n_parameters(attribute: Attribute, expected: number)
+local function expect_n_parameters(attribute: AttributeNode, expected: number)
 	local got = #attribute.args
 	if got > expected then
 		report.extra_attribute_parameters(attribute, expected)
@@ -36,7 +34,7 @@ local function expect_n_parameters(attribute: Attribute, expected: number)
 	end
 end
 
-local function attr_target(attribute: Attribute): compilation.Target
+local function attr_target(attribute: AttributeNode): compilation.Target
 	expect_n_parameters(attribute, 1)
 
 	local target = attribute.args[1]
@@ -54,7 +52,7 @@ local function attr_target(attribute: Attribute): compilation.Target
 	return value :: compilation.Target
 end
 
-local function attr_profile(attribute: Attribute): compilation.Profile
+local function attr_profile(attribute: AttributeNode): compilation.Profile
 	-- validate count
 	expect_n_parameters(attribute, 1)
 
@@ -75,53 +73,29 @@ local function attr_profile(attribute: Attribute): compilation.Profile
 end
 
 --- Used for attributes that don't take parameters
-local function attr_any(attribute: Attribute): true
+local function attr_any(attribute: AttributeNode): true
 	-- validate count
 	expect_n_parameters(attribute, 0)
 
 	return true
 end
 
-local function shared_attributes(ast_attributes: Attributes): SharedAttributes
+local function from_nodes(nodes: AttributeNodes): Attributes
 	-- Fix `cannot add indexer` error
-	local attributes: SharedAttributes & { [any]: any } = {}
+	local attributes: Attributes & { [any]: any } = {}
 
-	for _, attribute in ast_attributes do
-		local name = attribute.name.value :: keyof<SharedAttributes>
+	for _, attribute in nodes do
+		local name = attribute.name.value :: keyof<Attributes>
 		local value: any?
 
 		if name == "profile" then
 			value = attr_profile(attribute)
 		elseif name == "target" then
 			value = attr_target(attribute)
-		else
-			weak_exhaustive_match(name)
-			return report.invalid_attribute(attribute)
-		end
-
-		attributes[name] = value
-	end
-
-	return attributes
-end
-
-local function type_attributes(ast_attributes: Attributes): TypeAttributes
-	local attributes = {} :: TypeAttributes
-
-	for _, attribute in ast_attributes do
-		local name: keyof<TypeAttributes> = attribute.name.value :: any
-		local value: any?
-
-		if name == "stub" then
+		elseif name == "bitpack" then
 			value = attr_any(attribute)
 		elseif name == "stable" then
 			value = attr_any(attribute)
-		elseif name == "bitpack" then
-			value = attr_any(attribute)
-		elseif name == "profile" then
-			value = attr_profile(attribute)
-		elseif name == "target" then
-			value = attr_target(attribute)
 		else
 			weak_exhaustive_match(name)
 			return report.invalid_attribute(attribute)
@@ -134,6 +108,5 @@ local function type_attributes(ast_attributes: Attributes): TypeAttributes
 end
 
 return table.freeze({
-	type = type_attributes,
-	shared = shared_attributes,
+	from_nodes = from_nodes,
 })

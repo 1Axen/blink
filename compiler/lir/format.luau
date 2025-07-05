@@ -22,7 +22,7 @@ local fmt_lvalue: (fmt_builder: StringBuilder, lvalue: lir.LValue<any>) -> ()
 local fmt_rvalue: (fmt_builder: StringBuilder, rvalue: lir.RValue<any>) -> ()
 
 local function block_ident(block: lir.BasicBlock): string
-	return colorful.color.yellow(`bb{block.index}`)
+	return colorful.color.yellow("bb")
 end
 
 local function separated<T>(
@@ -91,14 +91,14 @@ local function fmt_structure(fmt_builder: StringBuilder, structure: lir.Structur
 		end
 		string_builder.append(fmt_builder, "}")
 	elseif structure.kind == "struct" then
-		string_builder.append(fmt_builder, "(")
+		string_builder.append(fmt_builder, "{")
 		for key, value in structure.values do
 			string_builder.append(fmt_builder, key.value)
 			string_builder.append(fmt_builder, " = ")
 			fmt_rvalue(fmt_builder, value)
 			string_builder.append(fmt_builder, ",")
 		end
-		string_builder.append(fmt_builder, ")")
+		string_builder.append(fmt_builder, "}")
 	end
 end
 
@@ -307,7 +307,12 @@ local function fmt_terminator(fmt_builder: StringBuilder, terminator: lir.Termin
 		string_builder.append(fmt_builder, " -> ")
 		string_builder.append(fmt_builder, `[{block_ident(terminator.truthy)}, {block_ident(terminator.falsey)}]`)
 	elseif terminator.kind == "call" then
-		string_builder.append(fmt_builder, `${terminator.fn}(`)
+		separated(fmt_builder, fmt_lvalue, terminator.rets, ",")
+		if #terminator.rets > 0 then
+			string_builder.append(fmt_builder, " = ")
+		end
+
+		string_builder.append(fmt_builder, `&{terminator.fn}(`)
 		separated(fmt_builder, fmt_rvalue, terminator.args, ",")
 		string_builder.append(fmt_builder, `) -> {block_ident(terminator.destination)}`)
 	elseif terminator.kind == "loop" then
@@ -357,7 +362,7 @@ end
 local function fmt_fn(fmt_builder: StringBuilder, fn: lir.Fn)
 	string_builder.append_indent(fmt_builder)
 
-	string_builder.append(fmt_builder, `fn {BLOCK_STYLE(fn.name)} (`)
+	string_builder.append(fmt_builder, `fn {BLOCK_STYLE(fn.name)} (${fn.id}) (`)
 	separated(fmt_builder, fmt_argument, fn.args, ",")
 
 	string_builder.append(fmt_builder, ") -> (")
@@ -377,9 +382,8 @@ end
 local function fmt_lir(lir: lir.Lir): string
 	local fmt_builder = string_builder.create({})
 
-	for _, set in lir.sets do
-		fmt_fn(fmt_builder, set.read)
-		fmt_fn(fmt_builder, set.write)
+	for _, fn in lir.fns do
+		fmt_fn(fmt_builder, fn)
 		string_builder.append_line(fmt_builder, "")
 	end
 

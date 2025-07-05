@@ -31,7 +31,7 @@ type Range = range.Range
 
 type Builder = fn.Builder
 type Context = context.Context
-type Attributes = attributes.TypeAttributes
+type Attributes = attributes.Attributes
 
 type LValue<T = any> = lir.LValue<T>
 type RValue<T = any> = lir.RValue<T>
@@ -157,7 +157,7 @@ local function write_length(
 	end
 
 	local format, offset = to_relative_range(ty)
-	numeral.write(props, block, format, binary.sub(value, offset))
+	numeral.write(props, block, format, binary.sub(len_register, offset))
 
 	return len_register
 end

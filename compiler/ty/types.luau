@@ -282,7 +282,12 @@ local function create_array(of: TyId, size: Range?): Array
 	}
 end
 
-export type IntersectionSide = | Struct | Optional | GenericType | Intersection
+--stylua: ignore
+export type IntersectionSide = 
+	| Struct 
+	| Optional 
+	| GenericType 
+	| Intersection
 
 export type Intersection = {
 	read kind: "intersection",
@@ -376,31 +381,35 @@ local function create_generic(name: string, index: number): Generic
 	}
 end
 
---- Represents a variable which hasn't been typed yet
+--- Represents a type which hasn't been initialized yet
 export type Placeholder = {
 	read kind: "placeholder",
-	read path: { string },
+}
+
+local function create_placeholder(): Placeholder
+	return { kind = "placeholder" }
+end
+
+export type Reference = {
+	read kind: "reference",
+	read to: TyId,
 	read args: { TyId }?,
 }
 
-local function create_placeholder(path: { string }, args: { TyId }?): Placeholder
-	return {
-		kind = "placeholder",
-		path = path,
-		args = args,
-	}
+local function create_reference(to: TyId, args: { TyId }?): Reference
+	return { kind = "reference", to = to, args = args }
 end
 
 export type GenericType = {
 	read kind: "generic_type",
-	read def: Ty,
+	read body: TyId,
 	read args: { TyId },
 }
 
-local function create_generic_type(def: Ty, args: { TyId }): GenericType
+local function create_generic_type(body: TyId, args: { TyId }): GenericType
 	return {
 		kind = "generic_type",
-		def = def,
+		body = body,
 		args = args,
 	}
 end
@@ -436,11 +445,24 @@ export type Ty =
     | Unknown
 
     | Generic
+	| Reference
     | GenericType
     | Placeholder
 
-export type TyId<T = Ty> = { __kind: "ty", __T: T }
+export type TyId<T = Ty> = number | { write __kind: "ty", write __T: T }
 export type TyKind = index<Ty, "kind">
+
+local RECURSIVE_TYS: { [ty.TyKind]: boolean } = {
+	map = true,
+	array = true,
+	struct = true,
+	tagged_enum = true,
+	generic_type = true,
+}
+
+local function is_possibly_recursive(ty: Ty): boolean
+	return RECURSIVE_TYS[ty.kind] or false
+end
 
 return table.freeze({
 	numeral = create_numeral,
@@ -473,9 +495,12 @@ return table.freeze({
 	unknown = create_unknown,
 
 	generic = create_generic,
+	reference = create_reference,
 	generic_type = create_generic_type,
 	placeholder = create_placeholder,
 
 	field = create_field,
 	variant = create_variant,
+
+	is_possibly_recursive = is_possibly_recursive,
 })

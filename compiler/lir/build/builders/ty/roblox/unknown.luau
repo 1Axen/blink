@@ -23,7 +23,7 @@ type WriteProps = types.WriteProps
 
 type Builder = fn.Builder
 type Context = context.Context
-type Attributes = attributes.TypeAttributes
+type Attributes = attributes.Attributes
 
 type Unknown = ty.Unknown
 

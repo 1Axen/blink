@@ -15,14 +15,14 @@ export type PathSegment = {
 }
 
 export type Path = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "path",
 	read segments: { PathSegment },
 }
 
 export type Range = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "range",
 	read min: ExprNumber?,
@@ -30,7 +30,7 @@ export type Range = {
 }
 
 export type Identifier = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "identifier",
 	read value: string,
@@ -38,7 +38,7 @@ export type Identifier = {
 
 --- `A = u8` in `<A = u8, B, C>`
 export type GenericDef = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "generic",
 	read name: Identifier,
@@ -59,21 +59,21 @@ export type GenericsArgs = {
 }
 
 export type ExprNumber = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "number",
 	read value: number,
 }
 
 export type ExprString = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "string",
 	read value: string,
 }
 
 export type ExprBoolean = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "boolean",
 	read value: boolean,
@@ -83,7 +83,7 @@ export type ExprLiteral = | ExprNumber | ExprString | ExprBoolean
 
 --- [name]: value
 export type ExprField = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "field",
 	read name: Identifier | ExprString,
@@ -92,7 +92,7 @@ export type ExprField = {
 
 --- set { text }
 export type ExprSet = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "set",
 	read values: { Identifier | ExprString },
@@ -100,7 +100,7 @@ export type ExprSet = {
 
 --- map {[index]: value}
 export type ExprMap = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "map",
 	read index: Expression,
@@ -109,7 +109,7 @@ export type ExprMap = {
 }
 
 export type ExprPackParameter = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "parameter",
 	read name: Identifier?,
@@ -119,22 +119,29 @@ export type ExprPackParameter = {
 --- (expr...)
 --- or single expr (syntax sugar)
 export type ExprPack = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "pack",
 	read values: { ExprPackParameter },
 }
 
+--stylua: ignore
+export type ExprUnitEnumVariant = 
+	| Identifier
+	| ExprString
+	| ExprNumber
+--stylua: ignore end
+
 --- enum { text }
 export type ExprEnum = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "enum",
-	variants: { Identifier | ExprString },
+	variants: { ExprUnitEnumVariant },
 }
 
 export type ExprArray = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "array",
 	read value: Expression,
@@ -142,7 +149,7 @@ export type ExprArray = {
 }
 
 export type ExprOptional = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "optional",
 	read value: Expression,
@@ -150,7 +157,7 @@ export type ExprOptional = {
 
 --- struct { field }
 export type ExprStruct = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "struct",
 	read fields: { ExprField },
@@ -158,7 +165,7 @@ export type ExprStruct = {
 
 --- struct & struct
 export type ExprUnion = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "union",
 	read left: Expression,
@@ -167,7 +174,7 @@ export type ExprUnion = {
 
 --- [name] { ... }
 export type ExprTaggedEnumVariant = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "variant",
 	read key: | Identifier | ExprNumber | ExprString | ExprBoolean,
@@ -176,7 +183,7 @@ export type ExprTaggedEnumVariant = {
 
 --- enum [tag] { text }
 export type ExprTaggedEnum = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "tagged_enum",
 	read tag: ExprString,
@@ -185,7 +192,7 @@ export type ExprTaggedEnum = {
 
 --- [path]<[generics]>
 export type ExprReference = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "reference",
 	read path: Path,
@@ -217,7 +224,7 @@ export type Attribute = {
 
 --- type [name]<Generics> = [value]
 export type StatType = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "type",
 	read name: Identifier,
@@ -227,7 +234,7 @@ export type StatType = {
 }
 
 export type StatEvent = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "event",
 	read attributes: { Attribute },
@@ -240,7 +247,7 @@ export type StatEvent = {
 }
 
 export type StatScope = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "scope",
 	read name: Identifier,
@@ -250,7 +257,7 @@ export type StatScope = {
 --- import [path]
 --- import [path] as [as]
 export type StatImport = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "import",
 	read name: Identifier?,
@@ -259,7 +266,7 @@ export type StatImport = {
 
 --- option [name] = [value]
 export type StatOption = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "option",
 	read name: Identifier,
@@ -267,7 +274,7 @@ export type StatOption = {
 }
 
 export type StatFunction = {
-	id: NodeId,
+	read id: NodeId,
 	read span: vector,
 	read kind: "function",
 	read attributes: { Attribute },
@@ -296,7 +303,7 @@ export type Node =
     | Identifier
     | GenericDef
 
-export type NodeId<T = Node> = { __kind: "node", __T: T }
+export type NodeId = number | { write __kind: "node" }
 
 export type Block = {
 	read id: NodeId,

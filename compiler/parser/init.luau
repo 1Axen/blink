@@ -34,7 +34,6 @@ type Context = {
 	attributes: { ast.Attribute },
 }
 
-local DUMMY_ID = id.DUMMY_ID
 local ROOT_SYMBOLS = ""
 
 local block: (Context, boolean) -> ast.Block
@@ -44,7 +43,7 @@ local expression: (Context) -> ast.Expression
 local function next_node_id(ctx: Context): ast.NodeId
 	local index = ctx.node_index
 	ctx.node_index += 1
-	return id.node_id.create(ctx.file.id, index)
+	return id.create(ctx.file.id, index)
 end
 
 local function peek(ctx: Context): Token
@@ -227,11 +226,12 @@ local function structure(
 end
 
 local function generic(ctx: Context): ast.GenericDef
+	local node_id = next_node_id(ctx)
 	local name = identifier(ctx)
 	local node_span = name.span
 
 	return {
-		id = next_node_id(ctx),
+		id = node_id,
 		kind = "generic",
 		span = node_span,
 		name = name,
@@ -254,14 +254,14 @@ local function expr_boolean(ctx: Context): ast.ExprBoolean
 	local token = consume(ctx)
 	if token.kind == "true" then
 		return {
-			id = DUMMY_ID,
+			id = next_node_id(ctx),
 			span = token.span,
 			kind = "boolean",
 			value = true,
 		}
 	elseif token.kind == "false" then
 		return {
-			id = DUMMY_ID,
+			id = next_node_id(ctx),
 			span = token.span,
 			kind = "boolean",
 			value = false,
@@ -281,7 +281,7 @@ local function expr_number(ctx: Context): ast.ExprNumber
 	end
 
 	return {
-		id = DUMMY_ID,
+		id = next_node_id(ctx),
 		span = number.span,
 		kind = "number",
 		value = literal,
@@ -291,7 +291,7 @@ end
 local function expr_string(ctx: Context): ast.ExprString
 	local str = expect(ctx, "string")
 	return {
-		id = DUMMY_ID,
+		id = next_node_id(ctx),
 		span = str.span,
 		kind = "string",
 		value = span.value(str.span),
@@ -328,9 +328,10 @@ local function expr_literal(ctx: Context): ast.ExprLiteral
 end
 
 local function expr_range(ctx: Context): ast.Range
+	local node_id = next_node_id(ctx)
+
 	local min: ast.ExprNumber
 	local max: ast.ExprNumber
-
 	local first = peek(ctx)
 	if first.kind == "number" then
 		min = expr_number(ctx)
@@ -351,7 +352,7 @@ local function expr_range(ctx: Context): ast.Range
 	end
 
 	return {
-		id = next_node_id(ctx),
+		id = node_id,
 		span = span.merge((min or max).span, (max or min).span),
 		kind = "range",
 		max = max,
@@ -360,6 +361,7 @@ local function expr_range(ctx: Context): ast.Range
 end
 
 local function expr_reference(ctx: Context): ast.ExprReference
+	local node_id = next_node_id(ctx)
 	local path = path(ctx)
 	local node_span = path.span
 
@@ -389,7 +391,7 @@ local function expr_reference(ctx: Context): ast.ExprReference
 	end
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = node_span,
 		kind = "reference",
 		path = path,
@@ -399,12 +401,13 @@ local function expr_reference(ctx: Context): ast.ExprReference
 end
 
 local function expr_field(ctx: Context): ast.ExprField
+	local node_id = next_node_id(ctx)
 	local name = string_or_identifier(ctx)
 	expect(ctx, ":")
 	local value = expression(ctx)
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = span.merge(name.span, value.span),
 		kind = "field",
 		name = name,
@@ -413,6 +416,7 @@ local function expr_field(ctx: Context): ast.ExprField
 end
 
 local function expr_struct(ctx: Context): ast.ExprStruct
+	local node_id = next_node_id(ctx)
 	local keyword = expect(ctx, "struct")
 	expect(ctx, "{")
 
@@ -420,7 +424,7 @@ local function expr_struct(ctx: Context): ast.ExprStruct
 	local close = expect(ctx, "}")
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = span.merge(keyword.span, close.span),
 		kind = "struct",
 		fields = fields,
@@ -429,12 +433,13 @@ end
 
 --- Bit annoying but needed for tagged enum variants
 local function expr_inlined_struct(ctx: Context): ast.ExprStruct
+	local node_id = next_node_id(ctx)
 	local open = expect(ctx, "{")
 	local fields = seperated(ctx, expr_field, ",", "}")
 	local close = expect(ctx, "}")
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = span.merge(open.span, close.span),
 		kind = "struct",
 		fields = fields,
@@ -442,6 +447,7 @@ local function expr_inlined_struct(ctx: Context): ast.ExprStruct
 end
 
 local function expr_map(ctx: Context): ast.ExprMap
+	local node_id = next_node_id(ctx)
 	local keyword = expect(ctx, "map")
 
 	--> open "{" delim
@@ -467,7 +473,7 @@ local function expr_map(ctx: Context): ast.ExprMap
 	end
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = span.merge(keyword.span, value.span),
 		kind = "map",
 		index = index,
@@ -477,6 +483,7 @@ local function expr_map(ctx: Context): ast.ExprMap
 end
 
 local function expr_set(ctx: Context): ast.ExprSet
+	local node_id = next_node_id(ctx)
 	local keyword = expect(ctx, "set")
 	expect(ctx, "{")
 
@@ -484,14 +491,31 @@ local function expr_set(ctx: Context): ast.ExprSet
 	local close = expect(ctx, "}")
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = span.merge(keyword.span, close.span),
 		kind = "set",
 		values = values,
 	}
 end
 
+local function expr_enum_unit_variant(ctx: Context): ast.ExprUnitEnumVariant
+	local node_id = next_node_id(ctx)
+
+	local value
+	local token = peek(ctx)
+
+	if token.kind == "string" then
+		return expr_string(ctx)
+	elseif token.kind == "number" then
+		return expr_number(ctx)
+	end
+
+	return identifier(ctx)
+end
+
 local function expr_enum_tag_variant(ctx: Context): ast.ExprTaggedEnumVariant
+	local node_id = next_node_id(ctx)
+
 	--> variant name
 	local key
 	local token = peek(ctx)
@@ -510,7 +534,7 @@ local function expr_enum_tag_variant(ctx: Context): ast.ExprTaggedEnumVariant
 	local value = expr_inlined_struct(ctx)
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = span.merge(key.span, value.span),
 		kind = "variant",
 
@@ -525,11 +549,12 @@ local function expr_enum(ctx: Context): ast.ExprEnum | ast.ExprTaggedEnum
 	local function unit(): ast.ExprEnum
 		expect(ctx, "{")
 
-		local variants = seperated(ctx, string_or_identifier, ",", "}")
+		local node_id = next_node_id(ctx)
+		local variants = seperated(ctx, expr_enum_unit_variant, ",", "}")
 		local close = expect(ctx, "}")
 
 		return {
-			id = DUMMY_ID,
+			id = node_id,
 			span = span.merge(keyword.span, close.span),
 			kind = "enum",
 			variants = variants,
@@ -537,6 +562,7 @@ local function expr_enum(ctx: Context): ast.ExprEnum | ast.ExprTaggedEnum
 	end
 
 	local function tagged(): ast.ExprTaggedEnum
+		local node_id = next_node_id(ctx)
 		local tag = expr_string(ctx)
 		expect(ctx, "{")
 
@@ -544,7 +570,7 @@ local function expr_enum(ctx: Context): ast.ExprEnum | ast.ExprTaggedEnum
 		local close = expect(ctx, "}")
 
 		return {
-			id = DUMMY_ID,
+			id = node_id,
 			span = span.merge(keyword.span, close.span),
 			kind = "tagged_enum",
 
@@ -562,6 +588,8 @@ local function expr_enum(ctx: Context): ast.ExprEnum | ast.ExprTaggedEnum
 end
 
 local function expr_pack_parameter(ctx: Context): ast.ExprPackParameter
+	local node_id = next_node_id(ctx)
+
 	local name: ast.Identifier?
 	local following = lookahead(ctx)
 	if following.kind == ":" then
@@ -573,7 +601,7 @@ local function expr_pack_parameter(ctx: Context): ast.ExprPackParameter
 	local full_span = name and span.merge(name.span, value.span) or value.span
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = full_span,
 		kind = "parameter",
 
@@ -583,12 +611,14 @@ local function expr_pack_parameter(ctx: Context): ast.ExprPackParameter
 end
 
 local function expr_pack(ctx: Context): ast.ExprPack
+	local node_id = next_node_id(ctx)
+
 	local open = expect(ctx, "(")
 	local values = seperated(ctx, expr_pack_parameter, ",", ")")
 	local close = expect(ctx, ")")
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = span.merge(open.span, close.span),
 		kind = "pack",
 
@@ -597,9 +627,12 @@ local function expr_pack(ctx: Context): ast.ExprPack
 end
 
 local function expr_pack_single(ctx: Context): ast.ExprPack
+	local pack_node_id = next_node_id(ctx)
+
+	local node_id = next_node_id(ctx)
 	local value = expression(ctx)
 	local parameter: ast.ExprPackParameter = {
-		id = DUMMY_ID,
+		id = node_id,
 		span = value.span,
 		kind = "parameter",
 		name = nil,
@@ -607,7 +640,7 @@ local function expr_pack_single(ctx: Context): ast.ExprPack
 	}
 
 	return {
-		id = DUMMY_ID,
+		id = pack_node_id,
 		span = value.span,
 		kind = "pack",
 		values = { parameter },
@@ -615,6 +648,7 @@ local function expr_pack_single(ctx: Context): ast.ExprPack
 end
 
 local function expr_array(ctx: Context, of: ast.Expression): ast.ExprArray
+	local node_id = next_node_id(ctx)
 	local range: ast.Range
 
 	local open = expect(ctx, "[")
@@ -629,7 +663,7 @@ local function expr_array(ctx: Context, of: ast.Expression): ast.ExprArray
 	node_span = span.merge(node_span, close.span)
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = node_span,
 		kind = "array",
 
@@ -638,9 +672,14 @@ local function expr_array(ctx: Context, of: ast.Expression): ast.ExprArray
 	}
 end
 
-local function expr_union(ctx: Context, left: ast.Expression, right: ast.Expression): ast.ExprUnion
+local function expr_union(ctx: Context, left: ast.Expression): ast.ExprUnion
+	expect(ctx, "&")
+
+	local node_id = next_node_id(ctx)
+	local right = expression(ctx)
+
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = span.merge(left.span, right.span),
 		kind = "union",
 		left = left,
@@ -651,7 +690,7 @@ end
 local function expr_optional(ctx: Context, of: ast.Expression): ast.ExprOptional
 	local optional = expect(ctx, "?")
 	return {
-		id = DUMMY_ID,
+		id = next_node_id(ctx),
 		span = span.merge(of.span, optional.span),
 		kind = "optional",
 		value = of,
@@ -691,6 +730,7 @@ local function attribute(ctx: Context): ast.Attribute
 end
 
 local function stat_type(ctx: Context): ast.StatType
+	local node_id = next_node_id(ctx)
 	local attributes = consume_attributes(ctx)
 
 	local keyword = expect(ctx, "type")
@@ -702,7 +742,7 @@ local function stat_type(ctx: Context): ast.StatType
 	local value = expression(ctx)
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = span.merge(keyword.span, value.span),
 		kind = "type",
 		attributes = attributes,
@@ -716,6 +756,7 @@ local function stat_type(ctx: Context): ast.StatType
 end
 
 local function stat_event(ctx: Context): ast.StatEvent
+	local node_id = next_node_id(ctx)
 	local attributes = consume_attributes(ctx)
 
 	local keyword = expect(ctx, "event")
@@ -733,7 +774,7 @@ local function stat_event(ctx: Context): ast.StatEvent
 	local close = expect(ctx, "}")
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = span.merge(keyword.span, close.span),
 		kind = "event",
 		attributes = attributes,
@@ -748,6 +789,7 @@ local function stat_event(ctx: Context): ast.StatEvent
 end
 
 local function stat_scope(ctx: Context): ast.StatScope
+	local node_id = next_node_id(ctx)
 	local keyword = expect(ctx, "scope")
 	local name = identifier(ctx)
 
@@ -756,7 +798,7 @@ local function stat_scope(ctx: Context): ast.StatScope
 	local close = expect(ctx, "}")
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = span.merge(keyword.span, close.span),
 		kind = "scope",
 
@@ -766,6 +808,7 @@ local function stat_scope(ctx: Context): ast.StatScope
 end
 
 local function stat_option(ctx: Context): ast.StatOption
+	local node_id = next_node_id(ctx)
 	local keyword = expect(ctx, "option")
 	local name = identifier(ctx)
 
@@ -774,7 +817,7 @@ local function stat_option(ctx: Context): ast.StatOption
 	local stat_span = span.merge(keyword.span, value.span)
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = stat_span,
 		kind = "option",
 
@@ -784,6 +827,7 @@ local function stat_option(ctx: Context): ast.StatOption
 end
 
 local function stat_function(ctx: Context): ast.StatFunction
+	local node_id = next_node_id(ctx)
 	local attributes = consume_attributes(ctx)
 
 	local keyword = expect(ctx, "function")
@@ -799,7 +843,7 @@ local function stat_function(ctx: Context): ast.StatFunction
 	local close = expect(ctx, "}")
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = span.merge(keyword.span, close.span),
 		kind = "function",
 		attributes = attributes,
@@ -812,6 +856,7 @@ local function stat_function(ctx: Context): ast.StatFunction
 end
 
 local function stat_import(ctx: Context): ast.StatImport
+	local node_id = next_node_id(ctx)
 	local keyword = expect(ctx, "import")
 
 	local path = expr_string(ctx)
@@ -826,7 +871,7 @@ local function stat_import(ctx: Context): ast.StatImport
 	end
 
 	return {
-		id = DUMMY_ID,
+		id = node_id,
 		span = full_span,
 		kind = "import",
 		name = name,
@@ -840,17 +885,12 @@ local function try_wrap_in_optional(ctx: Context, expr: ast.Expression): ast.Exp
 		return expr
 	end
 
-	local node_id = next_node_id(ctx)
-	expr = expr_optional(ctx, expr)
-	expr.id = node_id
-
-	return expr
+	return expr_optional(ctx, expr)
 end
 
 function expression(ctx: Context): ast.Expression
 	local token = peek(ctx)
 	local expr: ast.Expression
-	local node_id = next_node_id(ctx)
 
 	if token.kind == "word" then
 		expr = expr_reference(ctx)
@@ -874,32 +914,16 @@ function expression(ctx: Context): ast.Expression
 		return report.expect_one_of(token, { "word", "string", "number", "true", "false" })
 	end
 
-	-- assign node id
-	expr.id = node_id
-
 	while peek_kind(ctx) == "[" do
-		--> array
-		local array_node_id = next_node_id(ctx)
 		expr = expr_array(ctx, expr)
-		expr.id = array_node_id
-
-		--> optional
 		expr = try_wrap_in_optional(ctx, expr)
 	end
 
-	--> optional
 	expr = try_wrap_in_optional(ctx, expr)
 
 	--> merge
-	if peek_kind(ctx) == "&" then
-		consume(ctx)
-
-		-- reserve node id
-		local union_node_id = next_node_id(ctx)
-
-		local right = expression(ctx)
-		expr = expr_union(ctx, expr, right)
-		expr.id = union_node_id
+	while peek_kind(ctx) == "&" do
+		expr = expr_union(ctx, expr)
 	end
 
 	return expr
@@ -908,7 +932,6 @@ end
 function statement(ctx: Context): ast.Statement
 	local stat: ast.Statement?
 	local token = peek(ctx)
-	local node_id = next_node_id(ctx)
 
 	if token.kind == "type" then
 		stat = stat_type(ctx)
@@ -928,19 +951,16 @@ function statement(ctx: Context): ast.Statement
 		return report.expect_one_of(token, { "type", "scope", "event", "struct", "function" })
 	end
 
-	--TODO: Remove
-	assert(stat, "luau type solver issue")
-
-	-- assign node id
-	stat.id = node_id
+	-- TODO: Remove assert
+	assert(stat)
 
 	-- validate attributes
 	if #ctx.attributes > 0 then
 		return report.invalid_attribute_placement(stat)
 	end
 
-	--TODO: Remove cast
-	return stat :: ast.Statement
+	-- TODO: Remove assert
+	return assert(stat)
 end
 
 function block(ctx: Context, is_scope: boolean?): ast.Block
