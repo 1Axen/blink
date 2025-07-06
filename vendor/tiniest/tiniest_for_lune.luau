@@ -5,11 +5,13 @@ local tiniest_expect = require("./tiniest_expect")
 local tiniest_time = require("./tiniest_time")
 local tiniest_snapshot = require("./tiniest_snapshot")
 local tiniest_pretty = require("./tiniest_pretty")
+local tiniest_github_actions = require("./tiniest_github_actions")
 local tiniest = require("./tiniest")
 
 local require: any = require
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
+local process = require("@lune/process")
 
 export type Options = {
 	snapshot_path: string?,
@@ -21,7 +23,8 @@ export type Options = {
 		disable_output: nil | {
 			after_run: boolean?
 		}
-	}
+	},
+	github_actions: tiniest_github_actions.Options?
 }
 
 local tiniest_for_lune = {}
@@ -103,8 +106,17 @@ function tiniest_for_lune.configure(
 	})
 	self.format_run = tiniest_pretty.format_run
 
+	local plugins = {tiniest_time :: any, tiniest_snapshot, tiniest_pretty}
+	if process.env.GITHUB_ACTIONS then
+		local tiniest_github_actions = tiniest_github_actions.configure({
+			disable_annotations = options.github_actions and options.github_actions.disable_annotations,
+		})
+
+		table.insert(plugins, tiniest_github_actions)
+	end
+
 	local tiniest = tiniest.configure({
-		plugins = { tiniest_time :: any, tiniest_snapshot, tiniest_pretty }
+		plugins = plugins
 	}) 
 	self.describe = tiniest.describe
 	self.test = tiniest.test

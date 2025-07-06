@@ -25,13 +25,16 @@ local function fail(
 		quoted[index] = tiniest_quote(param)
 	end
 	local param_list = table.concat(quoted, ",")
+	local source, line = debug.info(4, "sl")
 	error({
 		type = "tiniest.ErrorReport",
+		line = line,
+		source = source,
 		message = "Expectation not met" .. if message == nil then "" else `, because:\n{message}`,
 		trace = debug.traceback(nil, 4),
 		code = {
 			snippet = `expect({tiniest_quote(context.target)}).{context.test}({param_list})`,
-			line = debug.info(4, "l")
+			line = line
 		}
 	}, 0)
 end

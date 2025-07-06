@@ -79,23 +79,29 @@ function tiniest_snapshot.configure(
 			test_context.num_updated += 1
 			test_context.snapshots[snapshot_index] = fresh_snapshot
 		elseif snapshot_on_disk == nil then
+			local source, line = debug.info(2, "sl")
 			error({
 				type = "tiniest.ErrorReport",
+				line = line,
+				source = source,
 				message = "New snapshot() call needs to be saved.\nRun while saving snapshots to save it to disk.",
 				trace = debug.traceback(nil, 2),
 				code = {
 					snippet = `snapshot({fresh_snapshot})`,
-					line = debug.info(2, "l")
+					line = line
 				}
 			}, 0)
 		else
+			local source, line = debug.info(2, "sl")
 			error({
 				type = "tiniest.ErrorReport",
+				line = line,
+				source = source,
 				message = "Snapshot does not match",
 				trace = debug.traceback(nil, 2),
 				code = {
 					snippet = `snapshot({fresh_snapshot})\n\n-- snapshot on disk:\nsnapshot({snapshot_on_disk})`,
-					line = debug.info(2, "l")
+					line = line
 				}
 			}, 0)
 		end
