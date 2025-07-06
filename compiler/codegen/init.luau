@@ -469,11 +469,11 @@ local function from_lir(lirr: lir.Lir, target: compilation.Target): string
 
 	builder:append(BUFFER_TEMPLATE)
 
-	builder:append("-- upvalues start\n")
+	builder:append_line("-- upvalues start")
 	for upval_id, default in lirr.upvalues do
 		gen_upvalue(context, upval_id, default)
 	end
-	builder:append("-- upvalues end\n")
+	builder:append_line("-- upvalues end")
 
 	for _, fn in lirr.fns do
 		gen_fn(context, fn)
