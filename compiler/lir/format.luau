@@ -47,6 +47,8 @@ local function fmt_id(fmt_builder: StringBuilder, id: lir.Id<any>)
 		string_builder.append(fmt_builder, ID_STYLE("a"))
 	elseif id.kind == "register" then
 		string_builder.append(fmt_builder, ID_STYLE("$"))
+	elseif id.kind == "upvalue" then
+		string_builder.append(fmt_builder, ID_STYLE("u_"))
 	else
 		strong_exhaustive_match(id.kind)
 	end

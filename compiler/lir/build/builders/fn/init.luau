@@ -72,6 +72,16 @@ local function register<T>(builder: Builder): Register<T>
 	}
 end
 
+local function upvalue<T>(index: string): lir.UpvalueId<T>
+	return {
+		__phantom_type = nil :: any,
+
+		type = "id",
+		kind = "upvalue",
+		index = index,
+	}
+end
+
 local function store<T, R>(self: Builder, value: RValue<T>, into: LValue<R>?): Register<T>
 	local register = (into or register(self))
 	local assign = statement.assign(register, value)
@@ -200,6 +210,17 @@ local function call_fn(self: Builder, fn_id: FnId, args: { RValue }, rets: { LVa
 	table.insert(self.blocks, next_block)
 end
 
+local function add_upvalue<T>(self: Builder, upvalue_name: string, upvalue_default: RValue<T>)
+	local upval = upvalue(upvalue_name)
+	self.ctx.lir.upvalues[upval] = upvalue_default
+
+	return upval
+end
+
+local function ref_upvalue(self: Builder, name: string): lir.UpvalueId<any>
+	return upvalue(name)
+end
+
 export type Builder = {
 	ctx: Context,
 	block: BasicBlock,
@@ -223,6 +244,9 @@ export type Builder = {
 
 	for_numeric: typeof(for_numeric),
 	for_generic: typeof(for_generic),
+
+	add_upvalue: typeof(add_upvalue),
+	ref_upvalue: typeof(ref_upvalue),
 
 	argument: (self: Builder, index: number) -> lir.ArgumentId<any>,
 }
@@ -270,6 +294,9 @@ local function create(ctx: Context, name: string, args: { Argument }, rets: { Re
 		for_numeric = for_numeric,
 		for_generic = for_generic,
 
+		add_upvalue = add_upvalue,
+		ref_upvalue = ref_upvalue,
+
 		argument = argument_id,
 	}
 
@@ -291,4 +318,5 @@ return table.freeze({
 	create = create,
 	rreturn = rreturn,
 	argument = argument,
+	upvalue = upvalue,
 })

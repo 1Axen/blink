@@ -165,6 +165,8 @@ local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id
 			ctx = ctx,
 			generics = generics,
 			attributes = attributes,
+
+			ty_id = ty_id,
 		}
 
 		local value_register = read_ty(props, block, ty)
@@ -304,12 +306,13 @@ builders = {
 
 	struct = table.freeze({
 		read = function(props: ReadProps, block: Builder, struct: ty.Struct, into: LValue<any>?): Register<any>
-			local register: Register<any> = block:store(structure.struct({}))
+			local register: Register<any> = block:store(library.table.clone(block:ref_upvalue(tostring(props.ty_id))))
+
 			for _, field in struct.fields do
-				local name = field.name
+				local field_name = field.name
 				local value_register = read_ty_id(props, block, field.value)
 
-				local struct_index = projection.field(register, constant.from_value(name))
+				local struct_index = projection.field(register, constant.from_value(field_name))
 				block:store(value_register, struct_index)
 			end
 

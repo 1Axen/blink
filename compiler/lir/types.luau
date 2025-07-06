@@ -50,10 +50,20 @@ export type RegisterId<T> = {
 	index: number,
 }
 
+--- Index into the upvalue table
+export type UpvalueId<T> = {
+	write __phantom_type: T,
+
+	type: "id",
+	kind: "upvalue",
+	index: string,
+}
+
 --stylua: ignore
-export type Id<T> = 
+export type Id<T> =
     | ArgumentId<T>
     | RegisterId<T>
+    | UpvalueId<T>
 
 --- base(args...)
 export type ProjCall<T> = {
@@ -94,6 +104,15 @@ export type ProjNamecall<T> = {
 	base: LValue<T> | Constant<T>,
 	method: Constant<T>,
 	args: { RValue<T> },
+}
+
+export type ProjShapedTable<T> = {
+	write __phantom_type: T,
+
+	type: "projection",
+	kind: "shaped_table",
+	base: LValue<T>,
+	shape: { string },
 }
 
 --stylua: ignore
@@ -276,12 +295,14 @@ export type LValue<T> =
     | ProjIndex<T>
     | RegisterId<T>
     | ArgumentId<T>
+    | UpvalueId<T>
 
 --- right side of an assign statement
 --stylua: ignore
 export type RValue<T> =
 	| RegisterId<T>
 	| ArgumentId<T>
+	| UpvalueId<T>
 	| Structure<T>
 	| Global<T>
 	| Control<T>
@@ -454,6 +475,9 @@ export type Lir = {
 	types: { [hir.DeclId]: Type },
 	events: { [hir.DeclId]: Event },
 	functions: { [hir.DeclId]: Function },
+
+	-- mutable upvalues
+	upvalues: { [UpvalueId<any>]: RValue<any> },
 }
 
 local function fn_from_id(lir: Lir, fn_id: FnId): Fn
