@@ -106,15 +106,6 @@ export type ProjNamecall<T> = {
 	args: { RValue<T> },
 }
 
-export type ProjShapedTable<T> = {
-	write __phantom_type: T,
-
-	type: "projection",
-	kind: "shaped_table",
-	base: LValue<T>,
-	shape: { string },
-}
-
 --stylua: ignore
 export type Projection<T> =
     | ProjCall<T>
