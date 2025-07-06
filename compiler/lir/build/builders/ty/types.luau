@@ -21,6 +21,8 @@ export type ReadProps = {
 	-- This is an ugly hack for instances
 	is_optional: boolean?,
 	attributes: Attributes,
+
+	ty_id: TyId,
 }
 
 export type WriteProps = {
