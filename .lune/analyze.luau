@@ -20,5 +20,5 @@ for index, fflag in FFLAGS do
 end
 
 table.insert(options, "--ignore=vendor/**")
-table.insert(options, "./compiler/init.luau")
+table.insert(options, "./compiler")
 process.exec("luau-lsp", options, { stdio = "forward" })
