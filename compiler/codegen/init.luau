@@ -103,6 +103,8 @@ local function gen_id(ctx: Context, id: lir.Id<any>)
 		ctx.builder:append(`r{id.index}`)
 	elseif id.kind == "argument" then
 		ctx.builder:append(`a{id.index}`)
+	elseif id.kind == "upvalue" then
+		ctx.builder:append(`u_{id.index}`)
 	else
 		strong_exhaustive_match(id.kind)
 	end
@@ -417,6 +419,17 @@ function gen_block(ctx: Context, block: lir.BasicBlock)
 	gen_terminator(ctx, block.terminator)
 end
 
+local function gen_upvalue<T>(ctx: Context, upval: lir.UpvalueId<T>, default: lir.RValue<T>)
+	local name = upval.index
+
+	local builder = ctx.builder
+	builder:append("local ")
+	builder:append(`u_{name}`)
+	builder:append(" = ")
+	gen_rvalue(ctx, default)
+	builder:append("\n")
+end
+
 local function gen_fn(ctx: Context, fn: lir.Fn)
 	local builder = ctx.builder
 	table.clear(ctx.seen_registers)
@@ -455,6 +468,12 @@ local function from_lir(lirr: lir.Lir, target: compilation.Target): string
 	}
 
 	builder:append(BUFFER_TEMPLATE)
+
+	builder:append("-- upvalues start\n")
+	for upval_id, default in lirr.upvalues do
+		gen_upvalue(context, upval_id, default)
+	end
+	builder:append("-- upvalues end\n")
 
 	for _, fn in lirr.fns do
 		gen_fn(context, fn)
