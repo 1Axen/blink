@@ -10,7 +10,6 @@ local terminator = require("@self/terminator")
 local context = require("@lir/build/context")
 
 local loop = require("@builders/loop")
-local projection = require("@builders/projection")
 
 type Ty = ty.Ty
 
@@ -99,9 +98,9 @@ local function store_mult(self: Builder, value: RValue, count: number): { LValue
 	return registers
 end
 
-local function call_lib(self: Builder, projection: lir.ProjCall<nil>)
-	local call = statement.call(projection :: any)
-	table.insert(self.block.statements, call)
+local function call(self: Builder, call: index<lir.StatCall, "call">)
+	local stat = statement.call(call)
+	table.insert(self.block.statements, stat)
 end
 
 local function remark(self: Builder, text: string)
@@ -210,8 +209,8 @@ export type Builder = {
 	reserve: typeof(reserve),
 	store_mult: typeof(store_mult),
 
+	call: typeof(call),
 	call_fn: typeof(call_fn),
-	call_lib: typeof(call_lib),
 
 	remark: typeof(remark),
 
@@ -255,8 +254,8 @@ local function create(ctx: Context, name: string, args: { Argument }, rets: { Re
 		reserve = reserve,
 		store_mult = store_mult,
 
+		call = call,
 		call_fn = call_fn,
-		call_lib = call_lib,
 
 		remark = remark,
 

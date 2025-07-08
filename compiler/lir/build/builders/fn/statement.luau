@@ -11,7 +11,7 @@ type LValue = lir.LValue<any>
 type RValue = lir.RValue<any>
 type Register = lir.RegisterId<any>
 
-local function stat_call(call: lir.ProjCall<any>): Call
+local function stat_call(call: index<Call, "call">): Call
 	return {
 		type = "statement",
 		kind = "call",

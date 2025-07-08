@@ -31,7 +31,7 @@ local function validate(block: Builder, ty: Boolean, value: RValue<boolean>)
 	local equals = condition.not_equals(value, type)
 
 	block:if_branch(equals, function(block)
-		block:call_lib(library.error(`Expected a boolean`))
+		block:call(library.error(`Expected a boolean`))
 	end)
 end
 
@@ -58,7 +58,7 @@ local function build_write(props: WriteProps, block: Builder, boolean: ty.Boolea
 	local conversion = ternary(truthful, constant.from_value(1), constant.from_value(0))
 	local buffer_write = library.buffer.u8.write(allocate, conversion)
 
-	block:call_lib(buffer_write)
+	block:call(buffer_write)
 end
 
 return table.freeze({

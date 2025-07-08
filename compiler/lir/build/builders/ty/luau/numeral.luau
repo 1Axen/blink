@@ -103,10 +103,10 @@ end
 
 local function write_u24(block: Builder, value: RValue<number>)
 	local lower_offset = block:store(control.allocate(constant.from_value(1)))
-	block:call_lib(library.buffer.u8.write(lower_offset, value))
+	block:call(library.buffer.u8.write(lower_offset, value))
 
 	local upper_offset = block:store(control.allocate(constant.from_value(2)))
-	block:call_lib(library.buffer.u16.write(upper_offset, binary.idiv(value, BYTE)))
+	block:call(library.buffer.u16.write(upper_offset, binary.idiv(value, BYTE)))
 end
 
 local function write_i24(block: Builder, value: RValue<number>)
@@ -130,10 +130,10 @@ end
 
 local function write_u48(block: Builder, value: RValue<number>)
 	local lower_offset = block:store(control.allocate(constant.from_value(2)))
-	block:call_lib(library.buffer.u16.write(lower_offset, value))
+	block:call(library.buffer.u16.write(lower_offset, value))
 
 	local upper_offset = block:store(control.allocate(constant.from_value(4)))
-	block:call_lib(library.buffer.u32.write(upper_offset, binary.idiv(value, SHORT)))
+	block:call(library.buffer.u32.write(upper_offset, binary.idiv(value, SHORT)))
 end
 
 local function read_i48(block: Builder, into: LValue<any>?): Register<number>
@@ -166,11 +166,11 @@ local function validate(block: Builder, ty: ty.Numeral, value: RValue<number>)
 	local upper = condition.greater_than(value, constant.from_value(bounds.max))
 
 	block:if_branch(lower, function(block)
-		block:call_lib(library.error(`Expected number to be greater than or equal to {bounds.min}`))
+		block:call(library.error(`Expected number to be greater than or equal to {bounds.min}`))
 	end)
 
 	block:if_branch(upper, function(block)
-		block:call_lib(library.error(`Expected number to be less than or equal to {bounds.max}`))
+		block:call(library.error(`Expected number to be less than or equal to {bounds.max}`))
 	end)
 end
 
@@ -223,7 +223,7 @@ local function build_write(props: WriteProps, block: Builder, ty: ty.Numeral, va
 	local methods = methods_from_numeral(ty)
 
 	local cursor = block:store(control.allocate(bytes))
-	block:call_lib(methods.write(cursor, value))
+	block:call(methods.write(cursor, value))
 end
 
 return table.freeze({

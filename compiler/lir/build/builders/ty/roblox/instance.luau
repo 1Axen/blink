@@ -34,7 +34,7 @@ local DEFAULT_TYPE = constant.from_value("Instance")
 local function validate(ctx: Context, block: Builder, instance: Instance, value: RValue<Instance>)
 	local is_not_type = condition.not_equals(library.typeof(value :: any), DEFAULT_TYPE)
 	block:if_branch(is_not_type, function(block)
-		block:call_lib(library.error("Expected an Instance"))
+		block:call(library.error("Expected an Instance"))
 	end)
 
 	local class_ty_id = instance.class
@@ -49,7 +49,7 @@ local function validate(ctx: Context, block: Builder, instance: Instance, value:
 		condition.not_equals(library.Instance.is_a(value :: any, class_constant), constant.from_value(true))
 
 	block:if_branch(is_not_class, function(block)
-		block:call_lib(library.error(`Expected an Instance of class "{class_constant.value}"`))
+		block:call(library.error(`Expected an Instance of class "{class_constant.value}"`))
 	end)
 end
 
@@ -79,7 +79,7 @@ local function build_write(props: WriteProps, block: Builder, instance: Instance
 		validate(props.ctx, block, instance, value)
 	end
 
-	block:call_lib(library.table.insert(globals.outgoing.unknown, value))
+	block:call(library.table.insert(globals.outgoing.unknown, value))
 end
 
 return table.freeze({

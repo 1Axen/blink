@@ -35,7 +35,7 @@ end
 local function build_write(props: WriteProps, block: Builder, ty: String, value: RValue<string>): ()
 	local len = length.write(props, block, ty, unary.len(value :: any))
 	local cursor = block:store(control.allocate(len))
-	block:call_lib(library.buffer.string.write(cursor, len, value))
+	block:call(library.buffer.string.write(cursor, len, value))
 end
 
 return table.freeze({

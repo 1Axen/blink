@@ -80,7 +80,7 @@ local function validate(block: Builder, vec: ty.Vector, value: RValue<vector>)
 		local exact_length = constant.from_value(bounds.min)
 		local is_exact_length = condition.equals(magnitude, exact_length)
 		block:if_branch(is_exact_length, function(block)
-			block:call_lib(library.error(`Expected vector length to be exactly {bounds.min}`))
+			block:call(library.error(`Expected vector length to be exactly {bounds.min}`))
 		end)
 
 		return
@@ -90,11 +90,11 @@ local function validate(block: Builder, vec: ty.Vector, value: RValue<vector>)
 	local upper = condition.greater_than(magnitude, constant.from_value(bounds.max))
 
 	block:if_branch(lower, function(block)
-		block:call_lib(library.error(`Expected vector length to be greater than or equal to {bounds.min}`))
+		block:call(library.error(`Expected vector length to be greater than or equal to {bounds.min}`))
 	end)
 
 	block:if_branch(upper, function(block)
-		block:call_lib(library.error(`Expected vector length to be less than or equal to {bounds.max}`))
+		block:call(library.error(`Expected vector length to be less than or equal to {bounds.max}`))
 	end)
 end
 

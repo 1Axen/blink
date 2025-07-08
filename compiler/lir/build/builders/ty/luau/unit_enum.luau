@@ -38,7 +38,7 @@ local function build_read(props: ReadProps, block: Builder, enum: UnitEnum, into
 	local out_of_bounds = condition.greater_than_or(stored_index, constant.from_value(total))
 
 	block:if_branch(out_of_bounds, function(block)
-		block:call_lib(library.error(`Invalid enum variant`))
+		block:call(library.error(`Invalid enum variant`))
 	end)
 
 	for index, variant in enum.variants do
@@ -72,7 +72,7 @@ local function build_write(props: WriteProps, block: Builder, enum: UnitEnum, va
 	end
 
 	block:else_branch(function(block)
-		block:call_lib(library.error(`Invalid enum variant`))
+		block:call(library.error(`Invalid enum variant`))
 	end)
 end
 

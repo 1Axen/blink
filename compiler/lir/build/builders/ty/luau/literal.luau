@@ -29,7 +29,7 @@ local function validate(props: WriteProps, block: Builder, ty: Literal, value: R
 	local equals = condition.not_equals(value, constant :: any)
 
 	block:if_branch(equals, function(block)
-		block:call_lib(library.error(`Expected "{ty.value}"`))
+		block:call(library.error(`Expected "{ty.value}"`))
 	end)
 end
 

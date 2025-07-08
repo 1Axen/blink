@@ -31,7 +31,7 @@ local function build_read(props: ReadProps, block: Builder, buf: ty.Buffer, into
 	local register = block:store(library.buffer.create(len), into)
 	local buffer_copy = library.buffer.copy(register, constant.zero, globals.incoming.buffer, control.advance(len), len)
 
-	block:call_lib(buffer_copy)
+	block:call(buffer_copy)
 	return register
 end
 
@@ -40,7 +40,7 @@ local function build_write(props: WriteProps, block: Builder, buf: ty.Buffer, va
 	local cursor = block:store(control.allocate(len))
 	local buffer_copy = library.buffer.copy(globals.outgoing.buffer, cursor, value, constant.zero, len)
 
-	block:call_lib(buffer_copy)
+	block:call(buffer_copy)
 end
 
 return table.freeze({

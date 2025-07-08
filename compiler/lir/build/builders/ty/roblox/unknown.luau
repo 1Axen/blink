@@ -53,11 +53,11 @@ local function build_write(props: WriteProps, block: Builder, _: Unknown, value:
 	local cursor = block:store(control.allocate(constant.one))
 
 	block:if_branch(exists, function(block)
-		block:call_lib(library.table.insert(globals.outgoing.unknown, value))
+		block:call(library.table.insert(globals.outgoing.unknown, value))
 	end)
 
 	local as_number = ternary(exists, constant.one, constant.zero)
-	block:call_lib(library.buffer.u8.write(cursor, as_number))
+	block:call(library.buffer.u8.write(cursor, as_number))
 end
 
 return table.freeze({
