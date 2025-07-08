@@ -102,10 +102,10 @@ local function read_i24(block: Builder, into: LValue<any>?): Register<number>
 end
 
 local function write_u24(block: Builder, value: RValue<number>)
-	local lower_offset = block:store(control.allocate(constant.from_value(1)))
+	local lower_offset = block:allocate(constant.from_value(1))
 	block:call(library.buffer.u8.write(lower_offset, value))
 
-	local upper_offset = block:store(control.allocate(constant.from_value(2)))
+	local upper_offset = block:allocate(constant.from_value(2))
 	block:call(library.buffer.u16.write(upper_offset, binary.idiv(value, BYTE)))
 end
 
@@ -129,10 +129,10 @@ local function read_u48(block: Builder, into: LValue<any>?): Register<number>
 end
 
 local function write_u48(block: Builder, value: RValue<number>)
-	local lower_offset = block:store(control.allocate(constant.from_value(2)))
+	local lower_offset = block:allocate(constant.from_value(2))
 	block:call(library.buffer.u16.write(lower_offset, value))
 
-	local upper_offset = block:store(control.allocate(constant.from_value(4)))
+	local upper_offset = block:allocate(constant.from_value(4))
 	block:call(library.buffer.u32.write(upper_offset, binary.idiv(value, SHORT)))
 end
 
@@ -222,7 +222,7 @@ local function build_write(props: WriteProps, block: Builder, ty: ty.Numeral, va
 	local bytes = constant.from_value(size)
 	local methods = methods_from_numeral(ty)
 
-	local cursor = block:store(control.allocate(bytes))
+	local cursor = block:allocate(bytes)
 	block:call(methods.write(cursor, value))
 end
 

@@ -7,7 +7,6 @@ local context = require("@lir/build/context")
 local binary = require("@builders/binary")
 local condition = require("@builders/condition")
 local constant = require("@builders/constant")
-local control = require("@builders/control")
 local fn = require("@builders/fn")
 local globals = require("@builders/globals")
 local library = require("@builders/library")
@@ -50,7 +49,7 @@ end
 
 local function build_write(props: WriteProps, block: Builder, _: Unknown, value: RValue<any>): ()
 	local exists = condition.not_equals(value, constant.null)
-	local cursor = block:store(control.allocate(constant.one))
+	local cursor = block:allocate(constant.one)
 
 	block:if_branch(exists, function(block)
 		block:call(library.table.insert(globals.outgoing.unknown, value))

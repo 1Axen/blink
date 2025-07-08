@@ -361,7 +361,7 @@ local function gen_statement(ctx: Context, statement: lir.Statement)
 
 	if statement.kind == "call" then
 		builder:append_indent()
-		gen_projection(ctx, statement.call)
+		gen_rvalue(ctx, statement.call)
 		builder:append("\n")
 	elseif statement.kind == "assign" then
 		builder:append_indent()

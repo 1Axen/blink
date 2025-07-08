@@ -1,3 +1,5 @@
+local control = require("@builders/control")
+local globals = require("@builders/globals")
 local lir = require("@lir/types")
 local ty = require("@ty/types")
 
@@ -98,7 +100,13 @@ local function store_mult(self: Builder, value: RValue, count: number): { LValue
 	return registers
 end
 
-local function call(self: Builder, call: index<lir.StatCall, "call">)
+local function allocate(self: Builder, bytes: lir.RValue<number>): Register<number>
+	local cursor = self:store(globals.incoming.cursor)
+	self:call(control.allocate(bytes))
+	return cursor
+end
+
+local function call<T>(self: Builder, call: lir.ProjCall<T> | lir.CtrlAllocate<T>)
 	local stat = statement.call(call)
 	table.insert(self.block.statements, stat)
 end
@@ -209,6 +217,8 @@ export type Builder = {
 	reserve: typeof(reserve),
 	store_mult: typeof(store_mult),
 
+	allocate: typeof(allocate),
+
 	call: typeof(call),
 	call_fn: typeof(call_fn),
 
@@ -253,6 +263,8 @@ local function create(ctx: Context, name: string, args: { Argument }, rets: { Re
 		store = store,
 		reserve = reserve,
 		store_mult = store_mult,
+
+		allocate = allocate,
 
 		call = call,
 		call_fn = call_fn,

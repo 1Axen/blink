@@ -14,10 +14,9 @@ local function ctrl_advance(bytes: RValue<number>): lir.CtrlAdvance<number>
 	}
 end
 
-local function ctrl_allocate(bytes: RValue<number>): lir.CtrlAllocate<number>
+local function ctrl_allocate(bytes: RValue<number>): lir.CtrlAllocate<nil>
 	return {
-		__phantom_type = nil :: any,
-
+		__phantom_type = nil,
 		type = "control",
 		kind = "allocate",
 		bytes = bytes :: any,

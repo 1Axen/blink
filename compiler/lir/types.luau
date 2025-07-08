@@ -296,7 +296,7 @@ export type RValue<T> =
 export type StatCall = {
 	type: "statement",
 	kind: "call",
-	call: ProjCall<any>,
+	call: ProjCall<any> | CtrlAllocate<any>,
 }
 
 --- -- REMARK text

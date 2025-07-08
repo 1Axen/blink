@@ -34,7 +34,7 @@ end
 
 local function build_write(props: WriteProps, block: Builder, ty: String, value: RValue<string>): ()
 	local len = length.write(props, block, ty, unary.len(value :: any))
-	local cursor = block:store(control.allocate(len))
+	local cursor = block:allocate(len)
 	block:call(library.buffer.string.write(cursor, len, value))
 end
 

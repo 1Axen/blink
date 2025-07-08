@@ -24,9 +24,9 @@ local function advance(bytes: number): number
 	return cursor
 end
 
-local function allocate(bytes: number): number
+local function allocate(bytes: number)
 	local cursor = out_cursor
-	local in_use = (cursor + bytes)
+	local in_use: number = (cursor + bytes)
 
 	if in_use > out_length then
 		while in_use > out_length do
@@ -38,8 +38,7 @@ local function allocate(bytes: number): number
 		out_buffer = buf
 	end
 
-	out_cursor = (cursor + bytes) :: number
-	return cursor
+	out_cursor = in_use
 end
 
 local function create_save(): Save

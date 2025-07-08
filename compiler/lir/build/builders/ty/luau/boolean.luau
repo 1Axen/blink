@@ -52,7 +52,7 @@ local function build_write(props: WriteProps, block: Builder, boolean: ty.Boolea
 	end
 
 	local bytes = constant.from_value(1)
-	local allocate = block:store(control.allocate(bytes))
+	local allocate = block:allocate(bytes)
 
 	local truthful = condition.equals(value, constant.from_value(true))
 	local conversion = ternary(truthful, constant.from_value(1), constant.from_value(0))

@@ -3,7 +3,6 @@ local binary = require("@builders/binary")
 local condition = require("@builders/condition")
 local constant = require("@builders/constant")
 local context = require("@lir/build/context")
-local control = require("@builders/control")
 local conversion = require("@util/conversion")
 local fn = require("@builders/fn")
 local hir = require("@hir/types")
@@ -346,14 +345,14 @@ builders = {
 		end,
 		write = function(props: WriteProps, block: Builder, optional: ty.Optional, value: RValue<any>): ()
 			local exists = condition.not_equals(value, constant.null)
-			local cursor = block:store(control.allocate(constant.one))
+			local cursor = block:allocate(constant.one)
 
 			block:if_branch(exists, function(block)
 				write_ty_id(props, block, optional.of, value)
 			end)
 
 			local as_number = ternary(exists, constant.one, constant.zero)
-			block:call_lib(library.buffer.u8.write(cursor, as_number))
+			block:call(library.buffer.u8.write(cursor, as_number))
 		end,
 	}),
 
@@ -370,7 +369,7 @@ builders = {
 			local out_of_bounds = condition.greater_than_or(stored_index, constant.from_value(total))
 
 			block:if_branch(out_of_bounds, function(block: fn.Builder)
-				block:call_lib(library.error(`Invalid enum variant`))
+				block:call(library.error(`Invalid enum variant`))
 			end)
 
 			for index, variant in enum.variants do
@@ -410,7 +409,7 @@ builders = {
 			end
 
 			block:else_branch(function(block)
-				block:call_lib(library.error(`Invalid enum variant`))
+				block:call(library.error(`Invalid enum variant`))
 			end)
 		end,
 	}),
