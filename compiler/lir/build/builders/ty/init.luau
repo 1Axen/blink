@@ -10,6 +10,7 @@ local length = require("@builders/ty/luau/length")
 local library = require("@builders/library")
 local lir = require("@lir/types")
 local panic = require("@util/panic")
+local prefixes = require("@config/prefixes")
 local projection = require("@builders/projection")
 local structure = require("@builders/structure")
 local ternary = require("@builders/ternary")
@@ -159,7 +160,7 @@ local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id
 		name = decl.name
 	end
 
-	local read_fn = fn.create(ctx, `read_{name}`, {}, { fn.rreturn(ty) }, function(block)
+	local read_fn = fn.create(ctx, `{prefixes.ty}read_{name}`, {}, { fn.rreturn(ty) }, function(block)
 		local props: ReadProps = {
 			ctx = ctx,
 			generics = generics,
@@ -170,7 +171,7 @@ local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id
 		block:rtrn({ value_register })
 	end)
 
-	local write_fn = fn.create(ctx, `write_{name}`, { fn.argument(ty) }, {}, function(block)
+	local write_fn = fn.create(ctx, `{prefixes.ty}write_{name}`, { fn.argument(ty) }, {}, function(block)
 		local props: WriteProps = {
 			ctx = ctx,
 			validate = true,
