@@ -16,7 +16,12 @@ local function insert<T>(into: RValue<{ T }>, value: RValue<T>)
 	return projection.call(constant.from_value("table.insert"), { into, value })
 end
 
+local function clone<T>(template: RValue<T>)
+	return projection.call(constant.from_value("table.clone"), { template })
+end
+
 return table.freeze({
+	clone = clone,
 	create = create,
 	insert = insert,
 })

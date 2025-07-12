@@ -14,6 +14,9 @@ local builders = require("@builders/init")
 local context = require("@self/context")
 local types = require("@builders/ty/types")
 
+local constant = require("@builders/constant")
+local structure = require("@builders/structure")
+
 local panic = require("@util/panic")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 
@@ -53,6 +56,16 @@ local function options_from_decl_id(ctx: Context, decl_id: DeclId): options.File
 	return options
 end
 
+local function create_struct_template<T>(ty_id: TyId, struct: ty.Struct)
+	local fields = {}
+
+	for _, field in struct.fields do
+		fields[constant.from_value(field.name)] = constant.null
+	end
+
+	return structure.struct(fields :: any)
+end
+
 local function rreturns(ctx: Context, parameters: { hir.Parameter }): { lir.Return }
 	local array = {}
 	for index, parameter in parameters do
@@ -75,6 +88,14 @@ local function build_type(ctx: Context, decl_id: DeclId): lir.Type
 	local decl = hir.decl_from_id(ctx.hir, decl_id)
 	if decl.generics then
 		return nil :: any
+	end
+
+	local ty = hir.ty_from_id(ctx.hir, decl.ty_id)
+
+	if ty.kind == "struct" then
+		local template = create_struct_template(decl.ty_id, ty)
+
+		ctx.lir.upvalues[builders.fn.upvalue(tostring(decl.ty_id))] = template
 	end
 
 	return {
@@ -101,6 +122,7 @@ local function from_hir(hir: hir.Hir): lir.Lir
 		types = {},
 		events = {},
 		functions = {},
+		upvalues = {},
 	}
 
 	local ctx: Context = context.create(hir, lir)
