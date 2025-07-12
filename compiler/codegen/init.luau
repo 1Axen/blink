@@ -5,6 +5,7 @@
 local compilation = require("@config/compilation")
 local fs = require("@lune/fs")
 local get_module_directory = require("@util/get_module_directory")
+local globals = require("@lir/build/builders/globals")
 local lir = require("@compiler/lir/types")
 local string_builder = require("@util/string_builder")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
@@ -318,7 +319,14 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 			builder:append(" = ")
 		end
 
-		builder:append(fn.name)
+		if fn.name.type == "projection" then
+			gen_projection(ctx, fn.name)
+		elseif fn.name.type == "constant" then
+			builder:append(fn.name.value)
+		else
+			strong_exhaustive_match(fn.name.type)
+		end
+
 		builder:append("(")
 
 		for index, argument in terminator.args do
@@ -421,8 +429,16 @@ local function gen_fn(ctx: Context, fn: lir.Fn)
 	local builder = ctx.builder
 	table.clear(ctx.seen_registers)
 
-	builder:append("local function ")
-	builder:append(fn.name)
+	if fn.name.type == "projection" then
+		builder:append("function ")
+		gen_projection(ctx, fn.name)
+	elseif fn.name.type == "constant" then
+		builder:append("local function ")
+		builder:append(fn.name.value)
+	else
+		strong_exhaustive_match(fn.name.type)
+	end
+
 	builder:append("(")
 
 	for index, argument in fn.args do
@@ -453,6 +469,10 @@ local function from_lir(lirr: lir.Lir, target: compilation.Target): string
 		builder = builder,
 		seen_registers = {},
 	}
+
+	builder:append("local ")
+	builder:append(globals.types_map.identifier)
+	builder:append("= {}\n")
 
 	builder:append(BUFFER_TEMPLATE)
 

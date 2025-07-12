@@ -15,7 +15,6 @@ local ID_STYLE = colorful.combineStyles({ colorful.modifier.dim })
 local CALL_STYLE = colorful.combineStyles({ colorful.color.red })
 local BASE_STYLE = colorful.combineStyles({ colorful.color.red })
 local TERM_STYLE = colorful.combineStyles({ colorful.modifier.bold })
-local BLOCK_STYLE = colorful.combineStyles({ colorful.color.blue, colorful.modifier.bold })
 local INDEX_STYLE = colorful.combineStyles({ colorful.color.blueBright })
 
 local fmt_lvalue: (fmt_builder: StringBuilder, lvalue: lir.LValue<any>) -> ()
@@ -369,7 +368,16 @@ end
 local function fmt_fn(fmt_builder: StringBuilder, fn: lir.Fn)
 	string_builder.append_indent(fmt_builder)
 
-	string_builder.append(fmt_builder, `fn {BLOCK_STYLE(fn.name)} (${fn.id}) (`)
+	-- string_builder.append(fmt_builder, `fn {BLOCK_STYLE(fn.name)} (${fn.id}) (`)
+	fmt_builder:append("fn ")
+	if fn.name.type == "projection" then
+		fmt_projection(fmt_builder, fn.name)
+	elseif fn.name.type == "constant" then
+		fmt_constant(fmt_builder, fn.name)
+	else
+		strong_exhaustive_match(fn.name.type)
+	end
+	fmt_builder:append(`({fn.id}) (`)
 	separated(fmt_builder, fmt_argument, fn.args, ",")
 
 	string_builder.append(fmt_builder, ") -> (")

@@ -236,7 +236,7 @@ export type Builder = {
 	argument: (self: Builder, index: number) -> lir.ArgumentId<any>,
 }
 
-local function create(ctx: Context, name: string, args: { Argument }, rets: { Return }, body: Body): Fn
+local function create(ctx: Context, name: index<Fn, "name">, args: { Argument }, rets: { Return }, body: Body): Fn
 	local function argument_id(self: Builder, index: number): lir.ArgumentId<any>
 		if index > #args then
 			return panic(`Attempted to get argument id #{index}, but fn only has {#args} arguments`)

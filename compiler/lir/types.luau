@@ -416,7 +416,7 @@ export type BasicBlock = {
 export type Fn = {
 	type: "fn",
 	id: FnId,
-	name: string,
+	name: ProjNamecall<any> | ProjIndex<any> | Constant<string>,
 
 	rets: { Return },
 	args: { Argument },

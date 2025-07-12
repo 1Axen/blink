@@ -14,6 +14,8 @@ local function global<T>(identifier: string): Global<T>
 end
 
 return table.freeze({
+	types_map = global("types"),
+
 	incoming = {
 		buffer = global("in_buffer") :: Global<buffer>,
 		cursor = global("in_cursor") :: Global<number>,

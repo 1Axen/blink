@@ -5,6 +5,7 @@ local constant = require("@builders/constant")
 local context = require("@lir/build/context")
 local conversion = require("@util/conversion")
 local fn = require("@builders/fn")
+local globals = require("@builders/globals")
 local hir = require("@hir/types")
 local length = require("@builders/ty/luau/length")
 local library = require("@builders/library")
@@ -160,7 +161,8 @@ local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id
 		name = decl.name
 	end
 
-	local read_fn = fn.create(ctx, `{prefixes.ty}read_{name}`, {}, { fn.rreturn(ty) }, function(block)
+	local read_name = projection.index(globals.types_map, constant.from_value(`{prefixes.ty}read_{name}`))
+	local read_fn = fn.create(ctx, read_name, {}, { fn.rreturn(ty) }, function(block)
 		local props: ReadProps = {
 			ctx = ctx,
 			generics = generics,
@@ -171,7 +173,8 @@ local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id
 		block:rtrn({ value_register })
 	end)
 
-	local write_fn = fn.create(ctx, `{prefixes.ty}write_{name}`, { fn.argument(ty) }, {}, function(block)
+	local write_name = projection.index(globals.types_map, constant.from_value(`{prefixes.ty}write_{name}`))
+	local write_fn = fn.create(ctx, write_name, { fn.argument(ty) }, {}, function(block)
 		local props: WriteProps = {
 			ctx = ctx,
 			validate = true,
