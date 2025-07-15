@@ -452,7 +452,7 @@ export type Ty =
 export type TyId<T = Ty> = number | { write __kind: "ty", write __T: T }
 export type TyKind = index<Ty, "kind">
 
-local RECURSIVE_TYS: { [ty.TyKind]: boolean } = {
+local RECURSIVE_TYS: { [TyKind]: boolean } = {
 	map = true,
 	array = true,
 	struct = true,
