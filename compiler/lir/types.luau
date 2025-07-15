@@ -450,6 +450,8 @@ export type Function = {
 
 export type Lir = {
 	fns: { [FnId]: Fn },
+	globals: { [string]: RValue<any> },
+
 	tys: { [TyId]: FnSet },
 	types: { [hir.DeclId]: Type },
 	events: { [hir.DeclId]: Event },

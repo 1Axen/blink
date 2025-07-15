@@ -476,6 +476,14 @@ local function from_lir(lirr: lir.Lir, target: compilation.Target): string
 
 	builder:append(BUFFER_TEMPLATE)
 
+	for name, rvalue in lirr.globals do
+		builder:append("local ")
+		builder:append(name)
+		builder:append(" = ")
+		gen_rvalue(ctx, rvalue)
+		builder:append("\n")
+	end
+
 	for _, fn in lirr.fns do
 		gen_fn(ctx, fn)
 	end

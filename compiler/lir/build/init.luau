@@ -2,6 +2,7 @@
 --!native
 --!optimize 2
 
+local constant = require("@builders/constant")
 local id = require("@compiler/id")
 
 local hir = require("@hir/types")
@@ -97,6 +98,8 @@ end
 local function from_hir(hir: hir.Hir): lir.Lir
 	local lir: Lir = {
 		fns = {},
+		globals = {},
+
 		tys = {},
 		types = {},
 		events = {},
