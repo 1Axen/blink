@@ -301,9 +301,10 @@ local function ty_map(ctx: Context, expr: ast.ExprMap): ty.Map
 end
 
 local function ty_unit_enum(ctx: Context, expr: ast.ExprEnum): ty.UnitEnum
-	local variants: { string } = {}
-	for _, variant in expr.variants do
-		table.insert(variants, variant.value)
+	local variants = {}
+	for _, node in expr.variants do
+		local variant = expression(ctx, node)
+		table.insert(variants, variant)
 	end
 
 	return ty.unit_enum(variants)

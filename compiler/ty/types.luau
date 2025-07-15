@@ -317,10 +317,10 @@ end
 
 export type UnitEnum = {
 	read kind: "unit_enum",
-	read variants: { string },
+	read variants: { TyId<Literal> },
 }
 
-local function create_unit_enum(variants: { string }): UnitEnum
+local function create_unit_enum(variants: { TyId<Literal> }): UnitEnum
 	return {
 		kind = "unit_enum",
 		variants = variants,
