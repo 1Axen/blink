@@ -14,6 +14,8 @@ local function global<T>(identifier: string): Global<T>
 end
 
 return table.freeze({
+	create = global,
+
 	types_map = global("types"),
 
 	incoming = {

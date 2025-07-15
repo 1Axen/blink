@@ -8,6 +8,7 @@ type Hir = hir.Hir
 
 type TyId = ty.TyId
 type FnId = lir.FnId
+type Global<T> = lir.Global<T>
 type RValue<T> = lir.RValue<T>
 
 export type Context = {
@@ -42,24 +43,21 @@ local function store_fn(ctx: Context, fn: lir.Fn, fn_id: FnId?): FnId
 	return fn_id
 end
 
-local function read_global<T>(ctx: Context, name: string): RValue<T>
-	local globals = ctx.lir.globals
-	local rvalue = globals[name]
-	if rvalue == nil then
+local function read_global<T>(ctx: Context, name: string): Global<T>
+	if ctx.lir.globals[name] == nil then
 		return panic(`Global "{name}" doesn't exist`)
 	end
-
-	return rvalue
+	return globals.create(name)
 end
 
-local function write_global<T>(ctx: Context, name: string, rvalue: RValue<T>): RValue<T>
-	local globals = ctx.lir.globals
-	if globals[name] then
+local function write_global<T>(ctx: Context, name: string, rvalue: RValue<T>): Global<T>
+	local lirr = ctx.lir
+	if lirr.globals[name] then
 		return panic(`Duplicate write to global "{name}".`)
 	end
 
-	globals[name] = rvalue
-	return rvalue
+	lirr.globals[name] = rvalue
+	return globals.create(name)
 end
 
 return table.freeze({
