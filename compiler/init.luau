@@ -214,7 +214,7 @@ local function compile_from_path(entry_path: Path, compiler_options: Options): R
 		-- 	targets.server = codegen.from_lir(files_lir, "server")
 		-- end
 
-		targets.shared = codegen.from_lir(files_lir, "shared")
+		targets.shared = codegen.from_lir(files_lir, files_hir, "shared")
 	end
 	local codegen_elapsed = (os.clock() - codegen_pin)
 

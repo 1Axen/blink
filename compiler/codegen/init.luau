@@ -3,20 +3,17 @@
 --!optimize 2
 
 local compilation = require("@config/compilation")
+local context = require("@self/context")
 local fs = require("@lune/fs")
 local get_module_directory = require("@util/get_module_directory")
 local globals = require("@lir/build/builders/globals")
+local hir = require("@hir/types")
 local lir = require("@compiler/lir/types")
 local string_builder = require("@util/string_builder")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 local weak_exhaustive_match = require("@util/weak_exhaustive_match")
 
-type Context = {
-	lir: lir.Lir,
-	target: compilation.Target,
-	builder: string_builder.StringBuilder,
-	seen_registers: { [number]: true },
-}
+type Context = context.Context
 
 local module_directory = get_module_directory()
 local BUFFER_TEMPLATE = string.split(fs.readFile(`{module_directory}/./templates/buffer.luau`), "-- TESTING --")[1]
@@ -461,10 +458,11 @@ local function gen_fn(ctx: Context, fn: lir.Fn)
 	builder:append_line("end")
 end
 
-local function from_lir(lirr: lir.Lir, target: compilation.Target): string
+local function from_lir(lirr: lir.Lir, hirr: hir.Hir, target: compilation.Target): string
 	local builder = string_builder.create({})
 	local ctx: Context = {
 		lir = lirr,
+		hir = hirr,
 		target = target,
 		builder = builder,
 		seen_registers = {},
