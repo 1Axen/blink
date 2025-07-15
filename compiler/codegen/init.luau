@@ -463,7 +463,7 @@ end
 
 local function from_lir(lirr: lir.Lir, target: compilation.Target): string
 	local builder = string_builder.create({})
-	local context: Context = {
+	local ctx: Context = {
 		lir = lirr,
 		target = target,
 		builder = builder,
@@ -477,7 +477,7 @@ local function from_lir(lirr: lir.Lir, target: compilation.Target): string
 	builder:append(BUFFER_TEMPLATE)
 
 	for _, fn in lirr.fns do
-		gen_fn(context, fn)
+		gen_fn(ctx, fn)
 	end
 
 	return string_builder.finalize(builder)
