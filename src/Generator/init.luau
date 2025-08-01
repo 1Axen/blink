@@ -810,7 +810,7 @@ function Declarations.Function(Declaration: Parser.Function)
 			:End()
 			:Wrap(`return Promise.new(`, ")")
 
-			Invoke = Blocks.Function(Casing.Invoke, DataValues, `any`, true)
+			Invoke = Blocks.Function(Casing.Invoke, DataValues, nil, true)
 			Invoke:Lines(Promise.Content, 1)
 		else
 			Invoke = Blocks.Function(Casing.Invoke, DataValues, `({ReturnTypes})`, true)
