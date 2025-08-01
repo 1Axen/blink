@@ -354,7 +354,9 @@ local function GetFileSource(Path: string, Directory: string): (string?, string?
     local fs = require("@lune/fs")
     local GetDefinitionFilePath = require("./CLI/Utility/GetDefinitionFilePath.luau")
 
-    Path = `{Directory}{Path}`
+    if PathParser.PathType(Path) == "relative" then
+         Path = `{Directory}{Path}`
+    end
     Path = GetDefinitionFilePath(Path)
 
     if not fs.isFile(Path) then
@@ -852,9 +854,9 @@ function Parser.Import(self: Parser): ScopeNode
         local Indices = string.split(ImportPath, ".")
         Name = Indices[#Indices]
     else
-        if string.sub(ImportPath, 1, 2) ~= "./" then
-            ImportPath = `./{ImportPath}`
-        end
+          if PathParser.PathType(ImportPath) == "absolute" and string.sub(ImportPath, 1, 2) ~= "./" then
+               ImportPath = `./{ImportPath}`
+          end
 
         --> Use file name as namespace identifier
         local Filename = PathParser.Filename(ImportPath)
