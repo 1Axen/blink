@@ -23,7 +23,7 @@ export type Type = {
 	read id: DeclId,
 	read kind: "type",
 	read name: string,
-	read scope: ScopeId,
+	read scope_id: ScopeId,
 	read attributes: attributes.Attributes,
 
 	read ty_id: TyId,
@@ -34,7 +34,7 @@ export type Event = {
 	read id: DeclId,
 	read kind: "event",
 	read name: string,
-	read scope: ScopeId,
+	read scope_id: ScopeId,
 	read attributes: attributes.Attributes,
 
 	read from: "Server" | "Client" | "Both",
@@ -47,17 +47,12 @@ export type Function = {
 	read id: DeclId,
 	read kind: "function",
 	read name: string,
-	read scope: ScopeId,
+	read scope_id: ScopeId,
 	read attributes: attributes.Attributes,
 
 	read yield: "Coroutine" | "Promise" | "Future",
 	data: { Parameter }?,
 	ret: { Parameter }?,
-}
-
-export type Scope = {
-	read name: string,
-	read symbols: ast.Symbols,
 }
 
 --stylua: ignore
@@ -68,6 +63,8 @@ export type Decl =
 
 export type DeclId = { write __kind: "decl" }
 export type ScopeId = { write __kind: "scope" }
+
+export type Scope = ast.Symbols
 
 export type Hir = {
 	read tys: { [TyId]: Ty },
@@ -109,6 +106,15 @@ local function node_from_id(hir: Hir, node_id: NodeId): Node
 	return node
 end
 
+local function scope_from_id(hir: Hir, scope_id: ScopeId): Scope
+	local scope = hir.scopes[scope_id]
+	if scope == nil then
+		return panic("Expected scope_id to point to a scope")
+	end
+
+	return scope
+end
+
 local function follow(hir: Hir, ty: ty.Ty): ty.Ty
 	if ty.kind == "optional" then
 		local of = ty_from_id(hir, ty.of)
@@ -128,4 +134,5 @@ return table.freeze({
 	ty_from_id = ty_from_id,
 	decl_from_id = type_from_id,
 	node_from_id = node_from_id,
+	scope_from_id = scope_from_id,
 })

@@ -12,7 +12,7 @@ local primitives = require("@config/primitives")
 local diagnostics = require("@util/diagnostics")
 local panic = require("@util/panic")
 local range = require("@util/range")
-local symbols = require("@util/symbols")
+local symbols = require("@compiler/symbols")
 
 local fmt_ast = require("@ast/format")
 

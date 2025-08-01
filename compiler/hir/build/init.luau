@@ -14,7 +14,7 @@ local primitives = require("@config/primitives")
 
 local panic = require("@util/panic")
 local range = require("@util/range")
-local symbols = require("@util/symbols")
+local symbols = require("@compiler/symbols")
 
 local attributes = require("@self/attributes")
 local report = require("@hir/report")
@@ -43,8 +43,8 @@ type Context = {
 	read hir: Hir,
 	read file_id: number,
 
-	scope: ScopeId,
 	symbols: Symbols,
+	scope_id: ScopeId,
 	generics: Generics?,
 }
 
@@ -545,7 +545,7 @@ local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
 		id = node_id :: DeclId,
 		kind = "type",
 		name = stat.name.value,
-		scope = ctx.scope,
+		scope_id = ctx.scope_id,
 		attributes = attributes.from_nodes(stat.attributes),
 
 		ty_id = node_id :: TyId,
@@ -568,7 +568,7 @@ local function stat_event(ctx: Context, stat: ast.StatEvent): hir.Event
 	return {
 		id = stat.id :: DeclId,
 		kind = "event",
-		scope = ctx.scope,
+		scope_id = ctx.scope_id,
 		attributes = attributes.from_nodes(stat.attributes),
 
 		name = name,
@@ -586,7 +586,7 @@ local function stat_function(ctx: Context, stat: ast.StatFunction): hir.Function
 	return {
 		id = stat.id :: DeclId,
 		kind = "function",
-		scope = ctx.scope,
+		scope_id = ctx.scope_id,
 		attributes = attributes.from_nodes(stat.attributes),
 
 		name = name,
@@ -629,26 +629,17 @@ local function traverse_block(ctx: Context, block: ast.Block, prev_collection: C
 			local name = stat.name.value
 			local scope_id = stat.id :: ScopeId
 
-			local prev_id = ctx.scope
+			local prev_id = ctx.scope_id
 			local symbols = symbols.child(ctx.symbols, name)
 			if symbols == nil then
 				panic(`expected previous scope to have symbols`)
 			end
 
-			local prev_scope = ctx_hir.scopes[prev_id]
-			if prev_scope ~= nil then
-				name = `{prev_scope.name}_{name}`
-			end
-
-			ctx.scope = scope_id
-			ctx_hir.scopes[scope_id] = {
-				name = name,
-				symbols = assert(symbols),
-			}
+			ctx.scope_id = scope_id
+			ctx_hir.scopes[scope_id] = symbols
 
 			traverse_block(ctx, body, collection)
-
-			ctx.scope = prev_id
+			ctx.scope_id = prev_id
 		end
 	end
 
@@ -656,9 +647,9 @@ local function traverse_block(ctx: Context, block: ast.Block, prev_collection: C
 end
 
 local function switch_scope(ctx: Context, scope_id: ScopeId)
-	if scope_id ~= ctx.scope then
-		ctx.scope = scope_id
-		ctx.symbols = ctx.hir.scopes[scope_id].symbols
+	if scope_id ~= ctx.scope_id then
+		ctx.scope_id = scope_id
+		ctx.symbols = ctx.hir.scopes[scope_id]
 	end
 end
 
@@ -685,7 +676,7 @@ local function build_tys(ctx: Context, collection: Collection)
 			}
 		end
 
-		switch_scope(ctx, decl_type.scope)
+		switch_scope(ctx, decl_type.scope_id)
 		expression(ctx, stat_node.value, node_id, generics)
 	end
 
@@ -695,31 +686,34 @@ local function build_tys(ctx: Context, collection: Collection)
 			continue
 		end
 
-		switch_scope(ctx, decl_event.scope)
+		switch_scope(ctx, decl_event.scope_id)
 		decl_event.data = expr_pack(ctx, node.data)
 	end
 
 	for _, decl_funct in collection.functs do
 		local node = hir.node_from_id(hirr, decl_funct.id :: NodeId) :: ast.StatFunction
 		if node.data ~= nil then
-			switch_scope(ctx, decl_funct.scope)
+			switch_scope(ctx, decl_funct.scope_id)
 			decl_funct.data = expr_pack(ctx, node.data)
 		end
 
 		if node.ret ~= nil then
-			switch_scope(ctx, decl_funct.scope)
+			switch_scope(ctx, decl_funct.scope_id)
 			decl_funct.ret = expr_pack(ctx, node.ret)
 		end
 	end
 end
 
 local function traverse_ast(hirr: Hir, file_id: number, ast: Ast)
+	local scope_id = ast.body.id :: ScopeId
 	local context: Context = {
 		hir = hirr,
 		symbols = ast.symbols,
 		file_id = file_id,
-		scope = ast.body.id :: ScopeId,
+		scope_id = ast.body.id :: ScopeId,
 	}
+
+	hirr.scopes[scope_id] = ast.symbols
 
 	local collection = traverse_block(context, ast.body)
 	build_tys(context, collection)

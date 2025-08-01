@@ -12,7 +12,7 @@ local diagnostics = require("@util/diagnostics")
 local file = require("@util/file")
 local panic = require("@util/panic")
 local span = require("@util/span")
-local symbols = require("@util/symbols")
+local symbols = require("@compiler/symbols")
 
 local report = require("@self/report")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")

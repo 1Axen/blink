@@ -14,7 +14,7 @@ local fs = require("@util/fs")
 local import_resolver = require("@util/import_resolver")
 local panic = require("@util/panic")
 local path = require("@util/path")
-local symbols = require("@util/symbols")
+local symbols = require("@compiler/symbols")
 
 local fmt_hir = require("@self/hir/format")
 local fmt_lir = require("@self/lir/format")

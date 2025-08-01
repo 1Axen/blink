@@ -39,17 +39,14 @@ local function inner<T>(self: Symbols<T>, name: string): Symbols<T>
 	return symbols
 end
 
---- Sets `child`'s parent to `self`, and adds `child` as a child of `self`
-local function adopt<T>(self: Symbols<T>, child: Symbols<T>, name: string)
-	assert_not_duplicate(self, name)
-	child.parent = self
-	self.children[name] = child
-end
-
 --- Adds the `target` symbols object to `self`'s children without setting `target`'s parent.
 local function reference<T>(self: Symbols<T>, target: Symbols<T>, name: string)
 	assert_not_duplicate(self, name)
-	self.children[name] = target
+
+	local target_copy: Symbols<T> = table.clone(target)
+	target_copy.name = name
+
+	self.children[name] = target_copy
 end
 
 local function set<T>(self: Symbols<T>, key: string, value: T)
@@ -84,7 +81,6 @@ end
 
 return table.freeze({
 	create = create,
-	adopt = adopt,
 	inner = inner,
 	set = set,
 	child = child,

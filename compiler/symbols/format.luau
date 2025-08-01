@@ -1,6 +1,6 @@
 local colorful = require("@vendor/colorful")
 local string_builder = require("@util/string_builder")
-local symbols = require("@util/symbols")
+local symbols = require("@compiler/symbols")
 
 type StringBuilder = string_builder.StringBuilder
 type Symbols<T> = symbols.Symbols<T>

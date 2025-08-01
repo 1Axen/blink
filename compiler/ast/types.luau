@@ -1,6 +1,6 @@
 --!strict
 
-local symbols = require("@util/symbols")
+local symbols = require("@compiler/symbols")
 
 export type NodeKind = index<Node, "kind">
 export type StatKind = index<Statement, "kind">
