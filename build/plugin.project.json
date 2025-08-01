@@ -1,6 +1,6 @@
 {
   "name": "plugin",
   "tree": {
-    "$path": "bundle"
+    "$path": "../release/plugin"
   }
 }
