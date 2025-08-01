@@ -1,8 +1,5 @@
 {
   "luau-lsp.plugin.enabled": true,
-  "luau-lsp.require.mode": "relativeToFile",
-  "luau-lsp.require.directoryAliases": {
-    "@lune/": "~/.lune/.typedefs/0.8.9/"
-  },
+  "luau-lsp.platform.type": "roblox",
   "luau-lsp.sourcemap.rojoProjectFile": "default.project.json"
 }

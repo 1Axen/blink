@@ -4,8 +4,7 @@
 # New tools can be added by running `rokit add <tool>` in a terminal.
 
 [tools]
-selene = "Kampfkarren/selene@0.26.1"
 lune = "filiptibell/lune@0.8.9"
-darklua = "seaofvoices/darklua@0.14.0"
-rojo = "rojo-rbx/rojo@7.4.1"
+darklua = "seaofvoices/darklua@0.16.0"
+rojo = "rojo-rbx/rojo@7.5.1"
 run-in-roblox = "rojo-rbx/run-in-roblox@0.3.0"
