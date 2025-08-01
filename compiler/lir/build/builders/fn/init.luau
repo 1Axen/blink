@@ -106,7 +106,7 @@ local function allocate(self: Builder, bytes: lir.RValue<number>): Register<numb
 	return cursor
 end
 
-local function call<T>(self: Builder, call: lir.ProjCall<T> | lir.CtrlAllocate<T>)
+local function call<T>(self: Builder, call: lir.ProjCall<T> | lir.ProjNamecall<T> | lir.CtrlAllocate<T>)
 	local stat = statement.call(call)
 	table.insert(self.block.statements, stat)
 end
