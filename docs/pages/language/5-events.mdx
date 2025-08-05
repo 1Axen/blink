@@ -1,7 +1,7 @@
 import { Callout } from 'nextra/components'
 
 # Events
-Events are Blink's version of Roblox's `RelibaleEvent` and `UnreliableEvent`.<br/>
+Events are Blink's version of Roblox's `ReliableEvent` and `UnreliableEvent`.<br/>
 They are the main way to communicate between client and server.
 
 ## Usage in Blink
@@ -42,7 +42,7 @@ Determines the listening API exposed on the receiving side.
 Determines the data that is sent through the event, can be any [type](./4-types.mdx).<br/>
 This field can be omitted if no data is required.
 
-##### Type Packs
+#### `Type Packs`
 Multiple data values are supported through the usage of a type pack (commonly referred to as a tuple).
 Type packs can be defined as a list of [types](./4-types.mdx) seperated by a comma within parenthesis.<br/>
 For example, a type pack of different [number types](./4-types#numbers) can be written like so:
@@ -64,8 +64,8 @@ blink.MyTypePackEvent.Fire(2^8 - 1, 2^16 - 1, 2^32 - 1)
 ```
 ```lua filename="server.luau" copy
 blink.MyEvent.Fire(Player, 5)
-blink.MyEvent.FireAll(Player, 5)
-blink.MyEvent.FireList((Player), 5)
+blink.MyEvent.FireAll(5)
+blink.MyEvent.FireList({Player}, 5)
 blink.MyEvent.FireExcept(Player, 5)
 ```
 
