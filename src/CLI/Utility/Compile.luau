@@ -105,14 +105,18 @@ function Utility.Compile(Path: string, Options: CompileOptions)
 		local Directory, Filename = PathParser.Components(ClientOutputPath)
 		local TypescriptFilename = if Filename == "init" then "index" else Filename
 		ClientOutputPath = `{Directory}/{Filename}.luau`
-		ClientTypescriptPath = `{FileDirectory}{Directory}/{TypescriptFilename}.d.ts`
+		ClientTypescriptPath = if PathParser.PathType(ClientOutputPath) == "absolute"
+			then `{Directory}/{TypescriptFilename}.d.ts`
+			else `{FileDirectory}{Directory}/{TypescriptFilename}.d.ts`
 	end
 
 	do
 		local Directory, Filename = PathParser.Components(ServerOutputPath)
 		local TypescriptFilename = if Filename == "init" then "index" else Filename
 		ServerOutputPath = `{Directory}/{Filename}.luau`
-		ServerTypescriptPath = `{FileDirectory}{Directory}/{TypescriptFilename}.d.ts`
+		ServerTypescriptPath = if PathParser.PathType(ServerOutputPath) == "absolute"
+			then `{Directory}/{TypescriptFilename}.d.ts`
+			else `{FileDirectory}{Directory}/{TypescriptFilename}.d.ts`
 	end
 
 	local TypesOutput: string
