@@ -136,7 +136,6 @@ function Utility.Compile(Path: string, Options: CompileOptions)
 		ServerOutput = `{FileDirectory}{ServerOutputPath}`
 	end
 
-	print(ClientOutput, ServerOutput)
 	CreateDirectoryIfNotFound(ClientOutput, Options)
 	CreateDirectoryIfNotFound(ServerOutput, Options)
 
