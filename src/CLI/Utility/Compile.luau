@@ -127,7 +127,7 @@ function Utility.Compile(Path: string, Options: CompileOptions)
 	if PathParser.PathType(ClientOutputPath) == "absolute" then
 		ClientOutput = ClientOutputPath
 	else
-		ClientOutput = `{FileDirectory}{ServerOutputPath}`
+		ClientOutput = `{FileDirectory}{ClientOutputPath}`
 	end
 
 	if PathParser.PathType(ServerOutputPath) == "absolute" then
