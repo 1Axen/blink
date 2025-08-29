@@ -1,7 +1,7 @@
 import { Callout } from 'nextra/components'
 
 # Events
-Events are Blink's version of Roblox's `RelibaleEvent` and `UnreliableEvent`.<br/>
+Events are Blink's version of Roblox's `ReliableEvent` and `UnreliableEvent`.<br/>
 They are the main way to communicate between client and server.
 
 ## Usage in Blink
@@ -64,8 +64,8 @@ blink.MyTypePackEvent.Fire(2^8 - 1, 2^16 - 1, 2^32 - 1)
 ```
 ```lua filename="server.luau" copy
 blink.MyEvent.Fire(Player, 5)
-blink.MyEvent.FireAll(Player, 5)
-blink.MyEvent.FireList((Player), 5)
+blink.MyEvent.FireAll(5)
+blink.MyEvent.FireList({Player}, 5)
 blink.MyEvent.FireExcept(Player, 5)
 ```
 

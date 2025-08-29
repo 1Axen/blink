@@ -57,7 +57,7 @@ Signed integers, unlike unsigned integers, can represent both positive and negat
 Floating points represent numbers with a decimal point.
 
 Unlike integers, the bit size of a floating point does not correlate to a hard range limit. 
-Instead it determines it's numerical accuracy (or precision).
+Instead it determines its numerical accuracy (or precision).
 For this reason, the table below lists the maximum accurately representable integer by each floating point type.
 
 <Callout type="info">
@@ -195,8 +195,8 @@ map StringToNumber = { [string]: f64 }
 ```
 
 ### Bounding Maps
-The numbers of elements in a map can be bounded by placing [a range](#ranges) within parenthesis after the type.<br/>
-For example, if you wanted to bound the numbers of elements between `1` and `100` you can do:
+The number of elements in a map can be bounded by placing [a range](#ranges) within parenthesis after the type.<br/>
+For example, if you wanted to bound the number of elements between `1` and `100` you can do:
 ```blink copy
 map StringToNumber = { [string]: f64 }(1..100)
 ```
@@ -394,7 +394,7 @@ type MyCFrame = CFrame<i16, f16>
 </Callout>
 
 ## Other Roblox Types
-Blink also supports a handful of other ROBLOX types like:
+Blink also supports a handful of other Roblox types like:
     * `BrickColor`
     * `Color3`
     * `DateTime`
