@@ -400,6 +400,10 @@ local function OnEditorButtonClicked()
     EditorWidget.Enabled = not EditorWidget.Enabled
 end
 
+local function OnEditorWidgetEnabled()
+	EditorButton:SetActive(EditorWidget.Enabled)
+end
+
 local function OnQuickSave()
     if Expanded:Get() then
         return
@@ -507,3 +511,4 @@ Expand.MouseButton2Click:Connect(OnExpandRightClicked)
 QuickSave.MouseButton1Click:Connect(OnQuickSave)
 QuickClear.MouseButton1Click:Connect(OnQuickClear)
 EditorButton.Click:Connect(OnEditorButtonClicked)
+EditorWidget:GetPropertyChangedSignal("Enabled"):Connect(OnEditorWidgetEnabled)
