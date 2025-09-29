@@ -1,0 +1,17 @@
+option Casing = Pascal
+option Typescript = true
+option TypesOutput = "../../Network/Types.luau"
+option ClientOutput = "../../Network/Client.luau"
+option ServerOutput = "../../Network/Server.luau"
+
+event PollingEvent {
+    From: Server,
+    Type: Reliable,
+    Call: Polling,
+}
+
+event NonPollingEvent {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+}
