@@ -42,7 +42,28 @@ local function log_step(text: string)
     print(`* {text}`)
 end
 
-local function update_darklua_version(version: string)
+local function read_version(): string
+    local contents = fs.readFile(DARKLUA_CONFIG)
+    local config = serde.decode("json", contents) :: DarkluaConfig
+
+    for _, rule in config.rules do
+        if type(rule) == "string" then
+            continue
+        end
+
+        if rule.rule ~= "inject_global_value" then
+            continue
+        end
+
+        if rule.identifier == "VERSION" then
+            return rule.value
+        end
+    end
+
+    return "?"
+end
+
+local function update_version(version: string)
     local contents = fs.readFile(DARKLUA_CONFIG)
     local config = serde.decode("json", contents) :: DarkluaConfig
 
@@ -147,12 +168,13 @@ do
     fs.writeDir(RELEASE_DIR)
 end
 
-local version = stdio.prompt("text" :: "text", "What version is being built?")
+local current_version = read_version()
+local new_version = stdio.prompt("text" :: "text", `What version is being built? (Current version is {current_version})`)
 
 local start = os.clock()
-update_darklua_version(version)
-build_executables(version)
-build_studio_plugin(version)
+update_version(new_version)
+build_executables(new_version)
+build_studio_plugin(new_version)
 
 local elapsed = (os.clock() - start)
 print(string.format("Finished build in %.2f seconds", elapsed))
