@@ -99,10 +99,8 @@ local function build_executable(platform: Platforms, arch: Archs)
 
     local archive_result = process.spawn("tar", {
         "-czvf", 
-        `blink-{target}.tar.gz`, 
-        `{EXE_NAME}.*`
-    }, {
-        cwd = `{process.cwd}/{RELEASE_DIR}`
+        `{RELEASE_DIR}/blink-{target}.tar.gz`, 
+        exe_path
     })
     assert(archive_result.ok, archive_result.stderr)
 
