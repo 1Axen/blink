@@ -88,32 +88,26 @@ end
 
 local function build_executable(version: string, platform: Platforms, arch: Archs)
     local target = `{platform}-{arch}`
-    local exe_name = `{RELEASE_DIR}/{EXE_NAME}`
-    if platform == "windows" then
-        exe_name ..= ".exe"
-    end
-
+    
+    local exe_path = `{RELEASE_DIR}/{EXE_NAME}{platform == "windows" and ".exe" or ""}`
     local build_result = process.spawn("lune", {
         "build", 
         BUNDLE_PATH, 
-        "--output", exe_name, 
+        "--output", exe_path, 
         "--target", target
     })
     assert(build_result.ok, build_result.stderr)
 
-    local archive_name = `blink-{version}-{target}.zip`
     local archive_result = process.spawn("tar", {
-        "-a", 
-        "-c", 
-        "-f", 
-        archive_name, 
+        "-czvf", 
+        `blink-{version}-{target}.tar.gz`, 
         `{EXE_NAME}.*`
     }, {
         cwd = `{process.cwd}/{RELEASE_DIR}`
     })
     assert(archive_result.ok, archive_result.stderr)
 
-    fs.removeFile(exe_name)
+    fs.removeFile(exe_path)
     log_step(`Built executable for {target}`)
 end
 
