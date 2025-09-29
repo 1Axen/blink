@@ -86,9 +86,8 @@ local function update_version(version: string)
     log_step(`Updated darklua config version to {version}`)
 end
 
-local function build_executable(version: string, platform: Platforms, arch: Archs)
+local function build_executable(platform: Platforms, arch: Archs)
     local target = `{platform}-{arch}`
-    
     local exe_path = `{RELEASE_DIR}/{EXE_NAME}{platform == "windows" and ".exe" or ""}`
     local build_result = process.spawn("lune", {
         "build", 
@@ -100,7 +99,7 @@ local function build_executable(version: string, platform: Platforms, arch: Arch
 
     local archive_result = process.spawn("tar", {
         "-czvf", 
-        `blink-{version}-{target}.tar.gz`, 
+        `blink-{target}.tar.gz`, 
         `{EXE_NAME}.*`
     }, {
         cwd = `{process.cwd}/{RELEASE_DIR}`
@@ -111,21 +110,21 @@ local function build_executable(version: string, platform: Platforms, arch: Arch
     log_step(`Built executable for {target}`)
 end
 
-local function build_executables(version: string)
+local function build_executables()
     local bundle_result = process.spawn("darklua", {"process", "--config", DARKLUA_CONFIG, CLI_PATH, BUNDLE_PATH})
     assert(bundle_result.ok, bundle_result.stderr)
     log_step("Bundled CLI source code")
 
-    build_executable(version, "macos", "x86_64")
-    build_executable(version, "macos", "aarch64")
-    build_executable(version, "linux", "x86_64")
-    build_executable(version, "linux", "aarch64")
-    build_executable(version, "windows", "x86_64")
+    build_executable("macos", "x86_64")
+    build_executable("macos", "aarch64")
+    build_executable("linux", "x86_64")
+    build_executable("linux", "aarch64")
+    build_executable("windows", "x86_64")
 
     fs.removeFile(BUNDLE_PATH)
 end
 
-local function build_studio_plugin(version: string)
+local function build_studio_plugin()
     fs.writeDir(PLUGIN_RELEASE_DIR)
     
     for _, filename in fs.readDir(PLUGIN_SOURCE_DIR) do
@@ -147,7 +146,7 @@ local function build_studio_plugin(version: string)
         "build", 
         PLUGIN_ROJO_CONFIG, 
         "--output", 
-        `{RELEASE_DIR}/blink-{version}-plugin.rbxm`
+        `{RELEASE_DIR}/blink-plugin.rbxm`
     })
     assert(rojo_result.ok, rojo_result.stderr)
 
@@ -162,13 +161,16 @@ do
     fs.writeDir(RELEASE_DIR)
 end
 
-local current_version = read_version()
-local new_version = stdio.prompt("text" :: "text", `What version is being built? (Current version is {current_version})`)
+
+local args = process.args
+if args[1] ~= "--release" then
+    local new_version = stdio.prompt("text" :: "text", `What version is being built? (Current version is {read_version()})`)
+    update_version(new_version)
+end
 
 local start = os.clock()
-update_version(new_version)
-build_executables(new_version)
-build_studio_plugin(new_version)
+build_executables()
+build_studio_plugin()
 
 local elapsed = (os.clock() - start)
 print(string.format("Finished build in %.2f seconds", elapsed))
