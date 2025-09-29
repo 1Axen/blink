@@ -336,7 +336,7 @@ function Declarations.Event(Declaration: Parser.Event)
 
 	local IsReliable = (Reliability == "Reliable")
 	local IsUnreliable = (Reliability == "Unreliable")
-	local IsPolling = (Value.Poll or Value.Call == "Polling" or Options.UsePolling)
+	local IsPolling = (Value.Call == "Polling" or Options.UsePolling)
 	local IsSameContext = Value.From == Context
 
 	local Block = IsUnreliable and Unreliables or Reliables

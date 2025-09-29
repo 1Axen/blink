@@ -162,7 +162,6 @@ export type Event = Node<"Event", {
     From: "Client" | "Server",
     Type: "Reliable" | "Unreliable",
     Call: "SingleSync" | "SingleAsync" | "ManySync" | "ManyAsync" | "Polling",
-    Poll: boolean?,
     Data: (TypeNode | Tuple)? 
 }, {}>
 
@@ -1140,6 +1139,10 @@ end
 
 function Parser.Event(self: Parser, Name: Token): Event
     local Structure = self:Structure(Name, EVENT)
+    local Call: index<index<Event, "Value">, "Call"> = Structure.Call
+    if Structure.Poll then
+        Call = "Polling"
+    end
 
     return {
         Type = "Event",
@@ -1147,8 +1150,7 @@ function Parser.Event(self: Parser, Name: Token): Event
         Value = {
             From = Structure.From,
             Type = Structure.Type,
-            Call = Structure.Call,
-            Poll = Structure.Poll,
+            Call = Call,
             Data = Structure.Data
         },
         Tokens = {}

@@ -229,7 +229,7 @@ function Generators.Event(State: State, Event: Parser.Event)
     local Casing = State.Casing
     local StringBuilder = State.Builder
 
-	local IsPolling = if Value.Poll ~= nil then Value.Poll else State.Options.UsePolling
+	local IsPolling = Value.Call == "Polling" or State.Options.UsePolling
 
     local _, Values = "", "Value: void"
 	if Value.Data then
