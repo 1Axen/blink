@@ -88,7 +88,8 @@ end
 
 local function build_executable(platform: Platforms, arch: Archs)
     local target = `{platform}-{arch}`
-    local exe_path = `{RELEASE_DIR}/{EXE_NAME}{platform == "windows" and ".exe" or ""}`
+    local exe_name = `{EXE_NAME}{platform == "windows" and ".exe" or ""}`
+    local exe_path = `{RELEASE_DIR}/{exe_name}`
     local build_result = process.spawn("lune", {
         "build", 
         BUNDLE_PATH, 
@@ -100,7 +101,9 @@ local function build_executable(platform: Platforms, arch: Archs)
     local archive_result = process.spawn("tar", {
         "-cavf",
         `{RELEASE_DIR}/blink-{target}.zip`,
-        exe_path
+        "-C",
+        RELEASE_DIR,
+        exe_name
     })
     assert(archive_result.ok, archive_result.stderr)
 
