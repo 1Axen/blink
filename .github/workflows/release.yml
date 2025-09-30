@@ -22,7 +22,7 @@ jobs:
         uses: CompeyDev/setup-rokit@v0.1.0
 
       - name: Build binaries
-        run: lune run build -- --release
+        run: lune run build
 
       - name: linux-aarch64
         run: gh release upload ${{github.event.release.tag_name}} release/blink-linux-aarch64.zip
