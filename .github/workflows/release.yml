@@ -28,16 +28,16 @@ jobs:
         run: gh release upload ${{github.event.release.tag_name}} release/blink-linux-aarch64.zip
 
       - name: linux-x86_64
-        run: gh release upload ${{github.event.release.tag_name}} build/blink-linux-x86_64.zip
+        run: gh release upload ${{github.event.release.tag_name}} release/blink-linux-x86_64.zip
 
       - name: macos-aarch64
-        run: gh release upload ${{github.event.release.tag_name}} build/blink-macos-aarch64.zip
+        run: gh release upload ${{github.event.release.tag_name}} release/blink-macos-aarch64.zip
 
       - name: macos-x86_64
-        run: gh release upload ${{github.event.release.tag_name}} build/blink-macos-x86_64.zip
+        run: gh release upload ${{github.event.release.tag_name}} release/blink-macos-x86_64.zip
 
       - name: windows-x86_64
-        run: gh release upload ${{github.event.release.tag_name}} build/blink-windows-x86_64.zip
+        run: gh release upload ${{github.event.release.tag_name}} release/blink-windows-x86_64.zip
 
       - name: plugin
-        run: gh release upload ${{github.event.release.tag_name}} build/blink-plugin.rbxm
+        run: gh release upload ${{github.event.release.tag_name}} release/blink-plugin.rbxm
