@@ -34,7 +34,7 @@ local function build_executable(platform: Platforms, arch: Archs)
         BUNDLE_PATH, 
         "--output", exe_path, 
         "--target", target
-    })
+    }, {stdio = "forward"})
     assert(build_result.ok, build_result.stderr)
 
     local archive_result = process.spawn("tar", {
@@ -43,7 +43,7 @@ local function build_executable(platform: Platforms, arch: Archs)
         "-C",
         RELEASE_DIR,
         exe_name
-    })
+    }, {stdio = "forward"})
     assert(archive_result.ok, archive_result.stderr)
 
     fs.removeFile(exe_path)
