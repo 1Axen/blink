@@ -15,12 +15,12 @@ type Platforms =
 
 local EXE_NAME = "blink"
 
-local RELEASE_DIR = "./release"
-local PLUGIN_SOURCE_DIR = `./plugin/src`
+local RELEASE_DIR = "release"
+local PLUGIN_SOURCE_DIR = `plugin/src`
 local PLUGIN_RELEASE_DIR = `{RELEASE_DIR}/plugin`
 
 local CLI_PATH = "src/CLI/init.luau"
-local BUNDLE_PATH = `{RELEASE_DIR}/blink_cli.luau`
+local BUNDLE_PATH = `{RELEASE_DIR}/blink.luau`
 
 local DARKLUA_CONFIG = "build/.darklua.json"
 local PLUGIN_ROJO_CONFIG = "build/plugin.project.json"
