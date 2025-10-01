@@ -25,19 +25,19 @@ jobs:
         run: lune run build
 
       - name: linux-aarch64
-        run: gh release upload ${{github.event.release.tag_name}} release/blink-linux-aarch64.zip
+        run: gh release upload ${{github.event.release.tag_name}} release/blink-linux-aarch64.tar.xz
 
       - name: linux-x86_64
-        run: gh release upload ${{github.event.release.tag_name}} release/blink-linux-x86_64.zip
+        run: gh release upload ${{github.event.release.tag_name}} release/blink-linux-x86_64.tar.xz
 
       - name: macos-aarch64
-        run: gh release upload ${{github.event.release.tag_name}} release/blink-macos-aarch64.zip
+        run: gh release upload ${{github.event.release.tag_name}} release/blink-macos-aarch64.tar.xz
 
       - name: macos-x86_64
-        run: gh release upload ${{github.event.release.tag_name}} release/blink-macos-x86_64.zip
+        run: gh release upload ${{github.event.release.tag_name}} release/blink-macos-x86_64.tar.xz
 
       - name: windows-x86_64
-        run: gh release upload ${{github.event.release.tag_name}} release/blink-windows-x86_64.zip
+        run: gh release upload ${{github.event.release.tag_name}} release/blink-windows-x86_64.tar.gz
 
       - name: plugin
         run: gh release upload ${{github.event.release.tag_name}} release/blink-plugin.rbxm
