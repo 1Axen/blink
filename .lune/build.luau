@@ -37,13 +37,25 @@ local function build_executable(platform: Platforms, arch: Archs)
     }, {stdio = "forward"})
     assert(build_result.ok, build_result.stderr)
 
-    local archive_result = process.spawn("tar", {
-        "-cavf",
-        `{RELEASE_DIR}/blink-{target}.zip`,
-        "-C",
-        RELEASE_DIR,
-        exe_name
-    }, {stdio = "forward"})
+    local archive_result: process.SpawnResult
+    if platform == "windows" then
+        archive_result = process.spawn("tar", {
+            "-czvf",
+            `{RELEASE_DIR}/blink-{target}.tar.gz`,
+            "-C",
+            RELEASE_DIR,
+            exe_name
+        }, {stdio = "forward"})
+    else
+        archive_result = process.spawn("tar", {
+            "-cJvf",
+            `{RELEASE_DIR}/blink-{target}.tar.xz`,
+            "-C",
+            RELEASE_DIR,
+            exe_name
+        }, {stdio = "forward"})
+    end
+ 
     assert(archive_result.ok, archive_result.stderr)
 
     fs.removeFile(exe_path)
