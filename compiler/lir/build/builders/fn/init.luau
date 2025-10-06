@@ -45,14 +45,14 @@ end
 
 local function rreturn(ty: Ty): lir.Return
 	return {
-		kind = "return",
+		type = "return",
 		ty = ty,
 	}
 end
 
 local function argument(ty: Ty, name: string?): lir.Argument
 	return {
-		kind = "argument",
+		type = "argument",
 		ty = ty,
 		name = name,
 	}
@@ -239,9 +239,9 @@ export type Builder = {
 local function create(ctx: Context, name: index<Fn, "name">, args: { Argument }, rets: { Return }, body: Body): Fn
 	local function argument_id(self: Builder, index: number): lir.ArgumentId<any>
 		if index > #args then
-			return panic(`Attempted to get argument id #{index}, but fn only has {#args} arguments`)
+			return panic(`tried using argument #{index}, but fn only has {#args} argument(s)`)
 		elseif index < 0 then
-			return panic(`Attempted to get a negative argument id`)
+			return panic(`negative argument id #{index}`)
 		end
 
 		return {

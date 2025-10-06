@@ -16,7 +16,23 @@ local function insert<T>(into: RValue<{ T }>, value: RValue<T>)
 	return projection.call(constant.from_value("table.insert"), { into, value })
 end
 
+local function move<T>(
+	source: RValue<{ T }>,
+	from: RValue<number>,
+	to: RValue<number>,
+	at: RValue<number>,
+	destination: RValue<{ T }>
+)
+	return projection.call(constant.from_value("table.move"), { source, from, to, at, destination })
+end
+
+local function clear<T>(target: RValue<{ T }>)
+	return projection.call(constant.from_value("table.clear"), { target })
+end
+
 return table.freeze({
 	create = create,
 	insert = insert,
+	move = move,
+	clear = clear,
 })

@@ -45,4 +45,7 @@ return table.freeze({
 	DateTime = roblox_lib.DateTime,
 	Instance = roblox_lib.Instance,
 	BrickColor = roblox_lib.BrickColor,
+	RemoteEvent = roblox_lib.RemoteEvent,
+	Players = roblox_lib.Players,
+	DataModel = roblox_lib.DataModel,
 })

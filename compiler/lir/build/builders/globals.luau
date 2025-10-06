@@ -15,8 +15,14 @@ end
 
 return table.freeze({
 	create = global,
-
 	types_map = global("types"),
+	players_map = global("players_map"),
+
+	services = {
+		players = global("PLAYERS") :: Global<Players>,
+		run_service = global("RUN_SERVICE") :: Global<RunService>,
+		replicated_storage = global("REPLICATED_STORAGE") :: Global<ReplicatedStorage>,
+	},
 
 	incoming = {
 		buffer = global("in_buffer") :: Global<buffer>,
@@ -34,21 +40,7 @@ return table.freeze({
 	},
 
 	events = {
-		invocations = global("invocations") :: Global<number>,
-
-		queues = {
-			reliable = global("reliable_queue"),
-			unreliable = global("unreliable_queue"),
-		},
-
-		connections = {
-			reliable = global("reliable_connections"),
-			unreliable = global("unreliable_connections"),
-		},
-
-		instances = {
-			folder = global("EVENTS_FOLDER"),
-			reliable = global("RELIABLE_EVENT"),
-		},
+		reliable = global("RELIABLE_EVENT") :: Global<RemoteEvent>,
+		unreliable = global("UNRELIABLE_EVENT") :: Global<RemoteEvent>,
 	},
 })

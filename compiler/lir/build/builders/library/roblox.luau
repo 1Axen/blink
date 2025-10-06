@@ -52,6 +52,34 @@ local function instance_is_a(at: RValue<Instance>, class: Constant<string>): Nam
 	return projection.namecall(at :: LValue<any>, constant.from_value("IsA"), { class } :: any)
 end
 
+local function instance_find_first_child(parent: RValue<Instance>, name: RValue<string>): Namecall<Instance?>
+	return projection.namecall(parent :: LValue<any>, constant.from_value("FindFirstChild"), { name })
+end
+
+local function instance_wait_for_child(parent: RValue<Instance>, name: RValue<string>): Namecall<Instance>
+	return projection.namecall(parent :: LValue<any>, constant.from_value("WaitForChild"), { name })
+end
+
+local function fire_all(remote: RValue<RemoteEvent>, args: { RValue<any> }): Namecall<nil>
+	return projection.namecall(remote :: LValue<any>, constant.from_value("FireAllClients"), args)
+end
+
+local function fire_client(remote: RValue<RemoteEvent>, args: { RValue<any> }): Namecall<nil>
+	return projection.namecall(remote :: LValue<any>, constant.from_value("FireClient"), args)
+end
+
+local function fire_server(remote: RValue<RemoteEvent>, args: { RValue<any> }): Namecall<nil>
+	return projection.namecall(remote :: LValue<any>, constant.from_value("FireServer"), args)
+end
+
+local function get_players(service: RValue<Players>): Namecall<{ Player }>
+	return projection.namecall(service :: LValue<any>, constant.from_value("GetPlayers"), {})
+end
+
+local function get_service<T>(name: RValue<string>): Namecall<T>
+	return projection.namecall(constant.from_value("game"), constant.from_value("GetService"), { name })
+end
+
 return table.freeze({
 	CFrame = {
 		new_quat = cframe_new_quat,
@@ -74,5 +102,21 @@ return table.freeze({
 
 	Instance = {
 		is_a = instance_is_a,
+		wait_for_child = instance_wait_for_child,
+		find_first_child = instance_find_first_child,
+	},
+
+	RemoteEvent = {
+		fire_all = fire_all,
+		fire_client = fire_client,
+		fire_server = fire_server,
+	},
+
+	Players = {
+		get_players = get_players,
+	},
+
+	DataModel = {
+		get_service = get_service,
 	},
 })
