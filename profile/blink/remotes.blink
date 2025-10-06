@@ -1,0 +1,17 @@
+type foo = struct {
+	bar: u8
+}
+
+event reliable {
+	from: Client,
+	type: Reliable,
+	call: SingleSync,
+	data: (value: u8, foo)
+}
+
+event unreliable {
+	from: Client,
+	type: Unreliable,
+	call: SingleSync,
+	data: (value: u8, foo)
+}
