@@ -278,14 +278,7 @@ end
 
 local function fmt_statement(fmt_builder: StringBuilder, statement: lir.Statement)
 	if statement.kind == "call" then
-		local call = statement.call
-		if call.kind == "call" then
-			fmt_projection(fmt_builder, call)
-		elseif call.kind == "allocate" then
-			fmt_control(fmt_builder, call :: any)
-		else
-			strong_exhaustive_match(call.kind)
-		end
+		fmt_rvalue(fmt_builder, statement.call)
 	elseif statement.kind == "assign" then
 		fmt_lvalue(fmt_builder, statement.into)
 		string_builder.append(fmt_builder, " = ")

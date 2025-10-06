@@ -2,42 +2,26 @@
 --!native
 --!optimize 2
 
+local append_buffer_fns = require("@codegen/templates/append_buffer_fns")
+local append_client = require("@codegen/templates/append_client")
+local append_headers = require("@self/templates/append_headers")
+local append_server = require("@codegen/templates/append_server")
 local compilation = require("@config/compilation")
 local context = require("@self/context")
-local fs = require("@lune/fs")
-local get_module_directory = require("@util/get_module_directory")
 local globals = require("@lir/build/builders/globals")
 local hir = require("@hir/types")
 local lir = require("@compiler/lir/types")
+local md5 = require("@vendor/md5")
+local panic = require("@util/panic")
 local string_builder = require("@util/string_builder")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 local weak_exhaustive_match = require("@util/weak_exhaustive_match")
 
 type Context = context.Context
 
-local module_directory = get_module_directory()
-local BUFFER_TEMPLATE = string.split(fs.readFile(`{module_directory}/./templates/buffer.luau`), "-- TESTING --")[1]
-
 local gen_lvalue: <T>(ctx: Context, lvalue: lir.LValue<T>) -> ()
 local gen_rvalue: <T>(ctx: Context, rvalue: lir.RValue<T>) -> ()
 local gen_block: (ctx: Context, block: lir.BasicBlock) -> ()
-
---- Attempts to mark a register as seen, returns true if this is the first time this register was seen.
---- *For LValues that aren't registers this always returns false.*
-local function try_mark_seen(ctx: Context, lvalue: lir.LValue<any>): boolean
-	if lvalue.type ~= "id" or lvalue.kind ~= "register" then
-		return false
-	end
-
-	local index = lvalue.index
-	local seen_registers = ctx.seen_registers
-	if seen_registers[index] then
-		return false
-	end
-
-	seen_registers[index] = true
-	return true
-end
 
 local function gen_constant(ctx: Context, constant: lir.Constant)
 	ctx.builder:append(tostring(constant.value))
@@ -96,14 +80,28 @@ local function gen_projection<T>(ctx: Context, projection: lir.Projection<T>)
 	end
 end
 
-local function gen_id(ctx: Context, id: lir.Id<any>)
+local function gen_id<T>(ctx: Context, id: lir.Id<T>): never?
+	local builder = ctx.builder
 	if id.kind == "register" then
-		ctx.builder:append(`r{id.index}`)
+		builder:append(`r{id.index}`)
 	elseif id.kind == "argument" then
-		ctx.builder:append(`a{id.index}`)
+		local fn = ctx.current_fn
+		if fn == nil then
+			return panic(`expected a current fn`)
+		end
+
+		local index = id.index
+		local argument = fn.args[index]
+		if argument.name then
+			builder:append(argument.name)
+		else
+			builder:append(`a{index}`)
+		end
 	else
 		strong_exhaustive_match(id.kind)
 	end
+
+	return nil
 end
 
 local function gen_global(ctx: Context, global: lir.Global<any>)
@@ -268,15 +266,15 @@ local function gen_loop(ctx: Context, loop: lir.Loop)
 	builder:append("for ")
 
 	if loop.kind == "numeric" then
-		try_mark_seen(ctx, loop.index)
+		context.try_see_register(ctx, loop.index)
 		gen_id(ctx, loop.index)
 		builder:append(" = 1, ")
 		gen_rvalue(ctx, loop.iterations)
 	elseif loop.kind == "generic" then
-		try_mark_seen(ctx, loop.index)
+		context.try_see_register(ctx, loop.index)
 		gen_id(ctx, loop.index)
 		builder:append(", ")
-		try_mark_seen(ctx, loop.index)
+		context.try_see_register(ctx, loop.index)
 		gen_id(ctx, loop.value)
 		builder:append(" in ")
 		gen_rvalue(ctx, loop.target)
@@ -303,7 +301,7 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 		builder:append_indent()
 		local fn = lir.fn_from_id(lirr, terminator.fn)
 		for index, ret in terminator.rets do
-			if index == 1 and try_mark_seen(ctx, ret) then
+			if index == 1 and context.try_see_register(ctx, ret) then
 				builder:append("local ")
 			elseif index > 1 then
 				builder:append(",")
@@ -334,7 +332,7 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 			gen_rvalue(ctx, argument)
 		end
 
-		builder:append(")")
+		builder:append(")\n")
 		gen_block(ctx, terminator.destination)
 	elseif terminator.kind == "goto" then
 		builder:dedent()
@@ -372,7 +370,7 @@ local function gen_statement(ctx: Context, statement: lir.Statement)
 		builder:append_indent()
 
 		local into = statement.into
-		if try_mark_seen(ctx, into) then
+		if context.try_see_register(ctx, into) then
 			builder:append("local ")
 		end
 
@@ -422,19 +420,11 @@ function gen_block(ctx: Context, block: lir.BasicBlock)
 	gen_terminator(ctx, block.terminator)
 end
 
-local function gen_fn(ctx: Context, fn: lir.Fn)
+local function gen_fn_body(ctx: Context, fn: lir.Fn)
 	local builder = ctx.builder
-	table.clear(ctx.seen_registers)
 
-	if fn.name.type == "projection" then
-		builder:append("function ")
-		gen_projection(ctx, fn.name)
-	elseif fn.name.type == "constant" then
-		builder:append("local function ")
-		builder:append(fn.name.value)
-	else
-		strong_exhaustive_match(fn.name.type)
-	end
+	ctx.current_fn = fn
+	table.clear(ctx.seen_registers)
 
 	builder:append("(")
 
@@ -450,29 +440,72 @@ local function gen_fn(ctx: Context, fn: lir.Fn)
 
 	builder:indent()
 	gen_block(ctx, fn.blocks[1])
-
-	while builder.indentation > 0 do
-		builder:dedent()
-	end
+	builder:dedent()
 
 	builder:append_line("end")
+	ctx.current_fn = nil
 end
 
-local function from_lir(lirr: lir.Lir, hirr: hir.Hir, target: compilation.Target): string
+local function gen_fn(ctx: Context, fn: lir.Fn)
+	local builder = ctx.builder
+	builder:append_indent()
+
+	if fn.name.type == "projection" then
+		builder:append("function ")
+		gen_projection(ctx, fn.name)
+	elseif fn.name.type == "constant" then
+		builder:append("local function ")
+		builder:append(fn.name.value)
+	else
+		strong_exhaustive_match(fn.name.type)
+	end
+
+	gen_fn_body(ctx, fn)
+end
+
+local function gen_fn_anonymous(ctx: Context, fn: lir.Fn)
+	local builder = ctx.builder
+	builder:append_indent()
+
+	if fn.name.type == "constant" then
+		builder:append(fn.name.value)
+	elseif fn.name.type == "projection" then
+		gen_projection(ctx, fn.name)
+	else
+		strong_exhaustive_match(fn.name.type)
+	end
+
+	builder:append(" = function")
+	gen_fn_body(ctx, fn)
+end
+
+export type Props = {
+	lir: lir.Lir,
+	hir: hir.Hir,
+	hash: string,
+	profile: compilation.Profile,
+}
+
+local function from_lir(props: Props, target: compilation.Target): string
+	local lirr = props.lir
+	local hirr = props.hir
 	local builder = string_builder.create({})
+
 	local ctx: Context = {
 		lir = lirr,
 		hir = hirr,
 		target = target,
 		builder = builder,
+		scope_paths = {},
 		seen_registers = {},
 	}
 
-	builder:append("local ")
-	builder:append(globals.types_map.identifier)
-	builder:append("= {}\n")
+	append_headers(builder)
+	append_buffer_fns(builder)
 
-	builder:append(BUFFER_TEMPLATE)
+	builder:append("local ")
+	gen_global(ctx, globals.types_map)
+	builder:append(" = {}\n")
 
 	for name, rvalue in lirr.globals do
 		builder:append("local ")
@@ -482,9 +515,62 @@ local function from_lir(lirr: lir.Lir, hirr: hir.Hir, target: compilation.Target
 		builder:append("\n")
 	end
 
-	for _, fn in lirr.fns do
-		gen_fn(ctx, fn)
+	for _, fn_set in lirr.tys do
+		gen_fn(ctx, lir.fn_from_id(lirr, fn_set.read))
+		gen_fn(ctx, lir.fn_from_id(lirr, fn_set.write))
 	end
+
+	if target ~= "shared" then
+		local hash = props.hash
+		local reliable_name = md5(`{hash}+reliable`)
+		local unreliable_name = md5(`{hash}+unreliable`)
+
+		if target == "client" then
+			append_client(builder, reliable_name, unreliable_name)
+		elseif target == "server" then
+			append_server(builder, reliable_name, unreliable_name)
+		end
+	end
+
+	builder:append_line("return {")
+	builder:indent()
+
+	if target ~= "shared" then
+		for _, event in lirr.events do
+			local decl = event.decl
+			builder:append_indent()
+			builder:append(decl.name)
+			builder:append(" = {\n")
+			builder:indent()
+
+			local fns = event.fns
+			local fn_ids = if target == "server"
+				then {
+					fns.fire_all,
+					fns.fire_list,
+					fns.fire_except,
+					fns.fire_server,
+					fns.iter_server,
+					fns.listen_server,
+				}
+				else {
+					fns.fire_client,
+					fns.iter_client,
+					fns.listen_client,
+				}
+
+			for _, fn_id in fn_ids do
+				gen_fn_anonymous(ctx, lir.fn_from_id(lirr, fn_id))
+				builder:append(",")
+			end
+
+			builder:dedent()
+			builder:append_line("},")
+		end
+	end
+
+	builder:dedent()
+	builder:append_line("}")
 
 	return string_builder.finalize(builder)
 end

@@ -8,12 +8,12 @@ type Ty = ty.Ty
 type TyId = ty.TyId
 
 export type Return = {
-	kind: "return",
+	type: "return",
 	ty: Ty,
 }
 
 export type Argument = {
-	kind: "argument",
+	type: "argument",
 	ty: Ty,
 	name: string?,
 }
@@ -439,13 +439,27 @@ export type Type = {
 export type Event = {
 	type: "event",
 	decl: hir.Event,
-	set: FnSet,
+	fns: {
+		fire_all: FnId,
+		fire_list: FnId,
+		fire_except: FnId,
+		fire_server: FnId,
+		iter_server: FnId,
+		listen_server: FnId,
+
+		fire_client: FnId,
+		iter_client: FnId,
+		listen_client: FnId,
+	},
 }
 
 export type Function = {
 	type: "function",
 	decl: hir.Function,
-	set: FnSet,
+	fns: {
+		listen: FnId,
+		invoke: FnId,
+	},
 }
 
 export type Lir = {
