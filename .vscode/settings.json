@@ -17,7 +17,7 @@
 	
 	"luau-lsp.sourcemap.enabled": false,
 	
-	"luau-lsp.diagnostics.workspace": false,
+	"luau-lsp.diagnostics.workspace": true,
 
 	"luau-lsp.platform.type": "roblox",
 	"luau-lsp.completion.imports.suggestServices": false,
