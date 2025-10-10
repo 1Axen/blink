@@ -344,6 +344,14 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 		gen_loop(ctx, terminator.loop)
 		builder:indent()
 		gen_block(ctx, terminator.destination)
+	elseif terminator.kind == "while" then
+		builder:append_indent()
+		builder:append("while ")
+		gen_condition(ctx, terminator.cond)
+		builder:append(" do\n")
+
+		builder:indent()
+		gen_block(ctx, terminator.truthy)
 	elseif terminator.kind == "return" then
 		builder:append_indent()
 		builder:append("return ")
