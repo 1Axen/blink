@@ -56,7 +56,8 @@ end
 local function search<T>(self: Symbols<T>, path: { string }): T?
 	local node: Symbols<T>? = self
 
-	for index = #path, 1, -1 do
+	local index = 1
+	while node do
 		local segment = path[index]
 		local child = node.children[segment] :: any
 		if child then
@@ -70,10 +71,7 @@ local function search<T>(self: Symbols<T>, path: { string }): T?
 		end
 
 		node = node.parent :: any
-
-		if node == nil then
-			break
-		end
+		index += 1
 	end
 
 	return nil

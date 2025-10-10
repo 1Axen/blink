@@ -6,7 +6,6 @@ local types = require("@config/compilation")
 
 local ast = require("@ast/types")
 local hir = require("@hir/types")
-local id = require("@compiler/id")
 local ty = require("@ty/types")
 
 local bounds = require("@config/bounds")
@@ -73,7 +72,6 @@ end
 local function assert_identifier_one_of(ctx: Context, ident: ast.Identifier, valid: { string }): ast.Identifier
 	local value = ident.value
 	if table.find(valid, value) == nil then
-		--TODO: Remove cast when Luau solver bug is fixed
 		return report.expect_one_of(ident, valid, value)
 	end
 
@@ -383,7 +381,7 @@ local function ty_reference(ctx: Context, expr: ast.ExprReference, node_id: Node
 		if generic_ty_id then
 			local node = hir.node_from_id(ctx.hir, node_id)
 			if node.kind == "type" then
-				return ty.generic_type(generic_ty_id :: TyId, { generic_ty_id })
+				return ty.generic_type(generic_ty_id :: TyId, { generic_ty_id :: TyId })
 			end
 
 			return hir.ty_from_id(ctx.hir, generic_ty_id)
@@ -467,13 +465,11 @@ function expression(
 	elseif expr.kind == "number" then
 		new_ty = ty_number_literal(ctx, expr)
 	elseif expr.kind == "boolean" then
-		--TODO: Remove cast when Luau bug is fixed
-		new_ty = ty_boolean_literal(ctx, expr :: ast.ExprBoolean)
+		new_ty = ty_boolean_literal(ctx, expr)
 	elseif expr.kind == "tagged_enum" then
 		new_ty = ty_tagged_enum(ctx, expr)
 	elseif expr.kind == "optional" then
-		--TODO: Remove cast when Luau bug is fixed
-		new_ty = ty_optional(ctx, expr :: ast.ExprOptional)
+		new_ty = ty_optional(ctx, expr)
 	elseif expr.kind == "reference" then
 		local path = path_to_string(expr.path)
 		local primitive = (primitives :: { [string]: any? })[path]

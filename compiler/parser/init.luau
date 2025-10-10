@@ -43,7 +43,7 @@ local expression: (Context) -> ast.Expression
 local function next_node_id(ctx: Context): ast.NodeId
 	local index = ctx.node_index
 	ctx.node_index += 1
-	return id.create(ctx.file.id, index)
+	return id.create(ctx.file.id, index) :: ast.NodeId
 end
 
 local function peek(ctx: Context): Token
@@ -351,9 +351,12 @@ local function expr_range(ctx: Context): ast.Range
 		return report.expect_one_of(first, { "..", "number" })
 	end
 
+	local lower_bound = (min or max) :: ast.ExprNumber
+	local upper_bound = (max or min) :: ast.ExprNumber
+
 	return {
 		id = node_id,
-		span = span.merge((min or max).span, (max or min).span),
+		span = span.merge(lower_bound.span, upper_bound.span),
 		kind = "range",
 		max = max,
 		min = min,
@@ -499,11 +502,7 @@ local function expr_set(ctx: Context): ast.ExprSet
 end
 
 local function expr_enum_unit_variant(ctx: Context): ast.ExprUnitEnumVariant
-	local node_id = next_node_id(ctx)
-
-	local value
 	local token = peek(ctx)
-
 	if token.kind == "string" then
 		return expr_string(ctx)
 	elseif token.kind == "number" then
@@ -951,16 +950,12 @@ function statement(ctx: Context): ast.Statement
 		return report.expect_one_of(token, { "type", "scope", "event", "struct", "function" })
 	end
 
-	-- TODO: Remove assert
-	assert(stat)
-
 	-- validate attributes
 	if #ctx.attributes > 0 then
 		return report.invalid_attribute_placement(stat)
 	end
 
-	-- TODO: Remove assert
-	return assert(stat)
+	return stat
 end
 
 function block(ctx: Context, is_scope: boolean?): ast.Block
