@@ -27,7 +27,6 @@ return table.freeze({
 	incoming = {
 		buffer = global("in_buffer") :: Global<buffer>,
 		cursor = global("in_cursor") :: Global<number>,
-		length = global("in_length") :: Global<number>,
 		unknown = global("in_unknown") :: Global<{ unknown }>,
 		unknown_cursor = global("in_unknown_cursor") :: Global<number>,
 	},
