@@ -5,7 +5,6 @@ type StringBuilder = string_builder.StringBuilder
 local buffer_template = [[
 local in_buffer = buffer.create(64)
 local in_cursor = 0
-local in_length = 64
 local in_unknown: { any } = table.create(16)
 local in_unknown_cursor = 1
 
