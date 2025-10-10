@@ -1,6 +1,5 @@
 local ast = require("@ast/types")
 local hir = require("@hir/types")
-local id = require("@compiler/id")
 local ty = require("@ty/types")
 
 local fmt_id = require("@compiler/id/format")

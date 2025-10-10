@@ -122,7 +122,7 @@ local function expr_pack(ctx: Context, expr: ast.ExprPack): never?
 end
 
 local function expr_enum(ctx: Context, expr: ast.ExprEnum): never?
-	local variants: { [string]: report.Entry } = {}
+	local variants: { [any]: report.Entry } = {}
 	for _, variant in expr.variants do
 		local value = variant.value
 		local previous = variants[value]

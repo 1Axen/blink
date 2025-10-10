@@ -195,7 +195,7 @@ end
 
 local function fmt_reference(ty: ty.Reference): string
 	local args: { string } = {}
-	for _, arg in ty.args do
+	for _, arg in ty.args or {} do
 		table.insert(args, fmt_ty_id(arg))
 	end
 

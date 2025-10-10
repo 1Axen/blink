@@ -16,8 +16,6 @@ local panic = require("@util/panic")
 local path = require("@util/path")
 local symbols = require("@compiler/symbols")
 
-local fmt_hir = require("@self/hir/format")
-local fmt_lir = require("@self/lir/format")
 local md5 = require("@vendor/md5")
 
 type Ast = ast.Ast
