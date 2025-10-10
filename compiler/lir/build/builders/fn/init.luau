@@ -197,6 +197,26 @@ local function for_generic(self: Builder, target: index<lir.LoopGeneric, "target
 	table.insert(self.blocks, after_block)
 end
 
+local function while_loop(self: Builder, condition: Condition, body: Body)
+	local current = self.block
+	local truthy_block = basic_block.create(current.scope + 1)
+	local falsey_block = basic_block.create(current.scope, current.terminator)
+
+	current.terminator = terminator.while_loop(condition, truthy_block, falsey_block)
+	truthy_block.terminator = terminator.goto(falsey_block)
+
+	--> set block to loop
+	self.block = truthy_block
+	table.insert(self.blocks, truthy_block)
+
+	--> populate the loop
+	body(self)
+
+	--> set block to after loop
+	self.block = falsey_block
+	table.insert(self.blocks, falsey_block)
+end
+
 local function call_fn(self: Builder, fn_id: FnId, args: { RValue }, rets: { LValue })
 	local prev_block = self.block
 	local next_block = basic_block.create(prev_block.scope, prev_block.terminator)
@@ -232,6 +252,8 @@ export type Builder = {
 
 	for_numeric: typeof(for_numeric),
 	for_generic: typeof(for_generic),
+
+	while_loop: typeof(while_loop),
 
 	argument: (self: Builder, index: number) -> lir.ArgumentId<any>,
 }
@@ -280,6 +302,8 @@ local function create(ctx: Context, name: index<Fn, "name">, args: { Argument },
 
 		for_numeric = for_numeric,
 		for_generic = for_generic,
+
+		while_loop = while_loop,
 
 		argument = argument_id,
 	}

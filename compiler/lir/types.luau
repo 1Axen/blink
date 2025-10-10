@@ -7,17 +7,6 @@ local ty = require("@ty/types")
 type Ty = ty.Ty
 type TyId = ty.TyId
 
-export type Return = {
-	type: "return",
-	ty: Ty,
-}
-
-export type Argument = {
-	type: "argument",
-	ty: Ty,
-	name: string?,
-}
-
 --stylua: ignore
 export type ConstantValue = 
     | number
@@ -391,6 +380,14 @@ export type TermCall = {
 	destination: BasicBlock,
 }
 
+export type TermWhile = {
+	type: "terminator",
+	kind: "while",
+	cond: Condition<any>,
+	truthy: BasicBlock,
+	falsey: BasicBlock,
+}
+
 export type TermReturn = {
 	type: "terminator",
 	kind: "return",
@@ -404,6 +401,7 @@ export type Terminator =
     | TermCall
     | TermGoto
     | TermNone
+	| TermWhile
     | TermReturn
 
 export type BasicBlock = {
@@ -411,6 +409,17 @@ export type BasicBlock = {
 	scope: number,
 	statements: { Statement },
 	terminator: Terminator,
+}
+
+export type Return = {
+	type: "return",
+	ty: Ty,
+}
+
+export type Argument = {
+	type: "argument",
+	ty: Ty,
+	name: string?,
 }
 
 export type Fn = {
