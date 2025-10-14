@@ -1,6 +1,5 @@
 --!strict
 
-local hir = require("@hir/types")
 local panic = require("@util/panic")
 local ty = require("@ty/types")
 
@@ -280,6 +279,7 @@ export type RValue<T> =
 	| Condition<T>
 	| Constant<T>
 	| Projection<T>
+	| AnonymousFn
 
 --- call
 export type StatCall = {
@@ -303,6 +303,13 @@ export type StatAssign = {
 	value: RValue<any>?,
 }
 
+export type StatLocalAssign = {
+	type: "statement",
+	kind: "local_assign",
+	into: RegisterId<any>,
+	value: RValue<any>?,
+}
+
 --- %a, %b, %c = value
 export type StatMultiAssign = {
 	type: "statement",
@@ -311,12 +318,19 @@ export type StatMultiAssign = {
 	value: RValue<any>,
 }
 
+export type StatFunction = {
+	type: "statement",
+	kind: "function",
+	fn: Fn,
+}
+
 --stylua: ignore
 export type Statement = 
     | StatCall
     | StatAssign
     | StatRemark
     | StatMultiAssign
+	| StatLocalAssign
 
 --- numeric for `%index` = 1, `%iterations` do
 export type LoopNumeric = {
@@ -344,12 +358,22 @@ export type Loop =
 export type TermIf = {
 	type: "terminator",
 	kind: "if",
+
+	cond: Condition<any>,
+	truthy: BasicBlock,
+	falsey: BasicBlock,
+}
+
+export type TermIfChain = {
+	type: "terminator",
+	kind: "if_chain",
+
 	cond: Condition<any>,
 	truthy: BasicBlock,
 	falsey: BasicBlock,
 
-	-- elseif
-	chained: boolean?,
+	chain_index: number,
+	chain_length: number,
 }
 
 --- placeholder
@@ -403,9 +427,11 @@ export type Terminator =
     | TermNone
 	| TermWhile
     | TermReturn
+	| TermIfChain
 
 export type BasicBlock = {
 	type: "block",
+	index: number,
 	scope: number,
 	statements: { Statement },
 	terminator: Terminator,
@@ -422,67 +448,100 @@ export type Argument = {
 	name: string?,
 }
 
+export type FnBody = {
+	rets: { Return },
+	args: { Argument },
+	blocks: { any },
+}
+
+export type AnonymousFn = {
+	type: "anon_fn",
+} & FnBody
+
 export type Fn = {
 	type: "fn",
 	id: FnId,
 	name: ProjNamecall<any> | ProjIndex<any> | Constant<string>,
+} & FnBody
 
-	rets: { Return },
-	args: { Argument },
-	blocks: { BasicBlock },
-}
-
-export type FnId = number | { __fn: true }
+export type FnId = number | { write __fn: true }
 
 export type FnSet = {
 	read: FnId,
 	write: FnId,
 }
 
-export type Type = {
-	type: "type",
-	decl: hir.Type,
-	set: FnSet,
+export type TypeExport = {
+	type: "export",
+	kind: "type",
+	name: string,
+
+	read: AnonymousFn,
+	write: AnonymousFn,
+	read_from: AnonymousFn,
+	write_to: AnonymousFn,
 }
 
-export type Event = {
-	type: "event",
-	decl: hir.Event,
-	fns: {
-		fire_all: FnId,
-		fire_list: FnId,
-		fire_except: FnId,
-		fire_server: FnId,
-		iter_server: FnId,
-		listen_server: FnId,
+export type EventExport = {
+	type: "export",
+	kind: "event",
+	name: string,
 
-		fire_client: FnId,
-		iter_client: FnId,
-		listen_client: FnId,
+	server: {
+		fire_all: AnonymousFn,
+		fire_list: AnonymousFn,
+		fire_client: AnonymousFn,
+		fire_except: AnonymousFn,
+		on: AnonymousFn?,
+		iter: AnonymousFn?,
+	},
+	client: {
+		fire_server: AnonymousFn,
+		on: AnonymousFn?,
+		iter: AnonymousFn?,
 	},
 }
 
-export type Function = {
-	type: "function",
-	decl: hir.Function,
-	fns: {
-		listen: FnId,
-		invoke: FnId,
-	},
+export type FunctionExport = {
+	type: "export",
+	kind: "function",
+	name: string,
+
+	on: AnonymousFn,
+	invoke_server: AnonymousFn,
 }
+
+export type ScopeExport = {
+	type: "export",
+	kind: "scope",
+	name: string,
+
+	items: { Export },
+}
+
+--stylua: ignore
+export type Export = 
+	| TypeExport 
+	| EventExport 
+	| FunctionExport 
+	| ScopeExport
 
 export type Lir = {
-	fns: { [FnId]: Fn },
+	export: ScopeExport,
+	fn_map: { [FnId]: Fn },
 	globals: { [string]: RValue<any> },
-
-	tys: { [TyId]: FnSet },
-	types: { [hir.DeclId]: Type },
-	events: { [hir.DeclId]: Event },
-	functions: { [hir.DeclId]: Function },
+	client_receive: {
+		reliable: AnonymousFn,
+		unreliable: AnonymousFn,
+	},
+	server_receive: {
+		reliable: AnonymousFn,
+		unreliable: AnonymousFn,
+	},
 }
 
 local function fn_from_id(lir: Lir, fn_id: FnId): Fn
-	local fn = lir.fns[fn_id]
+	local fn = lir.fn_map[fn_id]
 	if fn == nil then
 		return panic("Expected fn id to point to a fn")
 	end

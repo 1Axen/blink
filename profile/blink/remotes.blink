@@ -1,17 +1,22 @@
-type foo = struct {
-	bar: u8
-}
+type foo = u16
 
 event reliable {
 	from: Client,
 	type: Reliable,
-	call: SingleSync,
+	call: Polling,
 	data: (value: u8, foo)
 }
 
 event unreliable {
 	from: Client,
 	type: Unreliable,
-	call: SingleSync,
+	call: SingleAsync,
+	data: (value: u8, foo)
+}
+
+event unreliable_many {
+	from: Client,
+	type: Unreliable,
+	call: ManyAsync,
 	data: (value: u8, foo)
 }

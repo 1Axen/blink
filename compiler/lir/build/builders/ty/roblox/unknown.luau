@@ -37,7 +37,7 @@ local function build_read(props: ReadProps, block: Builder, _: Unknown, into: LV
 	local value_register = (into or block:reserve())
 
 	local exists = condition.equals(byte_register, constant.one)
-	block:if_branch(exists, function(block)
+	block:if_single(exists, function(block)
 		local unknown_cursor = globals.incoming.unknown_cursor
 		local value = projection.field(globals.incoming.unknown :: LValue<any>, unknown_cursor)
 		block:store(binary.add(unknown_cursor, constant.one), unknown_cursor)
@@ -51,7 +51,7 @@ local function build_write(props: WriteProps, block: Builder, _: Unknown, value:
 	local exists = condition.not_equals(value, constant.null)
 	local cursor = block:allocate(constant.one)
 
-	block:if_branch(exists, function(block)
+	block:if_single(exists, function(block)
 		block:call(library.table.insert(globals.outgoing.unknown, value))
 	end)
 

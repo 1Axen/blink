@@ -33,7 +33,7 @@ local DEFAULT_TYPE = constant.from_value("Instance")
 
 local function validate(ctx: Context, block: Builder, instance: Instance, value: RValue<Instance>)
 	local is_not_type = condition.not_equals(library.typeof(value :: any), DEFAULT_TYPE)
-	block:if_branch(is_not_type, function(block)
+	block:if_single(is_not_type, function(block)
 		block:call(library.error("Expected an Instance"))
 	end)
 
@@ -48,13 +48,13 @@ local function validate(ctx: Context, block: Builder, instance: Instance, value:
 	local is_not_class =
 		condition.not_equals(library.Instance.is_a(value :: any, class_constant), constant.from_value(true))
 
-	block:if_branch(is_not_class, function(block)
+	block:if_single(is_not_class, function(block)
 		block:call(library.error(`Expected an Instance of class "{class_constant.value}"`))
 	end)
 end
 
 local function validate_optional(ctx: Context, block: Builder, instance: Instance, value: RValue<Instance>)
-	block:if_branch(condition.not_equals(value, constant.null), function(block)
+	block:if_single(condition.not_equals(value, constant.null), function(block)
 		validate(ctx, block, instance, value)
 	end)
 end

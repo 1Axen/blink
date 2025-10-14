@@ -8,8 +8,9 @@ local append_headers = require("@self/templates/append_headers")
 local append_server = require("@codegen/templates/append_server")
 local compilation = require("@config/compilation")
 local context = require("@self/context")
+
+local cased_method = require("@self/cased_method")
 local globals = require("@lir/build/builders/globals")
-local hir = require("@hir/types")
 local lir = require("@compiler/lir/types")
 local md5 = require("@vendor/md5")
 local panic = require("@util/panic")
@@ -21,7 +22,12 @@ type Context = context.Context
 
 local gen_lvalue: <T>(ctx: Context, lvalue: lir.LValue<T>) -> ()
 local gen_rvalue: <T>(ctx: Context, rvalue: lir.RValue<T>) -> ()
-local gen_block: (ctx: Context, block: lir.BasicBlock) -> ()
+local gen_anon_fn: (ctx: Context, anon_fn: lir.AnonymousFn) -> ()
+local gen_fn: (ctx: Context, fn: lir.Fn) -> ()
+
+local EVENT_GLOBALS = globals.events
+local RELIABLE_EVENT = EVENT_GLOBALS.reliable.identifier
+local UNRELIABLE_EVENT = EVENT_GLOBALS.unreliable.identifier
 
 local function gen_constant(ctx: Context, constant: lir.Constant)
 	ctx.builder:append(tostring(constant.value))
@@ -92,11 +98,7 @@ local function gen_id<T>(ctx: Context, id: lir.Id<T>): never?
 
 		local index = id.index
 		local argument = fn.args[index]
-		if argument.name then
-			builder:append(argument.name)
-		else
-			builder:append(`a{index}`)
-		end
+		builder:append(argument.name or `a{index}`)
 	else
 		strong_exhaustive_match(id.kind)
 	end
@@ -256,6 +258,8 @@ function gen_rvalue<T>(ctx: Context, rvalue: lir.RValue<T>)
 		gen_projection(ctx, rvalue)
 	elseif rvalue.type == "structure" then
 		gen_structure(ctx, rvalue)
+	elseif rvalue.type == "anon_fn" then
+		gen_anon_fn(ctx, rvalue)
 	else
 		weak_exhaustive_match(rvalue.type)
 	end
@@ -296,7 +300,34 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 		builder:append(" then\n")
 
 		builder:indent()
-		gen_block(ctx, terminator.truthy)
+		context.push_block(ctx, terminator.falsey)
+		context.push_block(ctx, terminator.truthy)
+	elseif terminator.kind == "if_chain" then
+		builder:append_line(
+			`-- if ({terminator.chain_index}/{terminator.chain_length}) (bb{terminator.truthy.index}, bb{terminator.falsey.index})`
+		)
+
+		local scope = terminator.falsey.scope
+		local chain_index = terminator.chain_index
+		if chain_index == 1 then
+			ctx.if_chains[scope] = true
+		elseif chain_index == terminator.chain_length then
+			ctx.if_chains[scope] = nil
+		end
+
+		builder:append_indent()
+		if chain_index == 1 then
+			builder:append("if ")
+		else
+			builder:append("elseif ")
+		end
+
+		gen_condition(ctx, terminator.cond)
+		builder:append(" then\n")
+
+		builder:indent()
+		context.push_block(ctx, terminator.falsey)
+		context.push_block(ctx, terminator.truthy)
 	elseif terminator.kind == "call" then
 		builder:append_indent()
 		local fn = lir.fn_from_id(lirr, terminator.fn)
@@ -314,12 +345,13 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 			builder:append(" = ")
 		end
 
-		if fn.name.type == "projection" then
-			gen_projection(ctx, fn.name)
-		elseif fn.name.type == "constant" then
-			builder:append(fn.name.value)
+		local name = assert(fn.name, "cannot call an anonymous function")
+		if name.type == "projection" then
+			gen_projection(ctx, name)
+		elseif name.type == "constant" then
+			builder:append(name.value)
 		else
-			strong_exhaustive_match(fn.name.type)
+			strong_exhaustive_match(name.type)
 		end
 
 		builder:append("(")
@@ -333,17 +365,24 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 		end
 
 		builder:append(")\n")
-		gen_block(ctx, terminator.destination)
+		context.push_block(ctx, terminator.destination)
 	elseif terminator.kind == "goto" then
+		local destination = terminator.destination
+		builder:append_line(`-- goto (bb{destination.index})`)
 		builder:dedent()
+
+		if ctx.if_chains[destination.scope] then
+			return
+		end
+
 		builder:append_line("end")
-		gen_block(ctx, terminator.destination)
+		context.push_block(ctx, destination)
 	elseif terminator.kind == "none" then
 	elseif terminator.kind == "loop" then
 		builder:append_indent()
 		gen_loop(ctx, terminator.loop)
 		builder:indent()
-		gen_block(ctx, terminator.destination)
+		context.push_block(ctx, terminator.destination)
 	elseif terminator.kind == "while" then
 		builder:append_indent()
 		builder:append("while ")
@@ -351,7 +390,7 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 		builder:append(" do\n")
 
 		builder:indent()
-		gen_block(ctx, terminator.truthy)
+		context.push_block(ctx, terminator.truthy)
 	elseif terminator.kind == "return" then
 		builder:append_indent()
 		builder:append("return ")
@@ -362,6 +401,11 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 			gen_rvalue(ctx, value)
 		end
 		builder:append("\n")
+
+		if #ctx.block_queue > 0 then
+			builder:dedent()
+			builder:append_line("end")
+		end
 	else
 		weak_exhaustive_match(terminator.kind)
 	end
@@ -376,13 +420,20 @@ local function gen_statement(ctx: Context, statement: lir.Statement)
 		builder:append("\n")
 	elseif statement.kind == "assign" then
 		builder:append_indent()
+		gen_lvalue(ctx, statement.into)
+
+		if statement.value then
+			builder:append(" = ")
+			gen_rvalue(ctx, statement.value)
+		end
+		builder:append("\n")
+	elseif statement.kind == "local_assign" then
+		builder:append_indent()
+		builder:append("local ")
 
 		local into = statement.into
-		if context.try_see_register(ctx, into) then
-			builder:append("local ")
-		end
-
-		gen_lvalue(ctx, into)
+		gen_id(ctx, into)
+		ctx.seen_registers[into.index] = true
 
 		if statement.value then
 			builder:append(" = ")
@@ -416,27 +467,30 @@ local function gen_statement(ctx: Context, statement: lir.Statement)
 	end
 end
 
-function gen_block(ctx: Context, block: lir.BasicBlock)
+local function gen_block(ctx: Context, block: lir.BasicBlock)
+	local index = block.index
 	local builder = ctx.builder
 
-	builder:append_line("-- block start")
+	ctx.current_block = block
+
+	builder:append_line(`-- bb{index} \{`)
 	for _, statement in block.statements do
 		gen_statement(ctx, statement)
 	end
-	builder:append_line("-- block end")
+	builder:append_line(`-- bb{index} \}`)
 
 	gen_terminator(ctx, block.terminator)
 end
 
-local function gen_fn_body(ctx: Context, fn: lir.Fn)
+local function gen_fn_body(ctx: Context, fn_body: lir.FnBody)
 	local builder = ctx.builder
 
-	ctx.current_fn = fn
+	ctx.current_fn = fn_body
 	table.clear(ctx.seen_registers)
 
 	builder:append("(")
 
-	for index, argument in fn.args do
+	for index, argument in fn_body.args do
 		if index > 1 then
 			builder:append(",")
 		end
@@ -447,86 +501,144 @@ local function gen_fn_body(ctx: Context, fn: lir.Fn)
 	builder:append(")\n")
 
 	builder:indent()
-	gen_block(ctx, fn.blocks[1])
+
+	-- generate blocks until none are left
+	context.push_block(ctx, fn_body.blocks[1])
+
+	while true do
+		local block = context.pop_block(ctx)
+		if block == nil then
+			break
+		end
+
+		gen_block(ctx, block)
+	end
+
 	builder:dedent()
 
-	builder:append_line("end")
+	builder:append_indent()
+	builder:append("end")
 	ctx.current_fn = nil
 end
 
-local function gen_fn(ctx: Context, fn: lir.Fn)
+function gen_anon_fn(ctx: Context, anon_fn: lir.AnonymousFn)
 	local builder = ctx.builder
-	builder:append_indent()
-
-	if fn.name.type == "projection" then
-		builder:append("function ")
-		gen_projection(ctx, fn.name)
-	elseif fn.name.type == "constant" then
-		builder:append("local function ")
-		builder:append(fn.name.value)
-	else
-		strong_exhaustive_match(fn.name.type)
-	end
-
-	gen_fn_body(ctx, fn)
+	builder:append("function")
+	gen_fn_body(ctx, anon_fn)
 end
 
-local function gen_fn_anonymous(ctx: Context, fn: lir.Fn)
+function gen_fn(ctx: Context, fn: lir.Fn)
 	local builder = ctx.builder
 	builder:append_indent()
 
-	if fn.name.type == "constant" then
-		builder:append(fn.name.value)
-	elseif fn.name.type == "projection" then
-		gen_projection(ctx, fn.name)
+	local name = fn.name
+	if name.type == "projection" then
+		builder:append("function ")
+		gen_projection(ctx, name)
+	elseif name.type == "constant" then
+		builder:append("local function ")
+		builder:append(name.value)
 	else
-		strong_exhaustive_match(fn.name.type)
+		strong_exhaustive_match(name.type)
 	end
 
-	builder:append(" = function")
 	gen_fn_body(ctx, fn)
+	builder:append("\n")
+end
+
+local function append_method(ctx: Context, method: cased_method.Method, anon_fn: lir.AnonymousFn)
+	local builder = ctx.builder
+	builder:append_indent()
+	builder:append(cased_method("snake_case", method))
+	builder:append(" = ")
+	gen_anon_fn(ctx, anon_fn)
+	builder:append(",\n")
+end
+
+local function gen_export(ctx: Context, target: compilation.Target, export: lir.Export)
+	local builder = ctx.builder
+
+	local name = export.name
+	if name ~= "" then
+		builder:append_line(`{name} = \{`)
+	else
+		builder:append_line("{")
+	end
+
+	builder:indent()
+
+	if export.kind == "type" then
+		append_method(ctx, "read", export.read)
+		append_method(ctx, "write", export.write)
+		append_method(ctx, "read_from", export.read_from)
+		append_method(ctx, "write_to", export.write_to)
+	elseif export.kind == "event" then
+		if target == "server" then
+			local methods = export.server
+			append_method(ctx, "fire", methods.fire_client)
+			append_method(ctx, "fire_all", methods.fire_client)
+			append_method(ctx, "fire_list", methods.fire_client)
+			append_method(ctx, "fire_except", methods.fire_client)
+
+			if methods.on then
+				append_method(ctx, "on", methods.on)
+			elseif methods.iter then
+				append_method(ctx, "iter", methods.iter)
+			end
+		elseif target == "client" then
+			local methods = export.client
+			append_method(ctx, "fire", methods.fire_server)
+
+			if methods.on then
+				append_method(ctx, "on", methods.on)
+			elseif methods.iter then
+				append_method(ctx, "iter", methods.iter)
+			end
+		end
+	elseif export.kind == "function" then
+		if target == "server" then
+			append_method(ctx, "on", export.on)
+		elseif target == "client" then
+			append_method(ctx, "invoke", export.invoke_server)
+		end
+	elseif export.kind == "scope" then
+		for _, item in export.items do
+			if (item.kind == "event" or item.kind == "function") and target == "shared" then
+				continue
+			end
+
+			gen_export(ctx, target, item)
+			builder:append(",\n")
+		end
+	end
+
+	builder:dedent()
+	builder:append_indent()
+	builder:append("}")
 end
 
 export type Props = {
 	lir: lir.Lir,
-	hir: hir.Hir,
 	hash: string,
 	profile: compilation.Profile,
 }
 
 local function from_lir(props: Props, target: compilation.Target): string
-	local lirr = props.lir
-	local hirr = props.hir
+	local llir = props.lir
 	local builder = string_builder.create({})
-
 	local ctx: Context = {
-		lir = lirr,
-		hir = hirr,
-		target = target,
+		lir = llir,
 		builder = builder,
-		scope_paths = {},
+
+		current_fn = nil,
+		current_block = nil,
+		if_chains = {},
+		block_queue = {},
+		block_queue_filter = {},
 		seen_registers = {},
 	}
 
 	append_headers(builder)
-	append_buffer_fns(builder)
-
-	builder:append("local ")
-	gen_global(ctx, globals.types_map)
-	builder:append(" = {}\n")
-
-	for name, rvalue in lirr.globals do
-		builder:append("local ")
-		builder:append(name)
-		builder:append(" = ")
-		gen_rvalue(ctx, rvalue)
-		builder:append("\n")
-	end
-
-	for _, fn_set in lirr.tys do
-		gen_fn(ctx, lir.fn_from_id(lirr, fn_set.read))
-		gen_fn(ctx, lir.fn_from_id(lirr, fn_set.write))
-	end
 
 	if target ~= "shared" then
 		local hash = props.hash
@@ -540,45 +652,38 @@ local function from_lir(props: Props, target: compilation.Target): string
 		end
 	end
 
-	builder:append_line("return {")
-	builder:indent()
+	append_buffer_fns(builder)
+
+	for name, value in llir.globals do
+		builder:append("local ")
+		builder:append(name)
+		builder:append(" = ")
+		gen_rvalue(ctx, value)
+		builder:append("\n")
+	end
+
+	for _, fn in llir.fn_map do
+		gen_fn(ctx, fn)
+	end
 
 	if target ~= "shared" then
-		for _, event in lirr.events do
-			local decl = event.decl
-			builder:append_indent()
-			builder:append(decl.name)
-			builder:append(" = {\n")
-			builder:indent()
+		local receive_fns = target == "client" and llir.client_receive or llir.server_receive
+		local receive_connection = target == "client" and "OnClientEvent" or "OnServerEvent"
 
-			local fns = event.fns
-			local fn_ids = if target == "server"
-				then {
-					fns.fire_all,
-					fns.fire_list,
-					fns.fire_except,
-					fns.fire_server,
-					fns.iter_server,
-					fns.listen_server,
-				}
-				else {
-					fns.fire_client,
-					fns.iter_client,
-					fns.listen_client,
-				}
-
-			for _, fn_id in fn_ids do
-				gen_fn_anonymous(ctx, lir.fn_from_id(lirr, fn_id))
-				builder:append(",")
-			end
-
-			builder:dedent()
-			builder:append_line("},")
+		local event_map = { reliable = RELIABLE_EVENT, unreliable = UNRELIABLE_EVENT }
+		for key, event_global in event_map :: { [keyof<typeof(receive_fns)>]: string } do
+			builder:append(event_global)
+			builder:append(".")
+			builder:append(receive_connection)
+			builder:append(":Connect(")
+			gen_anon_fn(ctx, receive_fns[key])
+			builder:append(")\n")
 		end
 	end
 
-	builder:dedent()
-	builder:append_line("}")
+	builder:append_line("")
+	builder:append("return ")
+	gen_export(ctx, target, llir.export)
 
 	return string_builder.finalize(builder)
 end

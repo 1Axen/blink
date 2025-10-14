@@ -83,7 +83,8 @@ local function props_with_generics(base_props: Props, generic_type: ty.GenericTy
 	return new_props
 end
 
-local builders: { [ty.TyKind]: TyBuilder? }
+--TODO: Make value optional when the solver is stable
+local builders: { [ty.TyKind]: TyBuilder }
 local function builder_from_ty(ty: Ty): TyBuilder
 	local builder = builders[ty.kind]
 	if builder == nil then
@@ -106,9 +107,8 @@ local function write_ty(props: WriteProps, block: Builder, ty: Ty, value: RValue
 end
 
 local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id: TyId, generics: { TyId }?): lir.FnSet
-	local lirr = ctx.lir
 	do
-		local existing = lirr.tys[ty_id]
+		local existing = ctx.ty_fn_set_map[ty_id]
 		if existing then
 			return existing
 		end
@@ -123,7 +123,7 @@ local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id
 	}
 
 	local hirr = ctx.hir
-	local ty: Ty = hir.ty_from_id(hirr, ty_id)
+	local ty = hir.ty_from_id(hirr, ty_id)
 	if ty.kind == "reference" then
 		ty_id = ty.to
 		generics = generics or ty.args
@@ -135,7 +135,7 @@ local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id
 
 		local hash = ty.body :: number
 		for index, generic_ty_id: TyId in ty.args do
-			local generic_ty = hir.ty_from_id(hirr, generic_ty_id) :: Ty
+			local generic_ty = hir.ty_from_id(hirr, generic_ty_id)
 			if generic_ty.kind == "generic" then
 				generic_ty_id = generics[generic_ty.index]
 			end
@@ -149,10 +149,10 @@ local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id
 		end
 
 		ctx.hashed_tys[hash] = fn_set
-		ty = hir.ty_from_id(hirr, ty.body) :: Ty
+		ty = hir.ty_from_id(hirr, ty.body)
 	end
 
-	lirr.tys[ty_id] = fn_set
+	ctx.ty_fn_set_map[ty_id] = fn_set
 
 	-- build reader & writer
 	local name = tostring(ty_id)
@@ -162,7 +162,7 @@ local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id
 	end
 
 	local read_name = projection.index(globals.types_map, constant.from_value(`{prefixes.ty}read_{name}`))
-	local read_fn = fn.create(ctx, read_name, {}, { fn.rreturn(ty) }, function(block)
+	local read_fn = fn.create(read_name, {}, { fn.rreturn(ty) }, function(block)
 		local props: ReadProps = {
 			ctx = ctx,
 			generics = generics,
@@ -170,11 +170,11 @@ local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id
 		}
 
 		local value_register = read_ty(props, block, ty)
-		block:rtrn({ value_register })
+		block:rreturn({ value_register })
 	end)
 
 	local write_name = projection.index(globals.types_map, constant.from_value(`{prefixes.ty}write_{name}`))
-	local write_fn = fn.create(ctx, write_name, { fn.argument(ty) }, {}, function(block)
+	local write_fn = fn.create(write_name, { fn.argument(ty) }, {}, function(block)
 		local props: WriteProps = {
 			ctx = ctx,
 			validate = true,
@@ -307,17 +307,11 @@ builders = {
 
 	struct = table.freeze({
 		read = function(props: ReadProps, block: Builder, struct: ty.Struct, into: LValue<any>?): Register<any>
-			local register: Register<any> = block:store(structure.struct({}))
+			local register: Register<any> = block:store(structure.struct({}), into)
 			for _, field in struct.fields do
 				local name = field.name
-				local value_register = read_ty_id(props, block, field.value)
-
 				local struct_index = projection.field(register, constant.from_value(name))
-				block:store(value_register, struct_index)
-			end
-
-			if into then
-				return block:store(register, into)
+				read_ty_id(props, block, field.value, struct_index)
 			end
 
 			return register
@@ -339,7 +333,7 @@ builders = {
 			local value_register = (into or block:reserve())
 
 			local exists = condition.equals(byte_register, constant.one)
-			block:if_branch(exists, function(block)
+			block:if_single(exists, function(block)
 				props.is_optional = true
 				read_ty_id(props, block, optional.of, value_register)
 				props.is_optional = false
@@ -351,7 +345,7 @@ builders = {
 			local exists = condition.not_equals(value, constant.null)
 			local cursor = block:allocate(constant.one)
 
-			block:if_branch(exists, function(block)
+			block:if_single(exists, function(block)
 				write_ty_id(props, block, optional.of, value)
 			end)
 
@@ -362,58 +356,66 @@ builders = {
 
 	tagged_enum = table.freeze({
 		read = function(props: ReadProps, block: Builder, enum: ty.TaggedEnum, into: LValue<any>?)
-			local total = #enum.variants
+			local variants = enum.variants
+			local variants_count = #variants
 
 			-- account for serdesing from 0
-			local format = conversion.to_min_numeral(total - 1)
+			local format = conversion.to_min_numeral(variants_count - 1)
 
-			local stored_index = ty_numeral.read(props, block, format)
-			local value_register = into or block:reserve()
+			local value = into or block:reserve()
+			local stored_value = ty_numeral.read(props, block, format)
 
-			local out_of_bounds = condition.greater_than_or(stored_index, constant.from_value(total))
+			block:if_chain(variants_count + 1, function(index)
+				if index > variants_count then
+					local fallback = condition.equals(constant.truth, constant.truth)
+					return fallback,
+						function(block: Builder)
+							block:call(library.error("Invalid enum variant"))
+						end
+				end
 
-			block:if_branch(out_of_bounds, function(block: fn.Builder)
-				block:call(library.error(`Invalid enum variant`))
+				local variant_value = variants[index].value
+				local variant_index = constant.from_value(index - 1)
+
+				local is_variant = condition.equals(stored_value, variant_index)
+				return is_variant,
+					function(block: Builder)
+						builders.struct.read(props, block, variant_value, value)
+					end
 			end)
 
-			for index, variant in enum.variants do
-				local is_variant = condition.equals(stored_index, constant.from_value(index - 1))
-
-				block:elseif_branch(is_variant, function(block)
-					builders.struct.read(props, block, variant.value, attributes, value_register)
-				end)
-			end
-
-			return value_register
+			return value
 		end,
 		write = function(props: WriteProps, block: Builder, enum: ty.TaggedEnum, value: RValue<any>): ()
 			local ctx = props.ctx
-
-			local tag = constant.from_value(enum.tag)
-			local total = #enum.variants
+			local variants = enum.variants
+			local variants_count = #variants
 
 			-- account for serdesing from 0
-			local format = conversion.to_min_numeral(total - 1)
-			local tag_register = block:store(projection.field(value :: any, tag))
+			local format = conversion.to_min_numeral(variants_count - 1)
+			local tag_value = block:store(projection.field(value :: any, constant.from_value(enum.tag)))
 
-			for index, variant in enum.variants do
-				local key = hir.ty_from_id(ctx.hir, variant.key)
-				local is_variant = condition.equals(tag_register, constant.from_ty(key :: any))
-
-				local function store_variant(block: Builder)
-					ty_numeral.write(props, block, format, constant.from_value(index - 1))
-					builders.struct.write(props, block, variant.value, value)
+			block:if_chain(variants_count + 1, function(index)
+				if index > variants_count then
+					local fallback = condition.equals(constant.truth, constant.truth)
+					return fallback,
+						function(block: Builder)
+							block:call(library.error("Invalid enum variant"))
+						end
 				end
 
-				if index == 1 then
-					block:if_branch(is_variant, store_variant)
-				elseif index > 1 then
-					block:elseif_branch(is_variant, store_variant)
-				end
-			end
+				local variant = variants[index]
+				local variant_value = variant.value
+				local variant_index = constant.from_value(index - 1)
 
-			block:else_branch(function(block)
-				block:call(library.error(`Invalid enum variant`))
+				local key_ty = hir.ty_from_id(ctx.hir, variant.key)
+				local is_variant = condition.equals(tag_value, constant.from_ty(key_ty :: any))
+
+				return is_variant,
+					function(block: Builder)
+						ty_numeral.write(props, block, format, variant_index)
+						builders.struct.write(props, block, variant_value, value)
+					end
 			end)
 		end,
 	}),

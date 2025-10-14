@@ -55,6 +55,7 @@ local function append_server(builder: StringBuilder, reliable_name: string, unre
 		`\t{PLAYERS_MAP}[player] = nil`,
 		"end)",
 	})
+	builder:append_line("")
 end
 
 return append_server

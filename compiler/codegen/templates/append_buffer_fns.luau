@@ -36,35 +36,6 @@ local function allocate(bytes: number)
 	out_cursor = in_use
 end
 
-local function load_external_in(buf: buffer, unknown: { any }, cursor: number?)
-	in_buffer = buf
-	in_cursor = cursor or 0
-	in_length = buffer.len(buf)
-	in_unknown = table.create(16)
-	in_unknown_cursor = 0
-end
-
-local function load_external_out(buf: buffer, unknown: { any }, cursor: number?)
-	out_buffer = buf
-	out_cursor = cursor or 0
-	out_length = buffer.len(buf)
-	out_unknown = table.create(16)
-end
-
-local function load_external_in_fast(buf: buffer, cursor: number, length: number, unknown: { unknown })
-	in_buffer = buf
-	in_cursor = cursor
-	in_length = length
-	in_unknown = unknown
-	in_unknown_cursor = table.maxn(unknown)
-end
-
-local function load_external_out_fast(buf: buffer, cursor: number, length: number, unknown: { unknown })
-	out_buffer = buf
-	out_cursor = cursor
-	out_length = length
-	out_unknown = unknown
-end
 ]]
 
 local function append_buffer_fns(builder: StringBuilder)
