@@ -19,6 +19,7 @@ local function append_client(builder: StringBuilder, reliable_event: string, unr
 	builder:append_line(
 		`local {UNRELIABLE_EVENT} = {REPLICATED_STORAGE}:WaitForChild("{unreliable_event}") :: UnreliableRemoteEvent`
 	)
+	builder:append_line("")
 end
 
 return append_client

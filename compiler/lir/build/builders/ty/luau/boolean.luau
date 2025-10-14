@@ -30,7 +30,7 @@ local function validate(block: Builder, ty: Boolean, value: RValue<boolean>)
 	local type = constant.from_value("boolean")
 	local equals = condition.not_equals(value, type)
 
-	block:if_branch(equals, function(block)
+	block:if_single(equals, function(block)
 		block:call(library.error(`Expected a boolean`))
 	end)
 end

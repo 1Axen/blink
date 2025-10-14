@@ -1,17 +1,14 @@
 local attributes = require("@config/attributes")
-local lir = require("@lir/types")
-local ty = require("@ty/types")
-
 local condition = require("@builders/condition")
 local constant = require("@builders/constant")
-local fn = require("@builders/fn")
-local library = require("@builders/library")
-
-local conversion = require("@util/conversion")
-local numeral = require("./numeral")
-
 local context = require("@lir/build/context")
-
+local conversion = require("@util/conversion")
+local fn = require("@builders/fn")
+local hir = require("@hir/types")
+local library = require("@builders/library")
+local lir = require("@lir/types")
+local numeral = require("./numeral")
+local ty = require("@ty/types")
 local types = require("../types")
 
 type TyBuilder = types.TyBuilder
@@ -28,51 +25,60 @@ type RValue<T> = lir.RValue<T>
 type Register<T> = lir.RegisterId<T>
 
 local function build_read(props: ReadProps, block: Builder, enum: UnitEnum, into: LValue<any>?)
-	local total = #enum.variants
+	local hhir = props.ctx.hir
+	local variants = enum.variants
+	local variants_count = #variants
 	-- account for serdesing from 0
-	local format = conversion.to_min_numeral(total - 1)
+	local format = conversion.to_min_numeral(variants_count - 1)
 
-	local stored_index = numeral.read(props, block, format)
-	local value_register = (into or block:reserve()) :: Register<string>
+	local value = (into or block:reserve()) :: Register<string>
+	local stored_value = numeral.read(props, block, format)
 
-	local out_of_bounds = condition.greater_than_or(stored_index, constant.from_value(total))
+	block:if_chain(variants_count + 1, function(index)
+		if index > variants_count then
+			local fallback = condition.equals(constant.truth, constant.truth)
+			return fallback, function(block: Builder)
+				block:call(library.error("Invalid enum variant"))
+			end
+		end
 
-	block:if_branch(out_of_bounds, function(block)
-		block:call(library.error(`Invalid enum variant`))
+		local variant_ty = hir.ty_from_id(hhir, variants[index]) :: any
+		local variant_index = constant.from_value(index - 1)
+		local variant_value = constant.from_ty(variant_ty)
+
+		local is_variant = condition.equals(stored_value, variant_index)
+		return is_variant, function(block: Builder)
+			block:store(variant_value, value)
+		end
 	end)
 
-	for index, variant in enum.variants do
-		local is_variant = condition.equals(stored_index, constant.from_value(index - 1))
-
-		block:elseif_branch(is_variant, function(block)
-			block:store(constant.from_value(variant), value_register)
-		end)
-	end
-
-	return value_register
+	return value
 end
 
 local function build_write(props: WriteProps, block: Builder, enum: UnitEnum, value: RValue<string>): ()
-	local total = #enum.variants
+	local hhir = props.ctx.hir
+	local variants = enum.variants
+	local variants_count = #variants
 	-- account for serdesing from 0
-	local format = conversion.to_min_numeral(total - 1)
+	local format = conversion.to_min_numeral(variants_count - 1)
 
-	for index, variant in enum.variants do
-		local is_variant = condition.equals(value, constant.from_value(variant))
-
-		local function write_index(block: Builder)
-			numeral.write(props, block, format, constant.from_value(index - 1))
+	block:if_chain(variants_count + 1, function(index)
+		if index > variants_count then
+			local fallback = condition.equals(constant.truth, constant.truth)
+			return fallback, function(block: Builder)
+				block:call(library.error("Invalid enum variant"))
+			end
 		end
 
-		if index == 1 then
-			block:if_branch(is_variant, write_index)
-		elseif index > 1 then
-			block:elseif_branch(is_variant, write_index)
-		end
-	end
+		local variant_ty = hir.ty_from_id(hhir, variants[index]) :: any
+		local variant_index = constant.from_value(index - 1)
 
-	block:else_branch(function(block)
-		block:call(library.error(`Invalid enum variant`))
+		local variant_value = constant.from_ty(variant_ty)
+		local is_variant = condition.equals(value, variant_value)
+
+		return is_variant, function(block: Builder)
+			numeral.write(props, block, format, variant_index)
+		end
 	end)
 end
 

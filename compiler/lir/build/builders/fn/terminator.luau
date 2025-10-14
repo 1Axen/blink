@@ -9,6 +9,7 @@ type TermLoop = lir.TermLoop
 type TermCall = lir.TermCall
 type TermWhile = lir.TermWhile
 type TermReturn = lir.TermReturn
+type TermIfChain = lir.TermIfChain
 
 type Loop = lir.Loop
 type LValue = lir.LValue<any>
@@ -16,14 +17,31 @@ type RValue = lir.RValue<any>
 type Condition = lir.Condition<boolean>
 type BasicBlock = lir.BasicBlock
 
-local function term_if(condition: Condition, truthy: BasicBlock, falsey: BasicBlock, chained: boolean?): TermIf
+local function term_if_single(condition: Condition, truthy: BasicBlock, falsey: BasicBlock): TermIf
 	return {
 		type = "terminator",
 		kind = "if",
 		cond = condition :: any,
 		truthy = truthy,
 		falsey = falsey,
-		chained = chained,
+	}
+end
+
+local function term_if_chain(
+	condition: Condition,
+	truthy: BasicBlock,
+	falsey: BasicBlock,
+	chain_index: number,
+	chain_length: number
+): TermIfChain
+	return {
+		type = "terminator",
+		kind = "if_chain",
+		cond = condition :: any,
+		truthy = truthy,
+		falsey = falsey,
+		chain_index = chain_index,
+		chain_length = chain_length,
 	}
 end
 
@@ -81,7 +99,8 @@ local function term_return(values: { RValue }): TermReturn
 end
 
 return table.freeze({
-	ifbr = term_if,
+	if_single = term_if_single,
+	if_chain = term_if_chain,
 	none = term_none,
 	goto = term_goto,
 	loop = term_loop,

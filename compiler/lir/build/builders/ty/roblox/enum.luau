@@ -52,7 +52,7 @@ local function validate(props: WriteProps, block: Builder, ty: ty.Enum, at: RVal
 	local enum_type = projection.index(at :: any, const("EnumType"))
 	local type_cond = condition.not_equals(enum_type, static_enum_type)
 
-	block:if_branch(type_cond, function(block)
+	block:if_single(type_cond, function(block)
 		block:call(library.error(`Expected an enum of type: "{static_enum_type.value}"`))
 	end)
 end

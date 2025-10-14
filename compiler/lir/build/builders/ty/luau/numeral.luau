@@ -165,11 +165,11 @@ local function validate(block: Builder, ty: ty.Numeral, value: RValue<number>)
 	local lower = condition.less_than(value, constant.from_value(bounds.min))
 	local upper = condition.greater_than(value, constant.from_value(bounds.max))
 
-	block:if_branch(lower, function(block)
+	block:if_single(lower, function(block)
 		block:call(library.error(`Expected number to be greater than or equal to {bounds.min}`))
 	end)
 
-	block:if_branch(upper, function(block)
+	block:if_single(upper, function(block)
 		block:call(library.error(`Expected number to be less than or equal to {bounds.max}`))
 	end)
 end
