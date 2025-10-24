@@ -823,6 +823,8 @@ function Parser.Parse(self: Parser, Source: string, Scope: Scope?): Body
 	local Options = self:Options()
 	local Declarations = self:Declarations()
 
+	Options.SyncValidation = if Options.SyncValidation ~= nil then Options.SyncValidation else true
+
 	return {
 		Type = "Body",
 		Name = Scope and Scope.Name.Value or "Body",
