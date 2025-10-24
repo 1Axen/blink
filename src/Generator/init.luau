@@ -36,23 +36,16 @@ local EVENT_BODY = {
 }
 
 local SYNC_VALIDATION_BODY = {
-	"local Yielded = false\n",
-	"local Deferred = false\n",
-	"local SyncValidationThread = task.spawn(function()\n",
-	"\twhile true do\n",
-	"\t\tlocal SerdesThread = coroutine.yield()\n",
-	'\t\tYielded = coroutine.status(SerdesThread) == "suspended"\n',
-	"\t\tDeferred = false\n",
-	"\tend\n",
-	"end)\n",
+	`local SerdesEvent = "?"\n`,
+	"local SerdesThread: thread?\n",
 }
 
 local EVENT_SYNC_VALIDATION = {
-	"Yielded = false\n",
-	"if Deferred == false then\n",
-	"\tDeferred = true\n",
-	"\ttask.defer(SyncValidationThread, coroutine.running())\n",
+	`if SerdesThread and coroutine.status(SerdesThread) == "suspended" then\n`,
+	'\twarn(`[Blink]: Yielded in a Sync call. Event "{SerdesEvent}" uses a Sync call, consider using an Async call instead.`)\n',
+	"\tcoroutine.close(SerdesThread)\n",
 	"end\n",
+	"SerdesThread = coroutine.running()\n",
 }
 
 local RELIABLE_BODY = {
@@ -398,18 +391,14 @@ function Declarations.Event(Declaration: Parser.Event)
 
 		local CallListener = Blocks.Block()
 		do
+			if IsSync and Options.SyncValidation then
+				CallListener = CallListener:Line(`SerdesEvent = "{Declaration.Name}"`)
+			end
+
 			local PathExpr = IsSingle and Connection or "Listener"
 			local CallExpr = IsSync and `{PathExpr}({ListenerArguments})`
 				or `task.spawn({PathExpr}, {ListenerArguments})`
 			CallListener = CallListener:Line(CallExpr)
-
-			if IsSync and Options.SyncValidation then
-				CallListener = CallListener:Compare("Yielded", "true", "Equals")
-					:Line(
-						`error("Yielded in a Sync call. Event \\"{Declaration.Name}\\" is Sync, consider using Async instead.")`
-					)
-					:End()
-			end
 		end
 
 		Block:Line(`local {Values} = {Util.GetPath(Identifier, false, Scope)}()`)
@@ -627,7 +616,6 @@ function Declarations.Function(Declaration: Parser.Function)
 	local Yield = Value.Yield
 	local IsFuture = (Yield == "Future")
 	local IsPromise = (Yield == "Promise")
-	local IsCoroutine = (Yield == "Coroutine")
 
 	if IsFuture and not Options.FutureLibrary then
 		error(`Cannot use yield type: "Future", without providing a path to the future library.`)
