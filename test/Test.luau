@@ -725,6 +725,7 @@ InvokeAndExpect("Remote Function", Client.RemoteFunction, Server.RemoteFunction,
 InvokeAndExpect("Remote Function (yield)", Client.RemoteFunction, Server.RemoteFunction, 1, true, 1)
 InvokeAndExpect("Remote Function (error)", Client.RemoteFunction, Server.RemoteFunction, 1, false)
 InvokeAndExpect("Empty Remote Function", Client.EmptyFunction, Server.EmptyFunction, nil, true)
+InvokeAndExpect("Unit Remote Function", Client.UnitFunction, Server.UnitFunction, nil, true)
 
 QueueAndExpect("Reliable Queue", Server.ReliableServer, Client.ReliableServer, 1)
 QueueAndExpect("Many Reliable Sync Queue", Server.ManyReliableSync, Client.ManyReliableSync, 1)

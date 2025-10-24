@@ -249,6 +249,12 @@ function EmptyFunction {
     Yield: Coroutine
 }
 
+function UnitFunction {
+    Yield: Coroutine,
+	Data: (),
+	Return: ()
+}
+
 event Flags8 {
     From: Server,
     Type: Reliable,

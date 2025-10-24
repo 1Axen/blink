@@ -904,8 +904,8 @@ function Generators.LuauType(
 ): (string, string, string, string)
 	Prefix = Prefix or ""
 
-	local Type = ""
-	local Values = ""
+	local Type = "nil"
+	local Values = "Value: nil"
 	local Export = Util.GetExportName(Declaration.Name, Scope)
 	local Returns = `{Prefix}Value`
 
@@ -960,23 +960,22 @@ function Generators.LuauType(
 		Type = `{Declaration.Value.Generic}`
 	elseif Declaration.Type == "Tuple" then
 		local Value = (Declaration :: Parser.Tuple).Value
-		local TupleValues = Value.Values
-		Returns = ""
 
-		local Types = {}
-		local Variables = {}
-		local VariableTypes = {}
+		local Types = { "nil" }
+		local Variables = { "Value" }
+		local AnnotatedVariables = { "Value: nil" }
 
-		for Index, TupleValue in TupleValues do
+		for Index, TupleValue in Value.Values do
 			local Variable = `{Prefix}Value{Index}`
 			local ValueType = Generators.LuauType(TupleValue)
-			table.insert(Types, ValueType)
-			table.insert(Variables, Variable)
-			table.insert(VariableTypes, `{Variable}: {ValueType}`)
+
+			Types[Index] = ValueType
+			Variables[Index] = Variable
+			AnnotatedVariables[Index] = `{Variable}: {ValueType}`
 		end
 
 		Type = table.concat(Types, ", ")
-		Values = table.concat(VariableTypes, ", ")
+		Values = table.concat(AnnotatedVariables, ", ")
 		Returns = table.concat(Variables, ", ")
 	elseif Declaration.Type == "Array" then
 		local Value = Declaration.Value
