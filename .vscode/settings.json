@@ -14,10 +14,11 @@
 	"luau-lsp.fflags.enableNewSolver": true,
 	"luau-lsp.fflags.enableByDefault": false,
 	"luau-lsp.fflags.sync": false,
+	"luau-lsp.completion.enableFragmentAutocomplete": true,
 	
 	"luau-lsp.sourcemap.enabled": false,
 	
-	"luau-lsp.diagnostics.workspace": true,
+	"luau-lsp.diagnostics.workspace": false,
 
 	"luau-lsp.platform.type": "roblox",
 	"luau-lsp.completion.imports.suggestServices": false,
