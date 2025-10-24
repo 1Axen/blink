@@ -64,21 +64,6 @@ local UNRELIABLE_BODY = {
 	"buffer.copy(Buffer, 0, SendBuffer, 0, SendCursor)\n",
 }
 
-local DEBUG_GLOBALS = {
-	"local og_typeof = typeof\n",
-	"local typeof = function(a: any)\n",
-	'\tif type(a) == "table" then\n',
-	'\t\treturn a.__typeof or "table"\n',
-	"\tend\n",
-	"\treturn og_typeof(a)\n",
-	"end\n",
-	'local task = require("@lune/task")\n',
-	"local game = _G.%s.game\n",
-	"local Color3 = _G.%s.Color3\n",
-	"local DateTime = _G.%s.DateTime\n",
-	"local BrickColor = _G.%s.BrickColor\n",
-}
-
 local IGNORED_TYPES_IN_SHARED = {
 	Event = true,
 	Function = true,
@@ -1276,17 +1261,6 @@ function Generator.Generate(FileContext: Context, AbstractSyntaxTree: Parser.Bod
 	Reliables = Reliables:End():End()
 	Unreliables = Unreliables:End():End()
 
-	local Globals: { string } = {}
-	if not _G.BUNDLED then
-		Globals = table.clone(DEBUG_GLOBALS)
-		for Index, Macro in Globals do
-			local HasPattern = (string.find(Macro, "%s", 1, true) ~= nil)
-			if HasPattern then
-				Globals[Index] = string.format(Macro, string.lower(Context))
-			end
-		end
-	end
-
 	Noop.Push(`\})`, 0, 1)
 	Noop.Push(`return Returns :: {EVENTS_TYPE}`, 0, 1)
 	Noop.Push(`end`, 0, 0)
@@ -1297,7 +1271,6 @@ function Generator.Generate(FileContext: Context, AbstractSyntaxTree: Parser.Bod
 	local MergedOutput = Table.Merge(
 		DIRECTIVES,
 		VERSION_HEADER,
-		Globals,
 		string.split(Source[1], "\r"),
 		Imports.DumpLines(),
 		{ `local BASE_EVENT_NAME = "{if Options.RemoteScope then Options.RemoteScope .. "_" else ""}BLINK"\n` },

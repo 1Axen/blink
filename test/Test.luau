@@ -1,5 +1,6 @@
 local Format = require("../src/Modules/Format")
 local fs = require("@lune/fs")
+local luau = require("@lune/luau")
 local process = require("@lune/process")
 local stdio = require("@lune/stdio")
 local task = require("@lune/task")
@@ -7,7 +8,7 @@ local task = require("@lune/task")
 local Compiler = "init"
 local Sources = fs.readDir("./Sources")
 
-local COMPILE_TEST_FILE = "../../test/Sources/Test.txt"
+local COMPILE_TEST_FILE = "../../test/Sources/Test"
 
 local function OkPrint(Message: string)
 	stdio.write(`\r[{stdio.color("green")}OK{stdio.color("reset")}] {Message}\n`)
@@ -55,22 +56,50 @@ local BaseEnvironment = Shared.GetEnvironment()
 local ClientEnvironment = require("./Client")
 local ServerEnvironment = require("./Server")
 
-_G.client = {
+local function MockTypeof(a: any)
+	local TypeofA = typeof(a)
+	if TypeofA == "table" and a.__typeof then
+		return a.__typeof
+	end
+
+	return TypeofA
+end
+
+local function MockRequire(Path: string, Environment)
+	local Source = fs.readFile(Path)
+	local Bytecode = luau.compile(Source, {
+		optimizationLevel = 1,
+		debugLevel = 2,
+	})
+
+	Environment._G = {}
+	Environment.task = task
+	Environment.typeof = MockTypeof
+	Environment.require = function()
+		error("require is not supported")
+	end
+
+	local Execute = luau.load(Bytecode, {
+		debugName = Path,
+		environment = Environment,
+	})
+
+	return Execute()
+end
+
+local Client: typeof(require("../Network/Client")) = MockRequire("../Network/Client.luau", {
 	game = ClientEnvironment.game,
 	Color3 = ClientEnvironment.Color3,
 	DateTime = ClientEnvironment.DateTime,
 	BrickColor = ClientEnvironment.BrickColor,
-}
+})
 
-_G.server = {
+local Server: typeof(require("../Network/Server")) = MockRequire("../Network/Server.luau", {
 	game = ServerEnvironment.game,
 	Color3 = ServerEnvironment.Color3,
 	DateTime = ServerEnvironment.DateTime,
 	BrickColor = ServerEnvironment.BrickColor,
-}
-
-local Client = require("../Network/Client")
-local Server = require("../Network/Server")
+})
 
 --> Helper functions
 local function GetFlags(Amount: number): { [string]: boolean }
@@ -85,9 +114,9 @@ local function Fail(Name: string, Expect: any, Got: any)
 	ErrorPrint(`Failed "{Name}"\nExpected: {Format(Expect)}\nGot: {Format(Got)}.`)
 end
 
-local function Equals(a, b)
+local function Equals(a: any, b: any)
 	local Cyclic = {}
-	local function Compare(a, b)
+	local function Compare(a: any, b: any)
 		local TypeA = type(a)
 		local TypeB = type(b)
 
