@@ -1268,12 +1268,25 @@ function Generator.Generate(FileContext: Context, AbstractSyntaxTree: Parser.Bod
 	Return.PushFront(`\nlocal Returns = table.freeze(\{`)
 	Return.Push(`})`)
 
+	local ScopeValidationBody = {}
+	if Context ~= "Shared" then
+		local RemoteScope = Options.RemoteScope or "BLINK"
+		ScopeValidationBody = {
+			"_G._BLINK = _G._BLINK or {}\n",
+			`if _G._BLINK["{RemoteScope}"] then\n`,
+			`\terror("[Blink]: An instance of blink is already running with the remote scope \\"{RemoteScope}\\". Change the remote scope of either instance to avoid conflicts.")\n`,
+			"end\n",
+			`_G._BLINK["{RemoteScope}"] = true\n`,
+		}
+	end
+
 	local MergedOutput = Table.Merge(
 		DIRECTIVES,
 		VERSION_HEADER,
+		ScopeValidationBody,
 		string.split(Source[1], "\r"),
 		Imports.DumpLines(),
-		{ `local BASE_EVENT_NAME = "{if Options.RemoteScope then Options.RemoteScope .. "_" else ""}BLINK"\n` },
+		{ `local BASE_EVENT_NAME = "{Options.RemoteScope and Options.RemoteScope .. "_" or ""}BLINK"\n` },
 		string.split(Sources.Base, "\r"),
 		(if Options.SyncValidation then SYNC_VALIDATION_BODY else {}),
 		Events.DumpLines(),
