@@ -22,7 +22,7 @@ local function PrettyPrint(Color: stdio.Color, Message: string, DontReturn: bool
     stdio.write(`{stdio.color(Color)}{Message}{not DontReturn and "\n" or ""}{stdio.color("reset")}`)
 end
 
-if stdio.prompt("confirm", "Compile files?") then
+if stdio.prompt("confirm" :: "confirm", "Compile files?") then
     PrettyPrint("blue", "Clearing Network folder...")
     if fs.isDir("../Network") then
         fs.removeDir("../Network")
@@ -39,7 +39,7 @@ if stdio.prompt("confirm", "Compile files?") then
 
         local Path = `../../test/Sources/{File}`
         PrettyPrint("cyan", `Compiling: {File}...`, true)
-        local Result = process.spawn("lune", {"run", Compiler, Path, "--", "--yes"}, {cwd = "../src/CLI"})
+        local Result = process.exec("lune", {"run", Compiler, Path, "--", "--yes"}, {cwd = "../src/CLI"})
         if not Result.ok then
             ErrorPrint(`{File} failed to compile!\n{Result.stderr}`)
         else
@@ -50,10 +50,10 @@ if stdio.prompt("confirm", "Compile files?") then
     PrettyPrint("green", `Successfully compiled {#Sources}/{#Sources} source files!`)
 end
 
-local Shared = require("Shared")
+local Shared = require("./Shared")
 local BaseEnvironment = Shared.GetEnvironment()
-local ClientEnvironment = require("Client")
-local ServerEnvironment = require("Server")
+local ClientEnvironment = require("./Client")
+local ServerEnvironment = require("./Server")
 
 _G.client = {
     game = ClientEnvironment.game,
@@ -854,9 +854,9 @@ RunClosure("CLI compile prompt", function()
         fs.removeDir("../Network")
     end)
 
-    local Result: process.SpawnResult;
+    local Result: process.ExecResult;
     local Thread = task.spawn(function()
-        Result = process.spawn("lune", {"run", Compiler, COMPILE_TEST_FILE}, {cwd = "../src/CLI"})
+        Result = process.exec("lune", {"run", Compiler, COMPILE_TEST_FILE}, {cwd = "../src/CLI"})
     end)
     
     if coroutine.status(Thread) ~= "suspended" then
@@ -867,7 +867,7 @@ RunClosure("CLI compile prompt", function()
 end)
 
 RunClosure("CLI compile --yes", function()
-    local Result = process.spawn("lune", {"run", Compiler, COMPILE_TEST_FILE, "--", "--yes"}, {cwd = "../src/CLI"})
+    local Result = process.exec("lune", {"run", Compiler, COMPILE_TEST_FILE, "--", "--yes"}, {cwd = "../src/CLI"})
     assert(Result.ok, Result.stderr)
 end)
 

@@ -1,8 +1,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 
-local Modes = require("../shared/modes")
-local Benches = require("../shared/benches")
+local Modes = require("./shared/modes")
+local Benches = require("./shared/benches")
 
 function CompareTables(a, b)
     if a == b then 

@@ -7,7 +7,7 @@ local stdio = require("@lune/stdio")
 
 local Error = require("../../Modules/Error")
 local Parser = require("../../Parser")
-local Generator = require("../../Generator/init.luau")
+local Generator = require("../../Generator")
 local PathParser = require("../../Modules/Path")
 local GetDefinitionFilePath = require("./GetDefinitionFilePath")
 

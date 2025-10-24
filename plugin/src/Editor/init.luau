@@ -6,28 +6,26 @@
 
 ---- Services ----
 
-local UserInputService = game:GetService("UserInputService")
 local ContentProvider = game:GetService("ContentProvider")
 local TextService = game:GetService("TextService")
 local RunService = game:GetService("RunService")
 
 ---- Imports ----
 
-local Table = require("../Table")
-local State = require("../State")
-local Utility = require("./Utility")
+local State = require("./State")
+local Utility = require("@self/Utility")
 
-local Profiler = require("../Profiler")
+local Profiler = require("./Profiler")
 
-local Lexer = require("../../../src/Lexer")
-local Parser = require("../../../src/Parser")
-local Settings = require("../../../src/Settings")
+local Lexer = require("@compiler/Lexer")
+local Parser = require("@compiler/Parser")
+local Settings = require("@compiler/Settings")
 
-local Error = require("../../../src/Modules/Error")
+local Error = require("@compiler/Modules/Error")
 
 local StylingHooks: {{OnSourceChanged: (Text: string, PreviousText: string, Cursor: number, Gain: number) -> (string, number)}} = {
-   require("./Styling/AutoIndent"),
-   require("./Styling/AutoBracket"),
+   require("@self/Styling/AutoIndent"),
+   require("@self/Styling/AutoBracket"),
 }
 
 ---- Settings ----

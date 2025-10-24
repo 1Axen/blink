@@ -5,7 +5,7 @@
     ],
     "modules_identifier": "__DARKLUA_BUNDLE_MODULES",
     "require_mode": {
-      "name": "path",
+      "name": "luau",
       "sources": {
         "Base": "../src/Templates/Base.txt",
         "Client": "../src/Templates/Client.txt",

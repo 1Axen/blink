@@ -29,7 +29,7 @@ local function build_executable(platform: Platforms, arch: Archs)
     local target = `{platform}-{arch}`
     local exe_name = `{EXE_NAME}{platform == "windows" and ".exe" or ""}`
     local exe_path = `{RELEASE_DIR}/{exe_name}`
-    local build_result = process.spawn("lune", {
+    local build_result = process.exec("lune", {
         "build", 
         BUNDLE_PATH, 
         "--output", exe_path, 
@@ -37,9 +37,9 @@ local function build_executable(platform: Platforms, arch: Archs)
     }, {stdio = "forward"})
     assert(build_result.ok, build_result.stderr)
 
-    local archive_result: process.SpawnResult
+    local archive_result: process.ExecResult
     if platform == "windows" then
-        archive_result = process.spawn("tar", {
+        archive_result = process.exec("tar", {
             "-czvf",
             `{RELEASE_DIR}/blink-{target}.tar.gz`,
             "-C",
@@ -47,7 +47,7 @@ local function build_executable(platform: Platforms, arch: Archs)
             exe_name
         }, {stdio = "forward"})
     else
-        archive_result = process.spawn("tar", {
+        archive_result = process.exec("tar", {
             "-cJvf",
             `{RELEASE_DIR}/blink-{target}.tar.xz`,
             "-C",
@@ -63,7 +63,7 @@ local function build_executable(platform: Platforms, arch: Archs)
 end
 
 local function build_executables()
-    local bundle_result = process.spawn("darklua", {"process", "--config", DARKLUA_CONFIG, CLI_PATH, BUNDLE_PATH})
+    local bundle_result = process.exec("darklua", {"process", "--config", DARKLUA_CONFIG, CLI_PATH, BUNDLE_PATH})
     assert(bundle_result.ok, bundle_result.stderr)
     log("Bundled CLI source code")
 
@@ -85,7 +85,7 @@ local function build_studio_plugin()
         end
     end
 
-    local bundle_result = process.spawn("darklua", {
+    local bundle_result = process.exec("darklua", {
         "process", 
         "--config", 
         DARKLUA_CONFIG, 
@@ -94,7 +94,7 @@ local function build_studio_plugin()
     })
     assert(bundle_result.ok, bundle_result.stderr)
 
-    local rojo_result = process.spawn("rojo", {
+    local rojo_result = process.exec("rojo", {
         "build", 
         PLUGIN_ROJO_CONFIG, 
         "--output", 

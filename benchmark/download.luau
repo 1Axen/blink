@@ -1,6 +1,7 @@
 local fs = require("@lune/fs")
 local net = require("@lune/net")
 local process = require("@lune/process")
+local serde = require("@lune/serde")
 
 local AUTH_TOKEN;
 local PATH_TO_7ZIP = "C:\\Program Files\\7-Zip\\7z.exe"
@@ -28,12 +29,12 @@ local Packages: {[string]: {GitHub: string, Wally: string}} = {
 local Versions = {}
 
 if fs.isFile("config.json") then
-    local Configuration = net.jsonDecode(fs.readFile("config.json"))
+    local Configuration = serde.decode("json", fs.readFile("config.json"))
     AUTH_TOKEN = Configuration["github-token"]
     print(`Using github token to do API requests!`)
 end
 
-local function Curl(URL: string, Output: string, Headers: {string}?): process.SpawnResult
+local function Curl(URL: string, Output: string, Headers: {string}?): process.ExecResult
     local Arguments = {}
 
     if AUTH_TOKEN then
@@ -54,7 +55,7 @@ local function Curl(URL: string, Output: string, Headers: {string}?): process.Sp
     table.insert(Arguments, "--output")
     table.insert(Arguments, Output)
 
-    return process.spawn("curl", Arguments)
+    return process.exec("curl", Arguments)
 end
 
 local function Request(Fetch: net.FetchParams): net.FetchResponse
@@ -64,23 +65,25 @@ local function Request(Fetch: net.FetchParams): net.FetchResponse
     end
     
     local Response = net.request(Fetch)
-    local Ratelimit = Response.headers["x-ratelimit-remaining"]
+	local Headers = Response.headers :: {[string]: any}
+    local Ratelimit = Headers["x-ratelimit-remaining"] :: number
 
     if tonumber(Ratelimit) == 0 then
-        error(`API rate limit exceeded, retry again in {Response.headers["x-ratelimit-reset"] - os.time()} seconds.`)
+		local RetryTimestamp = Headers["x-ratelimit-reset"] :: number
+        error(`API rate limit exceeded, retry again in {RetryTimestamp - os.time()} seconds.`)
     end
 
     assert(Response.ok, Response.statusMessage)
     return Response
 end
 
-for Name, Url in Tools do
+for Name, Url in Tools :: {[string]: string} do
     local Response = Request({
         url = Url,
         method = "GET"
     })
 
-    local Release = net.jsonDecode(Response.body)
+    local Release = serde.decode("json", Response.body)
     local DownloadUrl: string
 
     for Index, Asset in Release.assets do
@@ -96,7 +99,7 @@ for Name, Url in Tools do
     local CurlResult = Curl(DownloadUrl, `{PATH_TO_TOOLS}{Name}.zip`)
     assert(CurlResult.ok, `Encountered an exception while downloading files for {Name}, {CurlResult.code}`)
 
-    local UnzipResult = process.spawn(`{PATH_TO_7ZIP}`, {"e", `{PATH_TO_TOOLS}{Name}.zip`, "-y", `-o{PATH_TO_TOOLS}`})
+    local UnzipResult = process.exec(`{PATH_TO_7ZIP}`, {"e", `{PATH_TO_TOOLS}{Name}.zip`, "-y", `-o{PATH_TO_TOOLS}`})
     assert(UnzipResult.ok, `Encountered an exception while unzipping downloads for {Name}, {UnzipResult.stderr}`)
 
     Versions[Name] = Release.tag_name
@@ -109,7 +112,7 @@ for Name, Urls in Packages do
         method = "GET"
     })
 
-    local Releases = net.jsonDecode(Response.body)
+    local Releases = serde.decode("json", Response.body)
     table.sort(Releases, function(a, b)
         return a.id > b.id
     end)
@@ -133,7 +136,7 @@ for Name, Urls in Packages do
         fs.writeDir(ZipPath)
     end
 
-    local UnzipResult = process.spawn(`{PATH_TO_7ZIP}`, {"x", `{ZipPath}.zip`, "-y", `-o{ZipPath}`})
+    local UnzipResult = process.exec(`{PATH_TO_7ZIP}`, {"x", `{ZipPath}.zip`, "-y", `-o{ZipPath}`})
     assert(UnzipResult.ok, `Encountered an exception while unzipping downloads for {Name}, {UnzipResult.stderr}`)
 
     fs.move(`{ZipPath}/src`, FinalPath)
@@ -143,4 +146,4 @@ for Name, Urls in Packages do
     print("Downloaded", Name, Version)
 end
 
-fs.writeFile("./tools/versions.json", net.jsonEncode(Versions))
+fs.writeFile("./tools/versions.json", serde.encode("json", Versions))

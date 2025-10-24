@@ -6,8 +6,8 @@
 local stdio = require("@lune/stdio")
 local process = require("@lune/process")
 
-local Watch = require("./Utility/Watch.luau")
-local Compile = require("./Utility/Compile.luau")
+local Watch = require("@self/Utility/Watch")
+local Compile = require("@self/Utility/Compile")
 
 ---- Settings ----
 

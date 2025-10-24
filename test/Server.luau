@@ -1,4 +1,4 @@
-local Shared = require("Shared")
+local Shared = require("./Shared")
 
 local Signal = Shared.Signal
 local ServerEnviornment = Shared.GetEnvironment()

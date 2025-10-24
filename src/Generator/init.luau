@@ -2,22 +2,22 @@
 --!optimize 2
 --!strict
 
-local Parser = require("../Parser")
-local Settings = require("../Settings")
+local Parser = require("./Parser")
+local Settings = require("./Settings")
 
-local Table = require("../Modules/Table")
-local Builder = require("../Modules/Builder")
+local Table = require("./Modules/Table")
+local Builder = require("./Modules/Builder")
 
-local Util = require("./Util")
-local Blocks = require("./Blocks")
-local Prefabs = require("./Prefabs")
-local GenerateTypescript = require("./Typescript")
+local Util = require("@self/Util")
+local Blocks = require("@self/Blocks")
+local Prefabs = require("@self/Prefabs")
+local GenerateTypescript = require("@self/Typescript")
 
 local Sources = {
-	Base = require("../Templates/Base"),
+	Base = require("./Templates/Base"),
 	Shared = {"", ""},
-	Client = string.split(require("../Templates/Client"), "-- SPLIT --"),
-	Server = string.split(require("../Templates/Server"), "-- SPLIT --"),
+	Client = string.split(require("./Templates/Client"), "-- SPLIT --"),
+	Server = string.split(require("./Templates/Server"), "-- SPLIT --"),
 }
 
 local EVENTS_TYPE = "BLINK_EVENTS_SYMBOL"

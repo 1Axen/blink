@@ -1,5 +1,3 @@
-local Utility = require("../Utility")
-
 local Hook = {}
 
 local Brackets = {

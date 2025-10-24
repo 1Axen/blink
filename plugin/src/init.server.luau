@@ -19,12 +19,12 @@ end
 
 ---- Imports ----
 
-local State = require("./State")
-local Editor = require("./Editor")
-local Profiler = require("./Profiler")
+local State = require("@self/State")
+local Editor = require("@self/Editor")
+local Profiler = require("@self/Profiler")
 
-local Parser = require("../../src/Parser")
-local Generator = require("../../src/Generator")
+local Parser = require("@compiler/Parser")
+local Generator = require("@compiler/Generator")
 
 ---- Settings ----
 

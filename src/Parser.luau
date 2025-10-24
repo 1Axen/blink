@@ -351,7 +351,7 @@ local function GetFileSource(Path: string, Directory: string): (string?, string?
     end
 
     local fs = require("@lune/fs")
-    local GetDefinitionFilePath = require("./CLI/Utility/GetDefinitionFilePath.luau")
+    local GetDefinitionFilePath = require("./CLI/Utility/GetDefinitionFilePath")
 
     if PathParser.PathType(Path) == "relative" then
          Path = `{Directory}{Path}`

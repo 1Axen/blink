@@ -1,12 +1,12 @@
 local fs = require("@lune/fs")
-local net = require("@lune/net")
 local process = require("@lune/process")
 local DateTime = require("@lune/datetime")
+local serde = require("@lune/serde")
 
 local VersionsJSON = fs.readFile("./tools/versions.json")
-local Versions = net.jsonDecode(VersionsJSON)
+local Versions = serde.decode("json", VersionsJSON)
 
-local RobloxResult = process.spawn("run-in-roblox", {"--place", "Benchmark.rbxl", "--script", "run.luau"})
+local RobloxResult = process.exec("run-in-roblox", {"--place", "Benchmark.rbxl", "--script", "run.luau"})
 if not RobloxResult.ok then
     error(RobloxResult.stderr)
 end
@@ -18,7 +18,7 @@ local Result: {[string]: {[string]: Benchmark}};
 for _, Line in Stdout do
     Line = string.gsub(Line, "\n", "")
     if string.sub(Line, 1, 1) == "{" then
-        Result = net.jsonDecode(Line)
+        Result = serde.decode("json", Line)
         break 
     end
 end
@@ -35,7 +35,7 @@ for Tool, Version in Versions do
 end
 
 local function QueryWMIC(Component: string, Properties: string): {string}
-    local SpawnResult = process.spawn("wmic", {Component, "get", Properties})
+    local SpawnResult = process.exec("wmic", {Component, "get", Properties})
     assert(SpawnResult.ok, SpawnResult.stderr)
 
     local Lines = string.split(SpawnResult.stdout, "\n")
@@ -76,13 +76,13 @@ end
 
 local function WriteComputerSpecs()
     local Processor = QueryWMIC("cpu", "name")
-    local MemorySticks = QueryWMIC("memorychip", "Capacity,Speed")
+    local MemorySticks = QueryWMIC("memorychip", "Capacity,Speed") :: {{string}}
     
     Contents ..= `\n## Computer Specs`
     Contents ..= `\nProcessor: \`{Processor[1]}\`  `
 
     for Slot, Stick in MemorySticks do
-        local Capacity = tonumber(Stick[1])
+        local Capacity = tonumber(Stick[1]) or 0
         Capacity //= 1e+9
         Contents ..= `\nMemory #{Slot}: \`{Capacity}GB {Stick[2]}\`  `
     end
