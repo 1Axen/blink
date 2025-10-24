@@ -4,19 +4,19 @@ export type Range = {
 	Text: string,
 	Index: number,
 	Start: number,
-	End: number
+	End: number,
 }
 
 local DEFAULT_RANGE = {
 	Text = "",
 	Index = 0,
 	Start = 0,
-	End = 0
+	End = 0,
 }
 
-local function Split(String: string): {Range}
+local function Split(String: string): { Range }
 	local Cursor = 1
-	local Ranges: {Range} = {}
+	local Ranges: { Range } = {}
 
 	while Cursor <= #String do
 		--> Ignore whitespaces
@@ -35,9 +35,9 @@ local function Split(String: string): {Range}
 				Text = Text,
 				Index = #Ranges + 1,
 				Start = Start,
-				End = End
+				End = End,
 			})
-			
+
 			Cursor = (End + 1)
 			continue
 		end
@@ -48,10 +48,10 @@ local function Split(String: string): {Range}
 	return Ranges
 end
 
-function Utility.GetCurrentLine(Source: string, Cursor: number): (number, {string})
-    local Line = 0
+function Utility.GetCurrentLine(Source: string, Cursor: number): (number, { string })
+	local Line = 0
 	local Position = 0
-    local Slices = string.split(Source, "\n")
+	local Slices = string.split(Source, "\n")
 
 	for Index, Slice in Slices do
 		Position += (#Slice + 1)
@@ -65,9 +65,9 @@ function Utility.GetCurrentLine(Source: string, Cursor: number): (number, {strin
 end
 
 function Utility.GetLineRangeAtPosition(Source: string, Cursor: number): Range
-	local Range: Range;
+	local Range: Range
 	local Position = 0
-    local Slices = string.split(Source, "\n")
+	local Slices = string.split(Source, "\n")
 
 	for Index, Slice in Slices do
 		local Start = Position
@@ -77,7 +77,7 @@ function Utility.GetLineRangeAtPosition(Source: string, Cursor: number): Range
 				Text = Slice,
 				Index = 1,
 				Start = (Start + 1),
-				End = (Position - 1)
+				End = (Position - 1),
 			}
 
 			break
@@ -100,15 +100,15 @@ function Utility.GetWordRangeAtPosition(Source: string, Position: number): Range
 end
 
 function Utility.GetWordRangeBeforePosition(Source: string, Position: number): Range
-    local Ranges = Split(Source)
+	local Ranges = Split(Source)
 
-    for Index, Range in Ranges do
+	for Index, Range in Ranges do
 		if Range.Start >= Position then
 			return Ranges[Index - 1] or DEFAULT_RANGE
 		end
-    end
+	end
 
-    return DEFAULT_RANGE
+	return DEFAULT_RANGE
 end
 
 return Utility

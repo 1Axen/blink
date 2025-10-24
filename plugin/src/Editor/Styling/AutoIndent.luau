@@ -2,11 +2,11 @@ local Utility = require("../Utility")
 
 local Hook = {}
 local IndentKeywords = {
-	"{\n"
+	"{\n",
 }
 
 local function ShouldAutoIndent(Text: string, Cursor: number): boolean
-    for Index, Keyword in IndentKeywords do
+	for Index, Keyword in IndentKeywords do
 		local Position = (Cursor - #Keyword)
 		if Position <= 0 then
 			continue
@@ -16,13 +16,13 @@ local function ShouldAutoIndent(Text: string, Cursor: number): boolean
 		if Previous == Keyword then
 			return true
 		end
-    end
+	end
 
 	return false
 end
 
 local function GetLineIndentation(Line: string): number
-    return #(string.match(Line, "^\t*") :: string)
+	return #(string.match(Line, "^\t*") :: string)
 end
 
 function Hook.OnSourceChanged(Text: string, PreviousText: string, Cursor: number, Gain: number): (string, number)
@@ -58,7 +58,10 @@ function Hook.OnSourceChanged(Text: string, PreviousText: string, Cursor: number
 	end
 
 	local Indentation = GetLineIndentation(Previous) + AdditionalIndent
-	Text = string.sub(Text, 1, Cursor - 1) .. string.rep("\t", Indentation) .. (NextCharacter and `\n{string.rep("\t", Indentation - 1)}` or "")  .. string.sub(Text, Cursor)
+	Text = string.sub(Text, 1, Cursor - 1)
+		.. string.rep("\t", Indentation)
+		.. (NextCharacter and `\n{string.rep("\t", Indentation - 1)}` or "")
+		.. string.sub(Text, Cursor)
 
 	return Text, Cursor + Indentation
 end

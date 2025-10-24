@@ -7,8 +7,8 @@
 ---- Services ----
 
 local ContentProvider = game:GetService("ContentProvider")
-local TextService = game:GetService("TextService")
 local RunService = game:GetService("RunService")
+local TextService = game:GetService("TextService")
 
 ---- Imports ----
 
@@ -23,86 +23,87 @@ local Settings = require("@compiler/Settings")
 
 local Error = require("@compiler/Modules/Error")
 
-local StylingHooks: {{OnSourceChanged: (Text: string, PreviousText: string, Cursor: number, Gain: number) -> (string, number)}} = {
-   require("@self/Styling/AutoIndent"),
-   require("@self/Styling/AutoBracket"),
-}
+local StylingHooks: { { OnSourceChanged: (Text: string, PreviousText: string, Cursor: number, Gain: number) -> (string, number) } } =
+	{
+		require("@self/Styling/AutoIndent"),
+		require("@self/Styling/AutoBracket"),
+	}
 
 ---- Settings ----
 
 local ICONS = {
-    Event = "rbxassetid://16506730516",
-    Field = "rbxassetid://16506725096",
-    Snippet = "rbxassetid://16506712161",
-    Keyword = "rbxassetid://16506695241",
-    Variable = "rbxassetid://16506719167",
-    Primitive = "rbxassetid://16506695241"
+	Event = "rbxassetid://16506730516",
+	Field = "rbxassetid://16506725096",
+	Snippet = "rbxassetid://16506712161",
+	Keyword = "rbxassetid://16506695241",
+	Variable = "rbxassetid://16506719167",
+	Primitive = "rbxassetid://16506695241",
 }
 
 local THEME = {
-    Text = Color3.fromHex("#FFFFFF"),
-    Keyword = Color3.fromHex("#6796E6"),
-    Primitive = Color3.fromHex("#4EC9B0"),
-    Identifier = Color3.fromHex("#9CDCFE"),
+	Text = Color3.fromHex("#FFFFFF"),
+	Keyword = Color3.fromHex("#6796E6"),
+	Primitive = Color3.fromHex("#4EC9B0"),
+	Identifier = Color3.fromHex("#9CDCFE"),
 
-    Class = Color3.fromHex("#B5CEA8"),
-    Number = Color3.fromHex("#B5CEA8"),
-    String = Color3.fromHex("#ADF195"),
-    Bracket = Color3.fromHex("#FFFFFF"),
-    Boolean = Color3.fromHex("#B5CEA8"),
-    Comment = Color3.fromHex("#529955"),
+	Class = Color3.fromHex("#B5CEA8"),
+	Number = Color3.fromHex("#B5CEA8"),
+	String = Color3.fromHex("#ADF195"),
+	Bracket = Color3.fromHex("#FFFFFF"),
+	Boolean = Color3.fromHex("#B5CEA8"),
+	Comment = Color3.fromHex("#529955"),
 
-    Error = Color3.fromHex("#FF5050"),
-    Warning = Color3.fromHex("#FF5050"),
+	Error = Color3.fromHex("#FF5050"),
+	Warning = Color3.fromHex("#FF5050"),
 
-    Complete = Color3.fromHex("#04385f"),
+	Complete = Color3.fromHex("#04385f"),
 
-    Line = {
-        Active = Color3.fromHex("FFFFFF"),
-        Inactive = Color3.fromHex("787878")
-    }
+	Line = {
+		Active = Color3.fromHex("FFFFFF"),
+		Inactive = Color3.fromHex("787878"),
+	},
 }
 -- This is a comment
 local PRIMITIVES = {}
 for Primitive in Settings.Primtives do
-    table.insert(PRIMITIVES, {Label = Primitive, Insert = Primitive})
+	table.insert(PRIMITIVES, { Label = Primitive, Insert = Primitive })
 end
 
-local SYMBOLS: {[string]: {{Label: string, Insert: string}}} = {
-    Event = {},
-    Field = {},
-    Snippet = {},
-    Keyword = {
-        {Label = "set", Insert = "set %s = {}"},
-        {Label = "map", Insert = "map %s = {[]: }"},
-        {Label = "type", Insert = "type %s = "},
-        {Label = "enum", Insert = "enum %s = {}"},
-        {Label = "struct", Insert = "struct %s {}"},
-        {Label = "event", Insert = "event %s {}"},
-        {Label = "function", Insert = "function %s {}"},
-        {Label = "import", Insert = "import %s as "},
-        {Label = "scope", Insert = "scope %s {}"},
-        {Label = "export", Insert = "export "}
-    },
-    Variable = {},
-    Primitive = PRIMITIVES
+local SYMBOLS: { [string]: { { Label: string, Insert: string } } } = {
+	Event = {},
+	Field = {},
+	Snippet = {},
+	Keyword = {
+		{ Label = "set", Insert = "set %s = {}" },
+		{ Label = "map", Insert = "map %s = {[]: }" },
+		{ Label = "type", Insert = "type %s = " },
+		{ Label = "enum", Insert = "enum %s = {}" },
+		{ Label = "struct", Insert = "struct %s {}" },
+		{ Label = "event", Insert = "event %s {}" },
+		{ Label = "function", Insert = "function %s {}" },
+		{ Label = "import", Insert = "import %s as " },
+		{ Label = "scope", Insert = "scope %s {}" },
+		{ Label = "export", Insert = "export " },
+	},
+	Variable = {},
+	Primitive = PRIMITIVES,
 }
 
 local BRACKETS = {
-    OpenParentheses = true,
-    CloseParentheses = true,
-    OpenBraces = true,
-    CloseBraces = true,
-    OpenBrackets = true,
-    CloseBrackets = true,
+	OpenParentheses = true,
+	CloseParentheses = true,
+	OpenBraces = true,
+	CloseBraces = true,
+	OpenBrackets = true,
+	CloseBrackets = true,
 }
 
-local RICH_TEXT_ESCAPES: {[string]: string} = {
-    --["&"] = "&amp;",
-    ["<"] = "&lt;",
-    [">"] = "&gt;",
-    --["\""] = "&quot;",
-    --["\'"] = "&apos;",
+local RICH_TEXT_ESCAPES: { [string]: string } = {
+	--["&"] = "&amp;",
+	["<"] = "&lt;",
+	[">"] = "&gt;",
+	--["\""] = "&quot;",
+	--["\'"] = "&apos;",
 }
 
 local SCROLL_LINES = 2
@@ -110,9 +111,9 @@ local CURSOR_BLINK_RATE = 0.5
 local PRE_ALLOCATED_LINES = 2_000
 
 type CompletionItem = {
-    Icon: string,
-    Label: string,
-    Insert: string
+	Icon: string,
+	Label: string,
+	Insert: string,
 }
 
 ---- Constants ----
@@ -148,705 +149,709 @@ local TextHeight = (Input.TextSize + 3)
 local SourceLexer = Lexer.new("Highlighting")
 local SourceParser = Parser.new()
 
-local EditorWidget: DockWidgetPluginGui;
+local EditorWidget: DockWidgetPluginGui
 
 ---- Variables ----
 
 local Lines = 0
 local Scroll = State.new(0)
-local Predictions: State.Class<{Index: number, Items: {CompletionItem}}> = State.new({Index = 1, Items = {}})
+local Predictions: State.Class<{ Index: number, Items: { CompletionItem } }> = State.new({ Index = 1, Items = {} })
 
 local CursorTimer = 0
 local PreviousText = Input.Text
-local PreviousLine: TextLabel?;
+local PreviousLine: TextLabel?
 
 local AnalysisError: State.Class<Error.Class?> = State.new(nil :: any)
-local AbstractSyntaxTree: Parser.Body?;
+local AbstractSyntaxTree: Parser.Body?
 
 ---- Private Functions ----
 
 local function ScrollTowards(Direction: number)
-    local Value = Scroll:Get()
-    local Maximum = math.max(1, (Input.TextBounds.Y - EditorContainer.AbsoluteSize.Y) // TextHeight + SCROLL_LINES)
-    Scroll:Set(math.clamp(Value + (Direction * SCROLL_LINES), 0, Maximum))
+	local Value = Scroll:Get()
+	local Maximum = math.max(1, (Input.TextBounds.Y - EditorContainer.AbsoluteSize.Y) // TextHeight + SCROLL_LINES)
+	Scroll:Set(math.clamp(Value + (Direction * SCROLL_LINES), 0, Maximum))
 end
 
 local function Color(Text: string, Color: Color3): string
-    return `<font color="#{Color:ToHex()}">{Text}</font>`
+	return `<font color="#{Color:ToHex()}">{Text}</font>`
 end
 
 local function Escape(Text: string)
-    for Symbol, Escape in RICH_TEXT_ESCAPES do
-        Text = string.gsub(Text, Symbol, Escape)
-    end
+	for Symbol, Escape in RICH_TEXT_ESCAPES do
+		Text = string.gsub(Text, Symbol, Escape)
+	end
 
-    return Text
+	return Text
 end
 
 local function ClearChildrenWhichAre(Parent: Instance, Class: string)
-    for Index, Child in Parent:GetChildren() do
-        if Child:IsA(Class) then
-            Child:Destroy()
-        end
-    end
+	for Index, Child in Parent:GetChildren() do
+		if Child:IsA(Class) then
+			Child:Destroy()
+		end
+	end
 end
 
 local function GetPrediction(): CompletionItem?
-    local Items = Predictions:Get()
-    local Item = Items.Items[Items.Index]
-    if not Item then
-        return
-    end
+	local Items = Predictions:Get()
+	local Item = Items.Items[Items.Index]
+	if not Item then
+		return
+	end
 
-    return Item
+	return Item
 end
 
 local DOTS = "%.%."
 local NUMBER = "%-?%d*%.?%d+"
 
 local function UpdateColors()
-    local Source = Input.Text
-    local RichText = {}
+	local Source = Input.Text
+	local RichText = {}
 
-    --> Render text immediately
-    Display.Text = Source
-    Display.TextColor3 = THEME.Text
+	--> Render text immediately
+	Display.Text = Source
+	Display.TextColor3 = THEME.Text
 
-    --> Initiialize lexer
-    SourceLexer:Initialize(Source)
+	--> Initiialize lexer
+	SourceLexer:Initialize(Source)
 
-    --> Highlight state
-    local Keyword = "none"
-    local Token = SourceLexer:GetNextToken()
-    
-    while Token and (Token.Type ~= "EndOfFile") do
-        local Type: Lexer.Types = Token.Type
-        local Value = Token.Value
+	--> Highlight state
+	local Keyword = "none"
+	local Token = SourceLexer:GetNextToken()
 
-        local String = Escape(Value)
-        if Type == "Keyword" or Type == "Import" or Type == "As" then
-            Keyword = Value
-            String = Color(Value, THEME.Keyword)
-        elseif Type == "Primitive" then
-            String = Color(Value, THEME.Primitive)
-        elseif Type == "Identifier" then
-            local LookAhead = SourceLexer:GetNextToken(true)
-            local IsField = (LookAhead and LookAhead.Type == "FieldAssign" and Keyword ~= "map")
-            String = Color(Value, IsField and THEME.Text or THEME.Identifier)
-        elseif Type == "Array" or Type == "Range" then
-            --> Exact size array/range
-            local Single = string.match(Value, `%[({NUMBER})%]`) or string.match(Value, `%(({NUMBER})%)`)
-            local Lower = string.match(Value, `%[({NUMBER}){DOTS}`) or string.match(Value, `%(({NUMBER}){DOTS}`) 
-            local Upper = string.match(Value, `{DOTS}({NUMBER})%]`) or string.match(Value, `{DOTS}({NUMBER})%)`)
+	while Token and (Token.Type ~= "EndOfFile") do
+		local Type: Lexer.Types = Token.Type
+		local Value = Token.Value
 
-            if Single then
-                String = string.gsub(Value, Single, Color(Single, THEME.Number))
-            elseif Lower and Upper then
-                String = `{string.sub(Value, 1, 1)}{Color(Lower, THEME.Number)}..{Color(Upper, THEME.Number)}{string.sub(Value, #Value, #Value)}`
-            end
-        elseif Type == "Component" then
-            local Primitive = string.match(Value, "(%w+)") or ""
-            String = `{Color("<", THEME.Bracket)}{Color(Primitive, THEME.Primitive)}{Color(">", THEME.Bracket)}`
-        elseif BRACKETS[Type] then
-            String = Color(Value, THEME.Bracket)
-        elseif Type == "Class" then
-            String = `({Color(string.sub(Value, 2, #Value - 1), THEME.Class)})`
-        elseif Type == "String" then
-            String = Color(Value, THEME.String)
-        elseif Type == "Boolean" then
-            String = Color(Value, THEME.Boolean)
-        elseif Type == "Comment" then
-            String = Color(Value, THEME.Comment)
-        elseif Type == "Unknown" then
-            String = Color(Value, THEME.Error)
-        end
+		local String = Escape(Value)
+		if Type == "Keyword" or Type == "Import" or Type == "As" then
+			Keyword = Value
+			String = Color(Value, THEME.Keyword)
+		elseif Type == "Primitive" then
+			String = Color(Value, THEME.Primitive)
+		elseif Type == "Identifier" then
+			local LookAhead = SourceLexer:GetNextToken(true)
+			local IsField = (LookAhead and LookAhead.Type == "FieldAssign" and Keyword ~= "map")
+			String = Color(Value, IsField and THEME.Text or THEME.Identifier)
+		elseif Type == "Array" or Type == "Range" then
+			--> Exact size array/range
+			local Single = string.match(Value, `%[({NUMBER})%]`) or string.match(Value, `%(({NUMBER})%)`)
+			local Lower = string.match(Value, `%[({NUMBER}){DOTS}`) or string.match(Value, `%(({NUMBER}){DOTS}`)
+			local Upper = string.match(Value, `{DOTS}({NUMBER})%]`) or string.match(Value, `{DOTS}({NUMBER})%)`)
 
-        table.insert(RichText, String)
-        Token = SourceLexer:GetNextToken()
-    end
+			if Single then
+				String = string.gsub(Value, Single, Color(Single, THEME.Number))
+			elseif Lower and Upper then
+				String =
+					`{string.sub(Value, 1, 1)}{Color(Lower, THEME.Number)}..{Color(Upper, THEME.Number)}{string.sub(
+						Value,
+						#Value,
+						#Value
+					)}`
+			end
+		elseif Type == "Component" then
+			local Primitive = string.match(Value, "(%w+)") or ""
+			String = `{Color("<", THEME.Bracket)}{Color(Primitive, THEME.Primitive)}{Color(">", THEME.Bracket)}`
+		elseif BRACKETS[Type] then
+			String = Color(Value, THEME.Bracket)
+		elseif Type == "Class" then
+			String = `({Color(string.sub(Value, 2, #Value - 1), THEME.Class)})`
+		elseif Type == "String" then
+			String = Color(Value, THEME.String)
+		elseif Type == "Boolean" then
+			String = Color(Value, THEME.Boolean)
+		elseif Type == "Comment" then
+			String = Color(Value, THEME.Comment)
+		elseif Type == "Unknown" then
+			String = Color(Value, THEME.Error)
+		end
 
-    --> Render highlighted text
-    Display.Text = table.concat(RichText)
+		table.insert(RichText, String)
+		Token = SourceLexer:GetNextToken()
+	end
+
+	--> Render highlighted text
+	Display.Text = table.concat(RichText)
 end
 
 local function UpdateAnalysis()
-    local Success, Result = pcall(function()
-        return SourceParser:Parse(Editor.GetSource())
-    end)
+	local Success, Result = pcall(function()
+		return SourceParser:Parse(Editor.GetSource())
+	end)
 
-    if Success then
-        AnalysisError:Set(nil)
-        AbstractSyntaxTree = Result
-    end
+	if Success then
+		AnalysisError:Set(nil)
+		AbstractSyntaxTree = Result
+	end
 end
 
 local function UpdateCompletion()
-    local Line = Utility.GetLineRangeAtPosition(Input.Text, Input.CursorPosition)
-    local Items: {CompletionItem} = {}
+	local Line = Utility.GetLineRangeAtPosition(Input.Text, Input.CursorPosition)
+	local Items: { CompletionItem } = {}
 
-    --> Match Keywords
-    local function MatchSymbols()
-        local Word = Utility.GetWordRangeAtPosition(Line.Text, Input.CursorPosition - Line.Start)
-        local Text = Word.Text
-        if #Text == 0 then
-            return
-        end
+	--> Match Keywords
+	local function MatchSymbols()
+		local Word = Utility.GetWordRangeAtPosition(Line.Text, Input.CursorPosition - Line.Start)
+		local Text = Word.Text
+		if #Text == 0 then
+			return
+		end
 
-        --> Match keywords
-        if Word.Index == 1 then
-            for _, Symbol in SYMBOLS.Keyword do
-                local Label = Symbol.Label
-                local Stub = string.sub(Label, 1, #Text)
-                if Stub ~= Text or Stub == Label then
-                    continue
-                end
-    
-                table.insert(Items, {
-                    Icon = ICONS.Keyword,
-                    Label = Label,
-                    Insert = Symbol.Insert
-                })
-            end
-        end
+		--> Match keywords
+		if Word.Index == 1 then
+			for _, Symbol in SYMBOLS.Keyword do
+				local Label = Symbol.Label
+				local Stub = string.sub(Label, 1, #Text)
+				if Stub ~= Text or Stub == Label then
+					continue
+				end
 
-        --> Match symbols
-        local Previous = Utility.GetWordRangeBeforePosition(Line.Text, Word.Start - 1)
-        if Previous.Text == "" then
-            return
-        end
+				table.insert(Items, {
+					Icon = ICONS.Keyword,
+					Label = Label,
+					Insert = Symbol.Insert,
+				})
+			end
+		end
 
-        if string.match(Previous.Text, ":$") or Previous.Text == "=" then
-            for _, Symbol in SYMBOLS.Primitive do
-                local Label = Symbol.Label
-                local Stub = string.sub(Label, 1, #Text)
-                if Stub ~= Text or Stub == Label then
-                    continue
-                end
-    
-                table.insert(Items, {
-                    Icon = ICONS.Primitive,
-                    Label = Label,
-                    Insert = Label
-                })
-            end
+		--> Match symbols
+		local Previous = Utility.GetWordRangeBeforePosition(Line.Text, Word.Start - 1)
+		if Previous.Text == "" then
+			return
+		end
 
-            if AbstractSyntaxTree then
-                for Symbol in AbstractSyntaxTree.Value.Symbols do
-                    local Stub = string.sub(Symbol, 1, #Text)
-                    if Stub ~= Text or Stub == Symbol then
-                        continue
-                    end
-            
-                    table.insert(Items, {
-                        Icon = ICONS.Variable,
-                        Label = Symbol,
-                        Insert = Symbol
-                    })
-                end
-            end
-        end
-    end
+		if string.match(Previous.Text, ":$") or Previous.Text == "=" then
+			for _, Symbol in SYMBOLS.Primitive do
+				local Label = Symbol.Label
+				local Stub = string.sub(Label, 1, #Text)
+				if Stub ~= Text or Stub == Label then
+					continue
+				end
 
-    MatchSymbols()
+				table.insert(Items, {
+					Icon = ICONS.Primitive,
+					Label = Label,
+					Insert = Label,
+				})
+			end
 
-    --> Update predictions
-    Predictions:Set({
-        Index = 1,
-        Items = Items
-    })
+			if AbstractSyntaxTree then
+				for Symbol in AbstractSyntaxTree.Value.Symbols do
+					local Stub = string.sub(Symbol, 1, #Text)
+					if Stub ~= Text or Stub == Symbol then
+						continue
+					end
+
+					table.insert(Items, {
+						Icon = ICONS.Variable,
+						Label = Symbol,
+						Insert = Symbol,
+					})
+				end
+			end
+		end
+	end
+
+	MatchSymbols()
+
+	--> Update predictions
+	Predictions:Set({
+		Index = 1,
+		Items = Items,
+	})
 end
 
 local function UpdateHighlightedLine()
-    local Line = Utility.GetCurrentLine(Input.Text, Input.CursorPosition)
-    Line = math.clamp(Line, 1, PRE_ALLOCATED_LINES)
+	local Line = Utility.GetCurrentLine(Input.Text, Input.CursorPosition)
+	Line = math.clamp(Line, 1, PRE_ALLOCATED_LINES)
 
-    local Label: TextLabel = LinesContainer[tostring(Line)]
-    if PreviousLine then
-        PreviousLine.TextColor3 = THEME.Line.Inactive
-    end
+	local Label: TextLabel = LinesContainer[tostring(Line)]
+	if PreviousLine then
+		PreviousLine.TextColor3 = THEME.Line.Inactive
+	end
 
-    PreviousLine = Label
-    Label.TextColor3 = THEME.Line.Active
+	PreviousLine = Label
+	Label.TextColor3 = THEME.Line.Active
 end
 
 ---- Event Functions -----
 
 local function OnErrorEmitted(Object: Error.Class)
-    AnalysisError:Set(Object)
+	AnalysisError:Set(Object)
 end
 
 local function OnPreRender(DeltaTime: number)
-    if Input.CursorPosition == -1 then
-        return
-    end
+	if Input.CursorPosition == -1 then
+		return
+	end
 
-    CursorTimer += DeltaTime
-    if CursorTimer < CURSOR_BLINK_RATE then
-        return
-    end
+	CursorTimer += DeltaTime
+	if CursorTimer < CURSOR_BLINK_RATE then
+		return
+	end
 
-    CursorTimer -= CURSOR_BLINK_RATE
-    Cursor.Visible = not Cursor.Visible
+	CursorTimer -= CURSOR_BLINK_RATE
+	Cursor.Visible = not Cursor.Visible
 end
 
 --> State functions
 local function OnLinesChanged(Value: number)
-    --> Insert new or delete lines
-    local Difference = (Value - Lines)
+	--> Insert new or delete lines
+	local Difference = (Value - Lines)
 
-    if Difference > 0 then
-        for Index = (Lines + 1), Value do
-            local Name = tostring(Index)
-            local Line = LinesContainer[Name]
-            Line.TextTransparency = 0
-        end
-    elseif Difference < 0 then
-        for Index = Lines, (Value + 1), - 1 do
-            local Name = tostring(Index)
-            local Line = LinesContainer[Name]
-            Line.TextTransparency = 1
-        end
-    end
+	if Difference > 0 then
+		for Index = (Lines + 1), Value do
+			local Name = tostring(Index)
+			local Line = LinesContainer[Name]
+			Line.TextTransparency = 0
+		end
+	elseif Difference < 0 then
+		for Index = Lines, (Value + 1), -1 do
+			local Name = tostring(Index)
+			local Line = LinesContainer[Name]
+			Line.TextTransparency = 1
+		end
+	end
 
-    Lines = Value
+	Lines = Value
 
-    --> Update highlighted line
-    UpdateHighlightedLine()
+	--> Update highlighted line
+	UpdateHighlightedLine()
 end
 
 local function OnScrollChanged(Value: number)
-    EditorContainer.Position = UDim2.fromOffset(EditorContainer.Position.X.Offset, TextHeight * -Value)
+	EditorContainer.Position = UDim2.fromOffset(EditorContainer.Position.X.Offset, TextHeight * -Value)
 end
 
 local function OnPredictionsChanged()
-    local Value = Predictions:Get()
-    local Items = Value.Items
-    if #Items == 0 then
-        CompletionContainer.Visible = false
-        return
-    end
+	local Value = Predictions:Get()
+	local Items = Value.Items
+	if #Items == 0 then
+		CompletionContainer.Visible = false
+		return
+	end
 
-    --> Update completion position
-    local AbsoluteSize = EditorContainer.AbsoluteSize
-    local AbsolutePosition = Cursor.AbsolutePosition
-    local HorisontalWidth = math.max(0, (AbsoluteSize.X - CompletionContainer.Size.X.Offset) - 10)
-    CompletionContainer.Position = UDim2.fromOffset(
-        math.clamp(AbsolutePosition.X, 0, HorisontalWidth), 
-        AbsolutePosition.Y + TextSize
-    )
+	--> Update completion position
+	local AbsoluteSize = EditorContainer.AbsoluteSize
+	local AbsolutePosition = Cursor.AbsolutePosition
+	local HorisontalWidth = math.max(0, (AbsoluteSize.X - CompletionContainer.Size.X.Offset) - 10)
+	CompletionContainer.Position =
+		UDim2.fromOffset(math.clamp(AbsolutePosition.X, 0, HorisontalWidth), AbsolutePosition.Y + TextSize)
 
-    CompletionContainer.Visible = true
-    ClearChildrenWhichAre(CompletionContainer, "Frame")
+	CompletionContainer.Visible = true
+	ClearChildrenWhichAre(CompletionContainer, "Frame")
 
-    for Index, Item in Items do
-        local Frame = CompletionTemplate:Clone()
-        Frame.Icon.Image = Item.Icon
-        Frame.Text.Text = Item.Label
+	for Index, Item in Items do
+		local Frame = CompletionTemplate:Clone()
+		Frame.Icon.Image = Item.Icon
+		Frame.Text.Text = Item.Label
 
-        if Index == Value.Index then
-            Frame.BackgroundColor3 = THEME.Complete
-        end
+		if Index == Value.Index then
+			Frame.BackgroundColor3 = THEME.Complete
+		end
 
-        Frame.Parent = CompletionContainer
-    end
+		Frame.Parent = CompletionContainer
+	end
 end
 
 local function OnAnalysisErrorChanged()
-    local Error = AnalysisError:Get()
+	local Error = AnalysisError:Get()
 
-    --> Clear previous error
-    ErrorContainer.Visible = false
-    ClearChildrenWhichAre(ErrorSelection, "Frame")
-    
-    --> No errors
-    if not Error then
-        return
-    end
+	--> Clear previous error
+	ErrorContainer.Visible = false
+	ClearChildrenWhichAre(ErrorSelection, "Frame")
 
-    local Labels = Error.Labels
-    if #Labels == 0 then
-        return
-    end
+	--> No errors
+	if not Error then
+		return
+	end
 
-    --> Error message
-    local Message = `{Error.GetNameFromCode(Error.Code)}: {Error.RawMessage} <font transparency="0.5"><i>Blink({Error.Code})</i></font>`
-    for _, Label in Labels do
-        local Line = Utility.GetCurrentLine(Input.Text, Label.Span.Start)
-        Message ..= `\n{Label.Text} [L{Line}]`
-    end
+	local Labels = Error.Labels
+	if #Labels == 0 then
+		return
+	end
 
-    ErrorText.Text = Message
+	--> Error message
+	local Message =
+		`{Error.GetNameFromCode(Error.Code)}: {Error.RawMessage} <font transparency="0.5"><i>Blink({Error.Code})</i></font>`
+	for _, Label in Labels do
+		local Line = Utility.GetCurrentLine(Input.Text, Label.Span.Start)
+		Message ..= `\n{Label.Text} [L{Line}]`
+	end
 
-    --> Highlight error
-    local Primary = Labels[#Labels]
+	ErrorText.Text = Message
 
-    local Span = Primary.Span
-    local Start = Span.Start
-    local Finish = Span.End
+	--> Highlight error
+	local Primary = Labels[#Labels]
 
-    local Text = string.sub(Input.ContentText, 1, Finish)
-    local Slices = string.split(Text, "\n")
+	local Span = Primary.Span
+	local Start = Span.Start
+	local Finish = Span.End
 
-    local Offset = 0
-    for Index, Slice in Slices do
-        local First = Offset
-        Offset += (#Slice + 1)
-        
-        local Line = ErrorTemplate:Clone()
-        local Fill = Line.Fill
+	local Text = string.sub(Input.ContentText, 1, Finish)
+	local Slices = string.split(Text, "\n")
 
-        if Offset < Start then
-            Line.Fill.MaxVisibleGraphemes = 0
-            Line.Parent = ErrorSelection
-            continue
-        end
+	local Offset = 0
+	for Index, Slice in Slices do
+		local First = Offset
+		Offset += (#Slice + 1)
 
-        --> Calculate selection bounds
-        local Substring = Slice
-        if First < Start then
-            Substring = string.sub(Slice, (Start - First), #Slice)
-        elseif Index == #Slices then
-            Substring = string.sub(Slice, 1, math.max(1, Finish - First))
-        end
+		local Line = ErrorTemplate:Clone()
+		local Fill = Line.Fill
 
-        --> Empty lines should appear as one space thick selections
-        if Substring == "" then
-            Substring = " "
-        end
-            
-        local SelectionBoundsParams = Instance.new("GetTextBoundsParams")
-        SelectionBoundsParams.Text = Substring
-        SelectionBoundsParams.Size = TextSize
-        SelectionBoundsParams.Font = Display.FontFace
-        
-        local SelectionBounds = TextService:GetTextBoundsAsync(SelectionBoundsParams)
-        Fill.Size = UDim2.new(0, SelectionBounds.X, 1, 0)
+		if Offset < Start then
+			Line.Fill.MaxVisibleGraphemes = 0
+			Line.Parent = ErrorSelection
+			continue
+		end
 
-        --> Calculate selection offset
-        if Start > First then
-            local Prefix = string.sub(Slice, 1, (Start - First) - 1)
-            if Prefix ~= "" then
-                local OffsetBoundsParams = Instance.new("GetTextBoundsParams")
-                OffsetBoundsParams.Text = Prefix
-                OffsetBoundsParams.Size = TextSize
-                OffsetBoundsParams.Font = Input.FontFace
+		--> Calculate selection bounds
+		local Substring = Slice
+		if First < Start then
+			Substring = string.sub(Slice, (Start - First), #Slice)
+		elseif Index == #Slices then
+			Substring = string.sub(Slice, 1, math.max(1, Finish - First))
+		end
 
-                local OffsetBounds = TextService:GetTextBoundsAsync(OffsetBoundsParams)
-                Fill.Position = UDim2.new(0, OffsetBounds.X, 0, 10)
-            end
-        end
+		--> Empty lines should appear as one space thick selections
+		if Substring == "" then
+			Substring = " "
+		end
 
-        Line.MouseEnter:Connect(function()
-            local Position = EditorWidget:GetRelativeMousePosition()
-            ErrorContainer.Visible = true
-            ErrorContainer.Position = UDim2.fromOffset(Position.X + 4, Position.Y)
-        end)
+		local SelectionBoundsParams = Instance.new("GetTextBoundsParams")
+		SelectionBoundsParams.Text = Substring
+		SelectionBoundsParams.Size = TextSize
+		SelectionBoundsParams.Font = Display.FontFace
 
-        Line.MouseLeave:Connect(function()
-            ErrorContainer.Visible = false
-        end)
+		local SelectionBounds = TextService:GetTextBoundsAsync(SelectionBoundsParams)
+		Fill.Size = UDim2.new(0, SelectionBounds.X, 1, 0)
 
-        Line.Fill.MaxVisibleGraphemes = #Substring
-        Line.Parent = ErrorSelection
+		--> Calculate selection offset
+		if Start > First then
+			local Prefix = string.sub(Slice, 1, (Start - First) - 1)
+			if Prefix ~= "" then
+				local OffsetBoundsParams = Instance.new("GetTextBoundsParams")
+				OffsetBoundsParams.Text = Prefix
+				OffsetBoundsParams.Size = TextSize
+				OffsetBoundsParams.Font = Input.FontFace
 
-        break
-    end
+				local OffsetBounds = TextService:GetTextBoundsAsync(OffsetBoundsParams)
+				Fill.Position = UDim2.new(0, OffsetBounds.X, 0, 10)
+			end
+		end
+
+		Line.MouseEnter:Connect(function()
+			local Position = EditorWidget:GetRelativeMousePosition()
+			ErrorContainer.Visible = true
+			ErrorContainer.Position = UDim2.fromOffset(Position.X + 4, Position.Y)
+		end)
+
+		Line.MouseLeave:Connect(function()
+			ErrorContainer.Visible = false
+		end)
+
+		Line.Fill.MaxVisibleGraphemes = #Substring
+		Line.Parent = ErrorSelection
+
+		break
+	end
 end
 
 --> RBXScriptSignal functions
 
 local function OnCursorPositionChanged()
-    local CursorPosition = Input.CursorPosition
-    if CursorPosition == -1 then
-        Cursor.Visible = false
-        return
-    end
+	local CursorPosition = Input.CursorPosition
+	if CursorPosition == -1 then
+		Cursor.Visible = false
+		return
+	end
 
-    Profiler.profileBegin("Cursor")
+	Profiler.profileBegin("Cursor")
 
-    local Text = string.sub(Input.Text, 1, CursorPosition - 1)
-    local Slices = string.split(Text, "\n")
+	local Text = string.sub(Input.Text, 1, CursorPosition - 1)
+	local Slices = string.split(Text, "\n")
 
-    --> Calculate current end line position
-    local Line = Slices[#Slices] or ""
-    local GetTextBoundsParams = Instance.new("GetTextBoundsParams")
-    GetTextBoundsParams.Text = Line
-    GetTextBoundsParams.Size = TextSize
-    GetTextBoundsParams.Font = Display.FontFace
+	--> Calculate current end line position
+	local Line = Slices[#Slices] or ""
+	local GetTextBoundsParams = Instance.new("GetTextBoundsParams")
+	GetTextBoundsParams.Text = Line
+	GetTextBoundsParams.Size = TextSize
+	GetTextBoundsParams.Font = Display.FontFace
 
-    local TextBounds = TextService:GetTextBoundsAsync(GetTextBoundsParams)
+	local TextBounds = TextService:GetTextBoundsAsync(GetTextBoundsParams)
 
-    --> Update cursor size and position
-    Cursor.Size = UDim2.fromOffset(2, TextSize)
-    Cursor.Position = UDim2.fromOffset(TextBounds.X - 1, TextHeight * (#Slices - 1))
+	--> Update cursor size and position
+	Cursor.Size = UDim2.fromOffset(2, TextSize)
+	Cursor.Position = UDim2.fromOffset(TextBounds.X - 1, TextHeight * (#Slices - 1))
 
-    --> Update highlighted line
-    Profiler.profileBegin("Highlight LN")
-    UpdateHighlightedLine()
-    Profiler.profileEnd()
-    Profiler.profileEnd()
+	--> Update highlighted line
+	Profiler.profileBegin("Highlight LN")
+	UpdateHighlightedLine()
+	Profiler.profileEnd()
+	Profiler.profileEnd()
 end
 
 local function OnSelectionChanged()
-    --> Clear previous selection
-    ClearChildrenWhichAre(Selection, "Frame")
+	--> Clear previous selection
+	ClearChildrenWhichAre(Selection, "Frame")
 
-    --> Nothing is selected
-    local CursorPosition = Input.CursorPosition
-    local SelectionStart = Input.SelectionStart
-    if CursorPosition == -1 or SelectionStart == -1 then
-        return
-    end
+	--> Nothing is selected
+	local CursorPosition = Input.CursorPosition
+	local SelectionStart = Input.SelectionStart
+	if CursorPosition == -1 or SelectionStart == -1 then
+		return
+	end
 
-    local Start = math.min(CursorPosition, SelectionStart)
-    local Finish = math.max(CursorPosition, SelectionStart)
+	local Start = math.min(CursorPosition, SelectionStart)
+	local Finish = math.max(CursorPosition, SelectionStart)
 
-    local Text = string.sub(Input.ContentText, 1, Finish - 1)
-    local Slices = string.split(Text, "\n")
+	local Text = string.sub(Input.ContentText, 1, Finish - 1)
+	local Slices = string.split(Text, "\n")
 
-    local Offset = 0
-    for Index, Slice in Slices do
-        local First = Offset
-        Offset += (#Slice + 1)
-        
-        local Line = SelectionTemplate:Clone()
-        local Fill = Line.Fill
+	local Offset = 0
+	for Index, Slice in Slices do
+		local First = Offset
+		Offset += (#Slice + 1)
 
-        if Offset < Start then
-            Fill.BackgroundTransparency = 1
-            Line.Parent = Selection
-            continue
-        end
+		local Line = SelectionTemplate:Clone()
+		local Fill = Line.Fill
 
-        --> Calculate selection bounds
-        local Substring = Slice
-        if First < Start then
-            Substring = string.sub(Slice, (Start - First), #Slice)
-        elseif Index == #Slices then
-            Substring = string.sub(Slice, 1, math.max(1, Finish - First))
-        end
+		if Offset < Start then
+			Fill.BackgroundTransparency = 1
+			Line.Parent = Selection
+			continue
+		end
 
-        --> Empty lines should appear as one space thick selections
-        if Substring == "" then
-            Substring = " "
-        end
-            
-        local SelectionBoundsParams = Instance.new("GetTextBoundsParams")
-        SelectionBoundsParams.Text = Substring
-        SelectionBoundsParams.Size = TextSize
-        SelectionBoundsParams.Font = Display.FontFace
-        
-        local SelectionBounds = TextService:GetTextBoundsAsync(SelectionBoundsParams)
-        Fill.Size = UDim2.new(0, SelectionBounds.X, 1, 0)
+		--> Calculate selection bounds
+		local Substring = Slice
+		if First < Start then
+			Substring = string.sub(Slice, (Start - First), #Slice)
+		elseif Index == #Slices then
+			Substring = string.sub(Slice, 1, math.max(1, Finish - First))
+		end
 
-        --> Calculate selection offset
-        if Start > First then
-            local Prefix = string.sub(Slice, 1, (Start - First) - 1)
-            if Prefix ~= "" then
-                local OffsetBoundsParams = Instance.new("GetTextBoundsParams")
-                OffsetBoundsParams.Text = Prefix
-                OffsetBoundsParams.Size = TextSize
-                OffsetBoundsParams.Font = Display.FontFace
+		--> Empty lines should appear as one space thick selections
+		if Substring == "" then
+			Substring = " "
+		end
 
-                local OffsetBounds = TextService:GetTextBoundsAsync(OffsetBoundsParams)
-                Fill.Position = UDim2.new(0, OffsetBounds.X, 0, 0)
-            end
-        end
+		local SelectionBoundsParams = Instance.new("GetTextBoundsParams")
+		SelectionBoundsParams.Text = Substring
+		SelectionBoundsParams.Size = TextSize
+		SelectionBoundsParams.Font = Display.FontFace
 
-        Line.Parent = Selection
-    end
+		local SelectionBounds = TextService:GetTextBoundsAsync(SelectionBoundsParams)
+		Fill.Size = UDim2.new(0, SelectionBounds.X, 1, 0)
+
+		--> Calculate selection offset
+		if Start > First then
+			local Prefix = string.sub(Slice, 1, (Start - First) - 1)
+			if Prefix ~= "" then
+				local OffsetBoundsParams = Instance.new("GetTextBoundsParams")
+				OffsetBoundsParams.Text = Prefix
+				OffsetBoundsParams.Size = TextSize
+				OffsetBoundsParams.Font = Display.FontFace
+
+				local OffsetBounds = TextService:GetTextBoundsAsync(OffsetBoundsParams)
+				Fill.Position = UDim2.new(0, OffsetBounds.X, 0, 0)
+			end
+		end
+
+		Line.Parent = Selection
+	end
 end
 
 local function OnSourceChanged()
-    --> Pressing enter inserts a carriage return (ROBLOX please fix)
-    local Text = Input.Text
-    local Gain = math.sign(#Text - #PreviousText)
+	--> Pressing enter inserts a carriage return (ROBLOX please fix)
+	local Text = Input.Text
+	local Gain = math.sign(#Text - #PreviousText)
 
-    local NoReturnCarriage = string.gsub(Text, "\r", "")
-    if NoReturnCarriage ~= Text then
-        Input.Text = NoReturnCarriage
-        return
-    end
+	local NoReturnCarriage = string.gsub(Text, "\r", "")
+	if NoReturnCarriage ~= Text then
+		Input.Text = NoReturnCarriage
+		return
+	end
 
-    --> Auto complete
-    if Gain == 1 then
-        Profiler.profileBegin("Insertion")
+	--> Auto complete
+	if Gain == 1 then
+		Profiler.profileBegin("Insertion")
 
-        local Item = GetPrediction()
-        local Cursor = (Input.CursorPosition - 1)
-        local Character = string.sub(Text, Cursor, Cursor)
+		local Item = GetPrediction()
+		local Cursor = (Input.CursorPosition - 1)
+		local Character = string.sub(Text, Cursor, Cursor)
 
-        if Item and Character == "\t" then
-            local Insert = Item.Insert
-            local Offset = (#Insert + 1)
+		if Item and Character == "\t" then
+			local Insert = Item.Insert
+			local Offset = (#Insert + 1)
 
-            local Start, End = string.find(Insert, "%s", 1, true)
-            if Start and End then
-                Offset = Start
-                Insert = string.sub(Insert, 1, Start - 1) .. string.sub(Insert, End + 1)
-            end
-            
-            --> Move cursor behind tab character
-            Cursor -= 1
+			local Start, End = string.find(Insert, "%s", 1, true)
+			if Start and End then
+				Offset = Start
+				Insert = string.sub(Insert, 1, Start - 1) .. string.sub(Insert, End + 1)
+			end
 
-            local Line = Utility.GetLineRangeAtPosition(Text, Cursor)
-            local Position = (Cursor - Line.Start + 1)
+			--> Move cursor behind tab character
+			Cursor -= 1
 
-            local Word = Utility.GetWordRangeAtPosition(Line.Text, Position)
-            local Length = #Word.Text
+			local Line = Utility.GetLineRangeAtPosition(Text, Cursor)
+			local Position = (Cursor - Line.Start + 1)
 
-            Cursor -= Length
-            
-            --> Match characters before replacement and after tab (2)
-            Text = (string.sub(Text, 1, Cursor) .. Insert .. string.sub(Text, Cursor + Length + 2))
+			local Word = Utility.GetWordRangeAtPosition(Line.Text, Position)
+			local Length = #Word.Text
 
-            PreviousText = Text
-            Input.Text = Text
+			Cursor -= Length
 
-            Input.CursorPosition = -1
-            Input.CursorPosition = (Cursor + Offset)
+			--> Match characters before replacement and after tab (2)
+			Text = (string.sub(Text, 1, Cursor) .. Insert .. string.sub(Text, Cursor + Length + 2))
 
-            Profiler.profileEnd()
-            return
-        end
+			PreviousText = Text
+			Input.Text = Text
 
-        Profiler.profileEnd()
-    end
+			Input.CursorPosition = -1
+			Input.CursorPosition = (Cursor + Offset)
 
-    --> Run styling hooks
-    Profiler.profileBegin("Styling")
+			Profiler.profileEnd()
+			return
+		end
 
-    local FinalText, FinalCursor = Text, Input.CursorPosition
-    for Index, Hook in StylingHooks do
-        FinalText, FinalCursor = Hook.OnSourceChanged(FinalText, PreviousText, FinalCursor, Gain)
-    end
+		Profiler.profileEnd()
+	end
 
-    Profiler.profileEnd()
+	--> Run styling hooks
+	Profiler.profileBegin("Styling")
 
-    --> Update previous text
-    PreviousText = FinalText
+	local FinalText, FinalCursor = Text, Input.CursorPosition
+	for Index, Hook in StylingHooks do
+		FinalText, FinalCursor = Hook.OnSourceChanged(FinalText, PreviousText, FinalCursor, Gain)
+	end
 
-    --> If a styling hook altered the final text then don't do any additional work
-    if FinalText ~= Text then
-        Input.Text = FinalText
-        Input.CursorPosition = FinalCursor
+	Profiler.profileEnd()
 
-        return
-    end
+	--> Update previous text
+	PreviousText = FinalText
 
-    --> Update line counter
-    Profiler.profileBegin("Line counter")
+	--> If a styling hook altered the final text then don't do any additional work
+	if FinalText ~= Text then
+		Input.Text = FinalText
+		Input.CursorPosition = FinalCursor
 
-    local Slices = string.split(Text, "\n")
-    if #Slices ~= Lines then
-        OnLinesChanged(#Slices)
-    end
+		return
+	end
 
-    Profiler.profileEnd()
+	--> Update line counter
+	Profiler.profileBegin("Line counter")
 
-    --> Perform lexer pass
-    Profiler.profileBegin("Analysis")
-    UpdateAnalysis()
-    Profiler.profileEnd()
+	local Slices = string.split(Text, "\n")
+	if #Slices ~= Lines then
+		OnLinesChanged(#Slices)
+	end
 
-    Profiler.profileBegin("Completion")
-    UpdateCompletion()
-    Profiler.profileEnd()
+	Profiler.profileEnd()
 
-    Profiler.profileBegin("Highlighting")
-    UpdateColors()
-    Profiler.profileEnd()
+	--> Perform lexer pass
+	Profiler.profileBegin("Analysis")
+	UpdateAnalysis()
+	Profiler.profileEnd()
+
+	Profiler.profileBegin("Completion")
+	UpdateCompletion()
+	Profiler.profileEnd()
+
+	Profiler.profileBegin("Highlighting")
+	UpdateColors()
+	Profiler.profileEnd()
 end
 
 --> Create lines in the background
 local function GenerateLinesAsync()
-    local Tick = os.clock()
-    for Index = 1, PRE_ALLOCATED_LINES do
-        local Elapsed = (os.clock() - Tick)
-        if Elapsed > (1 / 120) then
-            task.wait()
-            Tick = os.clock()
-        end
+	local Tick = os.clock()
+	for Index = 1, PRE_ALLOCATED_LINES do
+		local Elapsed = (os.clock() - Tick)
+		if Elapsed > (1 / 120) then
+			task.wait()
+			Tick = os.clock()
+		end
 
-        local Line = LineTemplate:Clone()
-        Line.Name = tostring(Index)
-        Line.Text = tostring(Index)
-        Line.TextColor3 = THEME.Line.Inactive
-        Line.TextTransparency = 1
-        Line.Position = UDim2.fromOffset(0, 19 * (Index - 1))
-        Line.Parent = LinesContainer
-    end
+		local Line = LineTemplate:Clone()
+		Line.Name = tostring(Index)
+		Line.Text = tostring(Index)
+		Line.TextColor3 = THEME.Line.Inactive
+		Line.TextTransparency = 1
+		Line.Position = UDim2.fromOffset(0, 19 * (Index - 1))
+		Line.Parent = LinesContainer
+	end
 end
 
 ---- Public Functions ----
 
 function Editor.GetSource(): string
-    return Input.Text
+	return Input.Text
 end
 
 function Editor.SetSource(Source: string)
-    Scroll:Set(0)
-    Input.Text = Source
+	Scroll:Set(0)
+	Input.Text = Source
 end
 
 ---- Initialization ----
 
 function Editor.Initialize(Widget: DockWidgetPluginGui)
-    EditorWidget = Widget
-    task.spawn(GenerateLinesAsync)
+	EditorWidget = Widget
+	task.spawn(GenerateLinesAsync)
 
-    --> Preload fira sans
-    ContentProvider:PreloadAsync({Display}, function(AssetId: string, AssetFetchStatus: Enum.AssetFetchStatus) 
-        if AssetId ~= "" and AssetFetchStatus ~= Enum.AssetFetchStatus.Success then
-            warn("[BLINK] There was an issue preloading the editors font.")
-        end
-    end)
+	--> Preload fira sans
+	ContentProvider:PreloadAsync({ Display }, function(AssetId: string, AssetFetchStatus: Enum.AssetFetchStatus)
+		if AssetId ~= "" and AssetFetchStatus ~= Enum.AssetFetchStatus.Success then
+			warn("[BLINK] There was an issue preloading the editors font.")
+		end
+	end)
 
-    --> Remove templates
-    Selection.Line:Destroy()
-    ErrorSelection.Line:Destroy()
-    LinesContainer.Line:Destroy()
-    CompletionContainer.Option:Destroy()
+	--> Remove templates
+	Selection.Line:Destroy()
+	ErrorSelection.Line:Destroy()
+	LinesContainer.Line:Destroy()
+	CompletionContainer.Option:Destroy()
 
-    --> Sort auto complete symbols
-    for _, Symbols in SYMBOLS do
-        table.sort(Symbols, function(a, b)
-            return #a.Label < #b.Label
-        end)
-    end
+	--> Sort auto complete symbols
+	for _, Symbols in SYMBOLS do
+		table.sort(Symbols, function(a, b)
+			return #a.Label < #b.Label
+		end)
+	end
 
-    --> Connections
-    Error.OnEmit = OnErrorEmitted
+	--> Connections
+	Error.OnEmit = OnErrorEmitted
 
-    Scroll:OnChange(OnScrollChanged)
-    Predictions:OnChange(OnPredictionsChanged)
-    AnalysisError:OnChange(OnAnalysisErrorChanged)
+	Scroll:OnChange(OnScrollChanged)
+	Predictions:OnChange(OnPredictionsChanged)
+	AnalysisError:OnChange(OnAnalysisErrorChanged)
 
-    --> Fixes a weird bug with the cursor being moved to character 6000
-    Input.Focused:Once(function()
-        Input:ReleaseFocus(true)
-        RunService.PreRender:Wait()
+	--> Fixes a weird bug with the cursor being moved to character 6000
+	Input.Focused:Once(function()
+		Input:ReleaseFocus(true)
+		RunService.PreRender:Wait()
 
-        Input:CaptureFocus()
-        Input.CursorPosition = 1
-    end)
+		Input:CaptureFocus()
+		Input.CursorPosition = 1
+	end)
 
-    Input:GetPropertyChangedSignal("Text"):Connect(function()
-        Profiler.profileBegin("Total")
-        OnSourceChanged()
-        Profiler.profileEnd()
-    end)
+	Input:GetPropertyChangedSignal("Text"):Connect(function()
+		Profiler.profileBegin("Total")
+		OnSourceChanged()
+		Profiler.profileEnd()
+	end)
 
-    Input:GetPropertyChangedSignal("SelectionStart"):Connect(OnSelectionChanged)
-    Input:GetPropertyChangedSignal("CursorPosition"):Connect(OnSelectionChanged)
-    Input:GetPropertyChangedSignal("CursorPosition"):Connect(OnCursorPositionChanged)
-    Input.InputChanged:Connect(function(InputObject)
-        if InputObject.UserInputType == Enum.UserInputType.MouseWheel then
-            ScrollTowards(-InputObject.Position.Z)
-        end
-    end)
+	Input:GetPropertyChangedSignal("SelectionStart"):Connect(OnSelectionChanged)
+	Input:GetPropertyChangedSignal("CursorPosition"):Connect(OnSelectionChanged)
+	Input:GetPropertyChangedSignal("CursorPosition"):Connect(OnCursorPositionChanged)
+	Input.InputChanged:Connect(function(InputObject)
+		if InputObject.UserInputType == Enum.UserInputType.MouseWheel then
+			ScrollTowards(-InputObject.Position.Z)
+		end
+	end)
 
-    RunService.PreRender:Connect(OnPreRender)
+	RunService.PreRender:Connect(OnPreRender)
 end
 
 ---- Connections ----

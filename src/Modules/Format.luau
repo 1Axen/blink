@@ -11,61 +11,58 @@ local function Color(text: any, color: stdio.Color): string
 end
 
 local KEYWORDS = {
-	["and"] = true, 
-	["break"] = true, 
-	["do"] = true, 
+	["and"] = true,
+	["break"] = true,
+	["do"] = true,
 	["else"] = true,
-	["elseif"] = true, 
-	["end"] = true, 
-	["false"] = true, 
-	["for"] = true, 
+	["elseif"] = true,
+	["end"] = true,
+	["false"] = true,
+	["for"] = true,
 	["function"] = true,
-	["if"] = true, 
-	["in"] = true, 
-	["local"] = true, 
-	["nil"] = true, 
-	["not"] = true, 
+	["if"] = true,
+	["in"] = true,
+	["local"] = true,
+	["nil"] = true,
+	["not"] = true,
 	["or"] = true,
-	["repeat"] = true, 
-	["return"] = true, 
-	["then"] = true, 
-	["true"] = true, 
-	["until"] = true, 
-	["while"] = true
+	["repeat"] = true,
+	["return"] = true,
+	["then"] = true,
+	["true"] = true,
+	["until"] = true,
+	["while"] = true,
 }
- 
+
 local function ShouldntWrap(value: any): boolean
-	if type(value) ~= "string" then 
-		return false 
+	if type(value) ~= "string" then
+		return false
 	end
 
-	if #value == 0 then 
-		return false 
+	if #value == 0 then
+		return false
 	end
 
 	if string.find(value, "[^%d%a_]") then
-		return false 
+		return false
 	end
 
-	if tonumber(string.sub(value, 1, 1)) then 
-		return false 
+	if tonumber(string.sub(value, 1, 1)) then
+		return false
 	end
 
-	if KEYWORDS[value] then 
-		return false 
+	if KEYWORDS[value] then
+		return false
 	end
 
 	return true
 end
 
- 
 local Cache
 local INDENT = string.rep(" ", 3)
 
-local function Noop()
-	
-end
- 
+local function Noop() end
+
 local function Format(Value: any, Filter: ((Value: any) -> boolean)?, Depth: number?): string
 	local Depth = Depth or 0
 	local Filter = (Filter or Noop) :: (Value: any) -> boolean
@@ -82,15 +79,19 @@ local function Format(Value: any, Filter: ((Value: any) -> boolean)?, Depth: num
 	if Type == "string" then
 		return Color(`"{Value}"`, "green")
 	elseif Type == "number" then
-		if Value == math.huge then return Color("math.huge", "cyan") end
-		if Value == -math.huge then return Color("-math.huge", "cyan") end
+		if Value == math.huge then
+			return Color("math.huge", "cyan")
+		end
+		if Value == -math.huge then
+			return Color("-math.huge", "cyan")
+		end
 		return Color(Value, "cyan")
 	elseif Type == "boolean" then
 		return Color(Value, "yellow")
 	elseif Type == "table" then
 		local Address = string.match(tostring(Value), "0x[%w]+")
-		if Cache[Value] then 
-			return `{Color("{CACHED}" , "red")} {Style(Address, "dim")}`
+		if Cache[Value] then
+			return `{Color("{CACHED}", "red")} {Style(Address, "dim")}`
 		end
 
 		local Tabs = string.rep(INDENT, Depth)
@@ -106,7 +107,7 @@ local function Format(Value: any, Filter: ((Value: any) -> boolean)?, Depth: num
 			end
 
 			local KeyText = ShouldntWrap(Key) and Key or `["{Format(Key, Filter, Depth + 1)}"]`
-			
+
 			if not First then
 				Text ..= Style(",", "dim") .. Newline
 			end
@@ -121,5 +122,5 @@ local function Format(Value: any, Filter: ((Value: any) -> boolean)?, Depth: num
 
 	return `<{Type}>`
 end
- 
+
 return Format

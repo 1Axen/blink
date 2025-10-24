@@ -6,10 +6,10 @@ local fs = require("@lune/fs")
 local stdio = require("@lune/stdio")
 
 local Error = require("../../Modules/Error")
-local Parser = require("../../Parser")
 local Generator = require("../../Generator")
-local PathParser = require("../../Modules/Path")
 local GetDefinitionFilePath = require("./GetDefinitionFilePath")
+local Parser = require("../../Parser")
+local PathParser = require("../../Modules/Path")
 
 ---- Settings ----
 

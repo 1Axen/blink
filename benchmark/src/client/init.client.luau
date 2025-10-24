@@ -1,9 +1,9 @@
-local Modes = require("./shared/modes")
 local Benches = require("./shared/benches")
+local Modes = require("./shared/modes")
 
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 local Stats = game:GetService("Stats")
@@ -18,142 +18,145 @@ Players.LocalPlayer.PlayerGui:ClearAllChildren()
 Players.LocalPlayer.PlayerScripts:ClearAllChildren()
 
 for _, Item in Enum.CoreGuiType:GetEnumItems() do
-    while true do
-        local Success = pcall(function()
-            StarterGui:SetCoreGuiEnabled(Item, false)
-        end)
+	while true do
+		local Success = pcall(function()
+			StarterGui:SetCoreGuiEnabled(Item, false)
+		end)
 
-        if Success then
-            break
-        end
-    end
+		if Success then
+			break
+		end
+	end
 end
 
 type Benchmark = {
-    Sent: number,
-    Recieve: number,
-    Bandwidth: {number},
-    Framerate: {number}
+	Sent: number,
+	Recieve: number,
+	Bandwidth: { number },
+	Framerate: { number },
 }
 
 type Results = {
-    [string]: {
-        [string]: Benchmark
-    }
+	[string]: {
+		[string]: Benchmark,
+	},
 }
 
-local function Percentile(Samples: {number}, Percentile: number)
-    assert((Percentile // 1) == Percentile and Percentile >= 0 and Percentile <= 100, "Percentile must be an integer between 0 and 100")
-    local Index = ((#Samples * (Percentile / 100)) // 1)
-    Index = math.max(Index, 1)
-    return Samples[Index]
+local function Percentile(Samples: { number }, Percentile: number)
+	assert(
+		(Percentile // 1) == Percentile and Percentile >= 0 and Percentile <= 100,
+		"Percentile must be an integer between 0 and 100"
+	)
+	local Index = ((#Samples * (Percentile / 100)) // 1)
+	Index = math.max(Index, 1)
+	return Samples[Index]
 end
 
 local function WaitForPacketsToProcess()
-    print("Waiting for packets to be processed.")
-    while (Stats.DataSendKbps > 0.5) do
-        RunService.Heartbeat:Wait()
-    end
+	print("Waiting for packets to be processed.")
+	while Stats.DataSendKbps > 0.5 do
+		RunService.Heartbeat:Wait()
+	end
 
-    task.wait(5)
+	task.wait(5)
 end
 
 local function RunBenchmark(Tool: string, Bench: string): Benchmark
-    local Total = 0
-    local Frames = 0
-    local Bandwidth = {}
-    local Framerates = {}
+	local Total = 0
+	local Frames = 0
+	local Bandwidth = {}
+	local Framerates = {}
 
-    local Sent = 0
-    local Data = Benches[Bench]
-    local Events = Modes[Tool]
+	local Sent = 0
+	local Data = Benches[Bench]
+	local Events = Modes[Tool]
 
-    local Event = Events[Bench]
-    local Method;
-    
-    if Tool == "warp" then
-        Method = function(Data)
-            Event:Fire(true, Data)
-        end
-    elseif Tool == "roblox" then
-        Method = function(Data)
-            Event:FireServer(Data)
-        end
-    else
-        Method = Event.Fire or Event.send
-    end
+	local Event = Events[Bench]
+	local Method
 
-    local Connection = RunService.PostSimulation:Connect(function(DeltaTime: number)
-        Total += DeltaTime
-        Frames += 1
+	if Tool == "warp" then
+		Method = function(Data)
+			Event:Fire(true, Data)
+		end
+	elseif Tool == "roblox" then
+		Method = function(Data)
+			Event:FireServer(Data)
+		end
+	else
+		Method = Event.Fire or Event.send
+	end
 
-        if Total >= 1 then
-            Total -= 1
-            local Scale = (MAXIMUM_FRAMERATE / Frames)
-            table.insert(Bandwidth, Stats.DataSendKbps * Scale)
-            table.insert(Framerates, Frames)
-            Frames = 0
-        end
+	local Connection = RunService.PostSimulation:Connect(function(DeltaTime: number)
+		Total += DeltaTime
+		Frames += 1
 
-        for Index = 1, 1000 do
-            Sent += 1
-            Method(Data)
-        end
-    end)
+		if Total >= 1 then
+			Total -= 1
+			local Scale = (MAXIMUM_FRAMERATE / Frames)
+			table.insert(Bandwidth, Stats.DataSendKbps * Scale)
+			table.insert(Framerates, Frames)
+			Frames = 0
+		end
 
-    task.wait(10)
-    Connection:Disconnect()
-    print(`> Finished running with {Tool}`)
+		for Index = 1, 1000 do
+			Sent += 1
+			Method(Data)
+		end
+	end)
 
-    --> Generate results
-    table.sort(Bandwidth)
-    table.sort(Framerates, function(a, b)
-        return a > b
-    end)
+	task.wait(10)
+	Connection:Disconnect()
+	print(`> Finished running with {Tool}`)
 
-    local FrameratePercentiles = {}
-    local BandwidthPercentiles = {}
+	--> Generate results
+	table.sort(Bandwidth)
+	table.sort(Framerates, function(a, b)
+		return a > b
+	end)
 
-    for _, Percentage in {50, 0, 80, 90, 95, 100} do
-        table.insert(BandwidthPercentiles, Percentile(Bandwidth, Percentage))
-        table.insert(FrameratePercentiles, Percentile(Framerates, Percentage))
-    end
+	local FrameratePercentiles = {}
+	local BandwidthPercentiles = {}
 
-    return {
-        Sent = Sent,
-        Recieve = 0,
-        Bandwidth = BandwidthPercentiles,
-        Framerate = FrameratePercentiles
-    }
+	for _, Percentage in { 50, 0, 80, 90, 95, 100 } do
+		table.insert(BandwidthPercentiles, Percentile(Bandwidth, Percentage))
+		table.insert(FrameratePercentiles, Percentile(Framerates, Percentage))
+	end
+
+	return {
+		Sent = Sent,
+		Recieve = 0,
+		Bandwidth = BandwidthPercentiles,
+		Framerate = FrameratePercentiles,
+	}
 end
 
 local function RunBenchmarks()
-    local Results: Results = {}
-    for Bench in Benches do
-        warn(`Running {Bench} benchmark`)
-        Results[Bench] = {}
+	local Results: Results = {}
+	for Bench in Benches do
+		warn(`Running {Bench} benchmark`)
+		Results[Bench] = {}
 
-        for Tool in Modes do
-            print(`> Running with {Tool}`)
-            Results[Bench][Tool] = RunBenchmark(Tool, Bench)
-    
-            --> Give ROBLOX some time to rest in-between tools
-            WaitForPacketsToProcess()
-        end
+		for Tool in Modes do
+			print(`> Running with {Tool}`)
+			Results[Bench][Tool] = RunBenchmark(Tool, Bench)
 
-        --> Give ROBLOX some time to rest in-between benchmarks
-        WaitForPacketsToProcess()
-    end
-    
-    local Recieved = ReplicatedStorage.Shared.GetRecieved:InvokeServer()
-    for Bench, Tools in Recieved do
-        for Tool, Recieve in Tools do
-            Results[Bench][Tool].Recieve = Recieve
-        end
-    end
+			--> Give ROBLOX some time to rest in-between tools
+			WaitForPacketsToProcess()
+		end
 
-    print("Finished running benchmarks, generating results...")
-    ReplicatedStorage.Shared.Generate:FireServer(HttpService:JSONEncode(Results))
+		--> Give ROBLOX some time to rest in-between benchmarks
+		WaitForPacketsToProcess()
+	end
+
+	local Recieved = ReplicatedStorage.Shared.GetRecieved:InvokeServer()
+	for Bench, Tools in Recieved do
+		for Tool, Recieve in Tools do
+			Results[Bench][Tool].Recieve = Recieve
+		end
+	end
+
+	print("Finished running benchmarks, generating results...")
+	ReplicatedStorage.Shared.Generate:FireServer(HttpService:JSONEncode(Results))
 end
 
 RunBenchmarks()

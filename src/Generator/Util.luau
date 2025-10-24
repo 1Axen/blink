@@ -5,7 +5,7 @@ type Scope = Parser.Scope
 local function GetScopePrefix(ReferenceScope: Scope?, Dots: boolean?, CurrentScope: Scope): string
 	local Prefix = ""
 	local WorkingScope: Scope? = ReferenceScope or CurrentScope
-	while (WorkingScope and WorkingScope.Name.Value ~= "") do
+	while WorkingScope and WorkingScope.Name.Value ~= "" do
 		Prefix = `{WorkingScope.Name.Value}{Dots and "." or "_"}` .. Prefix
 		WorkingScope = WorkingScope.Parent
 	end
@@ -34,9 +34,9 @@ local function GenerateEnumLiterals(Variants: { string }): string
 end
 
 return {
-    GetPath = GetTypesPath,
-    GetExportName = GetExportName,
-    GetScopePrefix = GetScopePrefix,
-    GetScopeIndent = GetScopeIndent,
-    GenerateEnumLiterals = GenerateEnumLiterals,
+	GetPath = GetTypesPath,
+	GetExportName = GetExportName,
+	GetScopePrefix = GetScopePrefix,
+	GetScopeIndent = GetScopeIndent,
+	GenerateEnumLiterals = GenerateEnumLiterals,
 }

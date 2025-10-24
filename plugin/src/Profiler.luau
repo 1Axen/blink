@@ -16,14 +16,14 @@ local DebugContainer = Container.Debug
 local MetricTemplate = DebugContainer.Metric:Clone()
 
 type Profile = {
-    Label: string,
-    Metric: typeof(MetricTemplate),
+	Label: string,
+	Metric: typeof(MetricTemplate),
 
-    Tick: number,
-    Time: number,
+	Tick: number,
+	Time: number,
 
-    Previous: Profile?,
-    Children: {Profile},
+	Previous: Profile?,
+	Children: { Profile },
 }
 
 ---- Variables ----
@@ -33,94 +33,94 @@ local ActiveProfile: Profile?
 ---- Private Functions ----
 
 local function isActive()
-    return DebugContainer.Visible
+	return DebugContainer.Visible
 end
 
 local function formatPercentage(Percentage: number): string
-    return `{math.floor(Percentage * 100)} %`
+	return `{math.floor(Percentage * 100)} %`
 end
 
 local function formatMilliseconds(Seconds: number): string
-    return string.format("%.2f ms", Seconds * 1000)
+	return string.format("%.2f ms", Seconds * 1000)
 end
 
-local function updatePercentages(Time: number, Children: {Profile})
-    for _, Profile in Children do
-        Profile.Metric.Percentage.Text = formatPercentage(Profile.Time / Time)
-        updatePercentages(Time, Profile.Children)
-    end
+local function updatePercentages(Time: number, Children: { Profile })
+	for _, Profile in Children do
+		Profile.Metric.Percentage.Text = formatPercentage(Profile.Time / Time)
+		updatePercentages(Time, Profile.Children)
+	end
 end
 
 ---- Public Functions ----
 
 function Profiler.profileBegin(Label: string)
-    if not isActive() then
-        return
-    end
+	if not isActive() then
+		return
+	end
 
-    local Metric = DebugContainer:FindFirstChild(Label)
-    if not Metric then
-        local New = MetricTemplate:Clone()
-        New.Name = Label
-        New.Time.Text = "? ms"
-        New.Label.Text = string.upper(Label)
-        New.Parent = DebugContainer
-        Metric = New
-    end
+	local Metric = DebugContainer:FindFirstChild(Label)
+	if not Metric then
+		local New = MetricTemplate:Clone()
+		New.Name = Label
+		New.Time.Text = "? ms"
+		New.Label.Text = string.upper(Label)
+		New.Parent = DebugContainer
+		Metric = New
+	end
 
-    local Profile: Profile = {
-        Label = Label,
-        Metric = Metric,
+	local Profile: Profile = {
+		Label = Label,
+		Metric = Metric,
 
-        Tick = os.clock(),
-        Time = 0,
+		Tick = os.clock(),
+		Time = 0,
 
-        Children = {},
-        Previous = ActiveProfile,
-    }
+		Children = {},
+		Previous = ActiveProfile,
+	}
 
-    if ActiveProfile then
-        table.insert(ActiveProfile.Children, Profile)
-    end
+	if ActiveProfile then
+		table.insert(ActiveProfile.Children, Profile)
+	end
 
-    ActiveProfile = Profile
+	ActiveProfile = Profile
 end
 
 function Profiler.profileDiscard()
-    if not isActive() then
-        return
-    end
+	if not isActive() then
+		return
+	end
 
-    assert(ActiveProfile ~= nil, "No active profile.")
-    ActiveProfile = ActiveProfile.Previous
+	assert(ActiveProfile ~= nil, "No active profile.")
+	ActiveProfile = ActiveProfile.Previous
 end
 
 function Profiler.profileEnd()
-    if not isActive() then
-        return
-    end
+	if not isActive() then
+		return
+	end
 
-    assert(ActiveProfile ~= nil, "No active profile.")
-    local Elapsed = (os.clock() - ActiveProfile.Tick)
+	assert(ActiveProfile ~= nil, "No active profile.")
+	local Elapsed = (os.clock() - ActiveProfile.Tick)
 
-    ActiveProfile.Time = Elapsed
-    ActiveProfile.Metric.Time.Text = formatMilliseconds(Elapsed)
+	ActiveProfile.Time = Elapsed
+	ActiveProfile.Metric.Time.Text = formatMilliseconds(Elapsed)
 
-    if not ActiveProfile.Previous then
-        updatePercentages(Elapsed, ActiveProfile.Children) 
-    end
+	if not ActiveProfile.Previous then
+		updatePercentages(Elapsed, ActiveProfile.Children)
+	end
 
-    ActiveProfile = ActiveProfile.Previous
+	ActiveProfile = ActiveProfile.Previous
 end
 
 function Profiler.toggle()
-    DebugContainer.Visible = not DebugContainer.Visible
+	DebugContainer.Visible = not DebugContainer.Visible
 end
 
 ---- Initialization ----
 
 function Profiler.Initialize()
-    DebugContainer.Metric:Destroy()
+	DebugContainer.Metric:Destroy()
 end
 
 ---- Connections ----

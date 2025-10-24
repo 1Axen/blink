@@ -1,5 +1,15 @@
 {
+  "[luau]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "JohnnyMorganz.stylua"
+  },
+
+  "stylua.targetReleaseVersion": "latest",
+
+  "editor.detectIndentation": false,
+  "editor.insertSpaces": false,
   "files.eol": "\n",
+
   "luau-lsp.plugin.enabled": true,
   "luau-lsp.platform.type": "roblox",
   "luau-lsp.sourcemap.rojoProjectFile": "default.project.json"

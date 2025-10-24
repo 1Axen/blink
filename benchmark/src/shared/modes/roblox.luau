@@ -7,16 +7,16 @@ local Events = {}
 local IsServer = RunService:IsServer()
 
 for Name in Benches do
-    local Event: RemoteEvent;
-    if IsServer  then
-        Event = Instance.new("RemoteEvent")
-        Event.Name = Name
-        Event.Parent = ReplicatedStorage
-    else
-        Event = ReplicatedStorage:WaitForChild(Name)
-    end
+	local Event: RemoteEvent
+	if IsServer then
+		Event = Instance.new("RemoteEvent")
+		Event.Name = Name
+		Event.Parent = ReplicatedStorage
+	else
+		Event = ReplicatedStorage:WaitForChild(Name)
+	end
 
-    Events[Name] = Event
+	Events[Name] = Event
 end
 
 return Events

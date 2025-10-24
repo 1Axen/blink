@@ -4,65 +4,65 @@
 local Builder = {}
 
 function Builder.new(): Builder
-    local Strings = table.create(512)
-    
-    local function PushLines(Lines: {string}, Returns: number?, Tabs: number?)
-        local Size = #Lines
-        local Last = Lines[Size]
+	local Strings = table.create(512)
 
-        local Tabs = Tabs or 0
-        local Returns = Returns or 0
+	local function PushLines(Lines: { string }, Returns: number?, Tabs: number?)
+		local Size = #Lines
+		local Last = Lines[Size]
 
-        --> FAST PATH :SUNGLASSES:
-        if Tabs == 0 and Returns == 0 then
-            table.move(Lines, 1, Size, #Strings + 1, Strings)
-            return
-        end
+		local Tabs = Tabs or 0
+		local Returns = Returns or 0
 
-        local Indentation = string.rep("\t", Tabs)
+		--> FAST PATH :SUNGLASSES:
+		if Tabs == 0 and Returns == 0 then
+			table.move(Lines, 1, Size, #Strings + 1, Strings)
+			return
+		end
 
-        if Last == "" then
-            Size -= 1
-            Lines[Size] = nil
-        end
+		local Indentation = string.rep("\t", Tabs)
 
-        for Index, Line in Lines do
-            table.insert(Strings, `{Indentation}{Line}{Index == Size and string.rep("\n", Returns) or ""}`)
-        end
-    end
+		if Last == "" then
+			Size -= 1
+			Lines[Size] = nil
+		end
 
-    return {
-        Push = function(Text: string, Returns: number?, Tabs: number?)
-            table.insert(Strings, `{string.rep("\t", Tabs or 0)}{Text}\n{string.rep("\n", Returns or 0)}`)
-        end,
+		for Index, Line in Lines do
+			table.insert(Strings, `{Indentation}{Line}{Index == Size and string.rep("\n", Returns) or ""}`)
+		end
+	end
 
-        PushFront = function(Text: string, Returns: number?, Tabs: number?)
-            table.insert(Strings, 1, `{string.rep("\n", Returns or 1)}{Text}{string.rep("\t", Tabs or 0)}\n`)
-        end,
+	return {
+		Push = function(Text: string, Returns: number?, Tabs: number?)
+			table.insert(Strings, `{string.rep("\t", Tabs or 0)}{Text}\n{string.rep("\n", Returns or 0)}`)
+		end,
 
-        PushLines = PushLines,
-        PushMultiline = function(Text: string, Returns: number?, Tabs: number?)
-            PushLines(string.split(Text, "\n"), Returns, Tabs)
-        end,
+		PushFront = function(Text: string, Returns: number?, Tabs: number?)
+			table.insert(Strings, 1, `{string.rep("\n", Returns or 1)}{Text}{string.rep("\t", Tabs or 0)}\n`)
+		end,
 
-        Print = function()
-            print(table.concat(Strings))
-        end,
+		PushLines = PushLines,
+		PushMultiline = function(Text: string, Returns: number?, Tabs: number?)
+			PushLines(string.split(Text, "\n"), Returns, Tabs)
+		end,
 
-        DumpNoClear = function()
-            return table.concat(Strings)
-        end,
+		Print = function()
+			print(table.concat(Strings))
+		end,
 
-        Dump = function(): string
-            local Text = table.concat(Strings)
-            table.clear(Strings)
-            return Text
-        end,
+		DumpNoClear = function()
+			return table.concat(Strings)
+		end,
 
-        DumpLines = function(): {string}
-            return Strings
-        end
-    }
+		Dump = function(): string
+			local Text = table.concat(Strings)
+			table.clear(Strings)
+			return Text
+		end,
+
+		DumpLines = function(): { string }
+			return Strings
+		end,
+	}
 end
 
 export type Builder = typeof(Builder.new())

@@ -3,55 +3,55 @@
 
 ---- Imports ----
 
-local stdio = require("@lune/stdio")
 local process = require("@lune/process")
+local stdio = require("@lune/stdio")
 
-local Watch = require("@self/Utility/Watch")
 local Compile = require("@self/Utility/Compile")
+local Watch = require("@self/Utility/Watch")
 
 ---- Settings ----
 
 type Argument = {
 	Hidden: true?,
-	Aliases: {string},
-	Description: string
+	Aliases: { string },
+	Description: string,
 }
 
-local ARGUMENTS: {[string]: Argument} = {
+local ARGUMENTS: { [string]: Argument } = {
 	Help = {
-		Aliases = {"-h", "--help"},
-		Description = "Print help information"
+		Aliases = { "-h", "--help" },
+		Description = "Print help information",
 	},
 	Version = {
-		Aliases = {"-v", "--version"},
-		Description = "Print version information"
+		Aliases = { "-v", "--version" },
+		Description = "Print version information",
 	},
 	Watch = {
-		Aliases = {"-w", "--watch"},
-		Description = "Watch [CONFIG] for changes, automatically recompile upon one occuring"
+		Aliases = { "-w", "--watch" },
+		Description = "Watch [CONFIG] for changes, automatically recompile upon one occuring",
 	},
 	Silent = {
-		Aliases = {"-q", "--quiet"},
-		Description = "Silence program output"
+		Aliases = { "-q", "--quiet" },
+		Description = "Silence program output",
 	},
 	Compact = {
-		Aliases = {"-c", "--compact"},
-		Description = "Compacts error output, the full message is still printed out after a compacted version."
+		Aliases = { "-c", "--compact" },
+		Description = "Compacts error output, the full message is still printed out after a compacted version.",
 	},
 	YesToAll = {
-		Aliases = {"-y", "--yes"},
-		Description = "Accept all prompts"
+		Aliases = { "-y", "--yes" },
+		Description = "Accept all prompts",
 	},
 	OutputAst = {
 		Hidden = true,
-		Aliases = {"--ast"},
-		Description = "Output the AST of [CONFIG]"
+		Aliases = { "--ast" },
+		Description = "Output the AST of [CONFIG]",
 	},
 	Statistics = {
 		Hidden = true,
-		Aliases = {"-S", "--stats"},
-		Description = "Output compilation time statistics"
-	}
+		Aliases = { "-S", "--stats" },
+		Description = "Output compilation time statistics",
+	},
 }
 
 ---- Functions -----
@@ -69,7 +69,7 @@ local function PrintHelpMessage()
 	print("\tblink.exe [CONFIG] [OPTIONS]")
 	print(Color(Style("OPTIONS:", "bold"), "yellow"))
 
-	local Sorted: {Argument} = {}
+	local Sorted: { Argument } = {}
 	for _, Argument in ARGUMENTS do
 		if not Argument.Hidden then
 			table.insert(Sorted, Argument)
@@ -81,7 +81,9 @@ local function PrintHelpMessage()
 	end)
 
 	for _, Argument in Sorted do
-		print(`\t{stdio.color("green")}{table.concat(Argument.Aliases, ", ")}{stdio.color("reset")}\t{Argument.Description}`)
+		print(
+			`\t{stdio.color("green")}{table.concat(Argument.Aliases, ", ")}{stdio.color("reset")}\t{Argument.Description}`
+		)
 	end
 end
 
@@ -91,7 +93,7 @@ print(`{Color("Blink", "green")} {_G.VERSION or "DEBUG"}`)
 
 local RawArguments = process.args
 if #RawArguments < 1 then
-    PrintHelpMessage()
+	PrintHelpMessage()
 	return
 end
 
@@ -126,16 +128,10 @@ if not Arguments.Watch then
 		Silent = Arguments.Silent,
 		Compact = Arguments.Compact,
 		YesToEverything = Arguments.YesToAll,
-		OutputAbstractSyntaxTree = Arguments.OutputAst
+		OutputAbstractSyntaxTree = Arguments.OutputAst,
 	}
-	
+
 	Compile.Compile(Path, CompileOptions)
 else
 	Watch.Watch(Path)
 end
-
-
-
-
-
-
