@@ -124,7 +124,7 @@ end
 
 if not Arguments.Watch then
 	local CompileOptions: Compile.CompileOptions = {
-		Debug = (_G.BUNDLED == nil) or Arguments.Statistics,
+		Debug = (_G.RELEASE == nil) or Arguments.Statistics,
 		Silent = Arguments.Silent,
 		Compact = Arguments.Compact,
 		YesToEverything = Arguments.YesToAll,

@@ -5,12 +5,7 @@
     ],
     "modules_identifier": "__DARKLUA_BUNDLE_MODULES",
     "require_mode": {
-      "name": "luau",
-      "sources": {
-        "Base": "../src/Templates/Base.txt",
-        "Client": "../src/Templates/Client.txt",
-        "Server": "../src/Templates/Server.txt"
-      }
+      "name": "luau"
     }
   },
   "generator": "readable",
@@ -19,7 +14,7 @@
     "compute_expression",
     "remove_unused_if_branch",
     {
-      "identifier": "BUNDLED",
+      "identifier": "RELEASE",
       "rule": "inject_global_value",
       "value": true
     },

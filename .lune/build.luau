@@ -2,16 +2,9 @@ local fs = require("@lune/fs")
 local log = require("./libs/log")
 local process = require("@lune/process")
 
-type Archs = 
-    | "aarch64"
-    | "x86_64"
+type Archs = | "aarch64" | "x86_64"
 
-type Platforms =
-    | "macos"
-    | "linux"
-    | "windows"
-
-
+type Platforms = | "macos" | "linux" | "windows"
 
 local EXE_NAME = "blink"
 
@@ -21,99 +14,110 @@ local PLUGIN_RELEASE_DIR = `{RELEASE_DIR}/plugin`
 
 local CLI_PATH = "src/CLI/init.luau"
 local BUNDLE_PATH = `{RELEASE_DIR}/blink.luau`
+local PESDE_RELEASE_PATH = `{RELEASE_DIR}/blink_pesde.luau`
 
-local DARKLUA_CONFIG = "build/.darklua.json"
+local BUNDLE_CONFIG = "build/.darklua.json"
 local PLUGIN_ROJO_CONFIG = "build/plugin.project.json"
 
 local function build_executable(platform: Platforms, arch: Archs)
-    local target = `{platform}-{arch}`
-    local exe_name = `{EXE_NAME}{platform == "windows" and ".exe" or ""}`
-    local exe_path = `{RELEASE_DIR}/{exe_name}`
-    local build_result = process.exec("lune", {
-        "build", 
-        BUNDLE_PATH, 
-        "--output", exe_path, 
-        "--target", target
-    }, {stdio = "forward"})
-    assert(build_result.ok, build_result.stderr)
+	local target = `{platform}-{arch}`
+	local exe_name = `{EXE_NAME}{platform == "windows" and ".exe" or ""}`
+	local exe_path = `{RELEASE_DIR}/{exe_name}`
+	local build_result = process.exec("lune", {
+		"build",
+		BUNDLE_PATH,
+		"--output",
+		exe_path,
+		"--target",
+		target,
+	}, { stdio = "forward" })
+	assert(build_result.ok, build_result.stderr)
 
-    local archive_result: process.ExecResult
-    if platform == "windows" then
-        archive_result = process.exec("tar", {
-            "-czvf",
-            `{RELEASE_DIR}/blink-{target}.tar.gz`,
-            "-C",
-            RELEASE_DIR,
-            exe_name
-        }, {stdio = "forward"})
-    else
-        archive_result = process.exec("tar", {
-            "-cJvf",
-            `{RELEASE_DIR}/blink-{target}.tar.xz`,
-            "-C",
-            RELEASE_DIR,
-            exe_name
-        }, {stdio = "forward"})
-    end
- 
-    assert(archive_result.ok, archive_result.stderr)
+	local archive_result: process.ExecResult
+	if platform == "windows" then
+		archive_result = process.exec("tar", {
+			"-czvf",
+			`{RELEASE_DIR}/blink-{target}.tar.gz`,
+			"-C",
+			RELEASE_DIR,
+			exe_name,
+		}, { stdio = "forward" })
+	else
+		archive_result = process.exec("tar", {
+			"-cJvf",
+			`{RELEASE_DIR}/blink-{target}.tar.xz`,
+			"-C",
+			RELEASE_DIR,
+			exe_name,
+		}, { stdio = "forward" })
+	end
 
-    fs.removeFile(exe_path)
-    log(`Built executable for {target}`)
+	assert(archive_result.ok, archive_result.stderr)
+
+	fs.removeFile(exe_path)
+	log(`Built executable for {target}`)
+end
+
+local function build_pesde()
+	local darklua_result =
+		process.exec("darklua", { "process", "--config", BUNDLE_CONFIG, CLI_PATH, PESDE_RELEASE_PATH })
+	assert(darklua_result.ok, darklua_result.stderr)
+	log("Build pesde source")
 end
 
 local function build_executables()
-    local bundle_result = process.exec("darklua", {"process", "--config", DARKLUA_CONFIG, CLI_PATH, BUNDLE_PATH})
-    assert(bundle_result.ok, bundle_result.stderr)
-    log("Bundled CLI source code")
+	local bundle_result = process.exec("darklua", { "process", "--config", BUNDLE_CONFIG, CLI_PATH, BUNDLE_PATH })
+	assert(bundle_result.ok, bundle_result.stderr)
+	log("Bundled CLI source code")
 
-    build_executable("macos", "x86_64")
-    build_executable("macos", "aarch64")
-    build_executable("linux", "x86_64")
-    build_executable("linux", "aarch64")
-    build_executable("windows", "x86_64")
+	build_executable("macos", "x86_64")
+	build_executable("macos", "aarch64")
+	build_executable("linux", "x86_64")
+	build_executable("linux", "aarch64")
+	build_executable("windows", "x86_64")
 
-    fs.removeFile(BUNDLE_PATH)
+	fs.removeFile(BUNDLE_PATH)
 end
 
 local function build_studio_plugin()
-    fs.writeDir(PLUGIN_RELEASE_DIR)
-    
-    for _, filename in fs.readDir(PLUGIN_SOURCE_DIR) do
-        if string.split(filename, ".")[2] == "rbxmx" then
-            fs.copy(`{PLUGIN_SOURCE_DIR}/{filename}`, `{PLUGIN_RELEASE_DIR}/{filename}`)
-        end
-    end
+	fs.writeDir(PLUGIN_RELEASE_DIR)
 
-    local bundle_result = process.exec("darklua", {
-        "process", 
-        "--config", 
-        DARKLUA_CONFIG, 
-        `{PLUGIN_SOURCE_DIR}/init.server.luau`, 
-        `{PLUGIN_RELEASE_DIR}/init.server.luau`
-    })
-    assert(bundle_result.ok, bundle_result.stderr)
+	for _, filename in fs.readDir(PLUGIN_SOURCE_DIR) do
+		if string.split(filename, ".")[2] == "rbxmx" then
+			fs.copy(`{PLUGIN_SOURCE_DIR}/{filename}`, `{PLUGIN_RELEASE_DIR}/{filename}`)
+		end
+	end
 
-    local rojo_result = process.exec("rojo", {
-        "build", 
-        PLUGIN_ROJO_CONFIG, 
-        "--output", 
-        `{RELEASE_DIR}/blink-plugin.rbxm`
-    })
-    assert(rojo_result.ok, rojo_result.stderr)
+	local bundle_result = process.exec("darklua", {
+		"process",
+		"--config",
+		BUNDLE_CONFIG,
+		`{PLUGIN_SOURCE_DIR}/init.server.luau`,
+		`{PLUGIN_RELEASE_DIR}/init.server.luau`,
+	})
+	assert(bundle_result.ok, bundle_result.stderr)
 
-    log("Built studio plugin")
-    fs.removeDir(PLUGIN_RELEASE_DIR)
+	local rojo_result = process.exec("rojo", {
+		"build",
+		PLUGIN_ROJO_CONFIG,
+		"--output",
+		`{RELEASE_DIR}/blink-plugin.rbxm`,
+	})
+	assert(rojo_result.ok, rojo_result.stderr)
+
+	log("Built studio plugin")
+	fs.removeDir(PLUGIN_RELEASE_DIR)
 end
 
 do
-    if fs.isDir(RELEASE_DIR) then
-        fs.removeDir(RELEASE_DIR)
-    end
-    fs.writeDir(RELEASE_DIR)
+	if fs.isDir(RELEASE_DIR) then
+		fs.removeDir(RELEASE_DIR)
+	end
+	fs.writeDir(RELEASE_DIR)
 end
 
 local start = os.clock()
+build_pesde()
 build_executables()
 build_studio_plugin()
 

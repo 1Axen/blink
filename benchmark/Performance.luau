@@ -58,7 +58,7 @@ local function BenchmarkClosure(Title: string, Closure: () -> ())
 	print(`95th Percentile: {Format(Percentile(Times, 0.95))}`)
 end
 
-_G.BUNDLED = true
+_G.RELEASE = true
 _G.VERSION = "PERFROMANCE"
 
 BenchmarkClosure("Lex", function()

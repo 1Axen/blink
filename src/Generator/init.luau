@@ -866,7 +866,7 @@ function Generators.UserType(Declaration: Type, Read: Blocks.Block, Write: Block
 	local Name = Declaration.Name
 	local Variable = Variable or "Value"
 
-	if not _G.BUNDLED then
+	if not _G.RELEASE then
 		Read:Comment(`{Variable}: {Name}`)
 		Write:Comment(`{Variable}: {Name}`)
 	end
@@ -1112,7 +1112,7 @@ function Generators.Event(
 	local Read = Blocks.Function(Util.GetPath(Identifier, false, Scope), "", `({Type})`, false, true)
 	local Write = Blocks.Function(Util.GetPath(Identifier, true, Scope), Arguments, "()", false, true)
 
-	if not _G.BUNDLED then
+	if not _G.RELEASE then
 		Write:Comment(`{Identifier} ({Index})`)
 	end
 
