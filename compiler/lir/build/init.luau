@@ -62,11 +62,11 @@ local function rreturns(ctx: Context, parameters: { hir.Parameter }): { lir.Retu
 	return array
 end
 
-local function arguments(ctx: Context, parameters: { hir.Parameter }): { lir.Argument }
+local function parameters(ctx: Context, parameters: { hir.Parameter }): { lir.Parameter }
 	local array = {}
 	for index, parameter in parameters do
 		local ty = hir.ty_from_id(ctx.hir, parameter.ty_id)
-		array[index] = fn.argument(ty, parameter.name)
+		array[index] = fn.parameter(ty, parameter.name)
 	end
 	return array
 end
@@ -161,17 +161,17 @@ local function build_event(ctx: Context, decl: hir.Event, event_id: number): (Ev
 	local is_unreliable = (event_type == "Unreliable")
 
 	local event_data = decl.data or {}
-	local data_args = arguments(ctx, event_data)
+	local data_args = parameters(ctx, event_data)
 	local data_rets = rreturns(ctx, event_data)
 
 	local data_rets_player = table.clone(data_rets)
 	table.insert(data_rets_player, 1, fn.rreturn(PLAYER_TY))
 
 	local data_args_player = table.clone(data_args)
-	table.insert(data_args_player, 1, fn.argument(PLAYER_TY, "player"))
+	table.insert(data_args_player, 1, fn.parameter(PLAYER_TY, "player"))
 
 	local data_args_list = table.clone(data_args)
-	table.insert(data_args_list, 1, fn.argument(PLAYER_TY, "list"))
+	table.insert(data_args_list, 1, fn.parameter(PLAYER_TY, "list"))
 
 	local data_fn_sets = table.create(#data_args) :: { lir.FnSet }
 	for index, paramater in event_data do
@@ -182,7 +182,7 @@ local function build_event(ctx: Context, decl: hir.Event, event_id: number): (Ev
 		state.reset_outgoing(block)
 		block:call(library.buffer.u8.write(block:allocate(constant.one), id))
 		for index, fn_set in data_fn_sets do
-			block:call_fn(fn_set.write, { block:argument(index) }, {})
+			block:call_fn(fn_set.write, { block:parameter(index) }, {})
 		end
 
 		if is_unreliable then
@@ -200,10 +200,10 @@ local function build_event(ctx: Context, decl: hir.Event, event_id: number): (Ev
 		state.reset_outgoing(block)
 		block:call(library.buffer.u8.write(block:allocate(constant.one), id))
 		for index, fn_set in data_fn_sets do
-			block:call_fn(fn_set.write, { block:argument(1 + index) }, {})
+			block:call_fn(fn_set.write, { block:parameter(1 + index) }, {})
 		end
 
-		local list = block:argument(1)
+		local list = block:parameter(1)
 		local new_buffer = is_unreliable and trim_outgoing_buffer(block) or copy_outgoing_buffer(block)
 
 		block:for_generic(list, function(block, _, player)
@@ -221,10 +221,10 @@ local function build_event(ctx: Context, decl: hir.Event, event_id: number): (Ev
 		state.reset_outgoing(block)
 		block:call(library.buffer.u8.write(block:allocate(constant.one), id))
 		for index, fn_set in data_fn_sets do
-			block:call_fn(fn_set.write, { block:argument(1 + index) }, {})
+			block:call_fn(fn_set.write, { block:parameter(1 + index) }, {})
 		end
 
-		local except = block:argument(1)
+		local except = block:parameter(1)
 		local new_buffer = is_unreliable and trim_outgoing_buffer(block) or copy_outgoing_buffer(block)
 
 		block:for_generic(globals.players_map, function(block, player, player_save)
@@ -243,10 +243,10 @@ local function build_event(ctx: Context, decl: hir.Event, event_id: number): (Ev
 		state.reset_outgoing(block)
 		block:call(library.buffer.u8.write(block:allocate(constant.one), id))
 		for index, fn_set in data_fn_sets do
-			block:call_fn(fn_set.write, { block:argument(1 + index) }, {})
+			block:call_fn(fn_set.write, { block:parameter(1 + index) }, {})
 		end
 
-		local player = block:argument(1)
+		local player = block:parameter(1)
 
 		if is_unreliable then
 			local new_buffer = trim_outgoing_buffer(block)
@@ -280,7 +280,7 @@ local function build_event(ctx: Context, decl: hir.Event, event_id: number): (Ev
 		-- write event payload
 		block:call(library.buffer.u8.write(block:allocate(constant.one), id))
 		for index, fn_set in data_fn_sets do
-			block:call_fn(fn_set.write, { block:argument(index) }, {})
+			block:call_fn(fn_set.write, { block:parameter(index) }, {})
 		end
 
 		if is_unreliable then
@@ -311,10 +311,10 @@ local function build_event(ctx: Context, decl: hir.Event, event_id: number): (Ev
 
 	local receive_fn = fn.create(
 		constant.from_value(`{name}_receive`),
-		{ fn.argument(PLAYER_TY, "player") },
+		{ fn.parameter(PLAYER_TY, "player") },
 		{},
 		function(block)
-			local player = block:argument(1)
+			local player = block:parameter(1)
 			local values = { player }
 			for _, fn_set in data_fn_sets do
 				local register = block:reserve()

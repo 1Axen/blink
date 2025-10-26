@@ -174,7 +174,7 @@ local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id
 	end)
 
 	local write_name = projection.index(globals.types_map, constant.from_value(`{prefixes.ty}write_{name}`))
-	local write_fn = fn.create(write_name, { fn.argument(ty) }, {}, function(block)
+	local write_fn = fn.create(write_name, { fn.parameter(ty) }, {}, function(block)
 		local props: WriteProps = {
 			ctx = ctx,
 			validate = true,
@@ -182,7 +182,7 @@ local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id
 			attributes = attributes,
 		}
 
-		write_ty(props, block, ty, block:argument(1))
+		write_ty(props, block, ty, block:parameter(1))
 	end)
 
 	context.store_fn(ctx, read_fn, read_fn_id)

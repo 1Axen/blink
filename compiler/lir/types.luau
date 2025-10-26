@@ -20,12 +20,12 @@ export type Constant<T = ConstantValue> = {
 	value: T,
 }
 
---- An index into the arguments table
-export type ArgumentId<T> = {
+--- An index into the parameters table
+export type ParameterId<T> = {
 	write __phantom_type: T,
 
 	type: "id",
-	kind: "argument",
+	kind: "parameter",
 	index: number,
 }
 
@@ -40,7 +40,7 @@ export type RegisterId<T> = {
 
 --stylua: ignore
 export type Id<T> = 
-    | ArgumentId<T>
+    | ParameterId<T>
     | RegisterId<T>
 
 --- base(args...)
@@ -263,13 +263,13 @@ export type LValue<T> =
     | ProjField<T>
     | ProjIndex<T>
     | RegisterId<T>
-    | ArgumentId<T>
+    | ParameterId<T>
 
 --- right side of an assign statement
 --stylua: ignore
 export type RValue<T> =
 	| RegisterId<T>
-	| ArgumentId<T>
+	| ParameterId<T>
 	| Structure<T>
 	| Global<T>
 	| Control<T>
@@ -442,15 +442,15 @@ export type Return = {
 	ty: Ty,
 }
 
-export type Argument = {
-	type: "argument",
+export type Parameter = {
+	type: "parameter",
 	ty: Ty,
 	name: string?,
 }
 
 export type FnBody = {
 	rets: { Return },
-	args: { Argument },
+	params: { Parameter },
 	blocks: { any },
 }
 

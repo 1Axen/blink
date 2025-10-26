@@ -90,15 +90,15 @@ local function gen_id<T>(ctx: Context, id: lir.Id<T>): never?
 	local builder = ctx.builder
 	if id.kind == "register" then
 		builder:append(`r{id.index}`)
-	elseif id.kind == "argument" then
+	elseif id.kind == "parameter" then
 		local fn = ctx.current_fn
 		if fn == nil then
 			return panic(`expected a current fn`)
 		end
 
 		local index = id.index
-		local argument = fn.args[index]
-		builder:append(argument.name or `a{index}`)
+		local parameter = fn.params[index]
+		builder:append(parameter.name or `p{index}`)
 	else
 		strong_exhaustive_match(id.kind)
 	end
@@ -490,12 +490,12 @@ local function gen_fn_body(ctx: Context, fn_body: lir.FnBody)
 
 	builder:append("(")
 
-	for index, argument in fn_body.args do
+	for index, parameter in fn_body.params do
 		if index > 1 then
 			builder:append(",")
 		end
 
-		builder:append(argument.name or `a{index}`)
+		builder:append(parameter.name or `p{index}`)
 	end
 
 	builder:append(")\n")
