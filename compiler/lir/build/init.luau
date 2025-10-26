@@ -46,12 +46,18 @@ type ScopeExport = lir.ScopeExport
 
 type ExportsMap = { [DeclId]: Export? }
 
-local PLAYER_TY = ty.instance()
-
 local INCOMING = globals.incoming
 local OUTGOING = globals.outgoing
 local RELIABLE_EVENT = globals.events.reliable
 local UNRELIABLE_EVENT = globals.events.unreliable
+
+local PLAYER_RETURN = fn.static_return("Player")
+local PLAYER_ARGUMENT = fn.static_parameter("Player", "player")
+local PLAYER_LIST_ARGUMENT = fn.static_parameter("{Player}", "players")
+local RECEIVE_PARAMETERS = {
+	fn.static_parameter("buffer", "packet_buffer"),
+	fn.static_parameter("{unknown},", "packet_unknowns"),
+}
 
 local function rreturns(ctx: Context, parameters: { hir.Parameter }): { lir.Return }
 	local array = {}
@@ -165,13 +171,13 @@ local function build_event(ctx: Context, decl: hir.Event, event_id: number): (Ev
 	local data_rets = rreturns(ctx, event_data)
 
 	local data_rets_player = table.clone(data_rets)
-	table.insert(data_rets_player, 1, fn.rreturn(PLAYER_TY))
+	table.insert(data_rets_player, 1, PLAYER_RETURN)
 
 	local data_args_player = table.clone(data_args)
-	table.insert(data_args_player, 1, fn.parameter(PLAYER_TY, "player"))
+	table.insert(data_args_player, 1, PLAYER_ARGUMENT)
 
 	local data_args_list = table.clone(data_args)
-	table.insert(data_args_list, 1, fn.parameter(PLAYER_TY, "list"))
+	table.insert(data_args_list, 1, PLAYER_LIST_ARGUMENT)
 
 	local data_fn_sets = table.create(#data_args) :: { lir.FnSet }
 	for index, paramater in event_data do
@@ -309,58 +315,53 @@ local function build_event(ctx: Context, decl: hir.Event, event_id: number): (Ev
 		on_server = fn.anonymous({}, {}, function(block) end)
 	end
 
-	local receive_fn = fn.create(
-		constant.from_value(`{name}_receive`),
-		{ fn.parameter(PLAYER_TY, "player") },
-		{},
-		function(block)
-			local player = block:parameter(1)
-			local values = { player }
-			for _, fn_set in data_fn_sets do
-				local register = block:reserve()
-				block:call_fn(fn_set.read, {}, { register })
-				table.insert(values, register)
-			end
+	local receive_fn = fn.create(constant.from_value(`{name}_receive`), { PLAYER_ARGUMENT }, {}, function(block)
+		local player = block:parameter(1)
+		local values = { player }
+		for _, fn_set in data_fn_sets do
+			local register = block:reserve()
+			block:call_fn(fn_set.read, {}, { register })
+			table.insert(values, register)
+		end
 
-			if call == "SingleSync" or call == "SingleAsync" then
-				local event_connection = context.write_global(ctx, `{name}_connection`, constant.null)
-				block:if_single(condition.not_equals(event_connection, constant.null), function(block)
+		if call == "SingleSync" or call == "SingleAsync" then
+			local event_connection = context.write_global(ctx, `{name}_connection`, constant.null)
+			block:if_single(condition.not_equals(event_connection, constant.null), function(block)
+				local target: lir.ProjCall<any> = call == "SingleSync"
+						and projection.call(event_connection :: any, values :: any)
+					or library.task.spawn(event_connection :: any, values :: any)
+
+				block:call(target)
+				block:rreturn({})
+			end)
+		elseif call == "ManySync" or call == "ManyAsync" then
+			local event_connections = context.write_global(ctx, `{name}_connections`, structure.array({}))
+			local is_connected = condition.greater_than(unary.len(event_connections), constant.zero)
+			block:if_single(is_connected, function(block)
+				block:for_generic(event_connections, function(block, _, connection)
 					local target: lir.ProjCall<any> = call == "SingleSync"
-							and projection.call(event_connection :: any, values :: any)
-						or library.task.spawn(event_connection :: any, values :: any)
+							and projection.call(connection :: any, values :: any)
+						or library.task.spawn(connection :: any, values :: any)
 
 					block:call(target)
-					block:rreturn({})
 				end)
-			elseif call == "ManySync" or call == "ManyAsync" then
-				local event_connections = context.write_global(ctx, `{name}_connections`, structure.array({}))
-				local is_connected = condition.greater_than(unary.len(event_connections), constant.zero)
-				block:if_single(is_connected, function(block)
-					block:for_generic(event_connections, function(block, _, connection)
-						local target: lir.ProjCall<any> = call == "SingleSync"
-								and projection.call(connection :: any, values :: any)
-							or library.task.spawn(connection :: any, values :: any)
 
-						block:call(target)
-					end)
-
-					block:rreturn({})
-				end)
-			end
-
-			-- insert into queue
-			local size_index = projection.index(event_queue, constant.from_value("size"))
-			local size = block:store(binary.add(size_index, constant.one))
-			local columns = block:store(projection.index(event_queue, constant.from_value("columns")))
-			block:store(size, size_index)
-
-			for index, value in values do
-				local column = projection.field(columns, constant.from_value(index))
-				local column_row = projection.field(column, size)
-				block:store(value, column_row)
-			end
+				block:rreturn({})
+			end)
 		end
-	)
+
+		-- insert into queue
+		local size_index = projection.index(event_queue, constant.from_value("size"))
+		local size = block:store(binary.add(size_index, constant.one))
+		local columns = block:store(projection.index(event_queue, constant.from_value("columns")))
+		block:store(size, size_index)
+
+		for index, value in values do
+			local column = projection.field(columns, constant.from_value(index))
+			local column_row = projection.field(column, size)
+			block:store(value, column_row)
+		end
+	end)
 
 	return {
 		type = "export",
@@ -446,13 +447,13 @@ local function from_hir(hir: hir.Hir): lir.Lir
 		end
 	end
 
-	local client_receive_reliable = fn.anonymous({}, {}, function(block) end)
+	local client_receive_reliable = fn.anonymous(RECEIVE_PARAMETERS, {}, function(block) end)
 
-	local client_receive_unreliable = fn.anonymous({}, {}, function(block) end)
+	local client_receive_unreliable = fn.anonymous(RECEIVE_PARAMETERS, {}, function(block) end)
 
-	local server_receive_reliable = fn.anonymous({}, {}, function(block) end)
+	local server_receive_reliable = fn.anonymous(RECEIVE_PARAMETERS, {}, function(block) end)
 
-	local server_receive_unreliable = fn.anonymous({}, {}, function(block) end)
+	local server_receive_unreliable = fn.anonymous(RECEIVE_PARAMETERS, {}, function(block) end)
 
 	return {
 		export = build_scope(ctx, 0 :: any, exports_map),

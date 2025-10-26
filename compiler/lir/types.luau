@@ -439,13 +439,15 @@ export type BasicBlock = {
 
 export type Return = {
 	type: "return",
-	ty: Ty,
+	ty: Ty?,
+	static_type: string?,
 }
 
 export type Parameter = {
 	type: "parameter",
-	ty: Ty,
+	ty: Ty?,
 	name: string?,
+	static_type: string?,
 }
 
 export type FnBody = {

@@ -496,6 +496,12 @@ local function gen_fn_body(ctx: Context, fn_body: lir.FnBody)
 		end
 
 		builder:append(parameter.name or `p{index}`)
+
+		if parameter.static_type then
+			builder:append(": ")
+			builder:append(parameter.static_type)
+		elseif parameter.ty then
+		end
 	end
 
 	builder:append(")\n")
