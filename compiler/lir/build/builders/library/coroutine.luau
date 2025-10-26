@@ -14,6 +14,10 @@ local function create(fn: RValue<any>): Call<thread>
 	return projection.call(constant.from_value("coroutine.create"), { fn })
 end
 
+local function running(): Call<thread>
+	return projection.call(constant.from_value("coroutine.running"), {})
+end
+
 local function resume(thread: RValue<thread>, ...: RValue<any>): Call<nil>
 	return projection.call(constant.from_value("coroutine.resume"), { thread, ... })
 end
@@ -30,5 +34,6 @@ return table.freeze({
 	create = create,
 	resume = resume,
 	status = status,
+	running = running,
 	close = close,
 })
