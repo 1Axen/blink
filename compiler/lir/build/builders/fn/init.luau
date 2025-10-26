@@ -51,11 +51,26 @@ local function fn_return(ty: Ty): lir.Return
 	}
 end
 
+local function static_return(static_type: string): lir.Return
+	return {
+		type = "return",
+		static_type = static_type,
+	}
+end
+
 local function parameter(ty: Ty, name: string?): lir.Parameter
 	return {
 		type = "parameter",
 		ty = ty,
 		name = name,
+	}
+end
+
+local function static_parameter(static_type: string, name: string?): lir.Parameter
+	return {
+		type = "parameter",
+		name = name,
+		static_type = static_type,
 	}
 end
 
@@ -361,4 +376,6 @@ return table.freeze({
 
 	rreturn = fn_return,
 	parameter = parameter,
+	static_return = static_return,
+	static_parameter = static_parameter,
 })
