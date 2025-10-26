@@ -15,6 +15,10 @@ local vector_lib = require("@self/vector")
 type Call<T> = lir.ProjCall<T>
 type RValue<T> = lir.RValue<T>
 
+local function luau_warn(...: RValue<string>): Call<nil>
+	return projection.call(constant.from_value("warn"), { ... } :: { RValue<any> })
+end
+
 local function luau_error(message: string): Call<nil>
 	return projection.call(constant.from_value("error"), { constant.from_value(message) } :: any)
 end
@@ -28,6 +32,7 @@ local function luau_tostring(value: RValue<any>): Call<string>
 end
 
 return table.freeze({
+	warn = luau_warn,
 	error = luau_error,
 	typeof = luau_typeof,
 	tostring = luau_tostring,
