@@ -4,6 +4,7 @@ local bit32_lib = require("@self/bit32")
 local buffer_lib = require("@self/buffer")
 local constant = require("@builders/constant")
 local coroutine_lib = require("@self/coroutine")
+local debug_lib = require("@self/debug")
 local lir = require("@lir/types")
 local math_lib = require("@self/math")
 local projection = require("@builders/projection")
@@ -40,6 +41,7 @@ return table.freeze({
 	task = task_lib,
 	math = math_lib,
 	bit32 = bit32_lib,
+	debug = debug_lib,
 	table = table_lib,
 	vector = vector_lib,
 	buffer = buffer_lib,
