@@ -56,7 +56,7 @@ local function gen_projection<T>(ctx: Context, projection: lir.Projection<T>)
 		builder:append("(")
 		for index, argument in projection.args do
 			if index > 1 then
-				builder:append(",")
+				builder:append(", ")
 			end
 
 			gen_rvalue(ctx, argument)
@@ -75,7 +75,7 @@ local function gen_projection<T>(ctx: Context, projection: lir.Projection<T>)
 		builder:append("(")
 		for index, argument in projection.args do
 			if index > 1 then
-				builder:append(",")
+				builder:append(", ")
 			end
 
 			gen_rvalue(ctx, argument)
@@ -335,7 +335,7 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 			if index == 1 and context.try_see_register(ctx, ret) then
 				builder:append("local ")
 			elseif index > 1 then
-				builder:append(",")
+				builder:append(", ")
 			end
 
 			gen_lvalue(ctx, ret)
@@ -358,7 +358,7 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 
 		for index, argument in terminator.args do
 			if index > 1 then
-				builder:append(",")
+				builder:append(", ")
 			end
 
 			gen_rvalue(ctx, argument)
@@ -396,7 +396,7 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 		builder:append("return ")
 		for index, value in terminator.values do
 			if index > 1 then
-				builder:append(",")
+				builder:append(", ")
 			end
 			gen_rvalue(ctx, value)
 		end
@@ -447,7 +447,7 @@ local function gen_statement(ctx: Context, statement: lir.Statement)
 		local seen_registers = ctx.seen_registers
 		for index, lvalue in statement.into do
 			if index > 1 then
-				builder:append(",")
+				builder:append(", ")
 			end
 
 			if lvalue.type == "id" and lvalue.kind == "register" then
@@ -492,7 +492,7 @@ local function gen_fn_body(ctx: Context, fn_body: lir.FnBody)
 
 	for index, parameter in fn_body.params do
 		if index > 1 then
-			builder:append(",")
+			builder:append(", ")
 		end
 
 		builder:append(parameter.name or `p{index}`)
