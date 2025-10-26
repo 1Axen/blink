@@ -26,6 +26,10 @@ local function move<T>(
 	return projection.call(constant.from_value("table.move"), { source, from, to, at, destination })
 end
 
+local function find<T>(target: RValue<{ T }>, value: RValue<any>, start_at: RValue<number>?): Call<number?>
+	return projection.call(constant.from_value("table.find"), { target, value, start_at :: any })
+end
+
 local function clear<T>(target: RValue<{ T }>)
 	return projection.call(constant.from_value("table.clear"), { target })
 end
@@ -33,6 +37,7 @@ end
 return table.freeze({
 	create = create,
 	insert = insert,
+	find = find,
 	move = move,
 	clear = clear,
 })
