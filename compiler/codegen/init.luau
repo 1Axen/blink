@@ -165,7 +165,6 @@ local function gen_structure(ctx: Context, structure: lir.Structure<any>)
 
 	builder:append("{")
 	if structure.kind == "map" then
-		builder:append("{")
 		for key, value in structure.values do
 			builder:append("[")
 			gen_rvalue(ctx, key)
@@ -173,7 +172,6 @@ local function gen_structure(ctx: Context, structure: lir.Structure<any>)
 			gen_rvalue(ctx, value)
 			builder:append(",")
 		end
-		builder:append("}")
 	elseif structure.kind == "array" then
 		for _, value in structure.values do
 			gen_rvalue(ctx, value)
