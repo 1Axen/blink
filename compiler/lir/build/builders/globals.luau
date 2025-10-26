@@ -16,7 +16,9 @@ end
 return table.freeze({
 	create = global,
 	types_map = global("types"),
+	queues_map = global("queues"),
 	players_map = global("players_map"),
+	connections_map = global("connections"),
 
 	services = {
 		players = global("PLAYERS") :: Global<Players>,

@@ -532,13 +532,15 @@ export type Lir = {
 	export: ScopeExport,
 	fn_map: { [FnId]: Fn },
 	globals: { [string]: RValue<any> },
-	client_receive: {
-		reliable: AnonymousFn,
-		unreliable: AnonymousFn,
+	client: {
+		step_replication: AnonymousFn,
+		reliable_receive: AnonymousFn,
+		unreliable_receive: AnonymousFn,
 	},
-	server_receive: {
-		reliable: AnonymousFn,
-		unreliable: AnonymousFn,
+	server: {
+		step_replication: AnonymousFn,
+		reliable_receive: AnonymousFn,
+		unreliable_receive: AnonymousFn,
 	},
 }
 

@@ -580,9 +580,9 @@ local function gen_export(ctx: Context, target: compilation.Target, export: lir.
 		if target == "server" then
 			local methods = export.server
 			append_method(ctx, "fire", methods.fire_client)
-			append_method(ctx, "fire_all", methods.fire_client)
-			append_method(ctx, "fire_list", methods.fire_client)
-			append_method(ctx, "fire_except", methods.fire_client)
+			append_method(ctx, "fire_all", methods.fire_all)
+			append_method(ctx, "fire_list", methods.fire_list)
+			append_method(ctx, "fire_except", methods.fire_except)
 
 			if methods.on then
 				append_method(ctx, "on", methods.on)
@@ -671,18 +671,25 @@ local function from_lir(props: Props, target: compilation.Target): string
 	end
 
 	if target ~= "shared" then
-		local receive_fns = target == "client" and llir.client_receive or llir.server_receive
-		local receive_connection = target == "client" and "OnClientEvent" or "OnServerEvent"
+		local target_fns = target == "client" and llir.client or llir.server
+		local signal_name = target == "client" and "OnClientEvent" or "OnServerEvent"
 
-		local event_map = { reliable = RELIABLE_EVENT, unreliable = UNRELIABLE_EVENT }
-		for key, event_global in event_map :: { [keyof<typeof(receive_fns)>]: string } do
+		local event_map: { [keyof<typeof(target_fns)>]: string } =
+			{ reliable_receive = RELIABLE_EVENT, unreliable_receive = UNRELIABLE_EVENT }
+
+		for key, event_global in event_map do
 			builder:append(event_global)
 			builder:append(".")
-			builder:append(receive_connection)
+			builder:append(signal_name)
 			builder:append(":Connect(")
-			gen_anon_fn(ctx, receive_fns[key])
+			gen_anon_fn(ctx, target_fns[key])
 			builder:append(")\n")
 		end
+
+		gen_global(ctx, globals.services.run_service)
+		builder:append(".Heartbeat:Connect(")
+		gen_anon_fn(ctx, target_fns.step_replication)
+		builder:append(")\n")
 	end
 
 	builder:append_line("")
