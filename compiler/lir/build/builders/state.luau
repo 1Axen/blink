@@ -24,9 +24,11 @@ type Allocate = lir.CtrlAllocate<number>
 
 type Save = { write __phantom_type: "__SYMBOL__save", type: "save" }
 
+local OUTGOING = globals.outgoing
+
 local function reset_outgoing(block: fn.Builder)
-	block:store(constant.zero, globals.outgoing.cursor)
-	block:call(library.table.clear(globals.outgoing.unknown))
+	block:store(constant.zero, OUTGOING.cursor)
+	block:call(library.table.clear(OUTGOING.unknown))
 end
 
 local function create_save()
@@ -34,7 +36,7 @@ local function create_save()
 end
 
 local function update_save(block: fn.Builder, save: LValue<Save>, buf: RValue<buffer>, len: RValue<number>)
-	local out_unknown = globals.outgoing.unknown
+	local out_unknown = OUTGOING.unknown
 	local save_buffers = projection.index(save :: any, constant.from_value("buffers"))
 	local save_lengths = projection.index(save :: any, constant.from_value("lengths"))
 	local save_unknown = block:store(projection.index(save :: any, constant.from_value("unknown")))
