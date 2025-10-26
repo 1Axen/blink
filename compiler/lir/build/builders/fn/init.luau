@@ -18,7 +18,7 @@ type Fn = lir.Fn
 type FnId = lir.FnId
 
 type Return = lir.Return
-type Argument = lir.Argument
+type Parameter = lir.Parameter
 
 type Terminator = lir.Terminator
 type BasicBlock = lir.BasicBlock
@@ -51,9 +51,9 @@ local function fn_return(ty: Ty): lir.Return
 	}
 end
 
-local function argument(ty: Ty, name: string?): lir.Argument
+local function parameter(ty: Ty, name: string?): lir.Parameter
 	return {
-		type = "argument",
+		type = "parameter",
 		ty = ty,
 		name = name,
 	}
@@ -63,7 +63,7 @@ export type Builder = {
 	read store: <T, R>(Builder, value: RValue<T>, into: LValue<R>?) -> Register<T>,
 	read capture: (Builder, upvalues: { Register<any> }) -> (),
 	read reserve: (Builder) -> Register<any>,
-	read argument: (self: Builder, index: number) -> lir.ArgumentId<any>,
+	read parameter: (self: Builder, index: number) -> lir.ParameterId<any>,
 	read store_mult: (Builder, value: RValue, count: number) -> { LValue },
 
 	read allocate: (Builder, bytes: lir.RValue<number>) -> Register<number>,
@@ -81,7 +81,7 @@ export type Builder = {
 	read while_loop: (Builder, condition: Condition, body: Constructor) -> (),
 }
 
-local function construct_fn(n_args: number, constructor: Constructor): { BasicBlock }
+local function construct_fn(n_params: number, constructor: Constructor): { BasicBlock }
 	local function next_block(scope: number?, term: Terminator?): BasicBlock
 		return {
 			type = "block",
@@ -111,9 +111,9 @@ local function construct_fn(n_args: number, constructor: Constructor): { BasicBl
 		}
 	end
 
-	local function argument_from_index(self: Builder, index: number): lir.ArgumentId<any>
-		if index > n_args then
-			return panic(`tried using argument #{index}, but fn only has {n_args} argument(s)`)
+	local function parameter_id(self: Builder, index: number): lir.ParameterId<any>
+		if index > n_params then
+			return panic(`tried using argument #{index}, but fn only has {n_params} argument(s)`)
 		elseif index < 0 then
 			return panic(`negative argument id #{index}`)
 		end
@@ -122,7 +122,7 @@ local function construct_fn(n_args: number, constructor: Constructor): { BasicBl
 			__phantom_type = nil :: any,
 
 			type = "id",
-			kind = "argument",
+			kind = "parameter",
 			index = index,
 		}
 	end
@@ -304,7 +304,7 @@ local function construct_fn(n_args: number, constructor: Constructor): { BasicBl
 		store = store :: any,
 		capture = capture,
 		reserve = reserve,
-		argument = argument_from_index,
+		parameter = parameter_id,
 		store_mult = store_mult,
 
 		allocate = allocate,
@@ -331,8 +331,8 @@ local function construct_fn(n_args: number, constructor: Constructor): { BasicBl
 	return blocks
 end
 
-local function create_fn(name: index<Fn, "name">, args: { Argument }, rets: { Return }, constructor: Constructor): Fn
-	local blocks = construct_fn(#args, constructor)
+local function create_fn(name: index<Fn, "name">, params: { Parameter }, rets: { Return }, constructor: Constructor): Fn
+	local blocks = construct_fn(#params, constructor)
 	return {
 		type = "fn",
 
@@ -340,17 +340,17 @@ local function create_fn(name: index<Fn, "name">, args: { Argument }, rets: { Re
 		name = name,
 
 		rets = rets,
-		args = args,
+		params = params,
 		blocks = blocks,
 	}
 end
 
-local function create_anonymous_fn(args: { Argument }, rets: { Return }, constructor: Constructor): lir.AnonymousFn
-	local blocks = construct_fn(#args, constructor)
+local function create_anonymous_fn(params: { Parameter }, rets: { Return }, constructor: Constructor): lir.AnonymousFn
+	local blocks = construct_fn(#params, constructor)
 	return {
 		type = "anon_fn",
 		rets = rets,
-		args = args,
+		params = params,
 		blocks = blocks,
 	}
 end
@@ -360,5 +360,5 @@ return table.freeze({
 	anonymous = create_anonymous_fn,
 
 	rreturn = fn_return,
-	argument = argument,
+	parameter = parameter,
 })
