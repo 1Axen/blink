@@ -54,12 +54,21 @@ type Receivable = {
 
 type ExportsMap = { [DeclId]: Export? }
 
+type Side = "Server" | "Client"
+
 local QUEUES = globals.queues_map
 local INCOMING = globals.incoming
 local OUTGOING = globals.outgoing
 local CONNECTIONS = globals.connections_map
+local INVOCATIONS = globals.invocations_map
 local RELIABLE_EVENT = globals.events.reliable
 local UNRELIABLE_EVENT = globals.events.unreliable
+
+-- the bitset is flipped to use 1 for free and 0 for occupied
+-- this allows us to skip the inversion before countrz
+local FULL_BITSET = constant.zero
+local EMPTY_BITSET = constant.from_value(2 ^ 32 - 1)
+local INVOCATIONS_BITSET = globals.invocations_bitset
 
 local PLAYER_RETURN = fn.static_return("Player")
 local PLAYER_PARAMETER = fn.static_parameter("Player", "player")
@@ -79,7 +88,7 @@ local SERVER_RECEIVE_PARAMETERS = {
 local ON_PARAMETER = fn.static_parameter("(...any) -> ()")
 local DISCONNECT_RETURN = fn.static_return("() -> ()")
 
-local function rreturns(ctx: Context, parameters: { hir.Parameter }): { lir.Return }
+local function returns(ctx: Context, parameters: { hir.Parameter }): { lir.Return }
 	local array = {}
 	for index, parameter in parameters do
 		local ty = hir.ty_from_id(ctx.hir, parameter.ty_id)
@@ -136,6 +145,11 @@ local function copy_outgoing_buffer(block: fn.Builder): lir.RegisterId<buffer>
 	local new_buffer = block:store(library.buffer.create(OUTGOING.cursor))
 	block:call(library.buffer.copy(new_buffer, constant.zero, OUTGOING.buffer, constant.zero, OUTGOING.cursor))
 	return new_buffer
+end
+
+local function toggle_bitset_index(block: fn.Builder, index: lir.RValue<number>, bitset: lir.RValue<number>?)
+	local modified_bitset = library.bit32.bxor(bitset or INVOCATIONS_BITSET, binary.pow(constant.two, index))
+	block:store(modified_bitset, INVOCATIONS_BITSET)
 end
 
 local function build_type(ctx: Context, decl: hir.Type): TypeExport?
@@ -195,7 +209,7 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 	local is_unreliable = (event_type == "Unreliable")
 
 	local data = decl.data or {}
-	local data_rets = rreturns(ctx, data)
+	local data_rets = returns(ctx, data)
 	local data_params = parameters(ctx, data)
 	local data_fn_sets = fn_sets_from_data(ctx, decl, data)
 
@@ -398,40 +412,13 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 	}
 end
 
-local function build_scope(ctx: Context, scope_id: hir.ScopeId, exports_map: ExportsMap): ScopeExport
-	local hhir = ctx.hir
-	local scope = hir.scope_from_id(hhir, scope_id)
-	local items: { Export } = {}
-
-	for _, stat in scope.values do
-		local decl_id = stat.id :: DeclId
-		local export = exports_map[decl_id]
-		if export then
-			table.insert(items, export)
-		end
-	end
-
-	return {
-		type = "export",
-		kind = "scope",
-		name = scope.name,
-		items = items,
-	}
-end
-
-local function build_event_receive(
-	ctx: Context,
-	from: index<Event, "from">,
-	block: fn.Builder,
-	decl: Event,
-	event_id: number
-)
+local function build_event_receive(ctx: Context, side: Side, block: fn.Builder, decl: Event, event_id: number)
 	local call = decl.call
 	local fn_sets = fn_sets_from_data(ctx, decl, decl.data or {})
 	local queue = projection.field(QUEUES, constant.from_value(event_id))
 
 	local values: { lir.RegisterId<any> } = {}
-	if from == "Server" then
+	if side == "Server" then
 		-- player parameter
 		table.insert(values, block:parameter(1))
 	end
@@ -482,14 +469,139 @@ local function build_event_receive(
 	end
 end
 
-local function build_receive_connection(
-	ctx: Context,
-	from: index<Event, "from">,
-	receivables: { Receivable }
-): lir.AnonymousFn
+local function build_function(ctx: Context, decl: Function, event_id: number): FunctionExport
+	local id = constant.from_value(event_id)
+
+	local data = decl.data or {}
+	local rreturn = decl.ret or {}
+
+	local fn_returns = returns(ctx, rreturn)
+	local fn_parameters = parameters(ctx, data)
+
+	local data_fn_sets = fn_sets_from_data(ctx, decl, data)
+
+	local on = fn.anonymous({ ON_PARAMETER }, { DISCONNECT_RETURN }, function(block)
+		local listener = block:store(block:parameter(1))
+		local connection = projection.field(CONNECTIONS, constant.from_value(event_id))
+
+		block:if_single(condition.not_equals(connection, constant.null), function(block)
+			local message = library.debug.traceback(
+				constant.from_value("[Blink]: Function already has a listener, the current listener will be discarded."),
+				constant.from_value(2)
+			)
+
+			block:call(library.warn(message))
+		end)
+
+		block:store(listener, connection)
+
+		local disconnect = fn.anonymous({}, {}, function(block)
+			block:capture({ listener })
+			block:store(constant.null, connection)
+		end)
+
+		block:rreturn({ disconnect })
+	end)
+
+	local invoke_server = fn.anonymous(fn_parameters, fn_returns, function(block)
+		-- store upvalue locally to speed up loads
+		local bitset = block:store(INVOCATIONS_BITSET)
+		block:if_single(condition.equals(bitset, FULL_BITSET), function(block)
+			block:call(
+				library.error(
+					"[Blink]: More than 32 invocations are awaiting a response, this invocation has been dropped."
+				)
+			)
+		end)
+
+		-- find the first free index and mark it as occupied
+		local bitset_index = block:store(library.bit32.countrz(bitset))
+		toggle_bitset_index(block, bitset_index, bitset)
+
+		-- store invocation thread in map
+		-- we increment by 1 since the bitset index is in the range of [0;31]
+		-- where as we need an index in the range of the array portion of INVOCATIONS [1;32]
+		local map_index = projection.field(INVOCATIONS, binary.add(bitset_index, constant.one))
+		block:store(library.coroutine.running(), map_index)
+
+		-- write function payload
+		block:call(library.buffer.u8.write(block:allocate(constant.one), id))
+		block:call(library.buffer.u8.write(block:allocate(constant.one), bitset_index))
+
+		for index, fn_set in data_fn_sets do
+			block:call_fn(fn_set.write, { block:parameter(index) }, {})
+		end
+
+		block:rreturn({ library.coroutine.yield() })
+	end)
+
+	return {
+		type = "export",
+		kind = "function",
+		name = decl.name,
+		on = on,
+		invoke_server = invoke_server,
+	}
+end
+
+local function build_function_receive(ctx: Context, side: Side, block: fn.Builder, decl: Function)
+	local data = decl.data or {}
+	local rreturn = decl.ret or {}
+
+	local data_fn_sets = fn_sets_from_data(ctx, decl, data)
+	local return_fn_sets = fn_sets_from_data(ctx, decl, rreturn)
+
+	if side == "Client" then
+		local invocation_id = block:store(library.buffer.u8.read(control.advance(constant.one)))
+
+		local return_values = {}
+		for _, fn_set in return_fn_sets do
+			local register = block:reserve()
+			block:call_fn(fn_set.read, {}, { register })
+			table.insert(return_values, register)
+		end
+
+		local map_index = projection.field(INVOCATIONS, binary.add(invocation_id, constant.one))
+		local invocation_thread = block:store(map_index)
+		block:if_single(condition.equals(invocation_thread, constant.null), function(block)
+			block:rreturn({})
+		end)
+
+		block:store(constant.null, map_index)
+		toggle_bitset_index(block, invocation_id)
+
+		local status = library.coroutine.status(invocation_thread)
+		block:if_single(condition.equals(status, constant.from_value("suspended")), function(block)
+			block:call(library.coroutine.resume(invocation_thread, unpack(return_values)))
+		end)
+	end
+end
+
+local function build_scope(ctx: Context, scope_id: hir.ScopeId, exports_map: ExportsMap): ScopeExport
+	local hhir = ctx.hir
+	local scope = hir.scope_from_id(hhir, scope_id)
+	local items: { Export } = {}
+
+	for _, stat in scope.values do
+		local decl_id = stat.id :: DeclId
+		local export = exports_map[decl_id]
+		if export then
+			table.insert(items, export)
+		end
+	end
+
+	return {
+		type = "export",
+		kind = "scope",
+		name = scope.name,
+		items = items,
+	}
+end
+
+local function build_receive_connection(ctx: Context, side: Side, receivables: { Receivable }): lir.AnonymousFn
 	local parameters = RECEIVE_PARAMETERS
 	local parameters_offset = 0
-	local is_server = from == "Server"
+	local is_server = side == "Server"
 
 	if is_server then
 		parameters = SERVER_RECEIVE_PARAMETERS
@@ -526,8 +638,9 @@ local function build_receive_connection(
 				return event_id_matches,
 					function(block: fn.Builder)
 						if decl.kind == "event" then
-							build_event_receive(ctx, from, block, decl, event_id)
+							build_event_receive(ctx, side, block, decl, event_id)
 						elseif decl.kind == "function" then
+							build_function_receive(ctx, side, block, decl)
 						else
 							strong_exhaustive_match(decl.kind)
 						end
@@ -543,6 +656,8 @@ local function from_hir(hir: hir.Hir): lir.Lir
 
 	-- write globals
 	context.write_global(ctx, globals.types_map.identifier, structure.map({}))
+	context.write_global(ctx, INVOCATIONS.identifier, structure.map({}))
+	context.write_global(ctx, INVOCATIONS_BITSET.identifier, EMPTY_BITSET)
 
 	-- build types
 	for decl_id, decl in hir.types do
@@ -583,6 +698,12 @@ local function from_hir(hir: hir.Hir): lir.Lir
 			queues[key] = event_queue_structure(n_args)
 			connections[key] = (call == "ManySync" or call == "ManyAsync") and structure.array({}) or nil
 			exports_map[decl_id] = build_event(ctx, decl, event_id)
+		end
+
+		for decl_id, decl in hir.functs do
+			local event_id = next_event_id(reliable_ids)
+			exports_map[decl_id] = build_function(ctx, decl, event_id)
+			table.insert(reliable_receivables, { id = event_id, decl = decl })
 		end
 
 		context.write_global(ctx, globals.queues_map.identifier, structure.map(queues :: any))
