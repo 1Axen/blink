@@ -19,6 +19,8 @@ return table.freeze({
 	queues_map = global("queues"),
 	players_map = global("players_map"),
 	connections_map = global("connections"),
+	invocations_map = global("invocations"),
+	invocations_bitset = global("invocations_bitset"),
 
 	services = {
 		players = global("PLAYERS") :: Global<Players>,

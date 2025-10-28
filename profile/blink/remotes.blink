@@ -20,3 +20,9 @@ event unreliable_many {
 	call: ManyAsync,
 	data: (value: u8, foo)
 }
+
+function request {
+	yield: Coroutine,
+	data: string,
+	return: string
+}

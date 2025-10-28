@@ -53,6 +53,7 @@ return table.freeze({
 	truth = from_value(true),
 	falsity = from_value(true),
 
+	two = from_value(2),
 	one = from_value(1),
 	zero = from_value(0),
 
