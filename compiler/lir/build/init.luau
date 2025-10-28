@@ -351,8 +351,8 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 		iter_server = queue_iterator(queue_projection, #data_params_player)
 	else
 		local on_fn = fn.anonymous({ ON_PARAMETER }, { DISCONNECT_RETURN }, function(block)
-			local listener = block:parameter(1)
-			local is_single = call == "SingleSync" or call == "SingleAsync"
+			local listener = block:store(block:parameter(1))
+			local is_single = (call == "SingleSync" or call == "SingleAsync")
 			local connection_projection = projection.field(CONNECTIONS, constant.from_value(event_id))
 
 			if is_single then
@@ -372,14 +372,13 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 				block:call(library.table.insert(connection_projection, listener))
 			end
 
-			local listener_upvalue = block:store(listener)
 			local disconnect = fn.anonymous({}, {}, function(block)
-				block:capture({ listener_upvalue })
+				block:capture({ listener })
 
 				if is_single then
 					block:store(constant.null, connection_projection)
 				else
-					local index = block:store(library.table.find(connection_projection, listener_upvalue))
+					local index = block:store(library.table.find(connection_projection, listener))
 					block:if_single(condition.not_equals(index, constant.null), function()
 						block:store(constant.null, projection.field(connection_projection, index))
 					end)
@@ -612,9 +611,10 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 
 			return condition.not_equals(callback, constant.null),
 				function(block: fn.Builder)
+					local player = block:store(block:parameter(1))
 					block:call(library.task.spawn(
 						fn.anonymous({}, {}, function(block)
-							block:capture({ callback })
+							block:capture({ callback, player })
 
 							local pcall_values =
 								block:store_mult(library.pcall(callback, unpack(data_values)), #rreturn + 1)
@@ -622,6 +622,7 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 							local was_successful = condition.equals(pcall_values[1], constant.truth)
 							local success_value = ternary(was_successful, constant.one, constant.zero)
 
+							state.reset_outgoing(block)
 							block:call(library.buffer.u8.write(block:allocate(constant.one), id))
 							block:call(library.buffer.u8.write(block:allocate(constant.one), invocation_id))
 							block:call(library.buffer.u8.write(block:allocate(constant.one), success_value))
@@ -631,6 +632,10 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 									block:call_fn(fn_set.write, { pcall_values[index + 1] }, {})
 								end
 							end)
+
+							local new_buffer = copy_outgoing_buffer(block)
+							local player_save = projection.field(globals.players_map, player :: any)
+							state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
 						end),
 						{}
 					))
