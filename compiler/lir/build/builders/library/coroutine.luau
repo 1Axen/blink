@@ -26,6 +26,10 @@ local function status(thread: RValue<thread>): Call<Status>
 	return projection.call(constant.from_value("coroutine.status"), { thread })
 end
 
+local function yield(): Call<any>
+	return projection.call(constant.from_value("coroutine.yield"), {})
+end
+
 local function close(thread: RValue<thread>): Call<nil>
 	return projection.call(constant.from_value("coroutine.close"), { thread })
 end
@@ -35,5 +39,6 @@ return table.freeze({
 	resume = resume,
 	status = status,
 	running = running,
+	yield = yield,
 	close = close,
 })
