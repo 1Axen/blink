@@ -19,6 +19,7 @@ local shuffle = require("@util/shuffle")
 local state = require("@builders/state")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 local structure = require("@builders/structure")
+local ternary = require("@builders/ternary")
 local ty = require("@ty/types")
 local unary = require("@builders/unary")
 
@@ -482,9 +483,9 @@ local function build_function(ctx: Context, decl: Function, event_id: number): F
 
 	local on = fn.anonymous({ ON_PARAMETER }, { DISCONNECT_RETURN }, function(block)
 		local listener = block:store(block:parameter(1))
-		local connection = projection.field(CONNECTIONS, constant.from_value(event_id))
+		local callback = projection.field(CONNECTIONS, constant.from_value(event_id))
 
-		block:if_single(condition.not_equals(connection, constant.null), function(block)
+		block:if_single(condition.not_equals(callback, constant.null), function(block)
 			local message = library.debug.traceback(
 				constant.from_value("[Blink]: Function already has a listener, the current listener will be discarded."),
 				constant.from_value(2)
@@ -493,11 +494,11 @@ local function build_function(ctx: Context, decl: Function, event_id: number): F
 			block:call(library.warn(message))
 		end)
 
-		block:store(listener, connection)
+		block:store(listener, callback)
 
 		local disconnect = fn.anonymous({}, {}, function(block)
 			block:capture({ listener })
-			block:store(constant.null, connection)
+			block:store(constant.null, callback)
 		end)
 
 		block:rreturn({ disconnect })
@@ -552,7 +553,7 @@ local function build_function(ctx: Context, decl: Function, event_id: number): F
 	}
 end
 
-local function build_function_receive(ctx: Context, side: Side, block: fn.Builder, decl: Function)
+local function build_function_receive(ctx: Context, side: Side, block: fn.Builder, decl: Function, event_id: number)
 	local data = decl.data or {}
 	local rreturn = decl.ret or {}
 
@@ -578,17 +579,65 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 		local map_index = block:store(binary.add(invocation_id, constant.one))
 		local map_projection = projection.field(INVOCATIONS, map_index)
 		local invocation_thread = block:store(map_projection)
-		block:if_single(condition.equals(invocation_thread, constant.null), function(block)
-			block:rreturn({})
-		end)
+		block:if_single(condition.not_equals(invocation_thread, constant.null), function(block)
+			block:store(constant.null, map_projection)
+			toggle_bitset_index(block, invocation_id)
 
-		block:store(constant.null, map_projection)
-		toggle_bitset_index(block, invocation_id)
-
-		local thread_status = library.coroutine.status(invocation_thread)
-		block:if_single(condition.equals(thread_status, constant.from_value("suspended")), function(block)
-			block:call(library.coroutine.resume(invocation_thread, success_status :: any, unpack(return_registers)))
+			local thread_status = library.coroutine.status(invocation_thread)
+			block:if_single(condition.equals(thread_status, constant.from_value("suspended")), function(block)
+				block:call(library.coroutine.resume(invocation_thread, success_status :: any, unpack(return_registers)))
+			end)
 		end)
+	elseif side == "Server" then
+		local id = constant.from_value(event_id)
+		local callback = block:store(projection.field(CONNECTIONS, id))
+		local invocation_id = block:store(library.buffer.u8.read(control.advance(constant.one)))
+
+		local data_values = {}
+		for index, fn_set in data_fn_sets do
+			local register = block:reserve()
+			block:call_fn(fn_set.read, {}, { register })
+			data_values[index] = register
+		end
+
+		block:if_chain(2, function(index)
+			if index == 1 then
+				return condition.equals(callback, constant.null),
+					function(block: fn.Builder)
+						block:call(library.buffer.u8.write(block:allocate(constant.one), id))
+						block:call(library.buffer.u8.write(block:allocate(constant.one), invocation_id))
+						block:call(library.buffer.u8.write(block:allocate(constant.one), constant.zero))
+					end
+			end
+
+			return condition.not_equals(callback, constant.null),
+				function(block: fn.Builder)
+					block:call(library.task.spawn(
+						fn.anonymous({}, {}, function(block)
+							block:capture({ callback })
+
+							local pcall_values =
+								block:store_mult(library.pcall(callback, unpack(data_values)), #rreturn + 1)
+
+							local was_successful = condition.equals(pcall_values[1], constant.truth)
+							local success_value = ternary(was_successful, constant.one, constant.zero)
+
+							block:call(library.buffer.u8.write(block:allocate(constant.one), id))
+							block:call(library.buffer.u8.write(block:allocate(constant.one), invocation_id))
+							block:call(library.buffer.u8.write(block:allocate(constant.one), success_value))
+
+							block:if_single(was_successful, function(block)
+								for index, fn_set in return_fn_sets do
+									block:call_fn(fn_set.write, { pcall_values[index + 1] }, {})
+								end
+							end)
+						end),
+						{}
+					))
+				end
+		end)
+	else
+		strong_exhaustive_match(side)
 	end
 end
 
@@ -655,7 +704,7 @@ local function build_receive_connection(ctx: Context, side: Side, receivables: {
 						if decl.kind == "event" then
 							build_event_receive(ctx, side, block, decl, event_id)
 						elseif decl.kind == "function" then
-							build_function_receive(ctx, side, block, decl)
+							build_function_receive(ctx, side, block, decl, event_id)
 						else
 							strong_exhaustive_match(decl.kind)
 						end
