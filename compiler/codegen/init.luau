@@ -204,6 +204,8 @@ local function gen_binary_op(ctx: Context, binary: lir.BinaryOp<any>)
 		builder:append(" % ")
 	elseif binary.kind == "div" then
 		builder:append(" / ")
+	elseif binary.kind == "pow" then
+		builder:append(" ^ ")
 	elseif binary.kind == "idiv" then
 		builder:append(" // ")
 	else

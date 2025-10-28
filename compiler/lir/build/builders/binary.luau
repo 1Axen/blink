@@ -8,6 +8,7 @@ type BinarySub<T> = lir.BinarySub<T>
 type BinaryMul<T> = lir.BinaryMul<T>
 type BinaryDiv<T> = lir.BinaryDiv<T>
 type BinaryMod<T> = lir.BinaryMod<T>
+type BinaryPow<T> = lir.BinaryPow<T>
 type BinaryIDiv<T> = lir.BinaryIDiv<T>
 
 local function binary_add(left: RValue<number>, right: RValue<number>): BinaryAdd<number>
@@ -65,6 +66,17 @@ local function binary_mod(left: RValue<number>, right: RValue<number>): BinaryMo
 	}
 end
 
+local function binary_pow(left: RValue<number>, right: RValue<number>): BinaryPow<number>
+	return {
+		__phantom_type = nil :: any,
+
+		type = "binary",
+		kind = "pow",
+		left = left,
+		right = right,
+	}
+end
+
 local function binary_idiv(left: RValue<number>, right: RValue<number>): BinaryIDiv<number>
 	return {
 		__phantom_type = nil :: any,
@@ -96,6 +108,10 @@ local function binary_mod_vec(left: RValue<vector>, right: RValue<number>): Bina
 	return binary_mod(left :: any, right) :: any
 end
 
+local function binary_pow_vec(left: RValue<vector>, right: RValue<number>): BinaryPow<vector>
+	return binary_pow(left :: any, right) :: any
+end
+
 local function binary_idiv_vec(left: RValue<vector>, right: RValue<number>): BinaryIDiv<vector>
 	return binary_idiv(left :: any, right) :: any
 end
@@ -106,6 +122,7 @@ return table.freeze({
 	mul = binary_mul,
 	div = binary_div,
 	mod = binary_mod,
+	pow = binary_pow,
 	idiv = binary_idiv,
 
 	add_vec = binary_add_vec,
@@ -113,5 +130,6 @@ return table.freeze({
 	mul_vec = binary_mul_vec,
 	div_vec = binary_div_vec,
 	mod_vec = binary_mod_vec,
+	pow_vec = binary_pow_vec,
 	idiv_vec = binary_idiv_vec,
 })
