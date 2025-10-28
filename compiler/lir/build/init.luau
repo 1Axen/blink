@@ -19,6 +19,7 @@ local shuffle = require("@util/shuffle")
 local state = require("@builders/state")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 local structure = require("@builders/structure")
+local ternary = require("@builders/ternary")
 local ty = require("@ty/types")
 local unary = require("@builders/unary")
 
@@ -532,7 +533,15 @@ local function build_function(ctx: Context, decl: Function, event_id: number): F
 			block:call_fn(fn_set.write, { block:parameter(index) }, {})
 		end
 
-		block:rreturn({ library.coroutine.yield() })
+		-- first value is a boolean indicating whether the server successfully processed the invocation
+		local return_values = block:store_mult(library.coroutine.yield(), #rreturn + 1)
+
+		local success_status = return_values[1]
+		block:if_single(condition.equals(success_status, constant.falsity), function(block)
+			block:call(library.error("[Blink]: Server encountered an error while processing the invocation."))
+		end)
+
+		block:rreturn({ unpack(return_values, 2) })
 	end)
 
 	return {
@@ -553,26 +562,33 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 
 	if side == "Client" then
 		local invocation_id = block:store(library.buffer.u8.read(control.advance(constant.one)))
+		local success_status =
+			block:store(condition.equals(library.buffer.u8.read(control.advance(constant.one)), constant.one))
 
-		local return_values = {}
-		for _, fn_set in return_fn_sets do
-			local register = block:reserve()
-			block:call_fn(fn_set.read, {}, { register })
-			table.insert(return_values, register)
+		local return_registers = {}
+		for index = 1, #return_fn_sets do
+			return_registers[index] = block:reserve()
 		end
 
-		local map_index = projection.field(INVOCATIONS, binary.add(invocation_id, constant.one))
-		local invocation_thread = block:store(map_index)
+		block:if_single(condition.equals(success_status, constant.truth), function(block)
+			for index, fn_set in return_fn_sets do
+				block:call_fn(fn_set.read, {}, { return_registers[index] })
+			end
+		end)
+
+		local map_index = block:store(binary.add(invocation_id, constant.one))
+		local map_projection = projection.field(INVOCATIONS, map_index)
+		local invocation_thread = block:store(map_projection)
 		block:if_single(condition.equals(invocation_thread, constant.null), function(block)
 			block:rreturn({})
 		end)
 
-		block:store(constant.null, map_index)
+		block:store(constant.null, map_projection)
 		toggle_bitset_index(block, invocation_id)
 
-		local status = library.coroutine.status(invocation_thread)
-		block:if_single(condition.equals(status, constant.from_value("suspended")), function(block)
-			block:call(library.coroutine.resume(invocation_thread, unpack(return_values)))
+		local thread_status = library.coroutine.status(invocation_thread)
+		block:if_single(condition.equals(thread_status, constant.from_value("suspended")), function(block)
+			block:call(library.coroutine.resume(invocation_thread, success_status :: any, unpack(return_registers)))
 		end)
 	end
 end
