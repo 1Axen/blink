@@ -485,6 +485,12 @@ end
 local function gen_fn_body(ctx: Context, fn_body: lir.FnBody)
 	local builder = ctx.builder
 
+	local prev_fn = ctx.current_fn
+	local prev_queue = ctx.block_queue
+	local prev_filter = ctx.block_queue_filter
+	
+	ctx.block_queue = {}
+	ctx.block_queue_filter = {}
 	ctx.current_fn = fn_body
 	table.clear(ctx.seen_registers)
 
@@ -524,7 +530,10 @@ local function gen_fn_body(ctx: Context, fn_body: lir.FnBody)
 
 	builder:append_indent()
 	builder:append("end")
-	ctx.current_fn = nil
+
+	ctx.current_fn = prev_fn
+	ctx.block_queue = prev_queue
+	ctx.block_queue_filter = prev_filter
 end
 
 function gen_anon_fn(ctx: Context, anon_fn: lir.AnonymousFn)
