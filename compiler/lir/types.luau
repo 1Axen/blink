@@ -141,6 +141,16 @@ export type BinaryMod<T> = {
 	right: RValue<T>,
 }
 
+--- left ^ right
+export type BinaryPow<T> = {
+	write __phantom_type: T,
+
+	type: "binary",
+	kind: "pow",
+	left: RValue<T>,
+	right: RValue<T>,
+}
+
 --- left // right
 export type BinaryIDiv<T> = {
 	write __phantom_type: T,
@@ -158,6 +168,7 @@ export type BinaryOp<T> =
     | BinaryMul<T>
     | BinaryDiv<T>
     | BinaryMod<T>
+	| BinaryPow<T>
     | BinaryIDiv<T>
 
 --- #%of
