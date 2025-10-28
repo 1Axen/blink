@@ -19,7 +19,6 @@ local shuffle = require("@util/shuffle")
 local state = require("@builders/state")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 local structure = require("@builders/structure")
-local ternary = require("@builders/ternary")
 local ty = require("@ty/types")
 local unary = require("@builders/unary")
 
