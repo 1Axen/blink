@@ -94,7 +94,7 @@ print(`{Color("Blink", "green")} {_G.VERSION or "DEBUG"}`)
 local RawArguments = process.args
 if #RawArguments < 1 then
 	PrintHelpMessage()
-	return
+	return nil
 end
 
 local Path = RawArguments[1]
@@ -115,11 +115,11 @@ end
 
 if Arguments.Help then
 	PrintHelpMessage()
-	return
+	return nil
 end
 
 if Arguments.Version then
-	return
+	return nil
 end
 
 if not Arguments.Watch then
