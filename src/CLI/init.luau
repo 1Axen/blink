@@ -135,3 +135,5 @@ if not Arguments.Watch then
 else
 	Watch.Watch(Path)
 end
+
+return nil
