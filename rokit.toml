@@ -4,10 +4,10 @@
 # New tools can be added by running `rokit add <tool>` in a terminal.
 
 [tools]
-act = "nektos/act@0.2.79"
+act = "nektos/act@0.2.82"
 lune = "filiptibell/lune@0.9.4"
-stylua = "JohnnyMorganz/StyLua@2.1.0"
-darklua = "seaofvoices/darklua@0.16.0"
-rojo = "rojo-rbx/rojo@7.5.1"
+stylua = "JohnnyMorganz/StyLua@2.3.1"
+darklua = "seaofvoices/darklua@0.17.2"
+rojo = "rojo-rbx/rojo@7.6.1"
 run-in-roblox = "rojo-rbx/run-in-roblox@0.3.0"
-luau-lsp = "JohnnyMorganz/luau-lsp@1.52.0"
+luau-lsp = "JohnnyMorganz/luau-lsp@1.56.1"
