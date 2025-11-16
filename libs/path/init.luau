@@ -5,9 +5,9 @@ local CWD: string
 local RUNTIME = runtime()
 local SEPARATOR = "/"
 
-if RUNTIME == "Lune" then
-	local process = require("@lune/process")
-	CWD = process.cwd
+if RUNTIME == "Standalone" then
+	local process = require("@lute/process")
+	CWD = process.cwd()
 elseif RUNTIME == "ROBLOX" then
 	CWD = ""
 end

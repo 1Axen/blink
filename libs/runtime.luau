@@ -1,11 +1,11 @@
-export type Runtime = "ROBLOX" | "Lune"
+export type Runtime = "ROBLOX" | "Standalone"
 
 local function get_runtime(): Runtime
 	if typeof(game) == "Instance" then
 		return "ROBLOX"
 	end
 
-	return "Lune"
+	return "Standalone"
 end
 
 return get_runtime

@@ -1,13 +1,13 @@
 --!strict
 
-local fs = require("@lune/fs")
-local serde = require("@lune/serde")
+local fs = require("@lute/fs")
+local json = require("@std/json")
 
 local file = require("@util/file")
 local lexer = require("@compiler/lexer")
 local parser = require("@compiler/parser")
 
-local input = file.from_source("small.blink", fs.readFile("./blink/small.blink"))
+local input = file.from_source("small.blink", fs.readfiletostring("./blink/small.blink"))
 
 local tokens = lexer.tokenize(input)
 local ast = parser.parse(input, tokens)
@@ -30,4 +30,4 @@ local function clean(tbl: any, cache)
 end
 
 clean(ast.body, {})
-fs.writeFile("./out/ast.json", serde.encode("json", ast.body, true))
+fs.writestringtofile("./out/ast.json", json.serialize(ast.body :: any, true))

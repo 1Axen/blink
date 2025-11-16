@@ -11,9 +11,9 @@ local function collect_info(): string
 	local build_version = _G.BUILD_VERSION or "dev"
 
 	local platform = "ROBLOX"
-	if RUNTIME == "Lune" then
-		local process = require("@lune/process")
-		platform = `{process.arch}-{process.os}`
+	if RUNTIME == "Standalone" then
+		local system = require("@lute/system")
+		platform = `{system.arch}-{system.os}`
 	end
 
 	return `blink {build_version} ({build_date}) running on {platform}`

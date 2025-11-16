@@ -1,4 +1,5 @@
 --!strict
+local runtime = require("./runtime")
 
 -- Copyright (c) 2024 ffrostfall
 
@@ -20,7 +21,7 @@
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
-local RUNTIME = if game then "ROBLOX" else "Lune"
+local RUNTIME = runtime()
 local RICHTEXT_TAGS = {
 	--> colors
 	[30] = `color="#000000"`,
@@ -46,7 +47,7 @@ local RICHTEXT_TAGS = {
 
 export type Styler = (text: string) -> string
 
-local function create_lune_styler(opener: number, closer: number): Styler
+local function create_cli_styler(opener: number, closer: number): Styler
 	local open = string.format("%c[%dm", 27, opener)
 	local close = string.format("%c[%dm", 27, closer)
 	return function(text: string)
@@ -97,7 +98,7 @@ local function create_styler(opener: number, closer: number): Styler
 	--stylua: ignore
     return RUNTIME == "Roblox" 
         and create_roblox_styler(opener, closer) 
-        or create_lune_styler(opener, closer)
+        or create_cli_styler(opener, closer)
 end
 
 local function combine_styles(...: Styler): Styler

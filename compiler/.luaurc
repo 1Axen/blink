@@ -1,12 +1,12 @@
 {
     "languageMode": "strict",
     "aliases": {
-        "ty": "ty",
-        "ast": "ast",
-        "lir": "lir",
-        "hir": "hir",
-        "parser": "parser",
-        "codegen": "codegen",
-        "config": "config"
+        "ty": "./ty",
+        "ast": "./ast",
+        "lir": "./lir",
+        "hir": "./hir",
+        "parser": "./parser",
+        "codegen": "./codegen",
+        "config": "./config"
     }
 }

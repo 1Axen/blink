@@ -1,4 +1,4 @@
-type Tiniest = typeof(require("@vendor/tiniest/tiniest_for_lune").configure({}))
+type Tiniest = typeof(require("@vendor/tiniest/tiniest_for_lute").configure({}))
 
 return function(tiniest: Tiniest)
 	local describe = tiniest.describe

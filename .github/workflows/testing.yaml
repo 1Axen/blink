@@ -20,6 +20,6 @@ jobs:
             - name: Run tests
               run: |
                   cd test
-                  lune run runner
+                  lute run runner
 
               

@@ -1,12 +1,12 @@
 --!strict
 
 local file = require("@util/file")
-local fs = require("@lune/fs")
+local fs = require("@lute/fs")
+local json = require("@std/json")
 local lexer = require("@compiler/lexer")
-local serde = require("@lune/serde")
 
-local source = fs.readFile("./blink/small.blink")
+local source = fs.readfiletostring("./blink/small.blink")
 local input = file.from_source("small", source)
 local tokens = lexer.tokenize(input)
 
-fs.writeFile("./out/tokens.json", serde.encode("json", tokens, true))
+fs.writestringtofile("./out/tokens.json", json.serialize(tokens :: any, true))

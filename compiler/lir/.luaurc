@@ -1,6 +1,6 @@
 {
     "languageMode": "strict",
     "aliases": {
-        "builders": "build/builders"
+        "builders": "./build/builders"
     }
 }

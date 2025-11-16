@@ -1025,7 +1025,7 @@ end
 
 --TODO: Remove
 diagnostics.set_error_fn(function(text: string)
-	require("@lune/stdio").ewrite(`{text}\n`)
+	print(`{text}\n`)
 	return error("something went wrong")
 end)
 

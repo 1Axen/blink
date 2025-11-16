@@ -1,8 +1,8 @@
 local file = require("@util/file")
-local lune_fs = require("@lune/fs")
 local path = require("@util/path")
+local runtime_fs = require("@lute/fs")
 
-type Tiniest = typeof(require("@vendor/tiniest/tiniest_for_lune").configure({}))
+type Tiniest = typeof(require("@vendor/tiniest/tiniest_for_lute").configure({}))
 
 local TEMP_PATH = path.from_string("./temp")
 local FILE_PATH = path.join(TEMP_PATH, path.from_string(`./file.txt`))
@@ -25,8 +25,8 @@ return function(tiniest: Tiniest)
 			expect(file_result.error).never_exists()
 			expect(directory_result.error).never_exists()
 
-			expect(lune_fs.isFile(path.to_string(FILE_PATH))).is_true()
-			expect(lune_fs.isDir(path.to_string(DIRECTORY_PATH))).is_true(true)
+			expect(runtime_fs.type(path.to_string(FILE_PATH))).is("file")
+			expect(runtime_fs.type(path.to_string(DIRECTORY_PATH))).is("dir")
 		end)
 
 		test("read", function()

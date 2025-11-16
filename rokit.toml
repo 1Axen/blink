@@ -5,7 +5,7 @@
 
 [tools]
 act = "nektos/act@0.2.82"
-lune = "filiptibell/lune@0.9.4"
+lute = "luau-lang/lute@0.1.0-nightly.20251116"
 stylua = "JohnnyMorganz/StyLua@2.3.1"
 darklua = "seaofvoices/darklua@0.17.2"
 rojo = "rojo-rbx/rojo@7.6.1"

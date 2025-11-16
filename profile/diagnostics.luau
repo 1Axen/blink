@@ -1,6 +1,6 @@
 --!strict
 
-local fs = require("@lune/fs")
+local fs = require("@lute/fs")
 
 local diagnostics = require("@util/diagnostics")
 local file = require("@util/file")
@@ -8,7 +8,7 @@ local lexer = require("@compiler/lexer")
 local span = require("@util/span")
 local style = require("@util/style")
 
-local code = fs.readFile("./blink/diagnostics.blink")
+local code = fs.readfiletostring("./blink/diagnostics.blink")
 local input = file.from_source("diagnostics", code)
 local tokens = lexer.tokenize(input)
 

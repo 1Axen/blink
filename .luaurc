@@ -1,10 +1,11 @@
 {
 	"languageMode": "strict",
     "aliases": {
-        "test": "test",
-        "util": "libs",
-        "vendor": "vendor",
-        "compiler": "compiler",
-        "lune": "~/.lune/.typedefs/0.9.4"
+        "test": "./test",
+        "util": "./libs",
+        "vendor": "./vendor",
+        "compiler": "./compiler",
+		"std": "~/.lute/typedefs/0.1.0/std",
+        "lute": "~/.lute/typedefs/0.1.0/lute"
     }
 }

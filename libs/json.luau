@@ -1,14 +1,14 @@
 local RUNTIME = require("@util/runtime")()
 
-local function lune()
-	local serde = require("@lune/serde")
+local function standalone()
+	local json = require("@std/json")
 
 	local function encode<T>(value: T): string
-		return serde.encode("json", value)
+		return json.serialize("json", value)
 	end
 
 	local function decode<T>(encoded: buffer | string): T
-		return serde.decode("json", encoded)
+		return json.deserialize("json", encoded)
 	end
 
 	return table.freeze({
@@ -35,4 +35,4 @@ local function roblox()
 	})
 end
 
-return if RUNTIME == "Lune" then lune() else roblox()
+return if RUNTIME == "Standalone" then standalone() else roblox()

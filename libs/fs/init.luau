@@ -8,4 +8,4 @@ export type MetadataPermissions = types.MetadataPermissions
 --stylua: ignore
 return if RUNTIME == "ROBLOX" 
     then require("@self/roblox") :: types.API 
-    else require("@self/lune") :: types.API
+    else require("@self/standalone") :: types.API

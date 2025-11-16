@@ -1,8 +1,8 @@
 --!strict
 --> Temporary file used for tracking performance with every change
 
-local date_time = require("@lune/datetime")
-local fs = require("@lune/fs")
+local fs = require("@lute/fs")
+local time = require("@lute/time")
 
 local file = require("@util/file")
 
@@ -13,13 +13,13 @@ local parser = require("@compiler/parser")
 
 local OUT_PATH = "./out/performance.txt"
 
-if fs.isDir("./out") == false then
-	fs.writeDir("./out")
+if fs.exists("./out") == false then
+	fs.mkdir("./out")
 end
 
 local function fs_append(path: string, text: string)
-	local contents = fs.isFile(path) and fs.readFile(path) or ""
-	fs.writeFile(path, contents .. text)
+	local contents = fs.exists(path) and fs.readfiletostring(path) or ""
+	fs.writestringtofile(path, contents .. text)
 end
 
 local function format_seconds(seconds: number): string
@@ -50,7 +50,7 @@ local function benchmark_closure(name: string, closure: () -> ()): number
 	end
 
 	local average_time = time_sum / 1_000
-	local text_result = `{date_time.now():formatLocalTime()} - {name} - {format_seconds(average_time)}`
+	local text_result = `{time.now()} - {name} - {format_seconds(average_time)}`
 
 	print(text_result)
 	fs_append(OUT_PATH, `\n{text_result}`)
@@ -58,9 +58,9 @@ local function benchmark_closure(name: string, closure: () -> ()): number
 	return average_time
 end
 
-local small_file = file.from_source("small.blink", fs.readFile("./blink/small.blink"))
-local large_file = file.from_source("large.blink", fs.readFile("./blink/large.blink"))
-local bench_file = file.from_source("bench.blink", fs.readFile("./blink/bench.blink"))
+local small_file = file.from_source("small.blink", fs.readfiletostring("./blink/small.blink"))
+local large_file = file.from_source("large.blink", fs.readfiletostring("./blink/large.blink"))
+local bench_file = file.from_source("bench.blink", fs.readfiletostring("./blink/bench.blink"))
 
 local small_tokens = lexer.tokenize(small_file)
 local large_tokens = lexer.tokenize(large_file)

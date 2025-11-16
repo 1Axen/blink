@@ -1,4 +1,4 @@
-local fs = require("@lune/fs")
+local fs = require("@lute/fs")
 
 local file = require("@util/file")
 local panic = require("@util/panic")
@@ -15,7 +15,7 @@ type IOError = types.IOError
 local function read_file(target: Path): Result<File, IOError>
 	local path_str = path.to_string(target)
 	local fs_success, fs_return = pcall(function()
-		return fs.readFile(path_str)
+		return fs.readfiletostring(path_str)
 	end)
 
 	if fs_success == false then
@@ -33,21 +33,26 @@ end
 local function read_directory(target: Path): Result<{ string }, IOError>
 	local path_str = path.to_string(target)
 	local fs_success, fs_return = pcall(function()
-		return fs.readDir(path_str)
+		return fs.listdir(path_str)
 	end)
 
 	if fs_success == false then
 		return result.err("IOError" :: IOError)
 	end
 
-	return result.ok(fs_return)
+	local directory_entries = table.create(#fs_return) :: { string }
+	for index, entry in fs_return do
+		directory_entries[index] = entry.name
+	end
+
+	return result.ok(directory_entries)
 end
 
 local function write_file(target: Path, target_file: File): Result<nil, IOError>
 	local path_str = path.to_string(target)
 	local contents = file.as_string(target_file)
 	local fs_success = pcall(function()
-		fs.writeFile(path_str, contents)
+		fs.writestringtofile(path_str, contents)
 	end)
 
 	if fs_success == false then
@@ -60,7 +65,7 @@ end
 local function write_directory(target: Path): Result<nil, IOError>
 	local path_str = path.to_string(target)
 	local fs_success = pcall(function()
-		fs.writeDir(path_str)
+		fs.mkdir(path_str)
 	end)
 
 	if fs_success == false then
@@ -73,7 +78,7 @@ end
 local function remove_file(target: Path): Result<nil, IOError>
 	local path_str = path.to_string(target)
 	local fs_success = pcall(function()
-		fs.readFile(path_str)
+		fs.remove(path_str)
 	end)
 
 	if fs_success == false then
@@ -86,7 +91,7 @@ end
 local function remove_directory(target: Path): Result<nil, IOError>
 	local path_str = path.to_string(target)
 	local fs_success = pcall(function()
-		fs.removeDir(path_str)
+		fs.rmdir(path_str)
 	end)
 
 	if fs_success == false then
@@ -99,7 +104,7 @@ end
 local function is_file(target: Path): Result<boolean, IOError>
 	local path_str = path.to_string(target)
 	local fs_success, fs_return = pcall(function()
-		return fs.isFile(path_str)
+		return fs.type(path_str) == "file"
 	end)
 
 	if fs_success == false then
@@ -112,7 +117,7 @@ end
 local function is_directory(target: Path): Result<boolean, IOError>
 	local path_str = path.to_string(target)
 	local fs_success, fs_return = pcall(function()
-		return fs.isDir(path_str)
+		return fs.type(path_str) == "dir"
 	end)
 
 	if fs_success == false then
@@ -124,33 +129,29 @@ end
 
 local function metadata(target: Path): Result<types.Metadata, IOError>
 	local path_str = path.to_string(target)
+	if fs.exists(path_str) == false then
+		return result.ok({
+			exists = false,
+		} :: types.Metadata)
+	end
+
 	local fs_success, fs_metadata = pcall(function()
-		return fs.metadata(path_str)
+		return fs.stat(path_str)
 	end)
 
 	if fs_success == false then
 		return result.err("IOError" :: IOError)
 	end
 
-	if fs_metadata.exists then
-		local created_at = fs_metadata.createdAt and fs_metadata.createdAt.unixTimestamp or nil
-		local modified_at = fs_metadata.modifiedAt and fs_metadata.modifiedAt.unixTimestamp or nil
-		local accessed_at = fs_metadata.accessedAt and fs_metadata.accessedAt.unixTimestamp or nil
-
-		return result.ok({
-			exists = true,
-			kind = fs_metadata.kind,
-			created_at = created_at,
-			modified_at = modified_at,
-			accessed_at = accessed_at,
-			permissions = {
-				read_only = fs_metadata.permissions.readOnly,
-			},
-		} :: types.Metadata)
-	end
-
 	return result.ok({
-		exists = false,
+		exists = true,
+		kind = fs_metadata.type,
+		created_at = fs_metadata.created,
+		modified_at = fs_metadata.modified,
+		accessed_at = fs_metadata.accessed,
+		permissions = {
+			read_only = fs_metadata.permissions.readonly,
+		},
 	} :: types.Metadata)
 end
 
@@ -159,7 +160,8 @@ local function move(from: Path, to: Path, options: types.WriteOptions?): Result<
 	local to_str = path.to_string(to)
 
 	local fs_success, _ = pcall(function()
-		fs.move(from_str, to_str, options)
+		fs.copy(from_str, to_str, options)
+		fs.remove(from_str)
 		return nil
 	end)
 

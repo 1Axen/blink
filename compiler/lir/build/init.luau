@@ -3,7 +3,7 @@
 --!optimize 2
 
 local binary = require("@builders/binary")
-local builders = require("@builders/init")
+local builders = require("@builders")
 local condition = require("@builders/condition")
 local constant = require("@builders/constant")
 local context = require("@self/context")
