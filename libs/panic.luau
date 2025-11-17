@@ -22,11 +22,11 @@ end
 return function(final_words: string): never
 	local info = collect_info()
 	-- SOLVER BUG
-	local source: string, name: string, line: number = (debug.info :: any)(2, "snl")
+	local name: string, line: number = (debug.info :: any)(2, "nl")
 
-	local panic_message = `{source}:{line}: panicked in {name}:{line}: {final_words}`
+	local panic_message = `panicked in {name}:{line}: {final_words}`
 	panic_message ..= `\n\n{HELPFUL_INFORMATION}`
 	panic_message ..= `\n{NOTE} {info}`
 
-	return error(panic_message)
+	return error(panic_message, 2)
 end
