@@ -81,7 +81,7 @@ local function resolve_fs_import(directory: Path, import: Path): ImportResult
 			end
 
 			local read_result = fs.read_file(final_import)
-			if read_result.error then
+			if read_result.ok == false then
 				return read_result
 			end
 

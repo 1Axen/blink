@@ -134,7 +134,7 @@ local function file_to_files_map(entry_file: File, entry_path: Path): FilesMap
 		local import_path = path.from_string(path_expr.value)
 		local import_result = import_resolver.resolve(ctx.directory, import_path)
 
-		if import_result.error then
+		if import_result.ok == false then
 			local err = import_result.error
 			if err.kind == "IOError" then
 				return report_import_io_error(err, path_expr)
@@ -213,14 +213,14 @@ end
     Takes a path to a file to compile.
     @param `file_path` - An absolute path to the file which to compile.
 ]=]
-local function compile_from_path(entry_path: Path, compiler_options: Options): Result?
-	local entry_file = fs.read_file(entry_path)
-	if entry_file.error then
-		return nil
+local function compile_from_path(entry_path: Path, compiler_options: Options): CompilationResult
+	local read_result = fs.read_file(entry_path)
+	if read_result.ok == false then
+		return read_result
 	end
 
 	local ast_pin = os.clock()
-	local files = file_to_files_map(entry_file.value, entry_path)
+	local files = file_to_files_map(read_result.value, entry_path)
 	local ast_elapsed = (os.clock() - ast_pin)
 
 	local hir_pin = os.clock()

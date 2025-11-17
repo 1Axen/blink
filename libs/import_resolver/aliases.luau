@@ -15,13 +15,13 @@ type ParseError =
 
 local function aliases_from_path(path: Path): Result<Aliases, ParseError>
 	local read_result = fs.read_file(path)
-	if read_result.error then
+	if read_result.ok == false then
 		return read_result
 	end
 
 	local json_contents = file.as_string(read_result.value)
 	local luaurc_result = luaurc.from_json(json_contents)
-	if luaurc_result.error then
+	if luaurc_result.ok == false then
 		return luaurc_result
 	end
 
@@ -58,7 +58,7 @@ local function collect_fs_aliases(directory: Path): Aliases
 		local luaurc_path = path.append_file_name(current_directory, "", "luaurc")
 		if fs.is_file(luaurc_path) then
 			local aliases_result = aliases_from_path(luaurc_path)
-			if aliases_result.value then
+			if aliases_result.ok then
 				local aliases = aliases_result.value :: Aliases
 				record_unique_aliases(current_directory, aliases)
 			end

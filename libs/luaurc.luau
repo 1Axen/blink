@@ -193,7 +193,7 @@ local function from_json(contents: string): result.Result<Luaurc, ParseError>
 	end
 
 	local validation_result = validate_schema(schema)
-	if validation_result.error then
+	if validation_result.ok == false then
 		return validation_result
 	end
 
