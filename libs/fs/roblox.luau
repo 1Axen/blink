@@ -52,6 +52,10 @@ local function copy(from: Path, to: Path, options: types.WriteOptions?): Result
 	return panic("Unimplemented")
 end
 
+local function exists(target: Path): boolean
+	return panic("Unimplemented")
+end
+
 return table.freeze({
 	read_file = read_file,
 	read_directory = read_directory,
@@ -62,6 +66,7 @@ return table.freeze({
 	remove_file = remove_file,
 	remove_directory = remove_directory,
 
+	exists = exists,
 	is_file = is_file,
 	is_directory = is_directory,
 

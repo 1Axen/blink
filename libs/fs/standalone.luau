@@ -180,6 +180,11 @@ local function copy(from: Path, to: Path, options: types.WriteOptions?): Result
 	return result.ok()
 end
 
+local function exists(target: Path): boolean
+	local path_str = path.to_string(target)
+	return fs.exists(path_str)
+end
+
 return table.freeze({
 	read_file = read_file,
 	read_directory = read_directory,

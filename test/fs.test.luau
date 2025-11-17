@@ -67,6 +67,10 @@ return function(tiniest: Tiniest)
 			expect(directory_metadata.kind).is("dir")
 		end)
 
+		test("exists", function()
+			expect(fs.exists(FILE_PATH)).is_true()
+			expect(fs.exists(DIRECTORY_PATH)).is_true()
+		end)
 
 		test("copy", function()
 			expect(fs.copy(FILE_PATH, FILE_COPY_PATH).error).never_exists()

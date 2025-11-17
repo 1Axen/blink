@@ -38,6 +38,7 @@ export type API = {
 	remove_file: (path: Path) -> Result,
 	remove_directory: (path: Path) -> Result,
 
+	exists: (path: Path) -> boolean,
 	is_file: (path: Path) -> boolean,
 	is_directory: (path: Path) -> boolean,
 
