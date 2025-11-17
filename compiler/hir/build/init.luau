@@ -642,13 +642,13 @@ local function traverse_block(ctx: Context, block: ast.Block, prev_collection: C
 			local scope_id = stat.id :: ScopeId
 
 			local prev_id = ctx.scope_id
-			local symbols = symbols.child(ctx.symbols, name)
-			if symbols == nil then
-				panic(`expected previous scope to have symbols`)
+			local prev_symbols = symbols.child(ctx.symbols, name)
+			if prev_symbols == nil then
+				return panic(`expected previous scope to have symbols`)
 			end
 
 			ctx.scope_id = scope_id
-			ctx_hir.scopes[scope_id] = symbols
+			ctx_hir.scopes[scope_id] = symbols.inner(prev_symbols, name)
 
 			traverse_block(ctx, body, collection)
 			ctx.scope_id = prev_id
