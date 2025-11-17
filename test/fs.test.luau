@@ -6,6 +6,8 @@ type Tiniest = typeof(require("@vendor/tiniest/tiniest_for_lute").configure({}))
 
 local TEMP_PATH = path.from_string("./temp")
 local FILE_PATH = path.join(TEMP_PATH, path.from_string(`./file.txt`))
+local FILE_MOVE_PATH = path.join(TEMP_PATH, path.from_string("file_move.txt"))
+local FILE_COPY_PATH = path.join(TEMP_PATH, path.from_string("file_copy.txt"))
 local DIRECTORY_PATH = path.join(TEMP_PATH, path.from_string(`./directory`))
 local FILE_CONTENTS = "Hello, World!"
 
@@ -33,35 +35,49 @@ return function(tiniest: Tiniest)
 			local file_result = fs.read_file(FILE_PATH)
 			local directory_result = fs.read_directory(DIRECTORY_PATH)
 
-			expect(file_result.error).never_exists()
-			expect(directory_result.error).never_exists()
+			expect(file_result.value).exists()
+			expect(directory_result.value).exists()
 
-			-- LUAU
-			assert(file_result.value)
-			assert(directory_result.value)
+			local file_object = assert(file_result.value)
+			local directory_entries = assert(directory_result.value)
 
-			expect(file.as_string(file_result.value)).is(FILE_CONTENTS)
-			expect(#directory_result.value).is(0)
+			expect(file.as_string(file_object)).is(FILE_CONTENTS)
+			expect(#directory_entries).is(0)
 		end)
 
 		test("is", function()
-			local file_result = fs.is_file(FILE_PATH)
-			local directory_result = fs.is_directory(DIRECTORY_PATH)
+			expect(fs.is_file(FILE_PATH)).is_true()
+			expect(fs.is_directory(FILE_PATH)).never_is_true()
 
-			expect(file_result.value).is_true()
-			expect(directory_result.value).is_true()
+			expect(fs.is_file(DIRECTORY_PATH)).never_is_true()
+			expect(fs.is_directory(DIRECTORY_PATH)).is_true()
 		end)
 
 		test("metadata", function()
-			local metadata_result = fs.metadata(FILE_PATH)
-			expect(metadata_result.error).never_exists()
+			local file_result = fs.metadata(FILE_PATH)
+			local directory_result = fs.metadata(DIRECTORY_PATH)
 
-			local metadata = metadata_result.value :: fs.Metadata
-			expect(metadata.exists).is_true()
+			expect(file_result.value).exists()
+			expect(directory_result.value).exists()
 
-			-- LUAU
-			assert(metadata.exists)
-			expect(metadata.kind).is("file")
+			local file_metadata = assert(file_result.value)
+			local directory_metadata = assert(directory_result.value)
+
+			expect(file_metadata.kind).is("file")
+			expect(directory_metadata.kind).is("dir")
+		end)
+
+
+		test("copy", function()
+			expect(fs.copy(FILE_PATH, FILE_COPY_PATH).error).never_exists()
+			expect(fs.exists(FILE_PATH)).is_true()
+			expect(fs.exists(FILE_COPY_PATH)).is_true()
+		end)
+
+		test("move", function()
+			expect(fs.move(FILE_PATH, FILE_MOVE_PATH).error).never_exists()
+			expect(fs.exists(FILE_PATH)).never_is_true()
+			expect(fs.exists(FILE_MOVE_PATH)).is_true()
 		end)
 	end)
 end
