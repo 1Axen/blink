@@ -1,7 +1,7 @@
 local ast = require("@ast/types")
 
 local TARGETS = table.freeze({
-	shared = true,
+	types = true,
 	client = true,
 	server = true,
 })

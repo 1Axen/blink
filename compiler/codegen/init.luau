@@ -488,7 +488,7 @@ local function gen_fn_body(ctx: Context, fn_body: lir.FnBody)
 	local prev_fn = ctx.current_fn
 	local prev_queue = ctx.block_queue
 	local prev_filter = ctx.block_queue_filter
-	
+
 	ctx.block_queue = {}
 	ctx.block_queue_filter = {}
 	ctx.current_fn = fn_body
@@ -618,7 +618,7 @@ local function gen_export(ctx: Context, target: compilation.Target, export: lir.
 		end
 	elseif export.kind == "scope" then
 		for _, item in export.items do
-			if (item.kind == "event" or item.kind == "function") and target == "shared" then
+			if (item.kind == "event" or item.kind == "function") and target == "types" then
 				continue
 			end
 
@@ -655,7 +655,7 @@ local function from_lir(props: Props, target: compilation.Target): string
 
 	append_headers(builder)
 
-	if target ~= "shared" then
+	if target ~= "types" then
 		local hash = props.hash
 		local reliable_name = md5(`{hash}+reliable`)
 		local unreliable_name = md5(`{hash}+unreliable`)
@@ -681,7 +681,7 @@ local function from_lir(props: Props, target: compilation.Target): string
 		gen_fn(ctx, fn)
 	end
 
-	if target ~= "shared" then
+	if target ~= "types" then
 		local target_fns = target == "client" and llir.client or llir.server
 		local signal_name = target == "client" and "OnClientEvent" or "OnServerEvent"
 
