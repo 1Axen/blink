@@ -20,8 +20,7 @@ return function(tiniest: Tiniest)
 
 	describe("methods", function()
 		test("write", function()
-			local file_result =
-				fs.write_file(FILE_PATH, file.from_source(path.file_name(FILE_PATH) :: string, FILE_CONTENTS))
+			local file_result = fs.write_string_to_file(FILE_PATH, FILE_CONTENTS)
 			local directory_result = fs.write_directory(DIRECTORY_PATH)
 
 			expect(file_result.error).never_exists()
@@ -34,14 +33,18 @@ return function(tiniest: Tiniest)
 		test("read", function()
 			local file_result = fs.read_file(FILE_PATH)
 			local directory_result = fs.read_directory(DIRECTORY_PATH)
+			local file_string_result = fs.read_string_from_file(FILE_PATH)
 
 			expect(file_result.value).exists()
 			expect(directory_result.value).exists()
+			expect(file_string_result.value).exists()
 
 			local file_object = assert(file_result.value)
 			local directory_entries = assert(directory_result.value)
+			local file_contents = assert(file_string_result.value)
 
 			expect(file.as_string(file_object)).is(FILE_CONTENTS)
+			expect(file_contents).is(FILE_CONTENTS)
 			expect(#directory_entries).is(0)
 		end)
 

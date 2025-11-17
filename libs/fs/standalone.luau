@@ -49,11 +49,23 @@ local function read_directory(target: Path): Result<{ string }>
 	return result.ok(directory_entries)
 end
 
-local function write_file(target: Path, target_file: File): Result
+local function read_string_from_file(target: Path): Result<string>
 	local path_str = path.to_string(target)
-	local contents = file.as_string(target_file)
+	local success, contents = pcall(function()
+		return fs.readfiletostring(path_str)
+	end)
+
+	if success == false then
+		return io_error(contents)
+	end
+
+	return result.ok(contents)
+end
+
+local function write_directory(target: Path): Result
+	local path_str = path.to_string(target)
 	local success, err = pcall(function()
-		fs.writestringtofile(path_str, contents)
+		fs.mkdir(path_str)
 		return nil
 	end)
 
@@ -64,10 +76,10 @@ local function write_file(target: Path, target_file: File): Result
 	return result.ok()
 end
 
-local function write_directory(target: Path): Result
+local function write_string_to_file(target: Path, contents: string): Result
 	local path_str = path.to_string(target)
 	local success, err = pcall(function()
-		fs.mkdir(path_str)
+		fs.writestringtofile(path_str, contents)
 		return nil
 	end)
 
@@ -108,20 +120,33 @@ end
 
 local function is_file(target: Path): boolean
 	local path_str = path.to_string(target)
-	local success, type_result = pcall(function()
+	local success, value = pcall(function()
 		return fs.type(path_str) == "file"
 	end)
 
-	return success and type_result
+	return success and value
 end
 
 local function is_directory(target: Path): boolean
 	local path_str = path.to_string(target)
-	local success, type_result = pcall(function()
+	local success, value = pcall(function()
 		return fs.type(path_str) == "dir"
 	end)
 
-	return success and type_result
+	return success and value
+end
+
+local function type(target: Path): Result<types.FileType>
+	local path_str = path.to_string(target)
+	local success, value = pcall(function()
+		return fs.type(path_str)
+	end)
+
+	if success == false then
+		return io_error(value)
+	end
+
+	return result.ok(value)
 end
 
 local function metadata(target: Path): Result<types.Metadata>
@@ -188,9 +213,10 @@ end
 return table.freeze({
 	read_file = read_file,
 	read_directory = read_directory,
+	read_string_from_file = read_string_from_file,
 
-	write_file = write_file,
 	write_directory = write_directory,
+	write_string_to_file = write_string_to_file,
 
 	remove_file = remove_file,
 	remove_directory = remove_directory,
@@ -199,6 +225,7 @@ return table.freeze({
 	is_file = is_file,
 	is_directory = is_directory,
 
+	type = type,
 	metadata = metadata,
 
 	move = move,

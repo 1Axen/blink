@@ -5,6 +5,8 @@ local result = require("@util/result")
 type Path = path.Path
 type File = file.File
 
+export type FileType = "file" | "dir" | "link" | "fifo" | "socket" | "char" | "block" | "unknown"
+
 export type IOError = {
 	kind: "IOError",
 	message: string,
@@ -21,7 +23,7 @@ export type MetadataPermissions = {
 }
 
 export type Metadata = {
-	kind: "block" | "char" | "file" | "fifo" | "dir" | "link" | "socket" | "unknown",
+	kind: FileType,
 	created_at: number?,
 	modified_at: number?,
 	accessed_at: number?,
@@ -31,9 +33,10 @@ export type Metadata = {
 export type API = {
 	read_file: (path: Path) -> Result<File>,
 	read_directory: (path: Path) -> Result<{ string }>,
+	read_string_from_file: (path: Path) -> Result<string>,
 
-	write_file: (path: Path, file: File) -> Result,
 	write_directory: (path: Path) -> Result,
+	write_string_to_file: (path: Path, contents: string) -> Result,
 
 	remove_file: (path: Path) -> Result,
 	remove_directory: (path: Path) -> Result,
@@ -42,7 +45,8 @@ export type API = {
 	is_file: (path: Path) -> boolean,
 	is_directory: (path: Path) -> boolean,
 
-	metadata: (target: Path) -> Result<Metadata>,
+	type: (path: Path) -> Result<FileType>,
+	metadata: (path: Path) -> Result<Metadata>,
 
 	move: (from: Path, to: Path, options: WriteOptions?) -> Result,
 	copy: (from: Path, to: Path, options: WriteOptions?) -> Result,

@@ -12,11 +12,15 @@ local function read_file(target: Path): Result<File>
 	return panic("Unimplemented")
 end
 
+local function read_string_from_file(target: Path): Result<string>
+	return panic("Unimplemented")
+end
+
 local function read_directory(target: Path): Result<{ string }>
 	return panic("Unimplemented")
 end
 
-local function write_file(target: Path, target_file: File): Result
+local function write_string_to_file(target: Path, contents: string): Result
 	return panic("Unimplemented")
 end
 
@@ -40,6 +44,10 @@ local function is_directory(target: Path): boolean
 	return panic("Unimplemented")
 end
 
+local function type(target: Path): Result<types.FileType>
+	return panic("Unimplemented")
+end
+
 local function metadata(target: Path): Result<types.Metadata>
 	return panic("Unimplemented")
 end
@@ -59,9 +67,10 @@ end
 return table.freeze({
 	read_file = read_file,
 	read_directory = read_directory,
+	read_string_from_file = read_string_from_file,
 
-	write_file = write_file,
 	write_directory = write_directory,
+	write_string_to_file = write_string_to_file,
 
 	remove_file = remove_file,
 	remove_directory = remove_directory,
@@ -70,6 +79,7 @@ return table.freeze({
 	is_file = is_file,
 	is_directory = is_directory,
 
+	type = type,
 	metadata = metadata,
 
 	move = move,
