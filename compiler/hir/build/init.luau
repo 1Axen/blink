@@ -54,7 +54,7 @@ local TY_PLACEHOLDER = ty.placeholder()
 
 local expression: (ctx: Context, expr: ast.Expression, node_id: NodeId?, generics: Generics?) -> TyId<any>
 
-local function path_to_segments(path: ast.Path): { string }
+local function path_node_to_segments(path: ast.Path): { string }
 	local segments: { string } = {}
 	for _, segment in path.segments do
 		table.insert(segments, segment.value)
@@ -63,8 +63,8 @@ local function path_to_segments(path: ast.Path): { string }
 	return segments
 end
 
-local function path_to_string(path: ast.Path): string
-	return table.concat(path_to_segments(path), ".")
+local function path_node_to_string(path: ast.Path): string
+	return table.concat(path_node_to_segments(path), ".")
 end
 
 local function store_node(ctx: Context, node: Node): NodeId
@@ -370,7 +370,7 @@ local function ty_reference(ctx: Context, expr: ast.ExprReference, node_id: Node
 
 	-- Phase 1:
 	if ctx.generics then
-		local path_string = path_to_string(expr.path)
+		local path_string = path_node_to_string(expr.path)
 		local generic_ty_id = ctx.generics.values[path_string]
 		if generic_ty_id then
 			local node = hir.node_from_id(ctx.hir, node_id)
@@ -383,7 +383,7 @@ local function ty_reference(ctx: Context, expr: ast.ExprReference, node_id: Node
 	end
 
 	-- Phase 2:
-	local path_segments = path_to_segments(expr.path)
+	local path_segments = path_node_to_segments(expr.path)
 	local decl_node = symbols.search(ctx.symbols, path_segments)
 	if decl_node == nil or decl_node.kind ~= "type" then
 		return report.unknown_reference(expr)
@@ -463,13 +463,9 @@ function expression(
 	elseif expr.kind == "optional" then
 		new_ty = ty_optional(ctx, expr)
 	elseif expr.kind == "reference" then
-		local path = path_to_string(expr.path)
-		local primitive = (primitives :: { [string]: any? })[path]
-		if primitive then
-			new_ty = ty_primitive(ctx, expr, path)
-		else
-			new_ty = ty_reference(ctx, expr, node_id)
-		end
+		local str_path = path_node_to_string(expr.path)
+		local primitive = (primitives :: { [string]: any? })[str_path]
+		new_ty = if primitive then ty_primitive(ctx, expr, str_path) else ty_reference(ctx, expr, node_id)
 	elseif expr.kind == "identifier" then
 		new_ty = ty_string_literal(ctx, expr :: any)
 	else
