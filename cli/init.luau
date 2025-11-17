@@ -89,6 +89,7 @@ local function on_compile(context: Context)
 	for _, target in targets :: { [string]: index<typeof(targets), keyof<typeof(targets)>> } do
 		assert(target)
 		local output_path = path.join(input_directory, target.path)
+		output_path = path.with_extension(output_path, "luau")
 		write_with_logging(output_path, target.contents)
 	end
 end
