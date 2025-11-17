@@ -72,18 +72,18 @@ local function check_map(hir: Hir, ty: ty.Map)
 	end
 end
 
-local function check_intersection(hir: Hir, ty: ty.Intersection)
+local function check_union(hir: Hir, ty: ty.Union)
 	local left = ty_from_id(hir, ty.left)
 	local right = ty_from_id(hir, ty.right)
 
 	left = follow(hir, left)
 	right = follow(hir, right)
 
-	if left.kind ~= "struct" and left.kind ~= "intersection" then
+	if left.kind ~= "struct" and left.kind ~= "union" then
 		--TODO: Remove cast (Luau bug)
 		local node = node_from_ty_id(hir, ty.left :: TyId)
 		report.invalid_intersection(node, left.kind, left.kind, right.kind)
-	elseif right.kind ~= "struct" and right.kind ~= "intersection" then
+	elseif right.kind ~= "struct" and right.kind ~= "union" then
 		--TODO: Remove cast (Luau bug)
 		local node = node_from_ty_id(hir, ty.right :: TyId)
 		report.invalid_intersection(node, right.kind, left.kind, right.kind)
@@ -134,7 +134,7 @@ local function check_ty(hir: Hir, ty: ty.Ty)
 	if ty.kind == "map" then
 		check_map(hir, ty)
 	elseif ty.kind == "union" then
-		check_intersection(hir, ty)
+		check_union(hir, ty)
 	elseif ty.kind == "vector" then
 		check_vector(hir, ty)
 	elseif ty.kind == "cframe" then

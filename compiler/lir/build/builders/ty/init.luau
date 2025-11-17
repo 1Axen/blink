@@ -430,17 +430,12 @@ builders = {
 		end,
 	}),
 
-	intersection = table.freeze({
-		read = function(
-			props: ReadProps,
-			block: Builder,
-			intersection: ty.Intersection,
-			into: LValue<any>?
-		): Register<any>
+	union = table.freeze({
+		read = function(props: ReadProps, block: Builder, union: ty.Union, into: LValue<any>?): Register<any>
 			local register: Register<any> = block:store(structure.struct({}))
 
-			read_ty_id(props, block, intersection.left :: TyId, register)
-			read_ty_id(props, block, intersection.right :: TyId, register)
+			read_ty_id(props, block, union.left :: TyId, register)
+			read_ty_id(props, block, union.right :: TyId, register)
 
 			if into then
 				return block:store(register, into)
@@ -448,9 +443,9 @@ builders = {
 
 			return register
 		end,
-		write = function(props: WriteProps, block: Builder, intersection: ty.Intersection, value: RValue<any>): ()
-			write_ty_id(props, block, intersection.left :: TyId, value)
-			write_ty_id(props, block, intersection.right :: TyId, value)
+		write = function(props: WriteProps, block: Builder, union: ty.Union, value: RValue<any>): ()
+			write_ty_id(props, block, union.left :: TyId, value)
+			write_ty_id(props, block, union.right :: TyId, value)
 		end,
 	}),
 }

@@ -35,7 +35,7 @@ export type Token =
 	| TokenBase<"=">
 	| TokenBase<":">
 	| TokenBase<",">
-	| TokenBase<"&">
+	| TokenBase<"|">
 	| TokenBase<"?">
 	| TokenBase<"..">
 	--> delimiters
@@ -277,8 +277,8 @@ local function tokenize(input: file.File): { Token }
 			end
 
 			return create_token(".", value_span)
-		elseif first == string.byte("&") then
-			return create_token("&", value_span)
+		elseif first == string.byte("|") then
+			return create_token("|", value_span)
 		elseif first == string.byte("@") then
 			return create_token("@", value_span)
 		end

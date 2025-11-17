@@ -271,21 +271,21 @@ local function create_array(of: TyId, size: Range?): Array
 end
 
 --stylua: ignore
-export type IntersectionSide = 
+export type UnionSide = 
+	| Union
 	| Struct 
 	| Optional 
 	| GenericType 
-	| Intersection
 
-export type Intersection = {
-	read kind: "intersection",
-	read left: TyId<IntersectionSide>,
-	read right: TyId<IntersectionSide>,
+export type Union = {
+	read kind: "union",
+	read left: TyId<UnionSide>,
+	read right: TyId<UnionSide>,
 }
 
-local function create_intersection(left: TyId<IntersectionSide>, right: TyId<IntersectionSide>): Intersection
+local function create_union(left: TyId<UnionSide>, right: TyId<UnionSide>): Union
 	return {
-		kind = "intersection",
+		kind = "union",
 		left = left,
 		right = right,
 	}
@@ -428,7 +428,7 @@ export type Ty =
     | Optional
     | UnitEnum
     | TaggedEnum
-    | Intersection
+    | Union
     | Unknown
 
     | Generic
@@ -477,7 +477,7 @@ return table.freeze({
 	optional = create_optional,
 	unit_enum = create_unit_enum,
 	tagged_enum = create_tagged_enum,
-	intersection = create_intersection,
+	union = create_union,
 	unknown = create_unknown,
 
 	generic = create_generic,

@@ -659,7 +659,7 @@ local function expr_array(ctx: Context, of: ast.Expression): ast.ExprArray
 end
 
 local function expr_union(ctx: Context, left: ast.Expression): ast.ExprUnion
-	expect(ctx, "&")
+	expect(ctx, "|")
 
 	local node_id = next_node_id(ctx)
 	local right = expression(ctx)
@@ -913,7 +913,7 @@ function expression(ctx: Context): ast.Expression
 	expr = try_wrap_in_optional(ctx, expr)
 
 	--> merge
-	while peek_kind(ctx) == "&" do
+	while peek_kind(ctx) == "|" do
 		expr = expr_union(ctx, expr)
 	end
 

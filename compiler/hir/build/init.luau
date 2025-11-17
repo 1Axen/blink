@@ -327,9 +327,9 @@ local function ty_struct(ctx: Context, expr: ast.ExprStruct): ty.Struct
 	return ty.struct(fields)
 end
 
-local function ty_intersection(ctx: Context, expr: ast.ExprUnion): ty.Intersection
-	local left = expression(ctx, expr.left) :: TyId<ty.IntersectionSide>
-	local right = expression(ctx, expr.right) :: TyId<ty.IntersectionSide>
+local function ty_union(ctx: Context, expr: ast.ExprUnion): ty.Union
+	local left = expression(ctx, expr.left) :: TyId<ty.UnionSide>
+	local right = expression(ctx, expr.right) :: TyId<ty.UnionSide>
 	return ty.intersection(left, right)
 end
 
@@ -450,7 +450,7 @@ function expression(
 	elseif expr.kind == "array" then
 		new_ty = ty_array(ctx, expr)
 	elseif expr.kind == "union" then
-		new_ty = ty_intersection(ctx, expr)
+		new_ty = ty_union(ctx, expr)
 	elseif expr.kind == "string" then
 		new_ty = ty_string_literal(ctx, expr)
 	elseif expr.kind == "struct" then
