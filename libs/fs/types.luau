@@ -4,9 +4,13 @@ local result = require("@util/result")
 
 type Path = path.Path
 type File = file.File
-type Result<T, E> = result.Result<T, E>
 
-export type IOError = "IOError"
+export type IOError = {
+	kind: "IOError",
+	message: string,
+}
+
+export type Result<T = nil> = result.Result<T, IOError>
 
 export type WriteOptions = {
 	overwrite: boolean?,
@@ -16,9 +20,8 @@ export type MetadataPermissions = {
 	read_only: boolean,
 }
 
-export type Metadata = { exists: false } | {
-	exists: true,
-	kind: "file" | "dir" | "symlink",
+export type Metadata = {
+	kind: "block" | "char" | "file" | "fifo" | "dir" | "link" | "socket" | "unknown",
 	created_at: number?,
 	modified_at: number?,
 	accessed_at: number?,
@@ -26,22 +29,31 @@ export type Metadata = { exists: false } | {
 }
 
 export type API = {
-	read_file: (target: Path) -> Result<File, IOError>,
-	read_directory: (target: Path) -> Result<{ string }, IOError>,
+	read_file: (path: Path) -> Result<File>,
+	read_directory: (path: Path) -> Result<{ string }>,
 
-	write_file: (target: Path, file: File) -> Result<nil, IOError>,
-	write_directory: (target: Path) -> Result<nil, IOError>,
+	write_file: (path: Path, file: File) -> Result,
+	write_directory: (path: Path) -> Result,
 
-	remove_file: (target: Path) -> Result<nil, IOError>,
-	remove_directory: (target: Path) -> Result<nil, IOError>,
+	remove_file: (path: Path) -> Result,
+	remove_directory: (path: Path) -> Result,
 
-	is_file: (target: Path) -> Result<boolean, IOError>,
-	is_directory: (target: Path) -> Result<boolean, IOError>,
+	is_file: (path: Path) -> boolean,
+	is_directory: (path: Path) -> boolean,
 
-	metadata: (target: Path) -> Result<Metadata, IOError>,
+	metadata: (target: Path) -> Result<Metadata>,
 
-	move: (from: Path, to: Path, options: WriteOptions?) -> Result<nil, IOError>,
-	copy: (from: Path, to: Path, options: WriteOptions?) -> Result<nil, IOError>,
+	move: (from: Path, to: Path, options: WriteOptions?) -> Result,
+	copy: (from: Path, to: Path, options: WriteOptions?) -> Result,
 }
 
-return nil
+local function io_error(message: string): result.Error<IOError>
+	return result.err({
+		kind = "IOError" :: "IOError",
+		message = message,
+	})
+end
+
+return table.freeze({
+	io_error = io_error,
+})

@@ -1,56 +1,54 @@
 local file = require("@util/file")
 local panic = require("@util/panic")
 local path = require("@util/path")
-local result = require("@util/result")
 
 local types = require("./types")
 
 type Path = path.Path
 type File = file.File
-type Result<T, E> = result.Result<T, E>
-type IOError = types.IOError
+type Result<T = nil> = types.Result<T>
 
-local function read_file(target: Path): Result<File, IOError>
+local function read_file(target: Path): Result<File>
 	return panic("Unimplemented")
 end
 
-local function read_directory(target: Path): Result<{ string }, IOError>
+local function read_directory(target: Path): Result<{ string }>
 	return panic("Unimplemented")
 end
 
-local function write_file(target: Path, target_file: File): Result<nil, IOError>
+local function write_file(target: Path, target_file: File): Result
 	return panic("Unimplemented")
 end
 
-local function write_directory(target: Path): Result<nil, IOError>
+local function write_directory(target: Path): Result
 	return panic("Unimplemented")
 end
 
-local function remove_file(target: Path): Result<nil, IOError>
+local function remove_file(target: Path): Result
 	return panic("Unimplemented")
 end
 
-local function remove_directory(target: Path): Result<nil, IOError>
+local function remove_directory(target: Path): Result
 	return panic("Unimplemented")
 end
 
-local function is_file(target: Path): Result<boolean, IOError>
+local function is_file(target: Path): boolean
 	return panic("Unimplemented")
 end
 
-local function is_directory(target: Path): Result<boolean, IOError>
+local function is_directory(target: Path): boolean
 	return panic("Unimplemented")
 end
 
-local function metadata(target: Path): Result<types.Metadata, IOError>
+local function metadata(target: Path): Result<types.Metadata>
 	return panic("Unimplemented")
 end
 
-local function move(from: Path, to: Path, options: types.WriteOptions?): Result<nil, IOError>
+local function move(from: Path, to: Path, options: types.WriteOptions?): Result
 	return panic("Unimplemented")
 end
 
-local function copy(from: Path, to: Path, options: types.WriteOptions?): Result<nil, IOError>
+local function copy(from: Path, to: Path, options: types.WriteOptions?): Result
 	return panic("Unimplemented")
 end
 
