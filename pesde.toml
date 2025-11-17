@@ -1,0 +1,15 @@
+name = "1axen/blink"
+version = "0.1.0"
+description = "An IDL for defining structured data that compiles to fast Luau buffer serdes."
+authors = ["1Axen"]
+repository = "https://github.com/1Axen/blink"
+license = "MIT"
+
+[target]
+environment = "luau"
+
+[indices]
+default = "https://github.com/pesde-pkg/index"
+
+[dev_dependencies]
+cli_builder = { name = "4x8matrix/cli_builder", version = "^0.1.0-dev.1" }

@@ -14,8 +14,10 @@ local fs = require("@util/fs")
 local import_resolver = require("@util/import_resolver")
 local panic = require("@util/panic")
 local path = require("@util/path")
+local result = require("@util/result")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 local symbols = require("@compiler/symbols")
+local typeforge = require("@util/typeforge")
 
 local md5 = require("@vendor/md5")
 
@@ -34,9 +36,10 @@ type Context = {
 	directory: Path,
 }
 
-export type Targets = {
-	[Target]: string?,
-}
+export type Targets = typeforge.StringUnionToStruct<Target, {
+	path: Path,
+	contents: string,
+}?>
 
 export type Options = {
 	profile: Profile,
@@ -50,13 +53,22 @@ export type Timings = {
 	total: number,
 }
 
-export type Result = {
+export type Output = {
 	hir: hir.Hir,
 	lir: lir.Lir,
 	files: FilesMap,
 	timings: Timings,
 	targets: Targets,
 }
+
+type IOError = fs.IOError
+
+--stylua: ignore
+export type CompilationError = 
+	| IOError
+
+type Result<T, E> = result.Result<T, E>
+export type CompilationResult = Result<Output, CompilationError>
 
 local function report_unknown_import(err: import_resolver.UnknownImport, expr: ast.ExprString): never
 	return diagnostics.report
@@ -238,26 +250,37 @@ local function compile_from_path(entry_path: Path, compiler_options: Options): C
 	local codegen_pin = os.clock()
 	local targets: Targets = {}
 	do
-		-- local entry_options = files_hir.options[0]
-		-- if entry_options.shared_output then
-		-- 	targets.shared = codegen.from_lir(files_lir, "shared")
-		-- end
-		-- if entry_options.client_output then
-		-- 	targets.client = codegen.from_lir(files_lir, "client")
-		-- end
-		-- if entry_options.server_output then
-		-- 	targets.server = codegen.from_lir(files_lir, "server")
-		-- end
-
-		local props: codegen.Props = {
+		local codegen_props: codegen.Props = {
 			lir = files_lir,
 			hash = md5(tostring(os.clock())),
 			profile = compiler_options.profile,
 		}
 
-		targets.shared = codegen.from_lir(props, "shared")
-		targets.server = codegen.from_lir(props, "server")
-		targets.client = codegen.from_lir(props, "client")
+		local entry_options = files_hir.options[0]
+		if entry_options == nil then
+			return panic("Unable to retrieve the entry file's options")
+		end
+
+		if entry_options.types_output then
+			targets.types = {
+				path = path.from_string(entry_options.types_output),
+				contents = codegen.from_lir(codegen_props, "types"),
+			}
+		end
+
+		if entry_options.client_output then
+			targets.client = {
+				path = path.from_string(entry_options.client_output),
+				contents = codegen.from_lir(codegen_props, "client"),
+			}
+		end
+
+		if entry_options.server_output then
+			targets.server = {
+				path = path.from_string(entry_options.server_output),
+				contents = codegen.from_lir(codegen_props, "server"),
+			}
+		end
 	end
 	local codegen_elapsed = (os.clock() - codegen_pin)
 
@@ -269,20 +292,15 @@ local function compile_from_path(entry_path: Path, compiler_options: Options): C
 		total = (ast_elapsed + hir_elapsed + lir_elapsed + codegen_elapsed),
 	}
 
-	return {
+	return result.ok({
 		lir = files_lir,
 		hir = files_hir,
 		files = files,
 		timings = timings,
 		targets = targets,
-	}
-end
-
-local function compile_from_snippet(snippet: string, options: Options): boolean
-	return true
+	})
 end
 
 return table.freeze({
 	compile_from_path = compile_from_path,
-	compile_from_snippet = compile_from_snippet,
 })
