@@ -95,17 +95,17 @@ type player_data = struct {
     finished_levels: u8[0..100],
 }
 
-type game_flags = set {
-    FallDamage,
-    PlayerDamage,
-    FriendlyDamage,
+type game_flags = struct {
+    FallDamage: boolean,
+    PlayerDamage: boolean,
+    FriendlyDamage: boolean,
 }
 
 @bitpack
-type game_flags_packet = set {
-    FallDamage,
-    PlayerDamage,
-    FriendlyDamage,
+type game_flags_packet = struct {
+    FallDamage: boolean,
+    PlayerDamage: boolean,
+    FriendlyDamage: boolean,
 }
 
 type leaderboard = map {[f64]: u16}(10)

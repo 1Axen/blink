@@ -280,15 +280,6 @@ local function ty_primitive(ctx: Context, expr: ast.ExprReference, path: string)
 	return panic(`Unhandled primitive "{path}"`)
 end
 
-local function ty_set(ctx: Context, expr: ast.ExprSet): ty.Set
-	local items: { ty.StringLiteral } = {}
-	for _, value in expr.values do
-		table.insert(items, ty_string_literal(ctx, value :: ast.ExprString))
-	end
-
-	return ty.set(items)
-end
-
 local function ty_map(ctx: Context, expr: ast.ExprMap): ty.Map
 	local index = expression(ctx, expr.index)
 	local value = expression(ctx, expr.value)
@@ -451,9 +442,7 @@ function expression(
 
 	--> process node
 	local new_ty: Ty
-	if expr.kind == "set" then
-		new_ty = ty_set(ctx, expr)
-	elseif expr.kind == "map" then
+	if expr.kind == "map" then
 		new_ty = ty_map(ctx, expr)
 	elseif expr.kind == "enum" then
 		new_ty = ty_unit_enum(ctx, expr)

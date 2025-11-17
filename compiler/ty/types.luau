@@ -214,18 +214,6 @@ end
 
 -- blink types
 
-export type Set = {
-	read kind: "set",
-	read items: { StringLiteral },
-}
-
-local function create_set(items: { StringLiteral }): Set
-	return {
-		kind = "set",
-		items = items,
-	}
-end
-
 export type Map = {
 	read kind: "map",
 	read size: Range?,
@@ -434,7 +422,6 @@ export type Ty =
     | DateTime
     | DateTimeMillis
 
-    | Set
     | Map
     | Array
     | Struct
@@ -484,7 +471,6 @@ return table.freeze({
 	date_time = create_date_time,
 	date_time_millis = create_date_time_millis,
 
-	set = create_set,
 	map = create_map,
 	array = create_array,
 	struct = create_struct,

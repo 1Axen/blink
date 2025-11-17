@@ -14,7 +14,6 @@ export type Token =
 	--> words
 	| TokenBase<"word">
 	| TokenBase<"as">
-	| TokenBase<"set">
 	| TokenBase<"map">
 	| TokenBase<"enum">
 	| TokenBase<"type">
@@ -190,8 +189,7 @@ local function tokenize(input: file.File): { Token }
 			local value_span = span.create(start, finish, id)
 
 			if
-				value == "set"
-				or value == "as"
+				value == "as"
 				or value == "map"
 				or value == "type"
 				or value == "enum"

@@ -134,15 +134,6 @@ local function fmt_field(ty: ty.Field): string
 	return `{ty.name}: {fmt_ty_id(ty.value)}`
 end
 
-local function fmt_set(ty: ty.Set): string
-	local items = {}
-	for index, literal in ty.items do
-		items[index] = literal.value
-	end
-
-	return `{PRIMITIVE_STYLE("set")} \{"{table.concat(items, '", ')}"\}`
-end
-
 local function fmt_map(ty: ty.Map): string
 	return `{PRIMITIVE_STYLE("map")} \{[{fmt_ty_id(ty.index)}]: {fmt_ty_id(ty.value)}\}{fmt_opt_range(ty.size)}`
 end
@@ -212,9 +203,7 @@ local function fmt_generic_type(ty: ty.GenericType): string
 end
 
 function fmt_ty(ty: ty.Ty): string
-	if ty.kind == "set" then
-		return fmt_set(ty)
-	elseif ty.kind == "map" then
+	if ty.kind == "map" then
 		return fmt_map(ty)
 	elseif ty.kind == "array" then
 		return fmt_array(ty)

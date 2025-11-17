@@ -90,14 +90,6 @@ export type ExprField = {
 	read value: Expression,
 }
 
---- set { text }
-export type ExprSet = {
-	read id: NodeId,
-	read span: vector,
-	read kind: "set",
-	read values: { Identifier | ExprString },
-}
-
 --- map {[index]: value}
 export type ExprMap = {
 	read id: NodeId,
@@ -201,7 +193,6 @@ export type ExprReference = {
 }
 
 export type Expression =
-	| ExprSet
 	| ExprMap
 	| ExprEnum
 	| ExprArray

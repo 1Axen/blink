@@ -69,20 +69,6 @@ local function expr_reference(ctx: Context, expr: ast.ExprReference): never?
 	return nil
 end
 
-local function expr_set(ctx: Context, expr: ast.ExprSet): never?
-	local entries: { [string]: report.Entry } = {}
-	for _, entry in expr.values do
-		local previous = entries[entry.value]
-		if previous then
-			return report.duplicate_entry(expr, previous, entry)
-		end
-
-		entries[entry.value] = entry
-	end
-
-	return nil
-end
-
 local function expr_map(ctx: Context, expr: ast.ExprMap): never?
 	expression(ctx, expr.index)
 	expression(ctx, expr.value)
@@ -268,8 +254,6 @@ function expression(ctx: Context, expr: ast.Expression)
 
 	if expr.kind == "map" then
 		expr_map(ctx, expr)
-	elseif expr.kind == "set" then
-		expr_set(ctx, expr)
 	elseif expr.kind == "array" then
 		expr_array(ctx, expr)
 	elseif expr.kind == "enum" then

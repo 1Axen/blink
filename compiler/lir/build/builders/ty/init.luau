@@ -224,7 +224,6 @@ local function write_ty_id(props: WriteProps, block: Builder, ty_id: TyId, value
 end
 
 builders = {
-	set = require("@self/luau/set"),
 	unit_enum = require("@self/luau/unit_enum"),
 
 	buffer = require("@self/luau/buffer"),

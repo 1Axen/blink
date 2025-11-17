@@ -485,22 +485,6 @@ local function expr_map(ctx: Context): ast.ExprMap
 	}
 end
 
-local function expr_set(ctx: Context): ast.ExprSet
-	local node_id = next_node_id(ctx)
-	local keyword = expect(ctx, "set")
-	expect(ctx, "{")
-
-	local values = seperated(ctx, string_or_identifier, ",", "}")
-	local close = expect(ctx, "}")
-
-	return {
-		id = node_id,
-		span = span.merge(keyword.span, close.span),
-		kind = "set",
-		values = values,
-	}
-end
-
 local function expr_enum_unit_variant(ctx: Context): ast.ExprUnitEnumVariant
 	local token = peek(ctx)
 	if token.kind == "string" then
@@ -895,8 +879,6 @@ function expression(ctx: Context): ast.Expression
 		expr = expr_reference(ctx)
 	elseif token.kind == "map" then
 		expr = expr_map(ctx)
-	elseif token.kind == "set" then
-		expr = expr_set(ctx)
 	elseif token.kind == "enum" then
 		expr = expr_enum(ctx)
 	elseif token.kind == "struct" then
