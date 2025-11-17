@@ -174,7 +174,7 @@ local function file_to_files_map(entry_file: File, entry_path: Path): FilesMap
 		end
 
 		local import_symbols = process_file(import_file, import_path)
-		symbols.reference(ctx.symbols, import_symbols, import_name :: string)
+		symbols.reference(ctx.symbols, import_symbols, import_name)
 
 		return nil
 	end
