@@ -1,3 +1,7 @@
+option types_output = "../out/output_types"
+option client_output = "../out/output_client"
+option server_output = "../out/output_server"
+
 type foo = u16
 
 event reliable {

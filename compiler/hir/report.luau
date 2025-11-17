@@ -275,6 +275,75 @@ local function report_cannot_represent_vector_axis(expr: ast.Node): never
 		.error()
 end
 
+local function report_unknown_option(stat: ast.StatOption): never
+	local name = stat.name
+	return diagnostics.report
+		.create("Error")
+		.with_code(codes.analysis.UnknownOption)
+		.with_message(`Unknown option "{name.value}"`)
+		.with_label(
+			diagnostics.label
+				.create(name.span)
+				.with_color(diagnostics.style.color.red)
+				.with_message(`"{name.value}" is not a valid option`)
+		)
+		.finish()
+		.error()
+end
+
+local function report_duplicate_option(caster: ast.StatOption, shaded: ast.StatOption): never
+	return diagnostics.report
+		.create("Error")
+		.with_code(codes.analysis.DuplicateOption)
+		.with_message(`Duplicate option declaration`)
+		.with_label(
+			diagnostics.label
+				.create(caster.span)
+				.with_color(diagnostics.style.color.red)
+				.with_message("Duplicate declaration here")
+		)
+		.with_label(
+			diagnostics.label
+				.create(shaded.span)
+				.with_color(diagnostics.style.color.cyan)
+				.with_message("Previously declared here")
+		)
+		.finish()
+		.error()
+end
+
+local function report_invalid_option_type(stat: ast.StatOption, expected_kind: string): never
+	local value_expr = stat.value
+	return diagnostics.report
+		.create("Error")
+		.with_code(codes.analysis.InvalidOption)
+		.with_message(`Option "{stat.name.value}" expects a value of kind "{expected_kind}"`)
+		.with_label(
+			diagnostics.label
+				.create(value_expr.span)
+				.with_color(diagnostics.style.color.red)
+				.with_message(`Expected a value of kind "{expected_kind}", got "{value_expr.kind}" instead`)
+		)
+		.finish()
+		.error()
+end
+
+local function report_invalid_option_value(stat: ast.StatOption, expected_values: { any }): never
+	local possible_values = `"{table.concat(expected_values, '", ')}"`
+	return diagnostics.report
+		.create("Error")
+		.with_code(codes.analysis.InvalidOption)
+		.with_message(`Option "{stat.name.value}" expects one of {possible_values}`)
+		.with_label(
+			diagnostics.label
+				.create(stat.value.span)
+				.with_color(diagnostics.style.color.red)
+				.with_message(`Replace with one of {possible_values}`)
+		)
+		.finish()
+		.error()
+end
+
 return table.freeze({
 	expect = report_expect,
 	expect_one_of = report_expect_one_of,
@@ -297,4 +366,9 @@ return table.freeze({
 	invalid_attribute = report_invalid_attribute,
 	few_attribute_parameters = report_few_attribute_parameters,
 	extra_attribute_parameters = report_extra_attribute_parameters,
+
+	unknown_option = report_unknown_option,
+	duplicate_option = report_duplicate_option,
+	invalid_option_type = report_invalid_option_type,
+	invalid_option_value = report_invalid_option_value,
 })

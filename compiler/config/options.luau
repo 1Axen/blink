@@ -1,19 +1,50 @@
 local ast = require("@ast/types")
+local typeforge = require("@util/typeforge")
+
+type StringSingletonToType<T> = typeforge.StringSingletonToType<T>
+
+type function MakeOptionsReal(options: type)
+	local props = {}
+	for key, property in options:properties() do
+		local value = assert(property.read)
+		local kind = value:readproperty(types.singleton("kind"))
+		if kind == nil then
+			error(`Expected option "{key}" to have a "kind" field.`)
+		end
+
+		local key_type = StringSingletonToType(kind)
+		local values = value:readproperty(types.singleton("values"))
+		if values then
+			assert(values:is("table"), 'Expected "values" field to be an array')
+
+			local indexer = assert(values:indexer())
+			key_type = assert(indexer.readresult)
+		end
+
+		props[key] = types.unionof(key_type, types.singleton(nil))
+	end
+
+	return types.newtable(props)
+end
 
 export type Option = {
-	kind: ast.ExprKind,
+	kind: index<ast.ExprLiteral, "kind">,
 	values: { string | number | boolean }?,
 }
 
-local options: { [string]: Option } = {
+local options = {
 	typescript = { kind = "boolean" :: "boolean" },
-	shared_output = { kind = "string" :: "string" },
+	types_output = { kind = "string" :: "string" },
 	client_output = { kind = "string" :: "string" },
 	server_output = { kind = "string" :: "string" },
 
 	casing = {
 		kind = "string" :: "string",
-		values = { "PascalCase", "camelCase", "snake_case" },
+		values = {
+			"PascalCase" :: "PascalCase",
+			"camelCase" :: "camelCase",
+			"snake_case" :: "snake_case",
+		},
 	},
 
 	future_library = { kind = "string" :: "string" },
@@ -24,29 +55,6 @@ local options: { [string]: Option } = {
 	manual_replication = { kind = "boolean" :: "boolean" },
 }
 
-export type FileOptions = {
-	-- Ignored
-	typescript: boolean?,
-	shared_output: string?,
-	client_output: string?,
-	server_output: string?,
+export type FileOptions = MakeOptionsReal<typeof(options)>
 
-	--- The casing of the user facing interface
-	--- Defaults to "snake_case"
-	casing: "PascalCase" | "camelCase" | "snake_case",
-
-	--- Path from the output files to the future library
-	future_library: string?,
-	--- Path from the output files to the promise library
-	promise_library: string?,
-
-	--- Default poll value of events
-	--- Defaults to `false`
-	polling: boolean?,
-	--- The name of the folder containing the remote events
-	remote_folder: string?,
-	--- Manual event loop control
-	manual_replication: boolean?,
-}
-
-return table.freeze(options)
+return table.freeze(options :: { [string]: Option })

@@ -76,7 +76,7 @@ export type Hir = {
 	read scopes: { [ScopeId]: Scope },
 
 	--- [file_id]: FileOptions
-	read options: { [number]: options.FileOptions },
+	read options: { [number]: options.FileOptions? },
 }
 
 local function ty_from_id<T>(hir: Hir, ty_id: TyId<T>): T

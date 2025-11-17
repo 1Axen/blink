@@ -812,7 +812,7 @@ local function stat_option(ctx: Context): ast.StatOption
 	local name = identifier(ctx)
 
 	local _assign = expect(ctx, "=")
-	local value = expression(ctx)
+	local value = expr_literal(ctx)
 	local stat_span = span.merge(keyword.span, value.span)
 
 	return {

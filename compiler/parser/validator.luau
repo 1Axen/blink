@@ -6,7 +6,6 @@ local id = require("@compiler/id")
 
 local ast = require("@ast/types")
 local codes = require("@config/codes")
-local options = require("@config/options")
 local primitives = require("@config/primitives")
 
 local diagnostics = require("@util/diagnostics")
@@ -32,29 +31,6 @@ local DUMMY_ID = id.DUMMY_ID
 local block: (ctx: Context, block: ast.Block, name: string) -> ()
 local statement: (ctx: Context, statement: ast.Statement) -> ()
 local expression: (ctx: Context, expression: ast.Expression) -> ()
-
-local function as_literal(expr: ast.Expression): Literal | never
-	if expr.kind == "string" then
-		return expr.value :: string
-	elseif expr.kind == "number" then
-		return expr.value :: number
-	elseif expr.kind == "boolean" then
-		return expr.value :: boolean
-	end
-
-	return diagnostics.report
-		.create("Error")
-		.with_code(codes.parser.SyntaxError)
-		.with_message(`Expected one of string, number, boolean; got "{expr.kind}" instead`)
-		.with_label(
-			diagnostics.label
-				.create((expr :: ast.Expression).span)
-				.with_color(diagnostics.style.color.red)
-				.with_message("Expected one of string, number, boolean")
-		)
-		.finish()
-		.error()
-end
 
 local function assert_id(node: ast.Node)
 	if node.id == DUMMY_ID then
@@ -275,61 +251,6 @@ local function stat_import(ctx: Context, stat: ast.StatImport): never?
 	return nil
 end
 
-local function stat_option(ctx: Context, stat: ast.StatOption): never?
-	local name = stat.name
-	local value = stat.value
-
-	local opt_config = options[name.value]
-	if opt_config == nil then
-		return diagnostics.report
-			.create("Error")
-			.with_code(codes.analysis.UnknownOption)
-			.with_message(`Unknown option "{name.value}"`)
-			.with_label(
-				diagnostics.label
-					.create(name.span)
-					.with_color(diagnostics.style.color.red)
-					.with_message(`"{name.value}" is not a valid option`)
-			)
-			.finish()
-			.error()
-	end
-
-	if value.kind ~= opt_config.kind then
-		return diagnostics.report
-			.create("Error")
-			.with_code(codes.analysis.InvalidOption)
-			.with_message(`Option "{name}" expects a value of kind "{opt_config.kind}"`)
-			.with_label(
-				diagnostics.label
-					.create(value.span)
-					.with_color(diagnostics.style.color.red)
-					.with_message(`Expected a value of kind "{opt_config.kind}", got "{value.kind}" instead`)
-			)
-			.finish()
-			.error()
-	end
-
-	local literal = as_literal(value)
-	if opt_config.values and table.find(opt_config.values, literal) == nil then
-		local possible_values = `"{table.concat(opt_config.values, '", ')}"`
-		return diagnostics.report
-			.create("Error")
-			.with_code(codes.analysis.InvalidOption)
-			.with_message(`Option "{name}" expects one of {possible_values}`)
-			.with_label(
-				diagnostics.label
-					.create(value.span)
-					.with_color(diagnostics.style.color.red)
-					.with_message(`Replace with one of {possible_values}`)
-			)
-			.finish()
-			.error()
-	end
-
-	return nil
-end
-
 local function stat_function(ctx: Context, stat: ast.StatFunction)
 	local data = stat.data
 	if data ~= nil then
@@ -375,8 +296,6 @@ function statement(ctx: Context, stat: ast.Statement)
 		stat_event(ctx, stat)
 	elseif stat.kind == "scope" then
 		block(ctx, stat.body, (stat.name :: ast.Identifier).value)
-	elseif stat.kind == "option" then
-		stat_option(ctx, stat)
 	elseif stat.kind == "import" then
 		stat_import(ctx, stat)
 	elseif stat.kind == "function" then

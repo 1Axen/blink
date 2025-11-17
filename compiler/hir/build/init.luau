@@ -11,6 +11,7 @@ local ty = require("@ty/types")
 local bounds = require("@config/bounds")
 local primitives = require("@config/primitives")
 
+local options = require("@config/options")
 local panic = require("@util/panic")
 local range = require("@util/range")
 local symbols = require("@compiler/symbols")
@@ -41,6 +42,8 @@ type Generics = {
 type Context = {
 	read hir: Hir,
 	read file_id: number,
+	read options: options.FileOptions,
+	read options_declarations: { [string]: ast.StatOption },
 
 	symbols: Symbols,
 	scope_id: ScopeId,
@@ -636,6 +639,32 @@ local function traverse_block(ctx: Context, block: ast.Block, prev_collection: C
 
 			traverse_block(ctx, body, collection)
 			ctx.scope_id = prev_id
+		elseif stat.kind == "option" then
+			local options_declarations = ctx.options_declarations
+
+			local name = stat.name.value
+			local existing_declaration = options_declarations[name]
+			if existing_declaration then
+				report.duplicate_option(stat, existing_declaration)
+			end
+
+			local option_config = options[name]
+			if option_config == nil then
+				report.unknown_option(stat)
+			end
+
+			local value_expr = stat.value
+			if value_expr.kind ~= option_config.kind then
+				report.invalid_option_type(stat, option_config.kind)
+			end
+
+			local value = value_expr.value
+			if option_config.values and table.find(option_config.values, value) == nil then
+				report.invalid_option_value(stat, option_config.values)
+			end
+
+			local file_options = ctx.options :: { [string]: any }
+			file_options[name] = value
 		end
 	end
 
@@ -704,12 +733,17 @@ local function traverse_ast(hirr: Hir, file_id: number, ast: Ast)
 	local scope_id = ast.body.id :: ScopeId
 	local context: Context = {
 		hir = hirr,
+
+		options = {},
+		options_declarations = {},
+
 		symbols = ast.symbols,
 		file_id = file_id,
 		scope_id = ast.body.id :: ScopeId,
 	}
 
 	hirr.scopes[scope_id] = ast.symbols
+	hirr.options[file_id] = context.options
 
 	local collection = traverse_block(context, ast.body)
 	build_tys(context, collection)

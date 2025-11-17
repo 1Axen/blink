@@ -270,7 +270,7 @@ export type StatOption = {
 	read span: vector,
 	read kind: "option",
 	read name: Identifier,
-	read value: Expression,
+	read value: ExprLiteral,
 }
 
 export type StatFunction = {
@@ -318,4 +318,4 @@ export type Ast = {
 	read symbols: Symbols,
 }
 
-return table.freeze({})
+return nil
