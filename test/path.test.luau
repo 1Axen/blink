@@ -119,6 +119,11 @@ return function(tiniest: Tiniest)
 			local dog_jpeg = path.with_file_name(unix_absolute, "Dog", "jpeg")
 			expect(path.to_string(dog_jpeg)).is("/home/john/photos/Dog.jpeg")
 		end)
+
+		test("set extension", function()
+			local cat_png = path.with_extension(unix_absolute, "png")
+			expect(path.to_string(cat_png)).is("/home/john/photos/Cat.png")
+		end)
 	end)
 
 	describe("traversal", function()

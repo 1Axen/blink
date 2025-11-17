@@ -56,11 +56,8 @@ local function string_to_components(path: string): Components
 	return component.from_slices(slices)
 end
 
-local function from_path(path: Path): Path
-	local components = table.clone(path.components)
-	return {
-		components = components,
-	}
+local function clone(path: Path): Path
+	return { components = table.clone(path.components) }
 end
 
 local function from_string(str: string): Path
@@ -117,13 +114,13 @@ local function get_file_extension(self: Path): string?
 end
 
 local function pop(self: Path, index: number): (Path, string?)
-	local path = from_path(self)
+	local path = clone(self)
 	local element = table.remove(path.components, index)
 	return path, element and component.to_string(element) or nil
 end
 
 local function join(left: Path, right: Path): Path
-	local path = from_path(left)
+	local path = clone(left)
 	table.move(right.components, 1, #right.components, #path.components + 1, path.components)
 	return path
 end
@@ -134,7 +131,7 @@ local function parent(self: Path): Path?
 		return nil
 	end
 
-	local path = from_path(self)
+	local path = clone(self)
 	path.components[#path.components] = nil
 
 	return path
@@ -155,11 +152,22 @@ local function strip_file_name(self: Path): Path
 		return self
 	end
 
-	local stripped = from_path(self)
+	local stripped = clone(self)
 	local components = stripped.components
 	table.remove(components, #components)
 
 	return stripped
+end
+
+local function with_extension(self: Path, extension: string): Path
+	local stem = get_file_stem(self)
+	if stem == nil then
+		return self
+	end
+
+	local new_path: Path = clone(self)
+	new_path.components[#new_path.components] = component.from_slice(`{stem}.{extension}`)
+	return new_path
 end
 
 local function with_file_name(self: Path, stem: string, extension: string): Path
@@ -167,7 +175,7 @@ local function with_file_name(self: Path, stem: string, extension: string): Path
 	if get_file_name(self) ~= nil then
 		new_path = strip_file_name(self)
 	else
-		new_path = from_path(self)
+		new_path = clone(self)
 	end
 
 	table.insert(new_path.components, component.from_slice(`{stem}.{extension}`))
@@ -175,7 +183,7 @@ local function with_file_name(self: Path, stem: string, extension: string): Path
 end
 
 local function append_file_name(self: Path, stem: string, extension: string): Path
-	local new_path = from_path(self)
+	local new_path = clone(self)
 	table.insert(new_path.components, component.from_slice(`{stem}.{extension}`))
 	return new_path
 end
@@ -212,6 +220,7 @@ local function to_absolute_path(self: Path): Path
 end
 
 return table.freeze({
+	clone = clone,
 	from_string = from_string,
 
 	file_name = get_file_name,
@@ -224,6 +233,7 @@ return table.freeze({
 
 	starts_with = starts_with,
 
+	with_extension = with_extension,
 	with_file_name = with_file_name,
 	strip_file_name = strip_file_name,
 	append_file_name = append_file_name,
