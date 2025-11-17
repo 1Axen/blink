@@ -582,6 +582,34 @@ local function stat_function(ctx: Context, stat: ast.StatFunction): hir.Function
 	}
 end
 
+local function stat_option(ctx: Context, stat: ast.StatOption)
+	local name = stat.name.value
+	local options_declarations = ctx.options_declarations
+	local existing_declaration = options_declarations[name]
+	if existing_declaration then
+		report.duplicate_option(stat, existing_declaration)
+	end
+
+	local option_config = options[name]
+	if option_config == nil then
+		report.unknown_option(stat)
+	end
+
+	local value_expr = stat.value
+	if value_expr.kind ~= option_config.kind then
+		report.invalid_option_type(stat, option_config.kind)
+	end
+
+	local value = value_expr.value
+	if option_config.values and table.find(option_config.values, value) == nil then
+		report.invalid_option_value(stat, option_config.values)
+	end
+
+	local file_options = ctx.options :: { [string]: any }
+	file_options[name] = value
+	options_declarations[name] = stat
+end
+
 type Collection = {
 	read types: { hir.Type },
 	read events: { hir.Event },
@@ -629,31 +657,7 @@ local function traverse_block(ctx: Context, block: ast.Block, prev_collection: C
 			traverse_block(ctx, body, collection)
 			ctx.scope_id = prev_id
 		elseif stat.kind == "option" then
-			local options_declarations = ctx.options_declarations
-
-			local name = stat.name.value
-			local existing_declaration = options_declarations[name]
-			if existing_declaration then
-				report.duplicate_option(stat, existing_declaration)
-			end
-
-			local option_config = options[name]
-			if option_config == nil then
-				report.unknown_option(stat)
-			end
-
-			local value_expr = stat.value
-			if value_expr.kind ~= option_config.kind then
-				report.invalid_option_type(stat, option_config.kind)
-			end
-
-			local value = value_expr.value
-			if option_config.values and table.find(option_config.values, value) == nil then
-				report.invalid_option_value(stat, option_config.values)
-			end
-
-			local file_options = ctx.options :: { [string]: any }
-			file_options[name] = value
+			stat_option(ctx, stat)
 		end
 	end
 
