@@ -5,9 +5,9 @@ local color = colorful.color
 local OPEN = colorful.color.gray("[")
 local CLOSE = colorful.color.gray("]")
 
-local INFO_PREFIX = `{OPEN}{color.yellow("INFO")}{CLOSE}`
-local ERROR_PREFIX = `{OPEN}{color.red("ERROR")}{CLOSE}`
-local VERBOSE_PREFIX = `{OPEN}{color.magenta("VERBOSE")}{CLOSE}`
+local INFO_PREFIX = `{OPEN}{color.yellow("Info")}{CLOSE}`
+local ERROR_PREFIX = `{OPEN}{color.red("Error")}{CLOSE}`
+local VERBOSE_PREFIX = `{OPEN}{color.magenta("Verbose")}{CLOSE}`
 
 local function print_info(...)
 	local args = { ... }
