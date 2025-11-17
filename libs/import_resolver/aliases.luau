@@ -1,7 +1,6 @@
 local file = require("@util/file")
 local fs = require("@util/fs")
 local luaurc = require("@util/luaurc")
-local option = require("@util/option")
 local path = require("@util/path")
 local result = require("@util/result")
 
@@ -10,26 +9,24 @@ type Result<T, E> = result.Result<T, E>
 export type Aliases = { [string]: Path }
 
 --stylua: ignore
-type ConfigError = 
-    fs.IOError
-    | luaurc.CtorError
+type ParseError = 
+	| fs.IOError
+    | luaurc.ParseError
 
-local function aliases_from_path(path: Path): Result<Aliases, ConfigError>
-	local fs_result = fs.read_file(path)
-	if fs_result.error then
-		return fs_result :: result.Error<fs.IOError>
+local function aliases_from_path(path: Path): Result<Aliases, ParseError>
+	local read_result = fs.read_file(path)
+	if read_result.error then
+		return read_result
 	end
 
-	local json_contents = file.as_string(fs_result.value)
+	local json_contents = file.as_string(read_result.value)
 	local luaurc_result = luaurc.from_json(json_contents)
 	if luaurc_result.error then
-		return result.err(luaurc_result.error :: luaurc.CtorError)
+		return luaurc_result
 	end
 
-	local aliases_opt = luaurc.aliases(luaurc_result.value)
-	local aliases = option.unwrap_or(aliases_opt, {}) :: Aliases
-
-	return result.ok(aliases)
+	local luaurc = luaurc_result.value
+	return result.ok(luaurc.aliases or {})
 end
 
 --- Unimplemented for now
@@ -54,12 +51,12 @@ local function collect_fs_aliases(directory: Path): Aliases
 	end
 
 	while current_directory do
-		if fs.is_directory(current_directory).value ~= true then
+		if not fs.is_directory(current_directory) then
 			break
 		end
 
 		local luaurc_path = path.append_file_name(current_directory, "", "luaurc")
-		if fs.is_file(luaurc_path).value == true then
+		if fs.is_file(luaurc_path) then
 			local aliases_result = aliases_from_path(luaurc_path)
 			if aliases_result.value then
 				local aliases = aliases_result.value :: Aliases

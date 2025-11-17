@@ -14,6 +14,7 @@ local fs = require("@util/fs")
 local import_resolver = require("@util/import_resolver")
 local panic = require("@util/panic")
 local path = require("@util/path")
+local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 local symbols = require("@compiler/symbols")
 
 local md5 = require("@vendor/md5")
@@ -57,16 +58,46 @@ export type Result = {
 	targets: Targets,
 }
 
-local function report_unknown_require(expr: ast.ExprString): never
+local function report_unknown_import(err: import_resolver.UnknownImport, expr: ast.ExprString): never
 	return diagnostics.report
 		.create("Error")
 		.with_code(codes.analysis.InvalidImport)
-		.with_message(`Unknown import: "{expr.value}"`)
+		.with_message(`Unknown import: "{path.to_string(err.path)}"`)
 		.with_label(
 			diagnostics.label
 				.create(expr.span)
 				.with_color(diagnostics.style.color.red)
-				.with_message("Unknown import, make sure the path is correct.")
+				.with_message("Unable to locate the imported file, make sure the path is correct.")
+		)
+		.finish()
+		.error()
+end
+
+local function report_unknown_alias(err: import_resolver.UnknownAlias, expr: ast.ExprString): never
+	return diagnostics.report
+		.create("Error")
+		.with_code(codes.analysis.InvalidImport)
+		.with_message(`Unknown alias: "@{err.alias}"`)
+		.with_label(
+			diagnostics.label
+				.create(expr.span)
+				.with_color(diagnostics.style.color.red)
+				.with_message("The alias wasn't found in any luaurc files, make sure it's correct.")
+		)
+		.finish()
+		.error()
+end
+
+local function report_import_io_error(err: fs.IOError, expr: ast.ExprString): never
+	return diagnostics.report
+		.create("Error")
+		.with_code(codes.analysis.InvalidImport)
+		.with_message(`Encountered an IO error while importing "{expr.value}": {err.message}.`)
+		.with_label(
+			diagnostics.label
+				.create(expr.span)
+				.with_color(diagnostics.style.color.red)
+				.with_message("Make sure blink has permission to read the import's file contents.")
 		)
 		.finish()
 		.error()
@@ -104,11 +135,16 @@ local function file_to_files_map(entry_file: File, entry_path: Path): FilesMap
 		local import_result = import_resolver.resolve(ctx.directory, import_path)
 
 		if import_result.error then
-			if import_result.error == "IOError" then
-				return panic(`IO error while attempting to import "{path_expr.value}"`)
+			local err = import_result.error
+			if err.kind == "IOError" then
+				return report_import_io_error(err, path_expr)
+			elseif err.kind == "UnknownAlias" then
+				return report_unknown_alias(err, path_expr)
+			elseif err.kind == "UnknownImport" then
+				return report_unknown_import(err, path_expr)
 			end
 
-			return report_unknown_require(path_expr)
+			return strong_exhaustive_match(err.kind)
 		end
 
 		local import = import_result.value
@@ -178,13 +214,13 @@ end
     @param `file_path` - An absolute path to the file which to compile.
 ]=]
 local function compile_from_path(entry_path: Path, compiler_options: Options): Result?
-	local fs_result = fs.read_file(entry_path)
-	if fs_result.error then
+	local entry_file = fs.read_file(entry_path)
+	if entry_file.error then
 		return nil
 	end
 
 	local ast_pin = os.clock()
-	local files = file_to_files_map(fs_result.value, entry_path)
+	local files = file_to_files_map(entry_file.value, entry_path)
 	local ast_elapsed = (os.clock() - ast_pin)
 
 	local hir_pin = os.clock()

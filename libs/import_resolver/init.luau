@@ -18,12 +18,19 @@ type File = file.File
 type Path = path.Path
 type Result<T, E> = result.Result<T, E>
 
-type UnknownAlias = "UnknownAlias"
-type UnknownImport = "UnknownImport"
+export type UnknownAlias = {
+	kind: "UnknownAlias",
+	alias: string,
+}
+
+export type UnknownImport = {
+	kind: "UnknownImport",
+	path: Path,
+}
 
 --stylua: ignore
-type ImportError = 
-    | fs.IOError
+export type ImportError = 
+	| fs.IOError
     | UnknownAlias
     | UnknownImport
 
@@ -53,7 +60,10 @@ local function resolve_fs_import(directory: Path, import: Path): ImportResult
 
 		local replacement: Path? = aliases[alias]
 		if replacement == nil then
-			return result.err("UnknownAlias" :: UnknownAlias)
+			return result.err({
+				kind = "UnknownAlias" :: "UnknownAlias",
+				alias = alias,
+			})
 		end
 
 		-- replace it with the aliased path
@@ -63,28 +73,29 @@ local function resolve_fs_import(directory: Path, import: Path): ImportResult
 	end
 
 	local import_stem = path.file_stem(import)
-	if import_stem == nil then
-		return result.err("UnknownImport" :: UnknownImport)
+	if import_stem then
+		for _, extension in EXTENSIONS do
+			local final_import = path.with_file_name(import, import_stem, extension)
+			if not fs.is_file(final_import) then
+				continue
+			end
+
+			local read_result = fs.read_file(final_import)
+			if read_result.error then
+				return read_result
+			end
+
+			return result.ok({
+				path = final_import,
+				file = read_result.value,
+			})
+		end
 	end
 
-	for _, extension in EXTENSIONS do
-		local final_import = path.with_file_name(import, import_stem, extension)
-		if fs.is_file(final_import).value ~= true then
-			continue
-		end
-
-		local fs_result = fs.read_file(final_import)
-		if fs_result.error then
-			return fs_result
-		end
-
-		return result.ok({
-			path = final_import,
-			file = fs_result.value,
-		})
-	end
-
-	return result.err("UnknownImport" :: UnknownImport)
+	return result.err({
+		kind = "UnknownImport" :: "UnknownImport",
+		path = import,
+	})
 end
 
 --- Resolves a ROBLOX import
