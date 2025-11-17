@@ -4,28 +4,28 @@ option server_output = "../out/output_server"
 
 type foo = u16
 
-event reliable {
+event reliable = {
 	from: Client,
 	type: Reliable,
 	call: Polling,
 	data: (value: u8, foo)
 }
 
-event unreliable {
+event unreliable = {
 	from: Client,
 	type: Unreliable,
 	call: SingleAsync,
 	data: (value: u8, foo)
 }
 
-event unreliable_many {
+event unreliable_many = {
 	from: Client,
 	type: Unreliable,
 	call: ManyAsync,
 	data: (value: u8, foo)
 }
 
-function request {
+function request = {
 	yield: Coroutine,
 	data: string,
 	return: string

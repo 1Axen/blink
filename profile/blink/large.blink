@@ -26,7 +26,7 @@ scope first {
         some_field: u8
     } & c
 
-    event g {
+    event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
@@ -62,7 +62,7 @@ scope second {
         some_field: u8
     } & c
 
-    event g {
+    event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
@@ -98,7 +98,7 @@ scope third {
         some_field: u8
     } & c
 
-    event g {
+    event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
@@ -134,7 +134,7 @@ scope fourth {
         some_field: u8
     } & c
 
-    event g {
+    event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
@@ -170,7 +170,7 @@ scope fifth {
         some_field: u8
     } & c
 
-    event g {
+    event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
@@ -206,7 +206,7 @@ scope sixth {
         some_field: u8
     } & c
 
-    event g {
+    event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
@@ -242,7 +242,7 @@ scope first_a {
         some_field: u8
     } & c
 
-    event g {
+    event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
@@ -278,7 +278,7 @@ scope second_a {
         some_field: u8
     } & c
 
-    event g {
+    event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
@@ -314,7 +314,7 @@ scope third_a {
         some_field: u8
     } & c
 
-    event g {
+    event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
@@ -350,7 +350,7 @@ scope fourth_a {
         some_field: u8
     } & c
 
-    event g {
+    event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
@@ -386,7 +386,7 @@ scope fifth_a {
         some_field: u8
     } & c
 
-    event g {
+    event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
@@ -422,7 +422,7 @@ scope sixth_a {
         some_field: u8
     } & c
 
-    event g {
+    event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,

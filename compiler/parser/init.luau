@@ -744,6 +744,7 @@ local function stat_event(ctx: Context): ast.StatEvent
 
 	local keyword = expect(ctx, "event")
 	local name = identifier(ctx)
+	local _assign = expect(ctx, "=")
 	local open = expect(ctx, "{")
 
 	local event_structure = structure(ctx, {
@@ -815,6 +816,7 @@ local function stat_function(ctx: Context): ast.StatFunction
 
 	local keyword = expect(ctx, "function")
 	local name = identifier(ctx)
+	local _assign = expect(ctx, "=")
 	local open = expect(ctx, "{")
 
 	local function_structure = structure(ctx, {

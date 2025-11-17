@@ -50,14 +50,14 @@ type vector2 = vector<f32, f32, 0>
 type class = "Part"
 type part = Instance<class>
 
-event send {
+event send = {
     from: Server,
     type: Reliable,
     call: SingleSync,
     data: (target: cat, weapon: shotgun)
 }
 
-function request {
+function request = {
     yield: Coroutine,
     data: u8
 }

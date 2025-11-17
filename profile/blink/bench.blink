@@ -1,5 +1,3 @@
-option shared_output = "lol"
-
 type vec3 = vector
 type vec2 = vector<f32, f32, 0>
 type vec1 = vector<f32, 0, 0>
@@ -111,32 +109,32 @@ type game_flags_packet = struct {
 type leaderboard = map {[f64]: u16}(10)
 type player_to_data = map {[f64]: player_data}(0..255)
 
-event purchase_item {
+event purchase_item = {
     from: Client,
     type: Reliable,
     call: SingleSync,
     data: f64
 }
 
-event update_data {
+event update_data = {
     from: Server,
     type: Reliable,
     call: SingleSync,
     data: player_data
 }
 
-function request_data {
+function request_data = {
     yield: Coroutine,
     return: player_data
 }
 
-function request_flags {
+function request_flags = {
     yield: Coroutine,
     return: game_flags
 }
 
 @profile("debug")
-event give_money {
+event give_money = {
     from: Client,
     type: Reliable,
     call: SingleSync,
