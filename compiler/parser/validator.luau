@@ -285,37 +285,14 @@ function statement(ctx: Context, stat: ast.Statement)
 	elseif stat.kind == "function" then
 		stat_function(ctx, stat)
 	end
-
-	local name = stat.name
-	if name == nil then
-		return
-	end
-
-	local existing = symbols.search(ctx.symbols, { name.value })
-	if existing ~= nil then
-		report.shadow(name, existing.name :: ast.Identifier)
-	end
-
-	if stat.kind ~= "scope" then
-		symbols.set(ctx.symbols, name.value, stat)
-	end
 end
 
 function block(ctx: Context, block: ast.Block, name: string?)
 	assert_id(block)
 
-	--> inner symbols
-	local parent = ctx.symbols
-	if name then
-		ctx.symbols = symbols.inner(parent, name)
-	end
-
 	for _, stat in block.statements do
 		statement(ctx, stat)
 	end
-
-	--> restore symbols
-	ctx.symbols = parent
 end
 
 local function validate(ast: Ast)

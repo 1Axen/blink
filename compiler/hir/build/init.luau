@@ -385,6 +385,7 @@ local function ty_reference(ctx: Context, expr: ast.ExprReference, node_id: Node
 	-- Phase 2:
 	local path_segments = path_node_to_segments(expr.path)
 	local decl_node = symbols.search(ctx.symbols, path_segments)
+
 	if decl_node == nil or decl_node.kind ~= "type" then
 		return report.unknown_reference(expr)
 	end
@@ -613,7 +614,7 @@ type Collection = {
 }
 
 local function traverse_block(ctx: Context, block: ast.Block, prev_collection: Collection?): Collection
-	local ctx_hir = ctx.hir
+	local hirr = ctx.hir
 	local collection: Collection = prev_collection or {
 		types = {},
 		events = {},
@@ -626,32 +627,37 @@ local function traverse_block(ctx: Context, block: ast.Block, prev_collection: C
 
 		if stat.kind == "type" then
 			local decl = stat_type(ctx, stat)
-			ctx_hir.types[decl_id] = decl
+			hirr.types[decl_id] = decl
 			table.insert(collection.types, decl)
 		elseif stat.kind == "event" then
 			local decl = stat_event(ctx, stat)
-			ctx_hir.events[decl_id] = decl
+			hirr.events[decl_id] = decl
 			table.insert(collection.events, decl)
 		elseif stat.kind == "function" then
 			local decl = stat_function(ctx, stat)
-			ctx_hir.functs[decl_id] = decl
+			hirr.functs[decl_id] = decl
 			table.insert(collection.functs, decl)
 		elseif stat.kind == "scope" then
 			local body = stat.body
 			local name = stat.name.value
 			local scope_id = stat.id :: ScopeId
 
-			local prev_id = ctx.scope_id
-			local prev_symbols = symbols.child(ctx.symbols, name)
-			if prev_symbols == nil then
-				return panic(`expected previous scope to have symbols`)
+			local parent_id = ctx.scope_id
+			local parent_symbols = ctx.symbols
+
+			local scope_symbols = symbols.child(ctx.symbols, name)
+			if scope_symbols == nil then
+				return panic("expected parent scope to have child scopes symbols")
 			end
 
 			ctx.scope_id = scope_id
-			ctx_hir.scopes[scope_id] = symbols.inner(prev_symbols, name)
+			ctx.symbols = scope_symbols
+			hirr.scopes[scope_id] = scope_symbols
 
 			traverse_block(ctx, body, collection)
-			ctx.scope_id = prev_id
+
+			ctx.scope_id = parent_id
+			ctx.symbols = parent_symbols
 		elseif stat.kind == "option" then
 			stat_option(ctx, stat)
 		end
@@ -720,18 +726,20 @@ end
 
 local function traverse_ast(hirr: Hir, file_id: number, ast: Ast)
 	local scope_id = ast.body.id :: ScopeId
+	local root_symbols = ast.symbols
+
 	local context: Context = {
 		hir = hirr,
 
 		options = {},
 		options_declarations = {},
 
-		symbols = ast.symbols,
+		symbols = root_symbols,
 		file_id = file_id,
-		scope_id = ast.body.id :: ScopeId,
+		scope_id = scope_id,
 	}
 
-	hirr.scopes[scope_id] = ast.symbols
+	hirr.scopes[scope_id] = root_symbols
 	hirr.options[file_id] = context.options
 
 	local collection = traverse_block(context, ast.body)

@@ -21,6 +21,8 @@ type Token = lexer.Token
 type TokenAny = lexer.TokenBase<any>
 type TokenKind = lexer.TokenKind
 
+type Symbols = ast.Symbols
+
 type Context = {
 	read tokens: { Token },
 
@@ -31,6 +33,7 @@ type Context = {
 	token: Token,
 	lookahead: Token,
 
+	symbols: Symbols,
 	attributes: { ast.Attribute },
 }
 
@@ -776,9 +779,14 @@ local function stat_scope(ctx: Context): ast.StatScope
 	local node_id = next_node_id(ctx)
 	local keyword = expect(ctx, "scope")
 	local name = identifier(ctx)
-
 	local _open = expect(ctx, "{")
+
+	local parent_symbols = ctx.symbols
+	ctx.symbols = symbols.inner(parent_symbols, name.value)
+
 	local scope_block = block(ctx, true)
+	ctx.symbols = parent_symbols
+
 	local close = expect(ctx, "}")
 
 	return {
@@ -939,6 +947,26 @@ function statement(ctx: Context): ast.Statement
 		return report.invalid_attribute_placement(stat)
 	end
 
+	local name = stat.name
+	if name ~= nil then
+		local name_value = name.value
+		local scope_symbols = ctx.symbols
+
+		local shaded_node = symbols.search(scope_symbols, { name_value })
+		if shaded_node ~= nil then
+			local shaded_name = shaded_node.name
+			if shaded_name == nil then
+				return panic("Expected shaded AST node to have a name")
+			end
+
+			report.shadow(name, shaded_name)
+		end
+
+		if stat.kind ~= "scope" then
+			symbols.set(scope_symbols, name_value, stat)
+		end
+	end
+
 	return stat
 end
 
@@ -993,13 +1021,14 @@ local function parse(file: file.File, tokens: { lexer.Token }): ast.Ast
 		token = tokens[1],
 		lookahead = tokens[2] or tokens[1],
 
+		symbols = symbols.create(ROOT_SYMBOLS) :: Symbols,
 		attributes = {},
 	}
 
 	local ast: ast.Ast = {
 		kind = "ast",
 		body = block(ctx),
-		symbols = symbols.create(ROOT_SYMBOLS) :: symbols.Symbols<ast.Statement>,
+		symbols = ctx.symbols,
 	}
 
 	validator.validate(ast)

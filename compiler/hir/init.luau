@@ -7,6 +7,7 @@ local hir = require("@hir/types")
 
 local build = require("@self/build")
 local constraints = require("@self/constraints")
+local format = require("@self/format")
 
 export type Hir = hir.Hir
 
@@ -17,5 +18,6 @@ local function hir_from_files(files: { [number]: ast.Ast }): Hir
 end
 
 return table.freeze({
+	format = format,
 	from_files = hir_from_files,
 })
