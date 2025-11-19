@@ -239,13 +239,9 @@ local function compile_from_path(entry_path: Path, compiler_options: Options): C
 	local files_hir = hir.from_files(files)
 	local hir_elapsed = (os.clock() - hir_pin)
 
-	-- print(fmt_hir(files_hir))
-
 	local lir_pin = os.clock()
 	local files_lir = lir.from_hir(files_hir)
 	local lir_elapsed = (os.clock() - lir_pin)
-
-	-- print(fmt_lir(files_lir))
 
 	local codegen_pin = os.clock()
 	local targets: Targets = {}

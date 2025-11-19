@@ -3,8 +3,10 @@ local colorful = require("@vendor/colorful")
 local compilation = require("@compiler/config/compilation")
 local compiler = require("@compiler")
 local fs = require("@util/fs")
+local hir = require("@compiler/hir")
 local path = require("@util/path")
 local printext = require("@util/printext")
+local symbols = require("@compiler/symbols")
 
 type Path = path.Path
 type Profile = compilation.Profile
@@ -49,9 +51,13 @@ end
 local function on_compile(context: Context)
 	local yes_all: boolean = context.globalOptions.yes
 	local verbose: boolean = context.globalOptions.verbose
-	local watch: boolean = context.commandOptions.watch
 
+	local print_hir: boolean = context.commandOptions.hir
+	local print_symbols: boolean = context.commandOptions.symbols
+
+	local watch: boolean = context.commandOptions.watch
 	local profile: Profile = context.commandOptions.profile
+
 	if VALID_PROFILES[profile] ~= true then
 		error(`Unknown compiler profile "{profile}".`)
 	end
@@ -83,6 +89,15 @@ local function on_compile(context: Context)
 	end
 
 	local value = compilation_result.value
+
+	if print_symbols then
+		print(symbols.format(value.files[0].symbols))
+	end
+
+	if print_hir then
+		print(hir.format(value.hir))
+	end
+
 	local targets = value.targets
 	local input_directory = path.strip_file_name(input_path)
 
@@ -129,6 +144,22 @@ cli.new()
 					:setDescription("Path to the compilation entry point file.")
 					:setRequired(true)
 					:setType("string")
+					:build()
+			)
+			:addOption(
+				option.new()
+					:setName("hir")
+					:setDescription("Output a formatted HIR to the stdout")
+					:setType("boolean")
+					:setDefaultValue(false)
+					:build()
+			)
+			:addOption(
+				option.new()
+					:setName("symbols")
+					:setDescription("Output formatted symbols to the stdout")
+					:setType("boolean")
+					:setDefaultValue(false)
 					:build()
 			)
 			:addOption(
