@@ -271,23 +271,15 @@ local function create_array(of: TyId, size: Range?): Array
 end
 
 --stylua: ignore
-export type UnionSide = 
-	| Union
-	| Struct 
-	| Optional 
-	| GenericType 
-
 export type Union = {
 	read kind: "union",
-	read left: TyId<UnionSide>,
-	read right: TyId<UnionSide>,
+	read components: {TyId}
 }
 
-local function create_union(left: TyId<UnionSide>, right: TyId<UnionSide>): Union
+local function create_union(components: { TyId }): Union
 	return {
 		kind = "union",
-		left = left,
-		right = right,
+		components = components,
 	}
 end
 

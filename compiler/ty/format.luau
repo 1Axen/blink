@@ -143,7 +143,16 @@ local function fmt_array(ty: ty.Array): string
 end
 
 local function fmt_union(ty: ty.Union): string
-	return `{fmt_ty_id(ty.left)} | {fmt_ty_id(ty.right)}`
+	local stringified = ""
+	for index, ty_id in ty.components do
+		if index > 1 then
+			stringified ..= " | "
+		end
+
+		stringified ..= fmt_ty_id(ty_id)
+	end
+
+	return stringified
 end
 
 local function fmt_struct(ty: ty.Struct): string

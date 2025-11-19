@@ -117,8 +117,9 @@ local function expr_struct(ctx: Context, expr: ast.ExprStruct): never?
 end
 
 local function expr_union(ctx: Context, expr: ast.ExprUnion)
-	expression(ctx, expr.left)
-	expression(ctx, expr.right)
+	for _, component_expr in expr.components do
+		expression(ctx, component_expr)
+	end
 end
 
 local function expr_array(ctx: Context, expr: ast.ExprArray)

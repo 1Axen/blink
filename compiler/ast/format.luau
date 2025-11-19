@@ -50,6 +50,19 @@ local function fmt_identifier(node: ast.Identifier): string
 	return node.value
 end
 
+local function fmt_union(expr: ast.ExprUnion): string
+	local stringified = ""
+	for index, component_expr in expr.components do
+		if index > 1 then
+			stringified ..= " | "
+		end
+
+		stringified ..= fmt_expression(component_expr)
+	end
+
+	return stringified
+end
+
 function fmt_expression(expr: ast.Expression): string
 	if expr.kind == "set" then
 		return "set { ... }"
@@ -58,7 +71,7 @@ function fmt_expression(expr: ast.Expression): string
 	elseif expr.kind == "enum" then
 		return "enum { ... }"
 	elseif expr.kind == "union" then
-		return `{fmt_expression(expr.left)} & {fmt_expression(expr.right)}`
+		return fmt_union(expr)
 	elseif expr.kind == "struct" then
 		return "struct { ... }"
 	elseif expr.kind == "string" then

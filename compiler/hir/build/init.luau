@@ -328,9 +328,12 @@ local function ty_struct(ctx: Context, expr: ast.ExprStruct): ty.Struct
 end
 
 local function ty_union(ctx: Context, expr: ast.ExprUnion): ty.Union
-	local left = expression(ctx, expr.left) :: TyId<ty.UnionSide>
-	local right = expression(ctx, expr.right) :: TyId<ty.UnionSide>
-	return ty.intersection(left, right)
+	local components = {}
+	for index, component_expr in expr.components do
+		components[index] = expression(ctx, component_expr)
+	end
+
+	return ty.union(components)
 end
 
 local function ty_optional(ctx: Context, expr: ast.ExprOptional): ty.Optional

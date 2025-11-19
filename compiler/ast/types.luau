@@ -160,8 +160,7 @@ export type ExprUnion = {
 	read id: NodeId,
 	read span: vector,
 	read kind: "union",
-	read left: Expression,
-	read right: Expression,
+	read components: { Expression },
 }
 
 --- [name] { ... }

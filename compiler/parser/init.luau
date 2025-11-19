@@ -658,18 +658,28 @@ local function expr_array(ctx: Context, of: ast.Expression): ast.ExprArray
 	}
 end
 
-local function expr_union(ctx: Context, left: ast.Expression): ast.ExprUnion
+local function expr_union(ctx: Context, first: ast.Expression): ast.ExprUnion
 	expect(ctx, "|")
 
 	local node_id = next_node_id(ctx)
-	local right = expression(ctx)
+	local components = { first }
+
+	while true do
+		table.insert(components, expression(ctx))
+		if peek_kind(ctx) ~= "|" then
+			break
+		end
+
+		consume(ctx)
+	end
+
+	local last = components[#components]
 
 	return {
 		id = node_id,
-		span = span.merge(left.span, right.span),
+		span = span.merge(first.span, last.span),
 		kind = "union",
-		left = left,
-		right = right,
+		components = components,
 	}
 end
 

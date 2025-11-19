@@ -1,0 +1,3 @@
+option types_output = "../out/unions"
+
+type Union = u8 | string

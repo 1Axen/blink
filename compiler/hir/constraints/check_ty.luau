@@ -72,21 +72,9 @@ local function check_map(hir: Hir, ty: ty.Map)
 	end
 end
 
-local function check_union(hir: Hir, ty: ty.Union)
-	local left = ty_from_id(hir, ty.left)
-	local right = ty_from_id(hir, ty.right)
-
-	left = follow(hir, left)
-	right = follow(hir, right)
-
-	if left.kind ~= "struct" and left.kind ~= "union" then
-		--TODO: Remove cast (Luau bug)
-		local node = node_from_ty_id(hir, ty.left :: TyId)
-		report.invalid_intersection(node, left.kind, left.kind, right.kind)
-	elseif right.kind ~= "struct" and right.kind ~= "union" then
-		--TODO: Remove cast (Luau bug)
-		local node = node_from_ty_id(hir, ty.right :: TyId)
-		report.invalid_intersection(node, right.kind, left.kind, right.kind)
+local function check_union(hirr: Hir, ty: ty.Union)
+	for _, ty_id in ty.components do
+		hir.follow(hirr, hir.ty_from_id(hirr, ty_id))
 	end
 end
 

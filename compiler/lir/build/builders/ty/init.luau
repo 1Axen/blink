@@ -434,19 +434,9 @@ builders = {
 		read = function(props: ReadProps, block: Builder, union: ty.Union, into: LValue<any>?): Register<any>
 			local register: Register<any> = block:store(structure.struct({}))
 
-			read_ty_id(props, block, union.left :: TyId, register)
-			read_ty_id(props, block, union.right :: TyId, register)
-
-			if into then
-				return block:store(register, into)
-			end
-
 			return register
 		end,
-		write = function(props: WriteProps, block: Builder, union: ty.Union, value: RValue<any>): ()
-			write_ty_id(props, block, union.left :: TyId, value)
-			write_ty_id(props, block, union.right :: TyId, value)
-		end,
+		write = function(props: WriteProps, block: Builder, union: ty.Union, value: RValue<any>): () end,
 	}),
 }
 
