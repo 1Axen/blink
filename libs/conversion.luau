@@ -1,5 +1,5 @@
 local panic = require("@util/panic")
-local ty = require("@compiler/ty/types")
+local ty = require("@compiler/ty")
 
 local U8 = (2 ^ 8) - 1
 local U16 = (2 ^ 16) - 1

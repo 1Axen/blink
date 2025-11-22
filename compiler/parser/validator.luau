@@ -4,7 +4,7 @@
 
 local id = require("@compiler/id")
 
-local ast = require("@ast/types")
+local ast = require("@ast")
 local codes = require("@config/codes")
 local primitives = require("@config/primitives")
 

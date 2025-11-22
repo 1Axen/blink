@@ -1,6 +1,6 @@
 --!strict
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
 local binary = require("./binary")
 local constant = require("./constant")
@@ -10,17 +10,17 @@ local library = require("./library")
 local projection = require("@builders/projection")
 local unary = require("./unary")
 
-type LValue<T> = lir.LValue<T>
-type RValue<T> = lir.RValue<T>
-type Register<T> = lir.RegisterId<T>
+type LValue<T> = types.LValue<T>
+type RValue<T> = types.RValue<T>
+type Register<T> = types.RegisterId<T>
 
-type Call<T> = lir.ProjCall<T>
-type Index<T> = lir.ProjIndex<T>
-type Field<T> = lir.ProjField<T>
-type Namecall<T> = lir.ProjNamecall<T>
+type Call<T> = types.ProjCall<T>
+type Index<T> = types.ProjIndex<T>
+type Field<T> = types.ProjField<T>
+type Namecall<T> = types.ProjNamecall<T>
 
-type Advance = lir.CtrlAdvance<number>
-type Allocate = lir.CtrlAllocate<number>
+type Advance = types.CtrlAdvance<number>
+type Allocate = types.CtrlAllocate<number>
 
 type Save = { write __phantom_type: "__SYMBOL__save", type: "save" }
 

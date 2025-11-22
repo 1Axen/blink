@@ -1,41 +1,41 @@
 local attributes = require("@config/attributes")
 local binary = require("@builders/binary")
+local builder_types = require("@self/builder_types")
 local condition = require("@builders/condition")
 local constant = require("@builders/constant")
 local context = require("@lir/build/context")
 local conversion = require("@util/conversion")
 local fn = require("@builders/fn")
 local globals = require("@builders/globals")
-local hir = require("@hir/types")
+local hir = require("@hir")
 local length = require("@builders/ty/luau/length")
 local library = require("@builders/library")
-local lir = require("@lir/types")
 local panic = require("@util/panic")
 local prefixes = require("@config/prefixes")
 local projection = require("@builders/projection")
 local structure = require("@builders/structure")
 local ternary = require("@builders/ternary")
-local ty = require("@ty/types")
+local ty = require("@ty")
 local ty_literal = require("@self/luau/literal")
 local ty_numeral = require("@self/luau/numeral")
-local types = require("@self/types")
+local types = require("@lir/types")
 local unary = require("@builders/unary")
 
 type Ty = ty.Ty
 type TyId = ty.TyId<Ty>
 
-type LValue<T> = lir.LValue<T>
-type RValue<T> = lir.RValue<T>
-type Register<T> = lir.RegisterId<T>
+type LValue<T> = types.LValue<T>
+type RValue<T> = types.RValue<T>
+type Register<T> = types.RegisterId<T>
 
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type TyBuilder = types.TyBuilder
-type ReadProps = types.ReadProps
-type WriteProps = types.WriteProps
-type Props = types.Props
+type TyBuilder = builder_types.TyBuilder
+type ReadProps = builder_types.ReadProps
+type WriteProps = builder_types.WriteProps
+type Props = builder_types.Props
 
 local OPTIONAL_FORMAT = ty_numeral.u8
 
@@ -106,7 +106,12 @@ local function write_ty(props: WriteProps, block: Builder, ty: Ty, value: RValue
 	builder.write(props, block, ty, value)
 end
 
-local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id: TyId, generics: { TyId }?): lir.FnSet
+local function from_ty_id(
+	ctx: Context,
+	attributes: attributes.Attributes,
+	ty_id: TyId,
+	generics: { TyId }?
+): types.FnSet
 	do
 		local existing = ctx.ty_fn_set_map[ty_id]
 		if existing then
@@ -117,7 +122,7 @@ local function from_ty_id(ctx: Context, attributes: attributes.Attributes, ty_id
 	-- pre store the ids
 	local read_fn_id = context.next_fn_id(ctx)
 	local write_fn_id = context.next_fn_id(ctx)
-	local fn_set: lir.FnSet = {
+	local fn_set: types.FnSet = {
 		read = read_fn_id,
 		write = write_fn_id,
 	}

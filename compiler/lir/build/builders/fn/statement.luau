@@ -1,16 +1,16 @@
 --!strict
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
-type Call = lir.StatCall
-type Assign = lir.StatAssign
-type Remark = lir.StatRemark
-type LocalAssign = lir.StatLocalAssign
-type MultiAssign = lir.StatMultiAssign
+type Call = types.StatCall
+type Assign = types.StatAssign
+type Remark = types.StatRemark
+type LocalAssign = types.StatLocalAssign
+type MultiAssign = types.StatMultiAssign
 
-type LValue = lir.LValue<any>
-type RValue = lir.RValue<any>
-type Register = lir.RegisterId<any>
+type LValue = types.LValue<any>
+type RValue = types.RValue<any>
+type Register = types.RegisterId<any>
 
 local function stat_call(call: index<Call, "call">): Call
 	return {

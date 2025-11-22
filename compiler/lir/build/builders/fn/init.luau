@@ -1,7 +1,7 @@
 local control = require("@builders/control")
 local globals = require("@builders/globals")
-local lir = require("@lir/types")
-local ty = require("@ty/types")
+local ty = require("@ty")
+local types = require("@lir/types")
 
 local panic = require("@util/panic")
 
@@ -14,21 +14,21 @@ local loop = require("@builders/loop")
 
 type Ty = ty.Ty
 
-type Fn = lir.Fn
-type FnId = lir.FnId
+type Fn = types.Fn
+type FnId = types.FnId
 
-type Return = lir.Return
-type Parameter = lir.Parameter
+type Return = types.Return
+type Parameter = types.Parameter
 
-type Terminator = lir.Terminator
-type BasicBlock = lir.BasicBlock
+type Terminator = types.Terminator
+type BasicBlock = types.BasicBlock
 
-type Loop = lir.Loop
-type Condition = lir.Condition<boolean>
+type Loop = types.Loop
+type Condition = types.Condition<boolean>
 
-type LValue<T = any> = lir.LValue<T>
-type RValue<T = any> = lir.RValue<T>
-type Register<T> = lir.RegisterId<T>
+type LValue<T = any> = types.LValue<T>
+type RValue<T = any> = types.RValue<T>
+type Register<T> = types.RegisterId<T>
 
 type Context = context.Context
 
@@ -44,21 +44,21 @@ for index = 1, MAX_REGISTERS do
 	REGISTERS_TEMPLATE[index] = (index - 1)
 end
 
-local function fn_return(ty: Ty): lir.Return
+local function fn_return(ty: Ty): types.Return
 	return {
 		type = "return",
 		ty = ty,
 	}
 end
 
-local function static_return(static_type: string): lir.Return
+local function static_return(static_type: string): types.Return
 	return {
 		type = "return",
 		static_type = static_type,
 	}
 end
 
-local function parameter(ty: Ty, name: string?): lir.Parameter
+local function parameter(ty: Ty, name: string?): types.Parameter
 	return {
 		type = "parameter",
 		ty = ty,
@@ -66,7 +66,7 @@ local function parameter(ty: Ty, name: string?): lir.Parameter
 	}
 end
 
-local function static_parameter(static_type: string, name: string?): lir.Parameter
+local function static_parameter(static_type: string, name: string?): types.Parameter
 	return {
 		type = "parameter",
 		name = name,
@@ -78,12 +78,12 @@ export type Builder = {
 	read store: <T, R>(Builder, value: RValue<T>, into: LValue<R>?) -> Register<T>,
 	read capture: (Builder, upvalues: { Register<any> }) -> (),
 	read reserve: (Builder) -> Register<any>,
-	read parameter: (self: Builder, index: number) -> lir.ParameterId<any>,
+	read parameter: (self: Builder, index: number) -> types.ParameterId<any>,
 	read store_mult: (Builder, value: RValue, count: number) -> { LValue },
 
-	read allocate: (Builder, bytes: lir.RValue<number>) -> Register<number>,
+	read allocate: (Builder, bytes: types.RValue<number>) -> Register<number>,
 
-	read call: <T>(Builder, call: lir.ProjCall<T> | lir.ProjNamecall<T> | lir.CtrlAllocate<T>) -> (),
+	read call: <T>(Builder, call: types.ProjCall<T> | types.ProjNamecall<T> | types.CtrlAllocate<T>) -> (),
 	read call_fn: (Builder, fn_id: FnId, args: { RValue }, rets: { LValue }) -> (),
 
 	read remark: (Builder, text: string) -> (),
@@ -92,7 +92,7 @@ export type Builder = {
 	read if_chain: (Builder, length: number, constructor: IfChainConstructor) -> (),
 	read if_single: (Builder, cond: Condition, body: Constructor) -> (),
 	read for_numeric: (Builder, iterations: RValue<number>, body: NumericLoopConstructor) -> (),
-	read for_generic: (Builder, target: index<lir.LoopGeneric, "target">, body: GenericLoopConstructor) -> (),
+	read for_generic: (Builder, target: index<types.LoopGeneric, "target">, body: GenericLoopConstructor) -> (),
 	read while_loop: (Builder, condition: Condition, body: Constructor) -> (),
 }
 
@@ -126,7 +126,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		}
 	end
 
-	local function parameter_id(self: Builder, index: number): lir.ParameterId<any>
+	local function parameter_id(self: Builder, index: number): types.ParameterId<any>
 		if index > n_params then
 			return panic(`tried using argument #{index}, but fn only has {n_params} argument(s)`)
 		elseif index < 0 then
@@ -174,13 +174,13 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		return registers
 	end
 
-	local function allocate(self: Builder, bytes: lir.RValue<number>): Register<number>
+	local function allocate(self: Builder, bytes: types.RValue<number>): Register<number>
 		local cursor = self:store(globals.outgoing.cursor)
 		self:call(control.allocate(bytes))
 		return cursor
 	end
 
-	local function call<T>(self: Builder, call: lir.ProjCall<T> | lir.ProjNamecall<T> | lir.CtrlAllocate<T>)
+	local function call<T>(self: Builder, call: types.ProjCall<T> | types.ProjNamecall<T> | types.CtrlAllocate<T>)
 		local stat = statement.call(call)
 		table.insert(block.statements, stat)
 	end
@@ -257,7 +257,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		table.insert(blocks, after_block)
 	end
 
-	local function for_generic(self: Builder, target: index<lir.LoopGeneric, "target">, body: GenericLoopConstructor)
+	local function for_generic(self: Builder, target: index<types.LoopGeneric, "target">, body: GenericLoopConstructor)
 		local prev_block = block
 		local loop_block = next_block(prev_block.scope + 1)
 		local after_block = next_block(prev_block.scope, prev_block.terminator)
@@ -360,7 +360,7 @@ local function create_fn(name: index<Fn, "name">, params: { Parameter }, rets: {
 	}
 end
 
-local function create_anonymous_fn(params: { Parameter }, rets: { Return }, constructor: Constructor): lir.AnonymousFn
+local function create_anonymous_fn(params: { Parameter }, rets: { Return }, constructor: Constructor): types.AnonymousFn
 	local blocks = construct_fn(#params, constructor)
 	return {
 		type = "anon_fn",

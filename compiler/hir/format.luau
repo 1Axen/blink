@@ -1,21 +1,19 @@
-local ast = require("@ast/types")
-local hir = require("@hir/types")
-local ty = require("@ty/types")
-
-local fmt_id = require("@compiler/id/format")
-local fmt_ty = require("@ty/format")
+local ast = require("@ast")
 local fmt_types = require("@util/format_types")
-
+local id = require("@compiler/id")
+local lookup = require("./lookup")
 local span = require("@util/span")
 local string_builder = require("@util/string_builder")
 local style = require("@util/style")
+local ty = require("@ty")
+local types = require("@hir/types")
 
 local FIELD_STYLE = style.modifer.dim
 local IDENT_STYLE = style.color.yellow
 local CATEGORY_STYLE = style.combine(style.color.bright_white, style.modifer.bold)
 local ATTRIBUTE_STYLE = style.color.bright_purple
 
-type Hir = hir.Hir
+type Hir = types.Hir
 type StringBuilder = string_builder.StringBuilder
 
 local function fmt_attributes(attributes: any, fmt_builder: StringBuilder)
@@ -33,7 +31,7 @@ local function fmt_attributes(attributes: any, fmt_builder: StringBuilder)
 	end
 end
 
-local function fmt_parameters(parameters: { hir.Parameter }, fmt_builder: StringBuilder)
+local function fmt_parameters(parameters: { types.Parameter }, fmt_builder: StringBuilder)
 	string_builder.append(fmt_builder, "(")
 
 	for index, parameter in parameters do
@@ -41,7 +39,7 @@ local function fmt_parameters(parameters: { hir.Parameter }, fmt_builder: String
 			string_builder.append(fmt_builder, `{FIELD_STYLE(parameter.name)}: `)
 		end
 
-		string_builder.append(fmt_builder, fmt_id(parameter.ty_id))
+		string_builder.append(fmt_builder, id.format(parameter.ty_id))
 
 		if index < #parameters then
 			string_builder.append(fmt_builder, ", ")
@@ -51,22 +49,22 @@ local function fmt_parameters(parameters: { hir.Parameter }, fmt_builder: String
 	string_builder.append(fmt_builder, ")")
 end
 
-local function fmt_type(decl: hir.Type, fmt_builder: StringBuilder)
+local function fmt_type(decl: types.Type, fmt_builder: StringBuilder)
 	fmt_attributes(decl.attributes, fmt_builder)
 
 	string_builder.append(fmt_builder, `{CATEGORY_STYLE("Type")} \{\n`)
 	string_builder.indent(fmt_builder)
 
 	string_builder.append_line(fmt_builder, `{FIELD_STYLE("name:")} {fmt_types.string(decl.name)},`)
-	string_builder.append_line(fmt_builder, `{FIELD_STYLE("scope:")} {fmt_id(decl.scope_id)},`)
-	string_builder.append_line(fmt_builder, `{FIELD_STYLE("ty:")} {fmt_id(decl.ty_id)},`)
+	string_builder.append_line(fmt_builder, `{FIELD_STYLE("scope:")} {id.format(decl.scope_id)},`)
+	string_builder.append_line(fmt_builder, `{FIELD_STYLE("ty:")} {id.format(decl.ty_id)},`)
 
 	if decl.generics then
 		string_builder.append_indent(fmt_builder)
 		string_builder.append(fmt_builder, `{FIELD_STYLE("generics:")} \{`)
 
 		for index, generic in decl.generics do
-			string_builder.append(fmt_builder, fmt_id(generic :: ty.TyId))
+			string_builder.append(fmt_builder, id.format(generic :: ty.TyId))
 
 			if #decl.generics > index then
 				string_builder.append(fmt_builder, ", ")
@@ -80,7 +78,7 @@ local function fmt_type(decl: hir.Type, fmt_builder: StringBuilder)
 	string_builder.append_line(fmt_builder, "}")
 end
 
-local function fmt_event(decl: hir.Event, fmt_builder: StringBuilder)
+local function fmt_event(decl: types.Event, fmt_builder: StringBuilder)
 	fmt_attributes(decl.attributes, fmt_builder)
 
 	string_builder.append(fmt_builder, `{CATEGORY_STYLE("Event")} \{\n`)
@@ -102,7 +100,7 @@ local function fmt_event(decl: hir.Event, fmt_builder: StringBuilder)
 	string_builder.append_line(fmt_builder, "}")
 end
 
-local function fmt_function(decl: hir.Function, fmt_builder: StringBuilder)
+local function fmt_function(decl: types.Function, fmt_builder: StringBuilder)
 	fmt_attributes(decl.attributes, fmt_builder)
 
 	string_builder.append(fmt_builder, `{CATEGORY_STYLE("Function")} \{\n`)
@@ -145,15 +143,15 @@ local function fmt_tys(hirr: Hir, fmt_builder: StringBuilder)
 	end)
 
 	for _, ty_id in sorted do
-		local ty = tys[ty_id]
+		local tty = tys[ty_id]
 		local node_id = ty_id :: ast.NodeId
-		local ty_node = hir.node_from_id(hirr, node_id)
+		local ty_node = lookup.node_from_id(hirr, node_id)
 
 		local source_code = span.value(ty_node.span)
 		local as_lines = string.split(source_code, "\n")
 
 		string_builder.append_indent(fmt_builder)
-		string_builder.append_line(fmt_builder, `{fmt_id(ty_id)}: {fmt_ty(ty)}`)
+		string_builder.append_line(fmt_builder, `{id.format(ty_id)}: {ty.format(tty)}`)
 
 		string_builder.indent(fmt_builder)
 		string_builder.indent(fmt_builder)
@@ -172,21 +170,21 @@ local function fmt_decls(hirr: Hir, fmt_builder: StringBuilder)
 
 	for decl_id, decl in hirr.types do
 		string_builder.append_indent(fmt_builder)
-		string_builder.append(fmt_builder, fmt_id(decl_id))
+		string_builder.append(fmt_builder, id.format(decl_id))
 		string_builder.append(fmt_builder, ": ")
 		fmt_type(decl, fmt_builder)
 	end
 
 	for decl_id, decl in hirr.events do
 		string_builder.append_indent(fmt_builder)
-		string_builder.append(fmt_builder, fmt_id(decl_id))
+		string_builder.append(fmt_builder, id.format(decl_id))
 		string_builder.append(fmt_builder, ": ")
 		fmt_event(decl, fmt_builder)
 	end
 
 	for decl_id, decl in hirr.functs do
 		string_builder.append_indent(fmt_builder)
-		string_builder.append(fmt_builder, fmt_id(decl_id))
+		string_builder.append(fmt_builder, id.format(decl_id))
 		string_builder.append(fmt_builder, ": ")
 		fmt_function(decl, fmt_builder)
 	end
@@ -200,7 +198,7 @@ local function fmt_scopes(scopes: index<Hir, "scopes">, fmt_builder: StringBuild
 	string_builder.indent(fmt_builder)
 
 	for scope_id, scope in scopes do
-		string_builder.append_line(fmt_builder, `{fmt_id(scope_id)}: {fmt_types.string(scope.name)}`)
+		string_builder.append_line(fmt_builder, `{id.format(scope_id)}: {fmt_types.string(scope.name)}`)
 	end
 
 	string_builder.dedent(fmt_builder)

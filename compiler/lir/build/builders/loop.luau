@@ -1,11 +1,11 @@
 --!strict
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
-type RValue<T = any> = lir.RValue<T>
-type Numeric = lir.LoopNumeric
-type Generic = lir.LoopGeneric
-type Register<T = any> = lir.RegisterId<T>
+type RValue<T = any> = types.RValue<T>
+type Numeric = types.LoopNumeric
+type Generic = types.LoopGeneric
+type Register<T = any> = types.RegisterId<T>
 
 local function loop_numeric(index: Register<number>, iterations: RValue<number>): Numeric
 	return {

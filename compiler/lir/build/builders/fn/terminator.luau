@@ -1,21 +1,21 @@
 --!strict
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
-type TermIf = lir.TermIf
-type TermNone = lir.TermNone
-type TermGoto = lir.TermGoto
-type TermLoop = lir.TermLoop
-type TermCall = lir.TermCall
-type TermWhile = lir.TermWhile
-type TermReturn = lir.TermReturn
-type TermIfChain = lir.TermIfChain
+type TermIf = types.TermIf
+type TermNone = types.TermNone
+type TermGoto = types.TermGoto
+type TermLoop = types.TermLoop
+type TermCall = types.TermCall
+type TermWhile = types.TermWhile
+type TermReturn = types.TermReturn
+type TermIfChain = types.TermIfChain
 
-type Loop = lir.Loop
-type LValue = lir.LValue<any>
-type RValue = lir.RValue<any>
-type Condition = lir.Condition<boolean>
-type BasicBlock = lir.BasicBlock
+type Loop = types.Loop
+type LValue = types.LValue<any>
+type RValue = types.RValue<any>
+type Condition = types.Condition<boolean>
+type BasicBlock = types.BasicBlock
 
 local function term_if_single(condition: Condition, truthy: BasicBlock, falsey: BasicBlock): TermIf
 	return {
@@ -69,7 +69,7 @@ local function term_loop(loop: Loop, destination: BasicBlock): TermLoop
 	}
 end
 
-local function term_call(fn: lir.FnId, args: { RValue }, rets: { LValue }, destination: BasicBlock): TermCall
+local function term_call(fn: types.FnId, args: { RValue }, rets: { LValue }, destination: BasicBlock): TermCall
 	return {
 		type = "terminator",
 		kind = "call",

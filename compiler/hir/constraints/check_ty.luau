@@ -2,22 +2,22 @@
 --!native
 --!optimize 2
 
-local ast = require("@ast/types")
-local hir = require("@hir/types")
-local ty = require("@ty/types")
-
+local ast = require("@ast")
+local lookup = require("@hir/lookup")
 local report = require("@hir/report")
+local ty = require("@ty")
+local types = require("@hir/types")
 
 type Ty = ty.Ty
-type Hir = hir.Hir
+type Hir = types.Hir
 type Node = ast.Node
 type TyId<T = Ty> = ty.TyId<T>
 type TyKind = ty.TyKind
 type NodeId = ast.NodeId
 
-local follow = hir.follow
-local ty_from_id = hir.ty_from_id
-local node_from_id = hir.node_from_id
+local follow = lookup.follow
+local ty_from_id = lookup.ty_from_id
+local node_from_id = lookup.node_from_id
 
 local function node_from_ty_id(hir: Hir, ty_id: TyId): Node
 	return node_from_id(hir, ty_id :: NodeId)
@@ -74,7 +74,7 @@ end
 
 local function check_union(hirr: Hir, ty: ty.Union)
 	for _, ty_id in ty.components do
-		hir.follow(hirr, hir.ty_from_id(hirr, ty_id))
+		follow(hirr, ty_from_id(hirr, ty_id))
 	end
 end
 

@@ -1,12 +1,9 @@
 --!strict
 
-local ast = require("@ast/types")
-local ty = require("@ty/types")
-
+local ast = require("@ast")
 local attributes = require("@config/attributes")
 local options = require("@config/options")
-
-local panic = require("@util/panic")
+local ty = require("@ty/types")
 
 type Ty = ty.Ty
 type Node = ast.Node
@@ -79,60 +76,4 @@ export type Hir = {
 	read options: { [number]: options.FileOptions? },
 }
 
-local function ty_from_id<T>(hir: Hir, ty_id: TyId<T>): T
-	local ty = hir.tys[ty_id]
-	if ty == nil then
-		return panic("Expected ty_id to point to a ty")
-	end
-
-	return ty
-end
-
-local function type_from_id(hir: Hir, decl_id: DeclId): Type
-	local decl = hir.types[decl_id]
-	if decl == nil then
-		return panic("Expected decl_id to point to a decl")
-	end
-
-	return decl
-end
-
-local function node_from_id(hir: Hir, node_id: NodeId): Node
-	local node = hir.nodes[node_id]
-	if node == nil then
-		return panic("Expected node_id to point to a node")
-	end
-
-	return node
-end
-
-local function scope_from_id(hir: Hir, scope_id: ScopeId): Scope
-	local scope = hir.scopes[scope_id]
-	if scope == nil then
-		return panic("Expected scope_id to point to a scope")
-	end
-
-	return scope
-end
-
-local function follow(hir: Hir, ty: ty.Ty): ty.Ty
-	if ty.kind == "optional" then
-		local of = ty_from_id(hir, ty.of)
-		return follow(hir, of)
-	elseif ty.kind == "generic_type" then
-		local body = ty_from_id(hir, ty.body)
-		return follow(hir, body)
-	end
-
-	-- SOLVER BUG
-	return ty :: any
-end
-
-return table.freeze({
-	follow = follow,
-
-	ty_from_id = ty_from_id,
-	decl_from_id = type_from_id,
-	node_from_id = node_from_id,
-	scope_from_id = scope_from_id,
-})
+return nil

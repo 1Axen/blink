@@ -1,4 +1,4 @@
-local ast = require("@ast/types")
+local ast = require("@ast")
 
 local TARGETS = table.freeze({
 	types = true,

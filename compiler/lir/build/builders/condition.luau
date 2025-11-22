@@ -1,9 +1,9 @@
 --!strict
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
-type RValue<T = any> = lir.RValue<T>
-type Condition = lir.Condition<boolean>
+type RValue<T = any> = types.RValue<T>
+type Condition = types.Condition<boolean>
 
 local function condition<A, B>(kind: index<Condition, "kind">, left: RValue<A>, right: RValue<B>): Condition
 	return {

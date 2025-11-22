@@ -1,4 +1,4 @@
-local ast = require("@ast/types")
+local ast = require("@ast")
 local typeforge = require("@util/typeforge")
 
 type StringSingletonToType<T> = typeforge.StringSingletonToType<T>

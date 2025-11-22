@@ -41,10 +41,10 @@ type_checking.LessGenericsParameters = next_id()
 type_checking.ExtraGenericsParameters = next_id()
 type_checking.InvalidGenericParameter = next_id()
 type_checking.SelfRecursiveType = next_id()
-
 type_checking.InvalidAttribute = next_id()
 type_checking.FewAttributeParameters = next_id()
 type_checking.ExtraAttributeParameters = next_id()
+type_checking.DuplicateUnionType = next_id()
 
 return table.freeze({
 	parser = parser,

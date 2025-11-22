@@ -1,11 +1,11 @@
 --!strict
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
-type RValue<T = any> = lir.RValue<T>
-type Condition = lir.Condition<boolean>
+type RValue<T = any> = types.RValue<T>
+type Condition = types.Condition<boolean>
 
-local function ternary<T>(cond: Condition, left: RValue<T>, right: RValue<T>): lir.Ternary<T>
+local function ternary<T>(cond: Condition, left: RValue<T>, right: RValue<T>): types.Ternary<T>
 	return {
 		__phantom_type = nil :: any,
 

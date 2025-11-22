@@ -1,15 +1,15 @@
 --!strict
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
-type RValue<T> = lir.RValue<T>
-type BinaryAdd<T> = lir.BinaryAdd<T>
-type BinarySub<T> = lir.BinarySub<T>
-type BinaryMul<T> = lir.BinaryMul<T>
-type BinaryDiv<T> = lir.BinaryDiv<T>
-type BinaryMod<T> = lir.BinaryMod<T>
-type BinaryPow<T> = lir.BinaryPow<T>
-type BinaryIDiv<T> = lir.BinaryIDiv<T>
+type RValue<T> = types.RValue<T>
+type BinaryAdd<T> = types.BinaryAdd<T>
+type BinarySub<T> = types.BinarySub<T>
+type BinaryMul<T> = types.BinaryMul<T>
+type BinaryDiv<T> = types.BinaryDiv<T>
+type BinaryMod<T> = types.BinaryMod<T>
+type BinaryPow<T> = types.BinaryPow<T>
+type BinaryIDiv<T> = types.BinaryIDiv<T>
 
 local function binary_add(left: RValue<number>, right: RValue<number>): BinaryAdd<number>
 	return {

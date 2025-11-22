@@ -1,16 +1,16 @@
 --!strict
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
-type ProjCall<T> = lir.ProjCall<T>
-type ProjField<T> = lir.ProjField<T>
-type ProjIndex<T> = lir.ProjIndex<T>
-type ProjNamecall<T> = lir.ProjNamecall<T>
+type ProjCall<T> = types.ProjCall<T>
+type ProjField<T> = types.ProjField<T>
+type ProjIndex<T> = types.ProjIndex<T>
+type ProjNamecall<T> = types.ProjNamecall<T>
 
-type RValue<T> = lir.RValue<T>
-type Constant<T> = lir.Constant<T>
+type RValue<T> = types.RValue<T>
+type Constant<T> = types.Constant<T>
 
-type Base = lir.LValue<any> | Constant<string>
+type Base = types.LValue<any> | Constant<string>
 
 local function proj_call<T>(base: Base, args: { RValue<T> }): any
 	return {
@@ -32,7 +32,7 @@ local function proj_field<T>(base: Base, field: RValue<T>): any
 	}
 end
 
-local function proj_index<T>(base: Base, element: lir.Constant<string>): any
+local function proj_index<T>(base: Base, element: types.Constant<string>): any
 	return {
 		__phantom_type = nil :: any,
 		type = "projection",

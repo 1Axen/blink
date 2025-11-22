@@ -11,7 +11,7 @@ local context = require("@self/context")
 
 local cased_method = require("@self/cased_method")
 local globals = require("@lir/build/builders/globals")
-local lir = require("@compiler/lir/types")
+local lir = require("@compiler/lir")
 local md5 = require("@vendor/md5")
 local panic = require("@util/panic")
 local string_builder = require("@util/string_builder")

@@ -1,12 +1,13 @@
-local hir = require("@hir/types")
-local ty = require("@ty/types")
+local lookup = require("@hir/lookup")
+local ty = require("@ty")
+local types = require("@hir/types")
 
 type Ty = ty.Ty
-type Hir = hir.Hir
+type Hir = types.Hir
 
 local function flatten_ty(hirr: Hir, ty: Ty): Ty
 	while ty.kind == "optional" do
-		local of_ty = hir.ty_from_id(hirr, ty.of)
+		local of_ty = lookup.ty_from_id(hirr, ty.of)
 		if of_ty.kind ~= "optional" then
 			break
 		end

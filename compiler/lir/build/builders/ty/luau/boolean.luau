@@ -1,6 +1,6 @@
 local attributes = require("@config/attributes")
-local lir = require("@lir/types")
-local ty = require("@ty/types")
+local ty = require("@ty")
+local types = require("@lir/types")
 
 local condition = require("@builders/condition")
 local constant = require("@builders/constant")
@@ -11,20 +11,20 @@ local ternary = require("@builders/ternary")
 
 local context = require("@lir/build/context")
 
-local types = require("../types")
+local builder_types = require("../builder_types")
 
-type TyBuilder = types.TyBuilder
-type ReadProps = types.ReadProps
-type WriteProps = types.WriteProps
+type TyBuilder = builder_types.TyBuilder
+type ReadProps = builder_types.ReadProps
+type WriteProps = builder_types.WriteProps
 
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T> = lir.LValue<T>
-type RValue<T> = lir.RValue<T>
+type LValue<T> = types.LValue<T>
+type RValue<T> = types.RValue<T>
 type Boolean = ty.Boolean
-type Register<T> = lir.RegisterId<T>
+type Register<T> = types.RegisterId<T>
 
 local function validate(block: Builder, ty: Boolean, value: RValue<boolean>)
 	local type = constant.from_value("boolean")

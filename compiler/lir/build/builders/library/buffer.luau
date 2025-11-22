@@ -1,6 +1,6 @@
 --!strict
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
 local constant = require("@builders/constant")
 local globals = require("@builders/globals")
@@ -8,17 +8,17 @@ local projection = require("@builders/projection")
 
 type BufferDataFormat = | "u8" | "u16" | "u32" | "i8" | "i16" | "i32" | "f32" | "f64"
 
-type LValue<T> = lir.LValue<T>
-type RValue<T> = lir.RValue<T>
-type Register<T> = lir.RegisterId<T>
+type LValue<T> = types.LValue<T>
+type RValue<T> = types.RValue<T>
+type Register<T> = types.RegisterId<T>
 
-type Call<T> = lir.ProjCall<T>
-type Index<T> = lir.ProjIndex<T>
-type Field<T> = lir.ProjField<T>
-type Namecall<T> = lir.ProjNamecall<T>
+type Call<T> = types.ProjCall<T>
+type Index<T> = types.ProjIndex<T>
+type Field<T> = types.ProjField<T>
+type Namecall<T> = types.ProjNamecall<T>
 
-type Advance = lir.CtrlAdvance<number>
-type Allocate = lir.CtrlAllocate<number>
+type Advance = types.CtrlAdvance<number>
+type Allocate = types.CtrlAllocate<number>
 
 local READ_BUFFER = globals.incoming.buffer
 local WRITE_BUFFER = globals.outgoing.buffer

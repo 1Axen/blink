@@ -1,7 +1,7 @@
 local diagnostics = require("@util/diagnostics")
 local span = require("@util/span")
 
-local ast = require("@ast/types")
+local ast = require("@ast")
 local codes = require("@config/codes")
 local lexer = require("@compiler/lexer")
 

@@ -1,5 +1,5 @@
-local lir = require("@lir/types")
-local ty = require("@ty/types")
+local ty = require("@ty")
+local types = require("@lir/types")
 
 local attributes = require("@config/attributes")
 local bounds = require("@config/bounds")
@@ -19,13 +19,13 @@ local conversion = require("@util/conversion")
 local range = require("@util/range")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 
-local types = require("../types")
+local builder_types = require("../builder_types")
 
 type VariableLengthTy = | ty.Map | ty.Array | ty.String | ty.Buffer
 
-type TyBuilder = types.TyBuilder
-type ReadProps = types.ReadProps
-type WriteProps = types.WriteProps
+type TyBuilder = builder_types.TyBuilder
+type ReadProps = builder_types.ReadProps
+type WriteProps = builder_types.WriteProps
 
 type Range = range.Range
 
@@ -33,9 +33,9 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T = any> = lir.LValue<T>
-type RValue<T = any> = lir.RValue<T>
-type Register<T = any> = lir.RegisterId<T>
+type LValue<T = any> = types.LValue<T>
+type RValue<T = any> = types.RValue<T>
+type Register<T = any> = types.RegisterId<T>
 
 local function to_range(ty: VariableLengthTy): Range?
 	if ty.kind == "buffer" then
@@ -79,7 +79,7 @@ local function to_exact_length(ty: VariableLengthTy): number?
 end
 
 --- Returns the numeral and range offset
-local function to_relative_range(ty: VariableLengthTy): (ty.Numeral, lir.Constant<number>)
+local function to_relative_range(ty: VariableLengthTy): (ty.Numeral, types.Constant<number>)
 	local range = to_range(ty) or to_max_range(ty)
 	local offset = range.min
 	local difference = (range.max - offset)
@@ -122,7 +122,7 @@ local function read_length(
 	props: ReadProps,
 	block: Builder,
 	ty: VariableLengthTy
-): lir.RegisterId<number> | lir.Constant<number>
+): types.RegisterId<number> | types.Constant<number>
 	local exact_length = to_exact_length(ty)
 	if exact_length ~= nil then
 		return constant.from_value(exact_length)
@@ -141,7 +141,7 @@ local function write_length(
 	block: Builder,
 	ty: VariableLengthTy,
 	value: RValue<number>
-): lir.RegisterId<number> | lir.Constant<number>
+): types.RegisterId<number> | types.Constant<number>
 	local exact_length = to_exact_length(ty)
 	if exact_length then
 		if props.validate then

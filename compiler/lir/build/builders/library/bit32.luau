@@ -1,12 +1,12 @@
 --!strict
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
 local constant = require("@builders/constant")
 local projection = require("@builders/projection")
 
-type Call<T> = lir.ProjCall<T>
-type RValue<T> = lir.RValue<T>
+type Call<T> = types.ProjCall<T>
+type RValue<T> = types.RValue<T>
 
 local function bor(...: RValue<number>): Call<number>
 	return projection.call(constant.from_value("bit32.bor"), { ... })
@@ -16,11 +16,11 @@ local function bxor(...: RValue<number>): Call<number>
 	return projection.call(constant.from_value("bit32.bxor"), { ... })
 end
 
-local function lshift(x: RValue<number>, disp: lir.Constant<number>): Call<number>
+local function lshift(x: RValue<number>, disp: types.Constant<number>): Call<number>
 	return projection.call(constant.from_value("bit32.lshift"), { x, disp })
 end
 
-local function rshift(x: RValue<number>, disp: lir.Constant<number>): Call<number>
+local function rshift(x: RValue<number>, disp: types.Constant<number>): Call<number>
 	return projection.call(constant.from_value("bit32.rshift"), { x, disp })
 end
 

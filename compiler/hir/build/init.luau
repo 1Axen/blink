@@ -2,34 +2,31 @@
 --!native
 --!optimize 2
 
-local types = require("@config/compilation")
-
-local ast = require("@ast/types")
-local hir = require("@hir/types")
-local ty = require("@ty/types")
-
+local ast = require("@ast")
+local attributes = require("@self/attributes")
 local bounds = require("@config/bounds")
-local primitives = require("@config/primitives")
-
+local compilation = require("@config/compilation")
+local lookup = require("@hir/lookup")
 local options = require("@config/options")
 local panic = require("@util/panic")
+local primitives = require("@config/primitives")
 local range = require("@util/range")
-local symbols = require("@compiler/symbols")
-
-local attributes = require("@self/attributes")
 local report = require("@hir/report")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
+local symbols = require("@compiler/symbols")
+local ty = require("@ty")
+local types = require("@hir/types")
 
 type Ty = ty.Ty
-type Decl = hir.Decl
+type Decl = types.Decl
 type Node = ast.Node
-type Hir = hir.Hir
+type Hir = types.Hir
 type Ast = ast.Ast
 
 type TyId<T = Ty> = ty.TyId<T>
-type DeclId = hir.DeclId
+type DeclId = types.DeclId
 type NodeId = ast.NodeId
-type ScopeId = hir.ScopeId
+type ScopeId = types.ScopeId
 
 type Range = range.Range
 type Symbols = ast.Symbols
@@ -376,12 +373,12 @@ local function ty_reference(ctx: Context, expr: ast.ExprReference, node_id: Node
 		local path_string = path_node_to_string(expr.path)
 		local generic_ty_id = ctx.generics.values[path_string]
 		if generic_ty_id then
-			local node = hir.node_from_id(ctx.hir, node_id)
+			local node = lookup.node_from_id(ctx.hir, node_id)
 			if node.kind == "type" then
 				return ty.generic_type(generic_ty_id :: TyId, { generic_ty_id :: TyId })
 			end
 
-			return hir.ty_from_id(ctx.hir, generic_ty_id)
+			return lookup.ty_from_id(ctx.hir, generic_ty_id)
 		end
 	end
 
@@ -403,7 +400,7 @@ local function ty_reference(ctx: Context, expr: ast.ExprReference, node_id: Node
 	end
 
 	local decl_id = decl_node.id :: DeclId
-	local type_decl = hir.decl_from_id(ctx.hir, decl_id)
+	local type_decl = lookup.decl_from_id(ctx.hir, decl_id) :: types.Type
 
 	-- Phase 4:
 	local decl_generics = type_decl.generics
@@ -492,12 +489,12 @@ function expression(
 	return ty_id
 end
 
-local function expr_pack(ctx: Context, expr: ast.ExprPack): { hir.Parameter }
-	local parameters: { hir.Parameter } = {}
+local function expr_pack(ctx: Context, expr: ast.ExprPack): { types.Parameter }
+	local parameters: { types.Parameter } = {}
 	for index, expr in expr.values do
 		local name = if expr.name then expr.name.value else nil
 		local ty_id = expression(ctx, expr.value)
-		local parameter: hir.Parameter = {
+		local parameter: types.Parameter = {
 			name = name,
 			ty_id = ty_id,
 		}
@@ -508,7 +505,7 @@ local function expr_pack(ctx: Context, expr: ast.ExprPack): { hir.Parameter }
 	return parameters
 end
 
-local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
+local function stat_type(ctx: Context, stat: ast.StatType): types.Type
 	--> lower generics
 	local args: { TyId<ty.Generic> }?
 	if stat.generics then
@@ -541,17 +538,17 @@ local function stat_type(ctx: Context, stat: ast.StatType): hir.Type
 	}
 end
 
-local function stat_event(ctx: Context, stat: ast.StatEvent): hir.Event
+local function stat_event(ctx: Context, stat: ast.StatEvent): types.Event
 	local name = stat.name.value
 	local from =
-		assert_identifier_one_of(ctx, stat.from, { "Client", "Server", "Both" }).value :: index<hir.Event, "from">
+		assert_identifier_one_of(ctx, stat.from, { "Client", "Server", "Both" }).value :: index<types.Event, "from">
 	local call = assert_identifier_one_of(
 		ctx,
 		stat.call,
 		{ "ManySync", "SingleSync", "ManyAsync", "SingleAsync", "Polling" }
-	).value :: index<hir.Event, "call">
+	).value :: index<types.Event, "call">
 	local reliability =
-		assert_identifier_one_of(ctx, stat.type, { "Reliable", "Unreliable" }).value :: index<hir.Event, "type">
+		assert_identifier_one_of(ctx, stat.type, { "Reliable", "Unreliable" }).value :: index<types.Event, "type">
 
 	return {
 		id = stat.id :: DeclId,
@@ -566,10 +563,10 @@ local function stat_event(ctx: Context, stat: ast.StatEvent): hir.Event
 	}
 end
 
-local function stat_function(ctx: Context, stat: ast.StatFunction): hir.Function
+local function stat_function(ctx: Context, stat: ast.StatFunction): types.Function
 	local name = stat.name.value
 	local yield =
-		assert_identifier_one_of(ctx, stat.yield, { "Coroutine", "Promise", "Future" }).value :: index<hir.Function, "yield">
+		assert_identifier_one_of(ctx, stat.yield, { "Coroutine", "Promise", "Future" }).value :: index<types.Function, "yield">
 
 	return {
 		id = stat.id :: DeclId,
@@ -611,9 +608,9 @@ local function stat_option(ctx: Context, stat: ast.StatOption)
 end
 
 type Collection = {
-	read types: { hir.Type },
-	read events: { hir.Event },
-	read functs: { hir.Function },
+	read types: { types.Type },
+	read events: { types.Event },
+	read functs: { types.Function },
 }
 
 local function traverse_block(ctx: Context, block: ast.Block, prev_collection: Collection?): Collection
@@ -682,14 +679,14 @@ local function build_tys(ctx: Context, collection: Collection)
 	for _, decl_type in collection.types do
 		local decl_id = decl_type.id
 		local node_id = decl_id :: NodeId
-		local stat_node = hir.node_from_id(hirr, node_id) :: ast.StatType
+		local stat_node = lookup.node_from_id(hirr, node_id) :: ast.StatType
 
 		local generics: Generics?
 		local decl_generics = decl_type.generics
 		if decl_generics then
 			local values: index<Generics, "values"> = {}
 			for _, ty_id in decl_generics do
-				local generic = hir.ty_from_id(hirr, ty_id)
+				local generic = lookup.ty_from_id(hirr, ty_id)
 				values[generic.name] = ty_id
 			end
 
@@ -704,7 +701,7 @@ local function build_tys(ctx: Context, collection: Collection)
 	end
 
 	for _, decl_event in collection.events do
-		local node = hir.node_from_id(hirr, decl_event.id :: NodeId) :: ast.StatEvent
+		local node = lookup.node_from_id(hirr, decl_event.id :: NodeId) :: ast.StatEvent
 		if node.data == nil then
 			continue
 		end
@@ -714,7 +711,7 @@ local function build_tys(ctx: Context, collection: Collection)
 	end
 
 	for _, decl_funct in collection.functs do
-		local node = hir.node_from_id(hirr, decl_funct.id :: NodeId) :: ast.StatFunction
+		local node = lookup.node_from_id(hirr, decl_funct.id :: NodeId) :: ast.StatFunction
 		if node.data ~= nil then
 			switch_scope(ctx, decl_funct.scope_id)
 			decl_funct.data = expr_pack(ctx, node.data)
@@ -753,7 +750,7 @@ end
     Constructs a HIR from the provided files map.
     @param `files` - A map of `file_id` to an `AST`. A `file_id` of **0** must always correspond to the **entry file**.
 ]=]
-local function from_files(files: types.FilesMap): Hir
+local function from_files(files: compilation.FilesMap): Hir
 	local hirr: Hir = {
 		tys = {},
 		nodes = {},

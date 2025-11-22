@@ -1,4 +1,4 @@
-local ast = require("@ast/types")
+local ast = require("@ast")
 local attributes = require("@config/attributes")
 local compilation = require("@config/compilation")
 local report = require("@hir/report")

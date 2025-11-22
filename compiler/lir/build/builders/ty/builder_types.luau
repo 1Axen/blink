@@ -1,15 +1,15 @@
 local attributes = require("@config/attributes")
-local lir = require("@lir/types")
-local ty = require("@ty/types")
+local ty = require("@ty")
+local types = require("@lir/types")
 
 local context = require("@lir/build/context")
 local fn = require("@builders/fn")
 
 type Ty = ty.Ty
 type TyId = ty.TyId
-type LValue<T> = lir.LValue<T>
-type RValue<T> = lir.RValue<T>
-type Register<T> = lir.RegisterId<T>
+type LValue<T> = types.LValue<T>
+type RValue<T> = types.RValue<T>
+type Register<T> = types.RegisterId<T>
 
 type Builder = fn.Builder
 type Context = context.Context

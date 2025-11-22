@@ -1,5 +1,5 @@
-local lir = require("@lir/types")
-local ty = require("@ty/types")
+local ty = require("@ty")
+local types = require("@lir/types")
 
 local attributes = require("@config/attributes")
 
@@ -11,20 +11,20 @@ local unary = require("@builders/unary")
 local context = require("@lir/build/context")
 local length = require("./length")
 
-local types = require("../types")
+local builder_types = require("../builder_types")
 
-type TyBuilder = types.TyBuilder
-type ReadProps = types.ReadProps
-type WriteProps = types.WriteProps
+type TyBuilder = builder_types.TyBuilder
+type ReadProps = builder_types.ReadProps
+type WriteProps = builder_types.WriteProps
 
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
 type String = ty.String
-type LValue<T> = lir.LValue<T>
-type RValue<T> = lir.RValue<T>
-type Register<T> = lir.RegisterId<T>
+type LValue<T> = types.LValue<T>
+type RValue<T> = types.RValue<T>
+type Register<T> = types.RegisterId<T>
 
 local function build_read(props: ReadProps, block: Builder, ty: String, into: LValue<any>?): Register<string>
 	local len = length.read(props, block, ty)

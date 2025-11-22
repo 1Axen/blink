@@ -4,7 +4,7 @@
 
 local validator = require("@self/validator")
 
-local ast = require("@ast/types")
+local ast = require("@ast")
 local id = require("@compiler/id")
 local lexer = require("@compiler/lexer")
 

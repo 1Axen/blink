@@ -1,10 +1,10 @@
-local ast = require("@ast/types")
 local span = require("@util/span")
+local types = require("./types")
 
 local fmt_statement
 local fmt_expression
 
-local function fmt_range(node: ast.Range): string
+local function fmt_range(node: types.Range): string
 	local expr_min = node.min
 	local expr_max = node.max
 
@@ -14,12 +14,12 @@ local function fmt_range(node: ast.Range): string
 	return `({min}..{max})`
 end
 
-local function fmt_generic(node: ast.GenericDef): string
+local function fmt_generic(node: types.GenericDef): string
 	local name = node.name
 	return `{name.value}`
 end
 
-local function fmt_generics(node: ast.GenericsDef): string
+local function fmt_generics(node: types.GenericsDef): string
 	local strings = {}
 	for _, generic in node.values do
 		table.insert(strings, fmt_generic(generic))
@@ -28,11 +28,11 @@ local function fmt_generics(node: ast.GenericsDef): string
 	return `<{table.concat(strings, ", ")}>`
 end
 
-local function fmt_segment(node: ast.PathSegment): string
+local function fmt_segment(node: types.PathSegment): string
 	return node.value
 end
 
-local function fmt_path(node: ast.Path): string
+local function fmt_path(node: types.Path): string
 	local path = ""
 	local indices = #node.segments
 
@@ -46,11 +46,11 @@ local function fmt_path(node: ast.Path): string
 	return path
 end
 
-local function fmt_identifier(node: ast.Identifier): string
+local function fmt_identifier(node: types.Identifier): string
 	return node.value
 end
 
-local function fmt_union(expr: ast.ExprUnion): string
+local function fmt_union(expr: types.ExprUnion): string
 	local stringified = ""
 	for index, component_expr in expr.components do
 		if index > 1 then
@@ -63,7 +63,7 @@ local function fmt_union(expr: ast.ExprUnion): string
 	return stringified
 end
 
-function fmt_expression(expr: ast.Expression): string
+function fmt_expression(expr: types.Expression): string
 	if expr.kind == "set" then
 		return "set { ... }"
 	elseif expr.kind == "map" then
@@ -79,13 +79,13 @@ function fmt_expression(expr: ast.Expression): string
 	elseif expr.kind == "number" then
 		return tostring(expr.value)
 	elseif expr.kind == "array" then
-		return `{fmt_expression((expr :: ast.ExprArray).value)}[]`
+		return `{fmt_expression((expr :: types.ExprArray).value)}[]`
 	elseif expr.kind == "boolean" then
-		return tostring((expr :: ast.ExprBoolean).value)
+		return tostring((expr :: types.ExprBoolean).value)
 	elseif expr.kind == "optional" then
-		return `{fmt_expression((expr :: ast.ExprOptional).value)}?`
+		return `{fmt_expression((expr :: types.ExprOptional).value)}?`
 	elseif expr.kind == "tagged_enum" then
-		return `enum "{fmt_expression((expr :: ast.ExprTaggedEnum).tag)}" \{ ... \}`
+		return `enum "{fmt_expression((expr :: types.ExprTaggedEnum).tag)}" \{ ... \}`
 	elseif expr.kind == "reference" then
 		return fmt_path(expr.path)
 	end
@@ -93,9 +93,9 @@ function fmt_expression(expr: ast.Expression): string
 	error("unreachable")
 end
 
-function fmt_statement(stat: ast.Statement): string
+function fmt_statement(stat: types.Statement): string
 	if stat.kind == "type" then
-		local name = stat.name :: ast.Identifier
+		local name = stat.name :: types.Identifier
 		local generics = stat.generics
 		return `{fmt_identifier(name)}{if generics then fmt_generics(generics) else ""}`
 	end
@@ -103,7 +103,7 @@ function fmt_statement(stat: ast.Statement): string
 	error("unreachable")
 end
 
-local function fmt_node(node: ast.Node): string
+local function fmt_node(node: types.Node): string
 	return `"{span.value(node.span)}" ({node.span.z}:{node.span.x}..{node.span.y})`
 end
 

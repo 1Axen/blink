@@ -1,8 +1,8 @@
 --!strict
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
-type Global<T = any> = lir.Global<T>
+type Global<T = any> = types.Global<T>
 
 local function global<T>(identifier: string): Global<T>
 	return {

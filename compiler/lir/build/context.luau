@@ -1,16 +1,16 @@
 local globals = require("@builders/globals")
-local hir = require("@hir/types")
-local lir = require("@lir/types")
+local hir = require("@hir")
 local panic = require("@util/panic")
-local ty = require("@ty/types")
+local ty = require("@ty")
+local types = require("@lir/types")
 
-type Lir = lir.Lir
+type Lir = types.Lir
 type Hir = hir.Hir
 
 type TyId = ty.TyId
-type FnId = lir.FnId
-type Global<T> = lir.Global<T>
-type RValue<T> = lir.RValue<T>
+type FnId = types.FnId
+type Global<T> = types.Global<T>
+type RValue<T> = types.RValue<T>
 
 export type FnSet = {
 	read: FnId,
@@ -19,7 +19,7 @@ export type FnSet = {
 
 export type Context = {
 	fn_id: number,
-	fn_map: { [FnId]: lir.Fn },
+	fn_map: { [FnId]: types.Fn },
 	globals: { [string]: RValue<any> },
 	hashed_tys: { [number]: FnSet? },
 	ty_fn_set_map: { [TyId]: FnSet },
@@ -44,7 +44,7 @@ local function next_fn_id(ctx: Context): FnId
 	return fn_id
 end
 
-local function store_fn(ctx: Context, fn: lir.Fn, fn_id: FnId?): FnId
+local function store_fn(ctx: Context, fn: types.Fn, fn_id: FnId?): FnId
 	fn_id = fn_id or next_fn_id(ctx)
 	fn.id = fn_id
 	ctx.fn_map[fn_id] = fn
@@ -67,7 +67,7 @@ local function write_global<T>(ctx: Context, name: string, rvalue: RValue<T>): G
 	return globals.create(name)
 end
 
-local function fn_from_id(ctx: Context, fn_id: FnId): lir.Fn
+local function fn_from_id(ctx: Context, fn_id: FnId): types.Fn
 	local fn = ctx.fn_map[fn_id]
 	if fn == nil then
 		return panic("Expected fn id to point to a fn")

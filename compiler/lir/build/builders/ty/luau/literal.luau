@@ -1,6 +1,6 @@
 local attributes = require("@config/attributes")
-local lir = require("@lir/types")
-local ty = require("@ty/types")
+local ty = require("@ty")
+local types = require("@lir/types")
 
 local condition = require("@builders/condition")
 local constant = require("@builders/constant")
@@ -9,20 +9,20 @@ local library = require("@builders/library")
 
 local context = require("@lir/build/context")
 
-local types = require("../types")
+local builder_types = require("../builder_types")
 
-type TyBuilder = types.TyBuilder
-type ReadProps = types.ReadProps
-type WriteProps = types.WriteProps
+type TyBuilder = builder_types.TyBuilder
+type ReadProps = builder_types.ReadProps
+type WriteProps = builder_types.WriteProps
 
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T = any> = lir.LValue<T>
-type RValue<T = any> = lir.RValue<T>
+type LValue<T = any> = types.LValue<T>
+type RValue<T = any> = types.RValue<T>
 type Literal = ty.Literal
-type Register<T = any> = lir.RegisterId<T>
+type Register<T = any> = types.RegisterId<T>
 
 local function validate(props: WriteProps, block: Builder, ty: Literal, value: RValue)
 	local constant = constant.from_ty(ty :: any)

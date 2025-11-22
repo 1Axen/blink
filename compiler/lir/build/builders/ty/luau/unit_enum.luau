@@ -1,28 +1,28 @@
 local attributes = require("@config/attributes")
+local builder_types = require("../builder_types")
 local condition = require("@builders/condition")
 local constant = require("@builders/constant")
 local context = require("@lir/build/context")
 local conversion = require("@util/conversion")
 local fn = require("@builders/fn")
-local hir = require("@hir/types")
+local hir = require("@hir")
 local library = require("@builders/library")
-local lir = require("@lir/types")
 local numeral = require("./numeral")
-local ty = require("@ty/types")
-local types = require("../types")
+local ty = require("@ty")
+local types = require("@lir/types")
 
-type TyBuilder = types.TyBuilder
-type ReadProps = types.ReadProps
-type WriteProps = types.WriteProps
+type TyBuilder = builder_types.TyBuilder
+type ReadProps = builder_types.ReadProps
+type WriteProps = builder_types.WriteProps
 
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
 type UnitEnum = ty.UnitEnum
-type LValue<T> = lir.LValue<T>
-type RValue<T> = lir.RValue<T>
-type Register<T> = lir.RegisterId<T>
+type LValue<T> = types.LValue<T>
+type RValue<T> = types.RValue<T>
+type Register<T> = types.RegisterId<T>
 
 local function build_read(props: ReadProps, block: Builder, enum: UnitEnum, into: LValue<any>?)
 	local hhir = props.ctx.hir

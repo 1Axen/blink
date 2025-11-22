@@ -1,11 +1,11 @@
 local check_ty = require("@self/check_ty")
 local flatten_ty = require("@self/flatten_ty")
-local hir = require("@hir/types")
 local simplify_ty = require("@self/simplify_ty")
-local ty = require("@ty/types")
+local ty = require("@ty")
+local types = require("@hir/types")
 
 type Ty = ty.Ty
-type Hir = hir.Hir
+type Hir = types.Hir
 
 local function apply_constraints(hirr: Hir)
 	for ty_id, ty in hirr.tys do

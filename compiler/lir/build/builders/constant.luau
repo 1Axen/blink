@@ -1,11 +1,11 @@
 --!strict
 
-local lir = require("@lir/types")
-local ty = require("@ty/types")
+local ty = require("@ty")
+local types = require("@lir/types")
 
 type Literal = ty.Literal
-type Constant<T = ConstantValue> = lir.Constant<T>
-type ConstantValue = lir.ConstantValue
+type Constant<T = ConstantValue> = types.Constant<T>
+type ConstantValue = types.ConstantValue
 
 local deduped_constants: { [any]: Constant } = {}
 

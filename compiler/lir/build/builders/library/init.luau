@@ -5,16 +5,16 @@ local buffer_lib = require("@self/buffer")
 local constant = require("@builders/constant")
 local coroutine_lib = require("@self/coroutine")
 local debug_lib = require("@self/debug")
-local lir = require("@lir/types")
 local math_lib = require("@self/math")
 local projection = require("@builders/projection")
 local roblox_lib = require("@self/roblox")
 local table_lib = require("@self/table")
 local task_lib = require("@self/task")
+local types = require("@lir/types")
 local vector_lib = require("@self/vector")
 
-type Call<T> = lir.ProjCall<T>
-type RValue<T> = lir.RValue<T>
+type Call<T> = types.ProjCall<T>
+type RValue<T> = types.RValue<T>
 
 local function luau_warn(...: RValue<string>): Call<nil>
 	return projection.call(constant.from_value("warn"), { ... } :: { RValue<any> })

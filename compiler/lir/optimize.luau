@@ -2,9 +2,9 @@
 --!native
 --!optimize 2
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
-local function optimize(lir: lir.Lir) end
+local function optimize(lir: types.Lir) end
 
 return table.freeze({
 	lir = optimize,

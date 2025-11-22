@@ -1,16 +1,16 @@
 --!strict
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
 local constant = require("@builders/constant")
 local projection = require("@builders/projection")
 
-type Call<T> = lir.ProjCall<T>
-type Namecall<T> = lir.ProjNamecall<T>
+type Call<T> = types.ProjCall<T>
+type Namecall<T> = types.ProjNamecall<T>
 
-type LValue<T> = lir.LValue<T>
-type RValue<T> = lir.RValue<T>
-type Constant<T> = lir.Constant<T>
+type LValue<T> = types.LValue<T>
+type RValue<T> = types.RValue<T>
+type Constant<T> = types.Constant<T>
 
 local function cframe_new_quat(
 	x: RValue<number>,

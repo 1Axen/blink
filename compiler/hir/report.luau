@@ -1,12 +1,10 @@
+local ast = require("@ast")
+local codes = require("@config/codes")
 local diagnostics = require("@util/diagnostics")
+local fmt_range = require("@util/range/format")
 local range = require("@util/range")
 local span = require("@util/span")
-
-local fmt_range = require("@util/range/format")
-
-local ast = require("@ast/types")
-local codes = require("@config/codes")
-local ty = require("@ty/types")
+local ty = require("@ty")
 
 type TyKind = ty.TyKind
 
@@ -344,6 +342,27 @@ local function report_invalid_option_value(stat: ast.StatOption, expected_values
 		.error()
 end
 
+local function report_duplicate_union_type(duplicate: ast.Expression, previous: ast.Expression): never
+	return diagnostics.report
+		.create("Error")
+		.with_code(codes.type_checking.DuplicateUnionType)
+		.with_message("Duplicate tyes used in union")
+		.with_label(
+			diagnostics.label
+				.create(duplicate.span)
+				.with_color(diagnostics.style.color.red)
+				.with_message("Duplicate type here")
+		)
+		.with_label(
+			diagnostics.label
+				.create(previous.span)
+				.with_color(diagnostics.style.color.cyan)
+				.with_message("Previous type here")
+		)
+		.finish()
+		.error()
+end
+
 return table.freeze({
 	expect = report_expect,
 	expect_one_of = report_expect_one_of,
@@ -371,4 +390,6 @@ return table.freeze({
 	duplicate_option = report_duplicate_option,
 	invalid_option_type = report_invalid_option_type,
 	invalid_option_value = report_invalid_option_value,
+
+	duplicate_union_type = report_duplicate_union_type,
 })

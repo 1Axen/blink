@@ -1,12 +1,12 @@
 --!strict
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
 local constant = require("@builders/constant")
 local projection = require("@builders/projection")
 
-type RValue<T> = lir.RValue<T>
-type ProjCall<T> = lir.ProjCall<T>
+type RValue<T> = types.RValue<T>
+type ProjCall<T> = types.ProjCall<T>
 
 local function traceback(message: RValue<string>, level: RValue<number>?): ProjCall<string>
 	return projection.call(constant.from_value("debug.traceback"), { message, level } :: any)

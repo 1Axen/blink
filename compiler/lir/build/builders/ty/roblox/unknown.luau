@@ -1,6 +1,6 @@
 local attributes = require("@config/attributes")
-local lir = require("@lir/types")
-local ty = require("@ty/types")
+local ty = require("@ty")
+local types = require("@lir/types")
 
 local context = require("@lir/build/context")
 
@@ -13,12 +13,12 @@ local library = require("@builders/library")
 local projection = require("@builders/projection")
 local ternary = require("@builders/ternary")
 
+local builder_types = require("../builder_types")
 local numeral = require("../luau/numeral")
-local types = require("../types")
 
-type TyBuilder = types.TyBuilder
-type ReadProps = types.ReadProps
-type WriteProps = types.WriteProps
+type TyBuilder = builder_types.TyBuilder
+type ReadProps = builder_types.ReadProps
+type WriteProps = builder_types.WriteProps
 
 type Builder = fn.Builder
 type Context = context.Context
@@ -26,9 +26,9 @@ type Attributes = attributes.Attributes
 
 type Unknown = ty.Unknown
 
-type LValue<T> = lir.LValue<T>
-type RValue<T> = lir.RValue<T>
-type Register<T> = lir.RegisterId<T>
+type LValue<T> = types.LValue<T>
+type RValue<T> = types.RValue<T>
+type Register<T> = types.RegisterId<T>
 
 local FORMAT = numeral.u8
 

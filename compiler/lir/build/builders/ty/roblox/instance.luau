@@ -1,7 +1,7 @@
 local attributes = require("@config/attributes")
-local hir = require("@hir/types")
-local lir = require("@lir/types")
-local ty = require("@ty/types")
+local hir = require("@hir")
+local ty = require("@ty")
+local types = require("@lir/types")
 
 local condition = require("@builders/condition")
 local constant = require("@builders/constant")
@@ -13,11 +13,11 @@ local context = require("@lir/build/context")
 local globals = require("@builders/globals")
 local projection = require("@builders/projection")
 
-local types = require("../types")
+local builder_types = require("../builder_types")
 
-type TyBuilder = types.TyBuilder
-type ReadProps = types.ReadProps
-type WriteProps = types.WriteProps
+type TyBuilder = builder_types.TyBuilder
+type ReadProps = builder_types.ReadProps
+type WriteProps = builder_types.WriteProps
 
 type Builder = fn.Builder
 type Context = context.Context
@@ -25,9 +25,9 @@ type Attributes = attributes.Attributes
 
 type Instance = ty.Instance
 
-type LValue<T> = lir.LValue<T>
-type RValue<T> = lir.RValue<T>
-type Register<T> = lir.RegisterId<T>
+type LValue<T> = types.LValue<T>
+type RValue<T> = types.RValue<T>
+type Register<T> = types.RegisterId<T>
 
 local DEFAULT_TYPE = constant.from_value("Instance")
 
@@ -61,7 +61,7 @@ end
 
 local function build_read(props: ReadProps, block: Builder, instance: Instance, into: LValue<any>?): Register<Instance>
 	local unknown_cursor = globals.incoming.unknown_cursor
-	local value = projection.field(globals.incoming.unknown :: LValue<any>, unknown_cursor) :: lir.ProjField<Instance>
+	local value = projection.field(globals.incoming.unknown :: LValue<any>, unknown_cursor) :: types.ProjField<Instance>
 	block:store(binary.add(unknown_cursor, constant.one), unknown_cursor)
 
 	local register = block:store(value, into)

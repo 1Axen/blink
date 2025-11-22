@@ -1,6 +1,6 @@
 local attributes = require("@config/attributes")
-local lir = require("@lir/types")
-local ty = require("@ty/types")
+local lir_types = require("@lir/types")
+local ty = require("@ty")
 
 local binary = require("@builders/binary")
 local condition = require("@builders/condition")
@@ -29,7 +29,7 @@ type function concat_literal_union(left: any, right: any)
 	return types.unionof(table.unpack(combined_components))
 end
 
-local builder_types = require("../types")
+local builder_types = require("../builder_types")
 
 type TyBuilder = builder_types.TyBuilder
 type ReadProps = builder_types.ReadProps
@@ -39,13 +39,13 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T> = lir.LValue<T>
-type RValue<T> = lir.RValue<T>
-type Register<T> = lir.RegisterId<T>
+type LValue<T> = lir_types.LValue<T>
+type RValue<T> = lir_types.RValue<T>
+type Register<T> = lir_types.RegisterId<T>
 
-type Call<T> = lir.ProjCall<T>
-type Advance = lir.CtrlAdvance<number>
-type Allocate = lir.CtrlAllocate<number>
+type Call<T> = lir_types.ProjCall<T>
+type Advance = lir_types.CtrlAdvance<number>
+type Allocate = lir_types.CtrlAllocate<number>
 
 type ReadCtor = (cursor: Advance) -> Call<number>
 type WriteCtor = (cursor: Register<number>, value: RValue<number>) -> Call<nil>

@@ -10,9 +10,8 @@ local context = require("@self/context")
 local control = require("@builders/control")
 local fn = require("@builders/fn")
 local globals = require("@builders/globals")
-local hir = require("@hir/types")
+local hir = require("@hir")
 local library = require("@builders/library")
-local lir = require("@lir/types")
 local panic = require("@util/panic")
 local projection = require("@builders/projection")
 local shuffle = require("@util/shuffle")
@@ -20,10 +19,11 @@ local state = require("@builders/state")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 local structure = require("@builders/structure")
 local ternary = require("@builders/ternary")
-local ty = require("@ty/types")
+local ty = require("@ty")
+local types = require("@lir/types")
 local unary = require("@builders/unary")
 
-type Lir = lir.Lir
+type Lir = types.Lir
 type Hir = hir.Hir
 
 type Decl = hir.Decl
@@ -35,18 +35,18 @@ type Function = hir.Function
 type Ty = ty.Ty
 type TyId = ty.TyId
 
-type Fn = lir.Fn
-type FnId = lir.FnId
-type AnonymousFn = lir.AnonymousFn
+type Fn = types.Fn
+type FnId = types.FnId
+type AnonymousFn = types.AnonymousFn
 
 type Context = context.Context
 type Builder = builders.Builder
 
-type Export = lir.Export
-type TypeExport = lir.TypeExport
-type EventExport = lir.EventExport
-type FunctionExport = lir.FunctionExport
-type ScopeExport = lir.ScopeExport
+type Export = types.Export
+type TypeExport = types.TypeExport
+type EventExport = types.EventExport
+type FunctionExport = types.FunctionExport
+type ScopeExport = types.ScopeExport
 
 type Receivable = {
 	read id: number,
@@ -89,7 +89,7 @@ local SERVER_RECEIVE_PARAMETERS = {
 local ON_PARAMETER = fn.static_parameter("(...any) -> ()")
 local DISCONNECT_RETURN = fn.static_return("() -> ()")
 
-local function returns(ctx: Context, parameters: { hir.Parameter }): { lir.Return }
+local function returns(ctx: Context, parameters: { hir.Parameter }): { types.Return }
 	local array = {}
 	for index, parameter in parameters do
 		local ty = hir.ty_from_id(ctx.hir, parameter.ty_id)
@@ -98,7 +98,7 @@ local function returns(ctx: Context, parameters: { hir.Parameter }): { lir.Retur
 	return array
 end
 
-local function parameters(ctx: Context, parameters: { hir.Parameter }): { lir.Parameter }
+local function parameters(ctx: Context, parameters: { hir.Parameter }): { types.Parameter }
 	local array = {}
 	for index, parameter in parameters do
 		local ty = hir.ty_from_id(ctx.hir, parameter.ty_id)
@@ -107,8 +107,8 @@ local function parameters(ctx: Context, parameters: { hir.Parameter }): { lir.Pa
 	return array
 end
 
-local function fn_sets_from_data(ctx: Context, decl: hir.Decl, data: { hir.Parameter }): { lir.FnSet }
-	local fn_sets = table.create(#data) :: { lir.FnSet }
+local function fn_sets_from_data(ctx: Context, decl: hir.Decl, data: { hir.Parameter }): { types.FnSet }
+	local fn_sets = table.create(#data) :: { types.FnSet }
 	for index, parameter in data do
 		fn_sets[index] = builders.ty.from_ty_id(ctx, decl.attributes, parameter.ty_id)
 	end
@@ -124,7 +124,7 @@ local function next_event_id(pool: { number }): number
 	return id
 end
 
-local function event_queue_structure(args_count: number): lir.Struct<any>
+local function event_queue_structure(args_count: number): types.Struct<any>
 	local columns_array = table.create(args_count, structure.array({}))
 	return structure.struct({
 		[constant.from_value("row")] = constant.zero,
@@ -133,7 +133,7 @@ local function event_queue_structure(args_count: number): lir.Struct<any>
 	})
 end
 
-local function trim_outgoing_buffer(block: fn.Builder): lir.RegisterId<buffer>
+local function trim_outgoing_buffer(block: fn.Builder): types.RegisterId<buffer>
 	local new_buffer = block:store(OUTGOING.buffer)
 	block:if_single(condition.not_equals(OUTGOING.cursor, OUTGOING.length), function()
 		block:store(library.buffer.create(OUTGOING.cursor), new_buffer)
@@ -142,13 +142,13 @@ local function trim_outgoing_buffer(block: fn.Builder): lir.RegisterId<buffer>
 	return new_buffer
 end
 
-local function copy_outgoing_buffer(block: fn.Builder): lir.RegisterId<buffer>
+local function copy_outgoing_buffer(block: fn.Builder): types.RegisterId<buffer>
 	local new_buffer = block:store(library.buffer.create(OUTGOING.cursor))
 	block:call(library.buffer.copy(new_buffer, constant.zero, OUTGOING.buffer, constant.zero, OUTGOING.cursor))
 	return new_buffer
 end
 
-local function toggle_bitset_index(block: fn.Builder, index: lir.RValue<number>, bitset: lir.RValue<number>?)
+local function toggle_bitset_index(block: fn.Builder, index: types.RValue<number>, bitset: types.RValue<number>?)
 	local modified_bitset = library.bit32.bxor(bitset or INVOCATIONS_BITSET, binary.pow(constant.two, index))
 	block:store(modified_bitset, INVOCATIONS_BITSET)
 end
@@ -163,7 +163,7 @@ local function build_type(ctx: Context, decl: hir.Type): TypeExport?
 	return nil
 end
 
-local function queue_iterator(queue_projection: lir.ProjField<any>, args_count: number)
+local function queue_iterator(queue_projection: types.ProjField<any>, args_count: number)
 	return fn.anonymous({}, {}, function(block)
 		local queue = block:store(queue_projection)
 		local row_index = projection.index(queue, constant.from_value("row"))
@@ -305,7 +305,7 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 	end)
 
 	local fire_server = fn.anonymous(data_params, {}, function(block)
-		local prev_buffer: lir.LValue<buffer>, prev_length: lir.LValue<number>, prev_cursor: lir.LValue<number>, prev_unknown: lir.LValue<{ unknown }>
+		local prev_buffer: types.LValue<buffer>, prev_length: types.LValue<number>, prev_cursor: types.LValue<number>, prev_unknown: types.LValue<{ unknown }>
 		if is_unreliable then
 			-- take snapshot of outgoing state
 			prev_buffer = block:store(OUTGOING.buffer)
@@ -417,7 +417,7 @@ local function build_event_receive(ctx: Context, side: Side, block: fn.Builder, 
 	local fn_sets = fn_sets_from_data(ctx, decl, decl.data or {})
 	local queue = projection.field(QUEUES, constant.from_value(event_id))
 
-	local values: { lir.RegisterId<any> } = {}
+	local values: { types.RegisterId<any> } = {}
 	if side == "Server" then
 		-- player parameter
 		table.insert(values, block:parameter(1))
@@ -667,7 +667,7 @@ local function build_scope(ctx: Context, scope_id: hir.ScopeId, exports_map: Exp
 	}
 end
 
-local function build_receive_connection(ctx: Context, side: Side, receivables: { Receivable }): lir.AnonymousFn
+local function build_receive_connection(ctx: Context, side: Side, receivables: { Receivable }): types.AnonymousFn
 	local parameters = RECEIVE_PARAMETERS
 	local parameters_offset = 0
 	local is_server = side == "Server"
@@ -719,8 +719,8 @@ local function build_receive_connection(ctx: Context, side: Side, receivables: {
 	end)
 end
 
-local function from_hir(hir: hir.Hir): lir.Lir
-	local ctx = context.create(hir, lir)
+local function from_hir(hir: hir.Hir): types.Lir
+	local ctx = context.create(hir, types)
 	local exports_map: ExportsMap = {}
 
 	-- write globals

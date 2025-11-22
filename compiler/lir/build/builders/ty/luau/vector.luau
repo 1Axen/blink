@@ -1,7 +1,7 @@
 local attributes = require("@config/attributes")
-local hir = require("@hir/types")
-local lir = require("@lir/types")
-local ty = require("@ty/types")
+local hir = require("@hir")
+local ty = require("@ty")
+local types = require("@lir/types")
 
 local literal = require("./literal")
 local numeral = require("./numeral")
@@ -16,19 +16,19 @@ local context = require("@lir/build/context")
 
 local panic = require("@util/panic")
 
-local types = require("../types")
+local builder_types = require("../builder_types")
 
-type TyBuilder = types.TyBuilder
-type ReadProps = types.ReadProps
-type WriteProps = types.WriteProps
+type TyBuilder = builder_types.TyBuilder
+type ReadProps = builder_types.ReadProps
+type WriteProps = builder_types.WriteProps
 
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T> = lir.LValue<T>
-type RValue<T> = lir.RValue<T>
-type Register<T> = lir.RegisterId<T>
+type LValue<T> = types.LValue<T>
+type RValue<T> = types.RValue<T>
+type Register<T> = types.RegisterId<T>
 
 type Axis = ty.Numeral | ty.NumberLiteral
 
@@ -75,7 +75,7 @@ local function validate(block: Builder, vec: ty.Vector, value: RValue<vector>)
 		return
 	end
 
-	local magnitude = projection.index(value :: any, constant.from_value("magnitude")) :: lir.ProjIndex<number>
+	local magnitude = projection.index(value :: any, constant.from_value("magnitude")) :: types.ProjIndex<number>
 	if bounds.min == bounds.max then
 		local exact_length = constant.from_value(bounds.min)
 		local is_exact_length = condition.equals(magnitude, exact_length)

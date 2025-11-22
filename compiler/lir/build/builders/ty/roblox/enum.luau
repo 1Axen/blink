@@ -1,7 +1,7 @@
 local attributes = require("@config/attributes")
-local hir = require("@hir/types")
-local lir = require("@lir/types")
-local ty = require("@ty/types")
+local hir = require("@hir")
+local ty = require("@ty")
+local types = require("@lir/types")
 
 local ty_numeral = require("../luau/numeral")
 local ty_string = require("../luau/string")
@@ -14,26 +14,26 @@ local projection = require("@builders/projection")
 
 local context = require("@lir/build/context")
 
-local types = require("../types")
+local builder_types = require("../builder_types")
 
-type TyBuilder = types.TyBuilder
-type ReadProps = types.ReadProps
-type WriteProps = types.WriteProps
+type TyBuilder = builder_types.TyBuilder
+type ReadProps = builder_types.ReadProps
+type WriteProps = builder_types.WriteProps
 
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T> = lir.LValue<T>
-type RValue<T> = lir.RValue<T>
-type Register<T> = lir.RegisterId<T>
+type LValue<T> = types.LValue<T>
+type RValue<T> = types.RValue<T>
+type Register<T> = types.RegisterId<T>
 
 local const = constant.from_value
 
 local NAME_FORMAT = ty.string()
 local VALUE_FORMAT = ty.numeral("16", "u")
 
-local function to_static_enum_type(ctx: Context, ty: ty.Enum): lir.Constant<string>?
+local function to_static_enum_type(ctx: Context, ty: ty.Enum): types.Constant<string>?
 	local ty_id = ty.type
 	if ty_id == nil then
 		return nil
@@ -60,12 +60,12 @@ end
 local function build_read(props: ReadProps, block: Builder, ty: ty.Enum, into: LValue<any>?): Register<EnumItem>
 	-- Enum[name]
 	local name = ty_string.read(props, block, NAME_FORMAT, attributes)
-	local enum = projection.field(const("Enum"), name :: any) :: lir.ProjField<Enum>
+	local enum = projection.field(const("Enum"), name :: any) :: types.ProjField<Enum>
 
 	-- enum:FromValue(value)
 	local value = ty_numeral.read(props, block, VALUE_FORMAT, attributes)
 	local enum_item =
-		projection.namecall(enum :: any, const("FromValue"), { value :: any }) :: lir.ProjNamecall<EnumItem>
+		projection.namecall(enum :: any, const("FromValue"), { value :: any }) :: types.ProjNamecall<EnumItem>
 
 	return block:store(enum_item, into)
 end
@@ -76,12 +76,12 @@ local function build_write(props: WriteProps, block: Builder, ty: ty.Enum, value
 	end
 
 	-- tostring(enum.EnumType)
-	local enum_type = projection.index(value :: any, const("EnumType")) :: lir.ProjIndex<Enum>
+	local enum_type = projection.index(value :: any, const("EnumType")) :: types.ProjIndex<Enum>
 	local name = block:store(library.tostring(enum_type :: any))
 	ty_string.write(props, block, NAME_FORMAT, name)
 
 	-- enum.Value
-	local enum_value = block:store(projection.index(value :: any, const("Value")) :: lir.ProjIndex<number>)
+	local enum_value = block:store(projection.index(value :: any, const("Value")) :: types.ProjIndex<number>)
 	ty_numeral.write(props, block, VALUE_FORMAT, enum_value)
 end
 

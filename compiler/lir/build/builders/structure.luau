@@ -1,13 +1,13 @@
 --!strict
 
-local lir = require("@lir/types")
+local types = require("@lir/types")
 
-type RValue<T = any> = lir.RValue<T>
-type Constant<T> = lir.Constant<T>
+type RValue<T = any> = types.RValue<T>
+type Constant<T> = types.Constant<T>
 
-type StructureMap<T = any> = lir.Map<T>
-type StructureArray<T = any> = lir.Array<T>
-type StructureStruct<T = any> = lir.Struct<T>
+type StructureMap<T = any> = types.Map<T>
+type StructureArray<T = any> = types.Array<T>
+type StructureStruct<T = any> = types.Struct<T>
 
 local function structure_map(values: { [RValue<any>]: RValue<any> }): StructureMap<any>
 	return {

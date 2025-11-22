@@ -1,6 +1,6 @@
 local attributes = require("@config/attributes")
-local lir = require("@lir/types")
-local ty = require("@ty/types")
+local ty = require("@ty")
+local types = require("@lir/types")
 
 local ty_numeral = require("../luau/numeral")
 
@@ -11,19 +11,19 @@ local projection = require("@builders/projection")
 
 local context = require("@lir/build/context")
 
-local types = require("../types")
+local builder_types = require("../builder_types")
 
-type TyBuilder = types.TyBuilder
-type ReadProps = types.ReadProps
-type WriteProps = types.WriteProps
+type TyBuilder = builder_types.TyBuilder
+type ReadProps = builder_types.ReadProps
+type WriteProps = builder_types.WriteProps
 
 type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T> = lir.LValue<T>
-type RValue<T> = lir.RValue<T>
-type Register<T> = lir.RegisterId<T>
+type LValue<T> = types.LValue<T>
+type RValue<T> = types.RValue<T>
+type Register<T> = types.RegisterId<T>
 
 local FORMAT = ty_numeral.f64
 
@@ -40,7 +40,7 @@ end
 local function build_write(props: WriteProps, block: Builder, date_time: ty.DateTime, value: RValue<DateTime>): ()
 	local timestamp = (
 		projection.index(value :: any, constant.from_value("UnixTimestamp")) :: any
-	) :: lir.ProjIndex<number>
+	) :: types.ProjIndex<number>
 	ty_numeral.write(props, block, FORMAT, timestamp)
 end
 
