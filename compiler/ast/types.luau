@@ -117,21 +117,6 @@ export type ExprPack = {
 	read values: { ExprPackParameter },
 }
 
---stylua: ignore
-export type ExprUnitEnumVariant = 
-	| Identifier
-	| ExprString
-	| ExprNumber
---stylua: ignore end
-
---- enum { text }
-export type ExprEnum = {
-	read id: NodeId,
-	read span: vector,
-	read kind: "enum",
-	variants: { ExprUnitEnumVariant },
-}
-
 export type ExprArray = {
 	read id: NodeId,
 	read span: vector,
@@ -164,7 +149,7 @@ export type ExprUnion = {
 }
 
 --- [name] { ... }
-export type ExprTaggedEnumVariant = {
+export type ExprDiscriminatedUnionVariant = {
 	read id: NodeId,
 	read span: vector,
 	read kind: "variant",
@@ -173,12 +158,12 @@ export type ExprTaggedEnumVariant = {
 }
 
 --- enum [tag] { text }
-export type ExprTaggedEnum = {
+export type ExprDiscriminatedUnion = {
 	read id: NodeId,
 	read span: vector,
-	read kind: "tagged_enum",
+	read kind: "discriminated_union",
 	read tag: ExprString,
-	read variants: { ExprTaggedEnumVariant },
+	read variants: { ExprDiscriminatedUnionVariant },
 }
 
 --- [path]<[generics]>
@@ -193,11 +178,10 @@ export type ExprReference = {
 
 export type Expression =
 	| ExprMap
-	| ExprEnum
 	| ExprArray
 	| ExprUnion
 	| ExprStruct
-	| ExprTaggedEnum
+	| ExprDiscriminatedUnion
 	| ExprNumber
 	| ExprString
 	| ExprBoolean

@@ -6,11 +6,11 @@ scope first {
         field: u8
     }
 
-    type d = enum {
-        "option"
-    }
+	type d = 
+    	"option"
+		| "import"
 
-    type d_tagged<T> = enum "Type" {
+    type d_tagged<T> = union "Type" {
         Some {
             Value: T
         },
@@ -22,15 +22,15 @@ scope first {
         value: V
     }
 
-    type f = struct {
-        some_field: u8
-    } & c
+    -- type f = struct {
+    --     some_field: u8
+    -- } & c
 
     event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
-        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>)
     }
 }
 
@@ -42,11 +42,11 @@ scope second {
         field: u8
     }
 
-    type d = enum {
-        "option"
-    }
+	type d = 
+    	"option"
+		| "import"
 
-    type d_tagged<T> = enum "Type" {
+    type d_tagged<T> = union "Type" {
         Some {
             Value: T
         },
@@ -58,15 +58,15 @@ scope second {
         value: V
     }
 
-    type f = struct {
-        some_field: u8
-    } & c
+    -- type f = struct {
+    --     some_field: u8
+    -- } & c
 
     event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
-        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>)
     }
 }
 
@@ -78,11 +78,11 @@ scope third {
         field: u8
     }
 
-    type d = enum {
-        "option"
-    }
+	type d = 
+    	"option"
+		| "import"
 
-    type d_tagged<T> = enum "Type" {
+    type d_tagged<T> = union "Type" {
         Some {
             Value: T
         },
@@ -94,15 +94,15 @@ scope third {
         value: V
     }
 
-    type f = struct {
-        some_field: u8
-    } & c
+    -- type f = struct {
+    --     some_field: u8
+    -- } & c
 
     event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
-        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>)
     }
 }
 
@@ -114,11 +114,11 @@ scope fourth {
         field: u8
     }
 
-    type d = enum {
-        "option"
-    }
+	type d = 
+    	"option"
+		| "import"
 
-    type d_tagged<T> = enum "Type" {
+    type d_tagged<T> = union "Type" {
         Some {
             Value: T
         },
@@ -130,15 +130,15 @@ scope fourth {
         value: V
     }
 
-    type f = struct {
-        some_field: u8
-    } & c
+    -- type f = struct {
+    --     some_field: u8
+    -- } & c
 
     event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
-        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>)
     }
 }
 
@@ -150,11 +150,11 @@ scope fifth {
         field: u8
     }
 
-    type d = enum {
-        "option"
-    }
+	type d = 
+    	"option"
+		| "import"
 
-    type d_tagged<T> = enum "Type" {
+    type d_tagged<T> = union "Type" {
         Some {
             Value: T
         },
@@ -166,15 +166,15 @@ scope fifth {
         value: V
     }
 
-    type f = struct {
-        some_field: u8
-    } & c
+    -- type f = struct {
+    --     some_field: u8
+    -- } & c
 
     event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
-        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>)
     }
 }
 
@@ -186,11 +186,11 @@ scope sixth {
         field: u8
     }
 
-    type d = enum {
-        "option"
-    }
+	type d = 
+    	"option"
+		| "import"
 
-    type d_tagged<T> = enum "Type" {
+    type d_tagged<T> = union "Type" {
         Some {
             Value: T
         },
@@ -202,15 +202,15 @@ scope sixth {
         value: V
     }
 
-    type f = struct {
-        some_field: u8
-    } & c
+    -- type f = struct {
+    --     some_field: u8
+    -- } & c
 
     event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
-        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>)
     }
 }
 
@@ -222,11 +222,11 @@ scope first_a {
         field: u8
     }
 
-    type d = enum {
-        "option"
-    }
+	type d = 
+    	"option"
+		| "import"
 
-    type d_tagged<T> = enum "Type" {
+    type d_tagged<T> = union "Type" {
         Some {
             Value: T
         },
@@ -238,15 +238,15 @@ scope first_a {
         value: V
     }
 
-    type f = struct {
-        some_field: u8
-    } & c
+    -- type f = struct {
+    --     some_field: u8
+    -- } & c
 
     event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
-        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>)
     }
 }
 
@@ -258,11 +258,11 @@ scope second_a {
         field: u8
     }
 
-    type d = enum {
-        "option"
-    }
+	type d = 
+    	"option"
+		| "import"
 
-    type d_tagged<T> = enum "Type" {
+    type d_tagged<T> = union "Type" {
         Some {
             Value: T
         },
@@ -274,15 +274,15 @@ scope second_a {
         value: V
     }
 
-    type f = struct {
-        some_field: u8
-    } & c
+    -- type f = struct {
+    --     some_field: u8
+    -- } & c
 
     event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
-        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>)
     }
 }
 
@@ -294,11 +294,11 @@ scope third_a {
         field: u8
     }
 
-    type d = enum {
-        "option"
-    }
+	type d = 
+    	"option"
+		| "import"
 
-    type d_tagged<T> = enum "Type" {
+    type d_tagged<T> = union "Type" {
         Some {
             Value: T
         },
@@ -310,15 +310,15 @@ scope third_a {
         value: V
     }
 
-    type f = struct {
-        some_field: u8
-    } & c
+    -- type f = struct {
+    --     some_field: u8
+    -- } & c
 
     event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
-        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>)
     }
 }
 
@@ -330,11 +330,11 @@ scope fourth_a {
         field: u8
     }
 
-    type d = enum {
-        "option"
-    }
+	type d = 
+    	"option"
+		| "import"
 
-    type d_tagged<T> = enum "Type" {
+    type d_tagged<T> = union "Type" {
         Some {
             Value: T
         },
@@ -346,15 +346,15 @@ scope fourth_a {
         value: V
     }
 
-    type f = struct {
-        some_field: u8
-    } & c
+    -- type f = struct {
+    --     some_field: u8
+    -- } & c
 
     event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
-        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>)
     }
 }
 
@@ -366,11 +366,11 @@ scope fifth_a {
         field: u8
     }
 
-    type d = enum {
-        "option"
-    }
+	type d = 
+    	"option"
+		| "import"
 
-    type d_tagged<T> = enum "Type" {
+    type d_tagged<T> = union "Type" {
         Some {
             Value: T
         },
@@ -382,15 +382,15 @@ scope fifth_a {
         value: V
     }
 
-    type f = struct {
-        some_field: u8
-    } & c
+    -- type f = struct {
+    --     some_field: u8
+    -- } & c
 
     event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
-        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>)
     }
 }
 
@@ -402,11 +402,11 @@ scope sixth_a {
         field: u8
     }
 
-    type d = enum {
-        "option"
-    }
+	type d = 
+    	"option"
+		| "import"
 
-    type d_tagged<T> = enum "Type" {
+    type d_tagged<T> = union "Type" {
         Some {
             Value: T
         },
@@ -418,14 +418,14 @@ scope sixth_a {
         value: V
     }
 
-    type f = struct {
-        some_field: u8
-    } & c
+    -- type f = struct {
+    --     some_field: u8
+    -- } & c
 
     event g = {
         from: Server,
         type: Reliable,
         call: SingleSync,
-        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>, f)
+        data: (a, b, c, d, d_tagged<unknown>, e<u8, u8>)
     }
 }

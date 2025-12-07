@@ -9,7 +9,6 @@ local compilation = require("@config/compilation")
 local lookup = require("@hir/lookup")
 local options = require("@config/options")
 local panic = require("@util/panic")
-local primitives = require("@config/primitives")
 local range = require("@util/range")
 local report = require("@hir/report")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
@@ -32,8 +31,8 @@ type Range = range.Range
 type Symbols = ast.Symbols
 
 type Generics = {
-	args: { TyId<ty.Generic> },
-	values: { [string]: TyId<ty.Generic> },
+	by_name: { [string]: ty.Generic },
+	parameters: { ty.Generic },
 }
 
 type Context = {
@@ -47,7 +46,7 @@ type Context = {
 	generics: Generics?,
 }
 
-local TY_PLACEHOLDER = ty.placeholder()
+local NIL = ty.nnil()
 
 local expression: (ctx: Context, expr: ast.Expression, node_id: NodeId?, generics: Generics?) -> TyId<any>
 
@@ -78,9 +77,9 @@ local function assert_identifier_one_of(ctx: Context, ident: ast.Identifier, val
 	return ident
 end
 
---- Converts an ast `Range` node to a `Range` class
+--- Converts an ast `Range` node to a `Range` object
 --- Range is validated to be within the `bounds` passed
-local function range_node_to_range_class(node: ast.Range, bounds: Range): Range
+local function range_from_node(node: ast.Range, bounds: Range): Range
 	local max_node = node.max
 	local min_node = node.min
 
@@ -108,29 +107,28 @@ local function ty_boolean_literal(ctx: Context, expr: ast.ExprBoolean): ty.Boole
 	return ty.boolean_literal(expr.value)
 end
 
-local function ty_numeral(ctx: Context, identifier: string, expr_range: ast.Range?): ty.Numeral
-	local numeral: primitives.Primitive = (primitives :: any)[identifier]
-
+local function ty_numeral(ctx: Context, expr: ast.ExprReference, identifier: string): ty.Numeral
 	local size: ty.NumSize = string.sub(identifier, 2, 3) :: ty.NumSize
 	local format: ty.NumFormat = string.sub(identifier, 1, 1) :: ty.NumFormat
-	local range: Range?
 
-	if expr_range then
-		range = range_node_to_range_class(expr_range, numeral.range or primitives.f64.range)
+	local range: Range?
+	local bounds: Range = (bounds :: any)[identifier]
+	if expr.range then
+		range = range_from_node(expr.range, bounds)
 	end
 
 	return ty.numeral(size, format, range)
 end
 
-local function ty_string(ctx: Context, expr_range: ast.Range?): ty.String
-	local bounds = primitives.string.range
-	local length = if expr_range then range_node_to_range_class(expr_range, bounds) else nil
+local function ty_string(ctx: Context, expr: ast.ExprReference): ty.String
+	local bounds = bounds.string
+	local length = if expr.range then range_from_node(expr.range, bounds) else nil
 	return ty.string(length)
 end
 
-local function ty_buffer(ctx: Context, expr_range: ast.Range?): ty.Buffer
-	local bounds = primitives.buffer.range
-	local length = if expr_range then range_node_to_range_class(expr_range, bounds) else nil
+local function ty_buffer(ctx: Context, expr: ast.ExprReference): ty.Buffer
+	local bounds = bounds.buffer
+	local length = if expr.range then range_from_node(expr.range, bounds) else nil
 	return ty.buffer(length)
 end
 
@@ -140,10 +138,10 @@ local function ty_vector(ctx: Context, expr: ast.ExprReference): ty.Vector
 
 	local magnitude: Range?
 	if expr_range then
-		magnitude = range_node_to_range_class(expr_range, primitives.vector.range)
+		magnitude = range_from_node(expr_range, bounds.vector)
 	end
 
-	local axes: { ty.Axis } = {}
+	local axes: { ty.Axis? } = {}
 	if expr_generics then
 		local values = expr_generics.values
 		if #values > 3 then
@@ -168,16 +166,17 @@ end
 
 --> ROBLOX Primitives
 
-local function ty_roblox_enum(ctx: Context, expr_generics: ast.GenericsArgs?): ty.Enum
-	local enum_type: TyId<ty.StringLiteral>?
-	if expr_generics then
-		local values = expr_generics.values
+local function ty_roblox_enum(ctx: Context, expr: ast.ExprReference): ty.Enum
+	local enum_type: ty.StringLiteral?
+	local parameters = expr.generics
+	if parameters then
+		local values = parameters.values
 		if #values > 1 then
-			return report.extra_generics(expr_generics, 1)
+			return report.extra_generics(parameters, 1)
 		end
 
 		local generic = values[1]
-		enum_type = expression(ctx, generic) :: TyId<ty.StringLiteral>
+		enum_type = expression(ctx, generic) :: ty.StringLiteral
 	end
 
 	return ty.roblox_enum(enum_type)
@@ -187,16 +186,17 @@ local function ty_color3(ctx: Context): ty.Color3
 	return ty.color3()
 end
 
-local function ty_cframe(ctx: Context, expr_generics: ast.GenericsArgs?): ty.CFrame
-	local generics: { TyId<ty.Numeral> } = {}
-	if expr_generics then
-		local values = expr_generics.values
+local function ty_cframe(ctx: Context, expr: ast.ExprReference): ty.CFrame
+	local generics: { ty.Numeral } = {}
+	local parameters = expr.generics
+	if parameters then
+		local values = parameters.values
 		if #values > 2 then
-			return report.extra_generics(expr_generics, 2)
+			return report.extra_generics(parameters, 2)
 		end
 
 		for index, value in values do
-			local ty_id = expression(ctx, value) :: TyId<ty.Numeral>
+			local ty_id = expression(ctx, value) :: ty.Numeral
 			generics[index] = ty_id
 		end
 	end
@@ -216,66 +216,48 @@ local function ty_brick_color(ctx: Context): ty.BrickColor
 	return ty.brick_color()
 end
 
-local function ty_instance(ctx: Context, expr_generics: ast.GenericsArgs?): ty.Instance
-	local class: TyId<ty.StringLiteral>?
-	if expr_generics then
-		local values = expr_generics.values
+local function ty_instance(ctx: Context, expr: ast.ExprReference): ty.Instance
+	local class: ty.StringLiteral?
+	local parameters = expr.generics
+	if parameters then
+		local values = parameters.values
 		if #values > 1 then
-			return report.extra_generics(expr_generics, 1)
+			return report.extra_generics(parameters, 1)
 		end
 
-		class = expression(ctx, values[1]) :: TyId<ty.StringLiteral>
+		class = expression(ctx, values[1]) :: ty.StringLiteral
 	end
 
 	return ty.instance(class)
 end
 
---- Returns a `ty` from a `reference` **to a primitive (u8, string, buffer, etc.)**
-local function ty_primitive(ctx: Context, expr: ast.ExprReference, path: string): Ty
-	if
-		path == "u8"
-		or path == "u16"
-		or path == "u24"
-		or path == "u32"
-		or path == "u48"
-		or path == "i8"
-		or path == "i16"
-		or path == "i24"
-		or path == "i32"
-		or path == "i48"
-		or path == "f16"
-		or path == "f32"
-		or path == "f64"
-	then
-		return ty_numeral(ctx, path, expr.range)
-	elseif path == "string" then
-		return ty_string(ctx, expr.range)
-	elseif path == "buffer" then
-		return ty_buffer(ctx, expr.range)
-	elseif path == "vector" then
-		return ty_vector(ctx, expr)
-	elseif path == "boolean" then
-		return ty_boolean(ctx)
-	elseif path == "unknown" then
-		return ty_unknown(ctx)
-	elseif path == "Enum" then
-		return ty_roblox_enum(ctx, expr.generics)
-	elseif path == "CFrame" then
-		return ty_cframe(ctx, expr.generics)
-	elseif path == "Instance" then
-		return ty_instance(ctx, expr.generics)
-	elseif path == "Color3" then
-		return ty_color3(ctx)
-	elseif path == "DateTime" then
-		return ty_date_time(ctx)
-	elseif path == "BrickColor" then
-		return ty_brick_color(ctx)
-	elseif path == "DateTimeMillis" then
-		return ty_date_time_millis(ctx)
-	end
-
-	return panic(`Unhandled primitive "{path}"`)
-end
+local PRIMITIVE_BUILDERS: { [string]: ((ctx: Context, expr: ast.ExprReference, path: string) -> Ty)? } = {
+	u8 = ty_numeral,
+	u16 = ty_numeral,
+	u24 = ty_numeral,
+	u32 = ty_numeral,
+	u48 = ty_numeral,
+	i8 = ty_numeral,
+	i16 = ty_numeral,
+	i24 = ty_numeral,
+	i32 = ty_numeral,
+	i48 = ty_numeral,
+	f16 = ty_numeral,
+	f32 = ty_numeral,
+	f64 = ty_numeral,
+	string = ty_string,
+	buffer = ty_buffer,
+	vector = ty_vector,
+	boolean = ty_boolean,
+	unknown = ty_unknown,
+	Enum = ty_roblox_enum,
+	CFrame = ty_cframe,
+	Instance = ty_instance,
+	Color3 = ty_color3,
+	DateTime = ty_date_time,
+	BrickColor = ty_brick_color,
+	DateTimeMillis = ty_date_time_millis,
+}
 
 local function ty_map(ctx: Context, expr: ast.ExprMap): ty.Map
 	local index = expression(ctx, expr.index)
@@ -283,27 +265,17 @@ local function ty_map(ctx: Context, expr: ast.ExprMap): ty.Map
 
 	local range: Range
 	if expr.range then
-		range = range_node_to_range_class(expr.range, bounds.map)
+		range = range_from_node(expr.range, bounds.map)
 	end
 
 	return ty.map(index, value, range)
-end
-
-local function ty_unit_enum(ctx: Context, expr: ast.ExprEnum): ty.UnitEnum
-	local variants = {}
-	for _, node in expr.variants do
-		local variant = expression(ctx, node)
-		table.insert(variants, variant)
-	end
-
-	return ty.unit_enum(variants)
 end
 
 local function ty_array(ctx: Context, expr: ast.ExprArray): ty.Array
 	local of = expression(ctx, expr.value)
 	local size: Range?
 	if expr.range then
-		size = range_node_to_range_class(expr.range, bounds.array)
+		size = range_from_node(expr.range, bounds.array)
 	end
 
 	return ty.array(of, size)
@@ -333,167 +305,147 @@ local function ty_union(ctx: Context, expr: ast.ExprUnion): ty.Union
 	return ty.union(components)
 end
 
-local function ty_optional(ctx: Context, expr: ast.ExprOptional): ty.Optional
+local function ty_optional(ctx: Context, expr: ast.ExprOptional): ty.Union
 	local of = expression(ctx, expr.value)
-	return ty.optional(of)
+	return ty.union({ of, NIL })
 end
 
-local function ty_tagged_enum(ctx: Context, expr: ast.ExprTaggedEnum): ty.TaggedEnum
+local function ty_discriminated_union(ctx: Context, expr: ast.ExprDiscriminatedUnion): ty.DiscriminatedUnion
 	local tag = expr.tag.value
 	local variants: { ty.Variant } = {}
 	for index, node in expr.variants do
-		local key = expression(ctx, node.key) :: TyId<ty.Literal>
+		local key = expression(ctx, node.key) :: ty.Literal
 		local value = ty_struct(ctx, node.value)
 		local variant = ty.variant(key, value)
 
 		-- add tag field to variant struct
 		local struct = variant.value
-		table.insert(struct.fields, 1, ty.field(tag, key :: TyId))
+		table.insert(struct.fields, 1, ty.field(tag, key))
 
 		variants[index] = variant
 	end
 
-	return ty.tagged_enum(tag, variants)
+	return ty.discriminated_union(tag, variants)
 end
 
 --- Returns the `ty_id` of the `ty` referenced
-local function ty_reference(ctx: Context, expr: ast.ExprReference, node_id: NodeId): Ty
+local function ty_reference(ctx: Context, expr: ast.ExprReference): Ty
 	--[[
         Phases:
         1 - Check if the reference is a generic parameter, return the generic parameter if it is, otherwise Continue
         2 - Check whether the reference exists, continue if it does, otherwise report an unknown reference
-        3 - If any generics were passed alongside the reference convert them into an array of corresponding ty's
-        4 - If any generics were passed then check whether the referenced ty accepts generics, if it does then continue to 5.1, else report extra generics
-        4.1 - Validate whether the exact amount of generics were passed, report too few or too many if not, else create a new ty (generic type) and return it
-        5 - Return the referenced ty
+        3 - If any arguments were passed alongside the reference convert them into an array of corresponding TyIds
+        4 - If any arguments were passed then check whether the referenced Ty has parameters, if it does then continue to 5.1, else report extra arguments
+        4.1 - Validate whether the exact amount of arguments were passed, report too few or too many if not, else create a new type function Ty and return it
+        5 - Return a reference to a Ty
     --]]
 
 	-- Phase 1:
 	if ctx.generics then
 		local path_string = path_node_to_string(expr.path)
-		local generic_ty_id = ctx.generics.values[path_string]
-		if generic_ty_id then
-			local node = lookup.node_from_id(ctx.hir, node_id)
-			if node.kind == "type" then
-				return ty.generic_type(generic_ty_id :: TyId, { generic_ty_id :: TyId })
-			end
-
-			return lookup.ty_from_id(ctx.hir, generic_ty_id)
+		local generic_ty = ctx.generics.by_name[path_string]
+		if generic_ty then
+			return generic_ty
 		end
 	end
 
 	-- Phase 2:
 	local path_segments = path_node_to_segments(expr.path)
-	local decl_node = symbols.search(ctx.symbols, path_segments)
-
-	if decl_node == nil or decl_node.kind ~= "type" then
+	local referenced_node = symbols.search(ctx.symbols, path_segments)
+	if referenced_node == nil or referenced_node.kind ~= "type" then
 		return report.unknown_reference(expr)
 	end
 
 	-- Phase 3:
-	local generics: { TyId } = {}
-	local expr_generics = expr.generics
-	if expr_generics then
-		for index, value in expr_generics.values do
-			generics[index] = expression(ctx, value)
+	local arguments: { Ty } = {}
+	local expr_arguments = expr.generics
+	if expr_arguments then
+		for index, value in expr_arguments.values do
+			arguments[index] = expression(ctx, value)
 		end
 	end
 
-	local decl_id = decl_node.id :: DeclId
-	local type_decl = lookup.decl_from_id(ctx.hir, decl_id) :: types.Type
+	local reference_decl_id = referenced_node.id :: DeclId
+	local reference_type_decl = lookup.decl_from_id(ctx.hir, reference_decl_id) :: types.Type
 
 	-- Phase 4:
-	local decl_generics = type_decl.generics
-	if decl_generics then
+	local reference_parameters = reference_type_decl.generics
+	if reference_parameters then
 		-- Phase 4.1:
-		local n_decl_generics = #decl_generics
-		if expr_generics == nil then
-			return report.few_none_generics(expr.path, n_decl_generics)
+		local n_parameters = #reference_parameters
+		if expr_arguments == nil then
+			return report.few_none_generics(expr.path, n_parameters)
 		end
 
-		local n_expr_generics = #expr_generics.values
-		if n_expr_generics > n_decl_generics then
-			return report.extra_generics(expr_generics, n_decl_generics)
-		elseif n_expr_generics < n_decl_generics then
-			return report.few_generics(expr_generics, n_decl_generics)
+		local n_arguments = #expr_arguments.values
+		if n_arguments > n_parameters then
+			return report.extra_generics(expr_arguments, n_parameters)
+		elseif n_arguments < n_parameters then
+			return report.few_generics(expr_arguments, n_parameters)
 		end
-	elseif expr_generics then
-		return report.extra_generics(expr_generics, 0)
+	elseif expr_arguments then
+		return report.extra_generics(expr_arguments, 0)
 	end
 
 	-- Phase 5:
-	return ty.reference(type_decl.ty_id, generics)
+	return ty.reference(reference_type_decl.ty_id, arguments)
 end
 
-function expression(
-	ctx: Context,
-	expr: ast.Expression | ast.Identifier,
-	node_id: NodeId?,
-	generics: Generics?
-): TyId<Ty>
-	node_id = node_id or store_node(ctx, expr)
-
-	local tys = ctx.hir.tys
-	local ty_id = node_id :: TyId
-	tys[ty_id] = TY_PLACEHOLDER
+function expression(ctx: Context, expr: ast.Expression | ast.Identifier, generics: Generics?): Ty
+	store_node(ctx, expr)
 
 	if generics ~= nil then
 		ctx.generics = generics
 	end
 
 	--> process node
-	local new_ty: Ty
+	local tty: Ty
 	if expr.kind == "map" then
-		new_ty = ty_map(ctx, expr)
-	elseif expr.kind == "enum" then
-		new_ty = ty_unit_enum(ctx, expr)
+		tty = ty_map(ctx, expr)
 	elseif expr.kind == "array" then
-		new_ty = ty_array(ctx, expr)
+		tty = ty_array(ctx, expr)
 	elseif expr.kind == "union" then
-		new_ty = ty_union(ctx, expr)
+		tty = ty_union(ctx, expr)
 	elseif expr.kind == "string" then
-		new_ty = ty_string_literal(ctx, expr)
+		tty = ty_string_literal(ctx, expr)
 	elseif expr.kind == "struct" then
-		new_ty = ty_struct(ctx, expr)
+		tty = ty_struct(ctx, expr)
 	elseif expr.kind == "number" then
-		new_ty = ty_number_literal(ctx, expr)
+		tty = ty_number_literal(ctx, expr)
 	elseif expr.kind == "boolean" then
-		new_ty = ty_boolean_literal(ctx, expr)
-	elseif expr.kind == "tagged_enum" then
-		new_ty = ty_tagged_enum(ctx, expr)
+		tty = ty_boolean_literal(ctx, expr)
+	elseif expr.kind == "discriminated_union" then
+		tty = ty_discriminated_union(ctx, expr)
 	elseif expr.kind == "optional" then
-		new_ty = ty_optional(ctx, expr)
+		tty = ty_optional(ctx, expr)
 	elseif expr.kind == "reference" then
-		local str_path = path_node_to_string(expr.path)
-		local primitive = (primitives :: { [string]: any? })[str_path]
-		new_ty = if primitive then ty_primitive(ctx, expr, str_path) else ty_reference(ctx, expr, node_id)
+		local path_str = path_node_to_string(expr.path)
+		local primitive = PRIMITIVE_BUILDERS[path_str]
+		tty = if primitive then primitive(ctx, expr, path_str) else ty_reference(ctx, expr)
 	elseif expr.kind == "identifier" then
-		new_ty = ty_string_literal(ctx, expr :: any)
+		tty = ty_string_literal(ctx, expr :: any)
 	else
 		return strong_exhaustive_match(expr.kind)
 	end
 
 	if generics then
-		local expr_node_id = store_node(ctx, expr)
-		local expr_ty_id = expr_node_id :: TyId
-
-		tys[expr_ty_id] = new_ty
-		new_ty = ty.generic_type(expr_ty_id, generics.args :: { TyId })
-
 		ctx.generics = nil
+		tty = ty.type_function(tty, generics.parameters)
 	end
 
-	--> store ty
-	tys[ty_id] = new_ty
-
-	return ty_id
+	return tty
 end
 
 local function expr_pack(ctx: Context, expr: ast.ExprPack): { types.Parameter }
 	local parameters: { types.Parameter } = {}
 	for index, expr in expr.values do
 		local name = if expr.name then expr.name.value else nil
-		local ty_id = expression(ctx, expr.value)
+		local tty = expression(ctx, expr.value)
+
+		local expr_node_id = store_node(ctx, expr :: any)
+		local ty_id = expr_node_id :: TyId
+		ctx.hir.tys[ty_id] = tty
+
 		local parameter: types.Parameter = {
 			name = name,
 			ty_id = ty_id,
@@ -507,19 +459,16 @@ end
 
 local function stat_type(ctx: Context, stat: ast.StatType): types.Type
 	--> lower generics
-	local args: { TyId<ty.Generic> }?
+	local parameters: { ty.Generic }?
 	if stat.generics then
-		args = {}
+		parameters = {}
 
 		for index, value in stat.generics.values do
-			local node_id = store_node(ctx, value)
-			local ty_id = node_id :: TyId<ty.Generic>
+			store_node(ctx, value)
 
 			local name = value.name.value
 			local generic = ty.generic(name, index)
-
-			args[index] = ty_id
-			ctx.hir.tys[ty_id :: TyId] = generic
+			parameters[index] = generic
 		end
 	end
 
@@ -534,7 +483,7 @@ local function stat_type(ctx: Context, stat: ast.StatType): types.Type
 		attributes = attributes.from_nodes(stat.attributes),
 
 		ty_id = node_id :: TyId,
-		generics = args,
+		generics = parameters,
 	}
 end
 
@@ -677,27 +626,26 @@ local function build_tys(ctx: Context, collection: Collection)
 	local hirr = ctx.hir
 
 	for _, decl_type in collection.types do
-		local decl_id = decl_type.id
-		local node_id = decl_id :: NodeId
-		local stat_node = lookup.node_from_id(hirr, node_id) :: ast.StatType
+		local ty_id = decl_type.id :: TyId
+		local node_id = decl_type.id :: NodeId
+		local type_stat = lookup.node_from_id(hirr, node_id) :: ast.StatType
 
 		local generics: Generics?
-		local decl_generics = decl_type.generics
-		if decl_generics then
-			local values: index<Generics, "values"> = {}
-			for _, ty_id in decl_generics do
-				local generic = lookup.ty_from_id(hirr, ty_id)
-				values[generic.name] = ty_id
+		local type_parameters = decl_type.generics
+		if type_parameters then
+			local by_name_map = {}
+			for index, generic in type_parameters do
+				by_name_map[generic.name] = generic
 			end
 
 			generics = {
-				args = decl_generics,
-				values = values,
+				by_name = by_name_map,
+				parameters = type_parameters,
 			}
 		end
 
 		switch_scope(ctx, decl_type.scope_id)
-		expression(ctx, stat_node.value, node_id, generics)
+		hirr.tys[ty_id] = expression(ctx, type_stat.value, generics)
 	end
 
 	for _, decl_event in collection.events do

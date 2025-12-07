@@ -3,7 +3,6 @@ local types = require("@lir/types")
 
 local attributes = require("@config/attributes")
 local bounds = require("@config/bounds")
-local primitives = require("@config/primitives")
 
 local binary = require("@builders/binary")
 local condition = require("@builders/condition")
@@ -53,9 +52,9 @@ end
 
 local function to_max_range(ty: VariableLengthTy): Range
 	if ty.kind == "buffer" then
-		return primitives.buffer.range
+		return bounds.buffer
 	elseif ty.kind == "string" then
-		return primitives.string.range
+		return bounds.string
 	elseif ty.kind == "array" then
 		return bounds.array
 	elseif ty.kind == "map" then

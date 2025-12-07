@@ -5,10 +5,6 @@
 local id = require("@compiler/id")
 
 local ast = require("@ast")
-local codes = require("@config/codes")
-local primitives = require("@config/primitives")
-
-local diagnostics = require("@util/diagnostics")
 local panic = require("@util/panic")
 local range = require("@util/range")
 local symbols = require("@compiler/symbols")
@@ -83,21 +79,6 @@ local function expr_pack(ctx: Context, expr: ast.ExprPack): never?
 	return nil
 end
 
-local function expr_enum(ctx: Context, expr: ast.ExprEnum): never?
-	local variants: { [any]: report.Entry } = {}
-	for _, variant in expr.variants do
-		local value = variant.value
-		local previous = variants[value]
-		if previous ~= nil then
-			return report.duplicate_entry(expr, previous, variant)
-		end
-
-		variants[value] = variant
-	end
-
-	return nil
-end
-
 local function expr_struct(ctx: Context, expr: ast.ExprStruct): never?
 	local fields: { [string]: report.Entry } = {}
 	for _, field in expr.fields do
@@ -130,7 +111,7 @@ local function expr_optional(ctx: Context, expr: ast.ExprOptional)
 	expression(ctx, expr.value)
 end
 
-local function expr_tagged_enum(ctx: Context, expr: ast.ExprTaggedEnum): never?
+local function expr_discriminated_union(ctx: Context, expr: ast.ExprDiscriminatedUnion): never?
 	local tag = expr.tag
 	local variants = {}
 
@@ -149,7 +130,7 @@ local function expr_tagged_enum(ctx: Context, expr: ast.ExprTaggedEnum): never?
 		-- check for tag field
 		for _, field in variant.value.fields do
 			if field.name.value == tag.value then
-				return report.tagged_enum_tag_in_variant(tag, field)
+				return report.discrminated_union_tag_in_variant(tag, field)
 			end
 		end
 
@@ -169,29 +150,11 @@ local function expr_pack_or_single(ctx: Context, expr: ast.Expression | ast.Expr
 end
 
 local function stat_type(ctx: Context, stat: ast.StatType): never?
-	local name = stat.name
 	local value = stat.value
-	local primitive = (primitives :: any)[name.value]
-
 	if stat.generics then
 		for _, generic in stat.generics.values do
 			assert_id(generic)
 		end
-	end
-
-	if primitive ~= nil then
-		return diagnostics.report
-			.create("Error")
-			.with_code(codes.analysis.ReservedIdentifier)
-			.with_message(`Cannot use reserved identifier "{name.value}"`)
-			.with_label(
-				diagnostics.label
-					.create(name.span)
-					.with_color(diagnostics.style.color.red)
-					.with_message(`Change identifier`)
-			)
-			.finish()
-			.error()
 	end
 
 	--> replace expression if needed (resolved reference)
@@ -257,14 +220,12 @@ function expression(ctx: Context, expr: ast.Expression)
 		expr_map(ctx, expr)
 	elseif expr.kind == "array" then
 		expr_array(ctx, expr)
-	elseif expr.kind == "enum" then
-		expr_enum(ctx, expr)
 	elseif expr.kind == "struct" then
 		expr_struct(ctx, expr)
 	elseif expr.kind == "union" then
 		expr_union(ctx, expr)
-	elseif expr.kind == "tagged_enum" then
-		expr_tagged_enum(ctx, expr)
+	elseif expr.kind == "discriminated_union" then
+		expr_discriminated_union(ctx, expr)
 	elseif expr.kind == "optional" then
 		expr_optional(ctx, expr)
 	elseif expr.kind == "reference" then

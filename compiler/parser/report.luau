@@ -182,12 +182,12 @@ local function report_import_extension(path: ast.ExprString, extension: string):
 		.error()
 end
 
-local function report_tagged_enum_tag_in_variant(tag: ast.ExprString, field: ast.ExprField)
+local function report_discrminated_union_tag_in_variant(tag: ast.ExprString, field: ast.ExprField)
 	return diagnostics.report
 		.create("Error")
 		.with_code(codes.analysis.ReservedIdentifier)
-		.with_message(`Enum tag used as field name in variant`)
-		.with_label(diagnostics.label.create(tag.span).with_color(diagnostics.style.color.blue).with_message(`The enum tag`))
+		.with_message(`Union tag used as field name in variant`)
+		.with_label(diagnostics.label.create(tag.span).with_color(diagnostics.style.color.blue).with_message(`The union tag`))
 		.with_label(
 			diagnostics.label
 				.create(field.name.span)
@@ -214,5 +214,5 @@ return table.freeze({
 	import_prefix = report_import_prefix,
 	import_extension = report_import_extension,
 
-	tagged_enum_tag_in_variant = report_tagged_enum_tag_in_variant,
+	discrminated_union_tag_in_variant = report_discrminated_union_tag_in_variant,
 })

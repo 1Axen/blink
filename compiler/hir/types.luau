@@ -24,7 +24,7 @@ export type Type = {
 	read attributes: attributes.Attributes,
 
 	read ty_id: TyId,
-	read generics: { TyId<ty.Generic> }?,
+	read generics: { ty.Generic }?,
 }
 
 export type Event = {

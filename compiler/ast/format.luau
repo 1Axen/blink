@@ -85,7 +85,7 @@ function fmt_expression(expr: types.Expression): string
 	elseif expr.kind == "optional" then
 		return `{fmt_expression((expr :: types.ExprOptional).value)}?`
 	elseif expr.kind == "tagged_enum" then
-		return `enum "{fmt_expression((expr :: types.ExprTaggedEnum).tag)}" \{ ... \}`
+		return `enum "{fmt_expression((expr :: types.ExprDiscriminatedUnion).tag)}" \{ ... \}`
 	elseif expr.kind == "reference" then
 		return fmt_path(expr.path)
 	end

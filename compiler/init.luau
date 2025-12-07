@@ -248,6 +248,7 @@ local function compile_from_path(entry_path: Path, compiler_options: Options): C
 	do
 		local codegen_props: codegen.Props = {
 			lir = files_lir,
+			hir = files_hir,
 			hash = md5(tostring(os.clock())),
 			profile = compiler_options.profile,
 		}

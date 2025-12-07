@@ -1,0 +1,34 @@
+option client_output = "../out/type_functions"
+
+-- type node<T> = struct {
+--     value: T,
+--     next: node<T>?
+-- }
+
+-- type node_u8 = node<u8>
+
+-- type tree<T> = struct {
+--     value: T,
+--     forest: forest<T>
+-- }
+
+-- type forest<T> = tree<T>[]
+-- type byte_forest = forest<u8>
+
+-- type foo = struct {
+-- 	field: foo?
+-- }
+
+-- type bar = struct {
+-- 	field: node<boolean>
+-- }
+
+type foo<X, Y, Z> = vector<X, Y, Z>
+type bar = foo<u8, 0, string>
+
+-- event send = {
+--     from: Server,
+--     type: Reliable,
+--     call: SingleSync,
+--     data: node_u8
+-- }

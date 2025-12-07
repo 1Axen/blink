@@ -28,11 +28,11 @@ local function luau_pcall(fn: RValue<any>, ...: RValue<any>): Call<any>
 	return projection.call(constant.from_value("pcall"), { fn, ... })
 end
 
-local function luau_typeof(of: RValue<any>): Call<string>
+local function luau_typeof<T>(of: RValue<T>): Call<string>
 	return projection.call(constant.from_value("typeof"), { of })
 end
 
-local function luau_tostring(value: RValue<any>): Call<string>
+local function luau_tostring<T>(value: RValue<T>): Call<string>
 	return projection.call(constant.from_value("typeof"), { value })
 end
 

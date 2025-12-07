@@ -4,9 +4,12 @@
 
 local ast = require("@ast")
 local build = require("@self/build")
-local constraints = require("@self/constraints")
+local dereferencing = require("@hir/analysis/dereferencing")
+local flattening = require("@hir/analysis/flattening")
 local format = require("@self/format")
+local instantiation = require("@hir/analysis/instantiation")
 local lookup = require("@self/lookup")
+local type_checking = require("@hir/analysis/type_checking")
 local types = require("@self/types")
 
 export type Parameter = types.Parameter
@@ -20,9 +23,12 @@ export type ScopeId = types.ScopeId
 export type Hir = types.Hir
 
 local function hir_from_files(files: { [number]: ast.Ast }): Hir
-	local hirr = build.from_files(files)
-	constraints.apply(hirr)
-	return hirr
+	local hir = build.from_files(files)
+	instantiation.instantiate(hir)
+	dereferencing.dereference(hir)
+	flattening.flatten(hir)
+	type_checking.type_check(hir)
+	return hir
 end
 
 return table.freeze({

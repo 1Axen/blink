@@ -1,14 +1,16 @@
+option types_output = "../out/small_types"
+
 import "./dependency" as external
 
 type health = u8[0.0..100]
 type hash_map = map {[string]: u8}
 type byte_vector = vector<u8, u8, u8>
 
-type keywords = enum {
-    "option",
-}
+type keywords = 
+    "option"
+	| "import"
 
-type opt<T> = enum "exists" {
+type opt<T> = union "exists" {
     true {
         value: T,
         -- exists: "hi"
@@ -29,9 +31,9 @@ type weapon = struct {
     ammo: u8(0..0)
 }
 
-type shotgun = weapon & struct {
-    pellets: u8
-}
+-- type shotgun = weapon & struct {
+--     pellets: u8
+-- }
 
 @stable
 @bitpack
@@ -47,14 +49,14 @@ type invalid_map = map {[u8]: u8}
 
 type vector2 = vector<f32, f32, 0>
 
-type class = "Part"
-type part = Instance<class>
+-- type class = "Part"
+type part = Instance<"Part">
 
 event send = {
     from: Server,
     type: Reliable,
     call: SingleSync,
-    data: (target: cat, weapon: shotgun)
+    data: (target: cat, weapon: weapon)
 }
 
 function request = {

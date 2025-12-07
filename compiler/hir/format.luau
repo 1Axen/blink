@@ -64,7 +64,7 @@ local function fmt_type(decl: types.Type, fmt_builder: StringBuilder)
 		string_builder.append(fmt_builder, `{FIELD_STYLE("generics:")} \{`)
 
 		for index, generic in decl.generics do
-			string_builder.append(fmt_builder, id.format(generic :: ty.TyId))
+			string_builder.append(fmt_builder, ty.format(generic))
 
 			if #decl.generics > index then
 				string_builder.append(fmt_builder, ", ")

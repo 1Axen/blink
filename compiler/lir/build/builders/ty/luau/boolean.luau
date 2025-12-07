@@ -28,7 +28,7 @@ type Register<T> = types.RegisterId<T>
 
 local function validate(block: Builder, ty: Boolean, value: RValue<boolean>)
 	local type = constant.from_value("boolean")
-	local equals = condition.not_equals(value, type)
+	local equals = condition.not_equals(library.typeof(value), type)
 
 	block:if_single(equals, function(block)
 		block:call(library.error(`Expected a boolean`))

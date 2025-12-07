@@ -488,18 +488,7 @@ local function expr_map(ctx: Context): ast.ExprMap
 	}
 end
 
-local function expr_enum_unit_variant(ctx: Context): ast.ExprUnitEnumVariant
-	local token = peek(ctx)
-	if token.kind == "string" then
-		return expr_string(ctx)
-	elseif token.kind == "number" then
-		return expr_number(ctx)
-	end
-
-	return identifier(ctx)
-end
-
-local function expr_enum_tag_variant(ctx: Context): ast.ExprTaggedEnumVariant
+local function expr_discriminated_union_variant(ctx: Context): ast.ExprDiscriminatedUnionVariant
 	local node_id = next_node_id(ctx)
 
 	--> variant name
@@ -529,48 +518,23 @@ local function expr_enum_tag_variant(ctx: Context): ast.ExprTaggedEnumVariant
 	}
 end
 
-local function expr_enum(ctx: Context): ast.ExprEnum | ast.ExprTaggedEnum
-	local keyword = expect(ctx, "enum")
+local function expr_discriminated_union(ctx: Context): ast.ExprDiscriminatedUnion
+	local keyword = expect(ctx, "union")
+	local node_id = next_node_id(ctx)
+	local tag = expr_string(ctx)
+	expect(ctx, "{")
 
-	local function unit(): ast.ExprEnum
-		expect(ctx, "{")
+	local variants = seperated(ctx, expr_discriminated_union_variant, ",", "}")
+	local close = expect(ctx, "}")
 
-		local node_id = next_node_id(ctx)
-		local variants = seperated(ctx, expr_enum_unit_variant, ",", "}")
-		local close = expect(ctx, "}")
+	return {
+		id = node_id,
+		span = span.merge(keyword.span, close.span),
+		kind = "discriminated_union",
 
-		return {
-			id = node_id,
-			span = span.merge(keyword.span, close.span),
-			kind = "enum",
-			variants = variants,
-		}
-	end
-
-	local function tagged(): ast.ExprTaggedEnum
-		local node_id = next_node_id(ctx)
-		local tag = expr_string(ctx)
-		expect(ctx, "{")
-
-		local variants = seperated(ctx, expr_enum_tag_variant, ",", "}")
-		local close = expect(ctx, "}")
-
-		return {
-			id = node_id,
-			span = span.merge(keyword.span, close.span),
-			kind = "tagged_enum",
-
-			tag = tag,
-			variants = variants,
-		}
-	end
-
-	local tag = peek(ctx)
-	if tag.kind == "string" then
-		return tagged()
-	end
-
-	return unit()
+		tag = tag,
+		variants = variants,
+	}
 end
 
 local function expr_pack_parameter(ctx: Context): ast.ExprPackParameter
@@ -899,8 +863,8 @@ function expression(ctx: Context): ast.Expression
 		expr = expr_reference(ctx)
 	elseif token.kind == "map" then
 		expr = expr_map(ctx)
-	elseif token.kind == "enum" then
-		expr = expr_enum(ctx)
+	elseif token.kind == "union" then
+		expr = expr_discriminated_union(ctx)
 	elseif token.kind == "struct" then
 		expr = expr_struct(ctx)
 	elseif token.kind == "number" then

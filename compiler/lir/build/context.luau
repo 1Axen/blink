@@ -7,6 +7,7 @@ local types = require("@lir/types")
 type Lir = types.Lir
 type Hir = hir.Hir
 
+type Ty = ty.Ty
 type TyId = ty.TyId
 type FnId = types.FnId
 type Global<T> = types.Global<T>
@@ -22,7 +23,7 @@ export type Context = {
 	fn_map: { [FnId]: types.Fn },
 	globals: { [string]: RValue<any> },
 	hashed_tys: { [number]: FnSet? },
-	ty_fn_set_map: { [TyId]: FnSet },
+	ty_fn_set_map: { [Ty]: FnSet },
 
 	read hir: Hir,
 }

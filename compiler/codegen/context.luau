@@ -1,3 +1,4 @@
+local hir = require("@hir")
 local lir = require("@compiler/lir/types")
 local string_builder = require("@util/string_builder")
 
@@ -5,6 +6,7 @@ type BasicBlock = lir.BasicBlock
 
 export type Context = {
 	lir: lir.Lir,
+	hir: hir.Hir,
 	builder: string_builder.StringBuilder,
 
 	current_fn: lir.FnBody?,

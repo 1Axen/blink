@@ -447,15 +447,13 @@ export type BasicBlock = {
 
 export type Return = {
 	type: "return",
-	ty: Ty?,
-	static_type: string?,
+	ty: Ty,
 }
 
 export type Parameter = {
 	type: "parameter",
-	ty: Ty?,
+	ty: Ty,
 	name: string?,
-	static_type: string?,
 }
 
 export type FnBody = {

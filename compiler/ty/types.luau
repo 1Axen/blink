@@ -19,8 +19,6 @@ export type NumSize =
 	| "48" 
 	| "64"
 
--- luau types
-
 export type Numeral = {
 	read kind: "numeral",
 	read size: NumSize,
@@ -30,8 +28,8 @@ export type Numeral = {
 
 --stylua: ignore
 export type Axis = 
-	| TyId<Numeral> 
-	| TyId<NumberLiteral>
+	| Numeral
+	| NumberLiteral
 
 export type Vector = {
 	read kind: "vector",
@@ -51,11 +49,13 @@ export type String = {
 	read length: Range?,
 }
 
+export type Nil = {
+	read kind: "nil",
+}
+
 export type Boolean = {
 	read kind: "boolean",
 }
-
--- Luau Literals
 
 export type StringLiteral = {
 	read kind: "string_literal",
@@ -71,13 +71,16 @@ export type BooleanLiteral = {
 	read kind: "boolean_literal",
 	read value: boolean,
 }
-export type Literal = | StringLiteral | NumberLiteral | BooleanLiteral
 
--- roblox types
+--stylua: ignore
+export type Literal = 
+	| StringLiteral 
+	| NumberLiteral 
+	| BooleanLiteral
 
 export type Enum = {
 	read kind: "roblox_enum",
-	read type: TyId<StringLiteral>?,
+	read type: StringLiteral?,
 }
 
 export type Color3 = {
@@ -86,8 +89,8 @@ export type Color3 = {
 
 export type CFrame = {
 	read kind: "cframe",
-	read position: TyId<Numeral>?,
-	read rotation: TyId<Numeral>?,
+	read position: Numeral?,
+	read rotation: Numeral?,
 }
 
 export type DateTime = {
@@ -104,22 +107,20 @@ export type BrickColor = {
 
 export type Instance = {
 	read kind: "instance",
-	read class: TyId<StringLiteral>?,
+	read class: StringLiteral?,
 }
-
--- blink types
 
 export type Map = {
 	read kind: "map",
 	read size: Range?,
-	read index: TyId,
-	read value: TyId,
+	read index: Ty,
+	read value: Ty,
 }
 
 export type Field = {
 	read kind: "field",
 	read name: string,
-	read value: TyId,
+	read value: Ty,
 }
 
 export type Struct = {
@@ -129,34 +130,23 @@ export type Struct = {
 
 export type Array = {
 	read kind: "array",
-	read of: TyId,
+	read of: Ty,
 	read size: Range?,
 }
 
---stylua: ignore
 export type Union = {
 	read kind: "union",
-	read components: {TyId}
-}
-
-export type Optional = {
-	read kind: "optional",
-	read of: TyId,
-}
-
-export type UnitEnum = {
-	read kind: "unit_enum",
-	read variants: { TyId<Literal> },
+	read components: { Ty },
 }
 
 export type Variant = {
 	read kind: "variant",
-	read key: TyId<Literal>,
+	read key: Literal,
 	read value: Struct,
 }
 
-export type TaggedEnum = {
-	read kind: "tagged_enum",
+export type DiscriminatedUnion = {
+	read kind: "discriminated_union",
 	read tag: string,
 	read variants: { Variant },
 }
@@ -165,7 +155,9 @@ export type Unknown = {
 	read kind: "unknown",
 }
 
--- compiler types
+export type Blocked = {
+	read kind: "blocked",
+}
 
 export type Generic = {
 	read kind: "generic",
@@ -173,21 +165,23 @@ export type Generic = {
 	read index: number,
 }
 
---- Represents a type which hasn't been initialized yet
-export type Placeholder = {
-	read kind: "placeholder",
-}
-
 export type Reference = {
 	read kind: "reference",
 	read to: TyId,
-	read args: { TyId }?,
+	read arguments: { Ty }?,
 }
 
-export type GenericType = {
-	read kind: "generic_type",
-	read body: TyId,
-	read args: { TyId },
+export type TypeFunction = {
+	read kind: "type_function",
+	read body: Ty,
+	read parameters: { Generic },
+}
+
+export type TypeInstantiation = {
+	read kind: "type_instantiation",
+	read type_function: TyId<TypeFunction>,
+	read arguments: { Ty },
+	body: Ty,
 }
 
 --stylua: ignore
@@ -197,6 +191,7 @@ export type Ty =
     | Vector
     | Buffer
     | Boolean
+	| Nil
 
     | StringLiteral
     | NumberLiteral
@@ -213,16 +208,15 @@ export type Ty =
     | Map
     | Array
     | Struct
-    | Optional
-    | UnitEnum
-    | TaggedEnum
     | Union
+    | DiscriminatedUnion
     | Unknown
 
+	| Blocked
     | Generic
 	| Reference
-    | GenericType
-    | Placeholder
+    | TypeFunction
+	| TypeInstantiation
 
 export type TyId<T = Ty> = number | { write __kind: "ty", write __T: T }
 export type TyKind = index<Ty, "kind">

@@ -1,5 +1,4 @@
 local attributes = require("@config/attributes")
-local hir = require("@hir")
 local ty = require("@ty")
 local types = require("@lir/types")
 
@@ -34,19 +33,8 @@ type Axis = ty.Numeral | ty.NumberLiteral
 
 local DEFAULT_AXIS = ty.numeral("32", "f")
 
-local function ty_from_id_with_default<T, D>(ctx: Context, ty_id: ty.TyId<T>?, default: D): T | D
-	if ty_id == nil then
-		return default
-	end
-
-	return hir.ty_from_id(ctx.hir, ty_id)
-end
-
 local function to_axes(ctx: Context, ty: ty.Vector): (Axis, Axis, Axis)
-	local ty_x = ty_from_id_with_default(ctx, ty.x, DEFAULT_AXIS)
-	local ty_y = ty_from_id_with_default(ctx, ty.y, DEFAULT_AXIS)
-	local ty_z = ty_from_id_with_default(ctx, ty.z, DEFAULT_AXIS)
-	return ty_x, ty_y, ty_z
+	return ty.x or DEFAULT_AXIS, ty.y or DEFAULT_AXIS, ty.z or DEFAULT_AXIS
 end
 
 local function read_axis(props: ReadProps, block: Builder, axis_ty: Axis): Register<number>

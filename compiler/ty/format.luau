@@ -33,15 +33,15 @@ local function fmt_vector(ty: types.Vector): string
 		result ..= "<"
 
 		if ty.x then
-			result ..= `{fmt_ty_id(ty.x :: types.TyId)}, `
+			result ..= `{fmt_ty(ty.x)}, `
 		end
 
 		if ty.y then
-			result ..= `{fmt_ty_id(ty.y :: types.TyId)}, `
+			result ..= `{fmt_ty(ty.y)}, `
 		end
 
 		if ty.z then
-			result ..= `{fmt_ty_id(ty.z :: types.TyId)}`
+			result ..= `{fmt_ty(ty.z)}`
 		end
 
 		result ..= ">"
@@ -59,6 +59,10 @@ end
 
 local function fmt_string(ty: types.String): string
 	return `{PRIMITIVE_STYLE("string")}{fmt_opt_range(ty.length)}`
+end
+
+local function fmt_nil(ty: types.Nil): string
+	return PRIMITIVE_STYLE("nil")
 end
 
 local function fmt_boolean(ty: types.Boolean): string
@@ -80,7 +84,7 @@ end
 local function fmt_enum(ty: types.Enum): string
 	local result = PRIMITIVE_STYLE("Enum")
 	if ty.type then
-		result ..= `<{fmt_ty_id(ty.type)}>`
+		result ..= `<{fmt_ty(ty.type)}>`
 	end
 
 	return result
@@ -96,11 +100,11 @@ local function fmt_cframe(ty: types.CFrame): string
 		result ..= "<"
 
 		if ty.position then
-			result ..= `{fmt_ty_id(ty.position)}, `
+			result ..= `{fmt_ty(ty.position)}, `
 		end
 
 		if ty.rotation then
-			result ..= fmt_ty_id(ty.rotation :: any)
+			result ..= fmt_ty(ty.rotation)
 		end
 
 		result ..= ">"
@@ -124,32 +128,31 @@ end
 local function fmt_instance(ty: types.Instance): string
 	local result = PRIMITIVE_STYLE("Instance")
 	if ty.class then
-		result ..= `<{fmt_ty_id(ty.class)}>`
+		result ..= `<{fmt_ty(ty.class)}>`
 	end
 
 	return result
 end
 
 local function fmt_field(ty: types.Field): string
-	return `{ty.name}: {fmt_ty_id(ty.value)}`
+	return `{ty.name}: {fmt_ty(ty.value)}`
 end
 
 local function fmt_map(ty: types.Map): string
-	return `{PRIMITIVE_STYLE("map")} \{[{fmt_ty_id(ty.index)}]: {fmt_ty_id(ty.value)}\}{fmt_opt_range(ty.size)}`
+	return `{PRIMITIVE_STYLE("map")} \{[{fmt_ty(ty.index)}]: {fmt_ty(ty.value)}\}{fmt_opt_range(ty.size)}`
 end
 
 local function fmt_array(ty: types.Array): string
-	return `\{{fmt_ty_id(ty.of)}\}{fmt_opt_range(ty.size)}`
+	return `[{fmt_ty(ty.of)}]{fmt_opt_range(ty.size)}`
 end
 
 local function fmt_union(ty: types.Union): string
 	local stringified = ""
-	for index, ty_id in ty.components do
+	for index, tty in ty.components do
 		if index > 1 then
 			stringified ..= " | "
 		end
-
-		stringified ..= fmt_ty_id(ty_id)
+		stringified ..= fmt_ty(tty)
 	end
 
 	return stringified
@@ -164,22 +167,14 @@ local function fmt_struct(ty: types.Struct): string
 	return `{PRIMITIVE_STYLE("struct")} \{{table.concat(fields, ", ")}\}`
 end
 
-local function fmt_optional(ty: types.Optional): string
-	return `{fmt_ty_id(ty.of)}?`
-end
-
 local function fmt_generic(ty: types.Generic): string
 	return `{`@{style.color.black(ty.name)}`}:{fmt_types.number(ty.index)}`
 end
 
-local function fmt_unit_enum(ty: types.UnitEnum): string
-	return `{PRIMITIVE_STYLE("enum")} \{{table.concat(ty.variants, ", ")}\}`
-end
-
-local function fmt_tagged_enum(ty: types.TaggedEnum): string
+local function fmt_discriminated_union(ty: types.DiscriminatedUnion): string
 	local variants: { string } = {}
 	for _, variant in ty.variants do
-		table.insert(variants, `{fmt_ty_id(variant.key)}: {fmt_struct(variant.value)}`)
+		table.insert(variants, `{fmt_ty(variant.key)}: {fmt_struct(variant.value)}`)
 	end
 
 	return `{PRIMITIVE_STYLE("enum")} {fmt_types.string(ty.tag)} \{{table.concat(variants, ", ")}\}`
@@ -189,73 +184,79 @@ local function fmt_unknown(ty: types.Unknown): string
 	return PRIMITIVE_STYLE("unknown")
 end
 
-local function fmt_placeholder(ty: types.Placeholder): string
-	return style.color.black("placeholder")
-end
-
 local function fmt_reference(ty: types.Reference): string
 	local args: { string } = {}
-	for _, arg in ty.args or {} do
-		table.insert(args, fmt_ty_id(arg))
+	for _, arg in ty.arguments or {} do
+		table.insert(args, fmt_ty(arg))
 	end
 
-	return `&({fmt_ty_id(ty.to)}, {table.concat(args, ", ")})`
+	return `&{fmt_ty_id(ty.to)}({table.concat(args, ", ")})`
 end
 
-local function fmt_generic_type(ty: types.GenericType): string
-	local args: { string } = {}
-	for _, arg in ty.args do
-		table.insert(args, fmt_ty_id(arg))
+local function fmt_type_function(ty: types.TypeFunction): string
+	local parameters: { string } = {}
+	for _, parameter in ty.parameters do
+		table.insert(parameters, fmt_generic(parameter))
 	end
 
-	return `{PRIMITIVE_STYLE("GT")} ({style.modifer.dim(fmt_ty_id(ty.body))}, \{{table.concat(args, ", ")}\})`
+	local delimeter_color = style.random_color()
+	local open = delimeter_color("(")
+	local close = delimeter_color(")")
+	return `{open}{table.concat(parameters, ", ")}{close} -> {open}{fmt_ty(ty.body)}{close}`
+end
+
+local function fmt_type_instantiation(ty: types.TypeInstantiation): string
+	local arguments: { string } = {}
+	for _, argument in ty.arguments do
+		table.insert(arguments, fmt_ty(argument))
+	end
+
+	return `{style.modifer.dim(fmt_ty_id(ty.type_function))}({table.concat(arguments, ", ")})`
 end
 
 function fmt_ty(ty: types.Ty): string
 	if ty.kind == "map" then
 		return fmt_map(ty)
+	elseif ty.kind == "nil" then
+		return fmt_nil(ty)
 	elseif ty.kind == "array" then
 		return fmt_array(ty)
 	elseif ty.kind == "struct" then
 		return fmt_struct(ty)
-	elseif ty.kind == "optional" then
-		return fmt_optional(ty)
-	elseif ty.kind == "unit_enum" then
-		return fmt_unit_enum(ty)
-	elseif ty.kind == "tagged_enum" then
-		return fmt_tagged_enum(ty)
+	elseif ty.kind == "discriminated_union" then
+		return fmt_discriminated_union(ty)
 	elseif ty.kind == "union" then
 		return fmt_union(ty)
+	elseif ty.kind == "blocked" then
+		return "*blocked*"
 	elseif ty.kind == "generic" then
-		return fmt_generic(ty :: types.Generic)
-	elseif ty.kind == "placeholder" then
-		return fmt_placeholder(ty)
-	elseif ty.kind == "generic_type" then
-		return fmt_generic_type(ty :: types.GenericType)
+		return fmt_generic(ty)
+	elseif ty.kind == "type_function" then
+		return fmt_type_function(ty)
 	elseif ty.kind == "numeral" then
 		return fmt_numeral(ty)
 	elseif ty.kind == "string" then
-		return fmt_string(ty :: types.String)
+		return fmt_string(ty)
 	elseif ty.kind == "buffer" then
 		return fmt_buffer(ty)
 	elseif ty.kind == "vector" then
-		return fmt_vector(ty :: types.Vector)
+		return fmt_vector(ty)
 	elseif ty.kind == "boolean" then
 		return fmt_boolean(ty)
 	elseif ty.kind == "string_literal" then
-		return fmt_string_literal(ty :: types.StringLiteral)
+		return fmt_string_literal(ty)
 	elseif ty.kind == "number_literal" then
 		return fmt_number_literal(ty)
 	elseif ty.kind == "boolean_literal" then
-		return fmt_boolean_literal(ty :: types.BooleanLiteral)
+		return fmt_boolean_literal(ty)
 	elseif ty.kind == "roblox_enum" then
 		return fmt_enum(ty)
 	elseif ty.kind == "cframe" then
-		return fmt_cframe(ty :: types.CFrame)
+		return fmt_cframe(ty)
 	elseif ty.kind == "color3" then
 		return fmt_color3(ty)
 	elseif ty.kind == "instance" then
-		return fmt_instance(ty :: types.Instance)
+		return fmt_instance(ty)
 	elseif ty.kind == "date_time" then
 		return fmt_date_time(ty)
 	elseif ty.kind == "date_time_millis" then
@@ -266,6 +267,8 @@ function fmt_ty(ty: types.Ty): string
 		return fmt_unknown(ty)
 	elseif ty.kind == "reference" then
 		return fmt_reference(ty)
+	elseif ty.kind == "type_instantiation" then
+		return fmt_type_instantiation(ty)
 	else
 		return strong_exhaustive_match(ty.kind)
 	end

@@ -71,23 +71,29 @@ local FULL_BITSET = constant.zero
 local EMPTY_BITSET = constant.from_value(2 ^ 32 - 1)
 local INVOCATIONS_BITSET = globals.invocations_bitset
 
-local PLAYER_RETURN = fn.static_return("Player")
-local PLAYER_PARAMETER = fn.static_parameter("Player", "player")
-local PLAYER_LIST_PARAMETER = fn.static_parameter("{Player}", "players")
+local BUFFER_TY = ty.buffer()
+local PLAYER_TY = ty.instance(ty.string_literal("Player"))
+local PLAYERS_TY = ty.array(PLAYER_TY)
+local UNKNOWN_TY = ty.unknown()
+local UNKNOWNS_TY = ty.array(ty.unknown())
+
+local PLAYER_RETURN = fn.rreturn(PLAYER_TY)
+local PLAYER_PARAMETER = fn.parameter(PLAYER_TY, "player")
+local PLAYER_LIST_PARAMETER = fn.parameter(PLAYERS_TY, "players")
 
 local RECEIVE_PARAMETERS = {
-	fn.static_parameter("buffer", "packet_buffer"),
-	fn.static_parameter("{unknown}", "packet_unknowns"),
+	fn.parameter(BUFFER_TY, "packet_buffer"),
+	fn.parameter(UNKNOWNS_TY, "packet_unknowns"),
 }
 
 local SERVER_RECEIVE_PARAMETERS = {
 	PLAYER_PARAMETER,
-	fn.static_parameter("buffer", "packet_buffer"),
-	fn.static_parameter("{unknown}", "packet_unknowns"),
+	fn.parameter(BUFFER_TY, "packet_buffer"),
+	fn.parameter(UNKNOWNS_TY, "packet_unknowns"),
 }
 
-local ON_PARAMETER = fn.static_parameter("(...any) -> ()")
-local DISCONNECT_RETURN = fn.static_return("() -> ()")
+local ON_PARAMETER = fn.parameter(UNKNOWN_TY)
+local DISCONNECT_RETURN = fn.rreturn(UNKNOWN_TY)
 
 local function returns(ctx: Context, parameters: { hir.Parameter }): { types.Return }
 	local array = {}
@@ -107,10 +113,11 @@ local function parameters(ctx: Context, parameters: { hir.Parameter }): { types.
 	return array
 end
 
-local function fn_sets_from_data(ctx: Context, decl: hir.Decl, data: { hir.Parameter }): { types.FnSet }
-	local fn_sets = table.create(#data) :: { types.FnSet }
-	for index, parameter in data do
-		fn_sets[index] = builders.ty.from_ty_id(ctx, decl.attributes, parameter.ty_id)
+local function ty_pack_to_fn_sets(ctx: Context, decl: hir.Decl, pack: { hir.Parameter }): { types.FnSet }
+	local fn_sets = table.create(#pack) :: { types.FnSet }
+	for index, parameter in pack do
+		local parameter_ty = hir.ty_from_id(ctx.hir, parameter.ty_id)
+		fn_sets[index] = builders.ty.build(ctx, decl.attributes, parameter_ty)
 	end
 	return fn_sets
 end
@@ -153,12 +160,13 @@ local function toggle_bitset_index(block: fn.Builder, index: types.RValue<number
 	block:store(modified_bitset, INVOCATIONS_BITSET)
 end
 
-local function build_type(ctx: Context, decl: hir.Type): TypeExport?
-	if decl.generics then
+local function build_type(ctx: Context, ttype: hir.Type): TypeExport?
+	if ttype.generics then
 		return nil
 	end
 
-	local fn_set = builders.ty.from_ty_id(ctx, decl.attributes, decl.ty_id)
+	local type_ty = hir.ty_from_id(ctx.hir, ttype.ty_id)
+	builders.ty.build(ctx, ttype.attributes, type_ty, ttype.name)
 
 	return nil
 end
@@ -212,7 +220,7 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 	local data = decl.data or {}
 	local data_rets = returns(ctx, data)
 	local data_params = parameters(ctx, data)
-	local data_fn_sets = fn_sets_from_data(ctx, decl, data)
+	local data_fn_sets = ty_pack_to_fn_sets(ctx, decl, data)
 
 	local data_rets_player = table.clone(data_rets)
 	table.insert(data_rets_player, 1, PLAYER_RETURN)
@@ -414,7 +422,7 @@ end
 
 local function build_event_receive(ctx: Context, side: Side, block: fn.Builder, decl: Event, event_id: number)
 	local call = decl.call
-	local fn_sets = fn_sets_from_data(ctx, decl, decl.data or {})
+	local fn_sets = ty_pack_to_fn_sets(ctx, decl, decl.data or {})
 	local queue = projection.field(QUEUES, constant.from_value(event_id))
 
 	local values: { types.RegisterId<any> } = {}
@@ -478,7 +486,7 @@ local function build_function(ctx: Context, decl: Function, event_id: number): F
 	local fn_returns = returns(ctx, rreturn)
 	local fn_parameters = parameters(ctx, data)
 
-	local data_fn_sets = fn_sets_from_data(ctx, decl, data)
+	local data_fn_sets = ty_pack_to_fn_sets(ctx, decl, data)
 
 	local on = fn.anonymous({ ON_PARAMETER }, { DISCONNECT_RETURN }, function(block)
 		local listener = block:store(block:parameter(1))
@@ -556,8 +564,8 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 	local data = decl.data or {}
 	local rreturn = decl.ret or {}
 
-	local data_fn_sets = fn_sets_from_data(ctx, decl, data)
-	local return_fn_sets = fn_sets_from_data(ctx, decl, rreturn)
+	local data_fn_sets = ty_pack_to_fn_sets(ctx, decl, data)
+	local return_fn_sets = ty_pack_to_fn_sets(ctx, decl, rreturn)
 
 	if side == "Client" then
 		local invocation_id = block:store(library.buffer.u8.read(control.advance(constant.one)))

@@ -1,5 +1,4 @@
 local attributes = require("@config/attributes")
-local hir = require("@hir")
 local ty = require("@ty")
 local types = require("@lir/types")
 
@@ -34,13 +33,12 @@ local NAME_FORMAT = ty.string()
 local VALUE_FORMAT = ty.numeral("16", "u")
 
 local function to_static_enum_type(ctx: Context, ty: ty.Enum): types.Constant<string>?
-	local ty_id = ty.type
-	if ty_id == nil then
+	local enum_type = ty.type
+	if enum_type == nil then
 		return nil
 	end
 
-	local literal = hir.ty_from_id(ctx.hir, ty_id) :: ty.StringLiteral
-	return constant.from_value(literal.value)
+	return constant.from_value(enum_type.value)
 end
 
 local function validate(props: WriteProps, block: Builder, ty: ty.Enum, at: RValue<EnumItem>)

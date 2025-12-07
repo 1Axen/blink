@@ -17,7 +17,6 @@ type Attributes = attributes.Attributes
 
 export type ReadProps = {
 	ctx: Context,
-	generics: { TyId }?,
 	-- This is an ugly hack for instances
 	is_optional: boolean?,
 	attributes: Attributes,
@@ -25,7 +24,6 @@ export type ReadProps = {
 
 export type WriteProps = {
 	ctx: Context,
-	generics: { TyId }?,
 	validate: boolean,
 	attributes: Attributes,
 }

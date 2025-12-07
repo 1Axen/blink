@@ -1,5 +1,4 @@
 local attributes = require("@config/attributes")
-local hir = require("@hir")
 local ty = require("@ty")
 local types = require("@lir/types")
 
@@ -37,19 +36,17 @@ local function validate(ctx: Context, block: Builder, instance: Instance, value:
 		block:call(library.error("Expected an Instance"))
 	end)
 
-	local class_ty_id = instance.class
-	if class_ty_id == nil then
+	local class_ty = instance.class
+	if class_ty == nil then
 		return
 	end
 
 	-- LUAU
-	local class_ty = hir.ty_from_id(ctx.hir, class_ty_id)
-	local class_constant = constant.from_value(class_ty.value)
-	local is_not_class =
-		condition.not_equals(library.Instance.is_a(value :: any, class_constant), constant.from_value(true))
+	local class = constant.from_value(class_ty.value)
+	local is_not_class = condition.not_equals(library.Instance.is_a(value :: any, class), constant.from_value(true))
 
 	block:if_single(is_not_class, function(block)
-		block:call(library.error(`Expected an Instance of class "{class_constant.value}"`))
+		block:call(library.error(`Expected an Instance of class "{class.value}"`))
 	end)
 end
 

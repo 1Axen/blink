@@ -15,6 +15,7 @@ export type Vector = types.Vector
 export type Buffer = types.Buffer
 export type String = types.String
 export type Boolean = types.Boolean
+export type Nil = types.Nil
 export type StringLiteral = types.StringLiteral
 export type NumberLiteral = types.NumberLiteral
 export type BooleanLiteral = types.BooleanLiteral
@@ -31,15 +32,14 @@ export type Field = types.Field
 export type Struct = types.Struct
 export type Union = types.Union
 export type Array = types.Array
-export type Optional = types.Optional
-export type UnitEnum = types.UnitEnum
 export type Variant = types.Variant
-export type TaggedEnum = types.TaggedEnum
 export type Unknown = types.Unknown
+export type Blocked = types.Blocked
 export type Generic = types.Generic
-export type Placeholder = types.Placeholder
 export type Reference = types.Reference
-export type GenericType = types.GenericType
+export type TypeFunction = types.TypeFunction
+export type TypeInstantiation = types.TypeInstantiation
+export type DiscriminatedUnion = types.DiscriminatedUnion
 
 local function create_numeral(size: NumSize, format: NumFormat, bounds: Range?): Numeral
 	return {
@@ -50,7 +50,7 @@ local function create_numeral(size: NumSize, format: NumFormat, bounds: Range?):
 end
 
 --- `axes` is an array of 0-3 TyIds (Numeral or NumberLiteral) corresponding to: x, y, z; in that order
-local function create_vector(axes: { Axis }, magnitude: Range?): Vector
+local function create_vector(axes: { Axis? }, magnitude: Range?): Vector
 	return {
 		kind = "vector",
 		x = axes[1],
@@ -77,6 +77,12 @@ end
 local function create_boolean(): Boolean
 	return {
 		kind = "boolean",
+	}
+end
+
+local function create_nil(): Nil
+	return {
+		kind = "nil",
 	}
 end
 
@@ -113,7 +119,7 @@ local function create_literal(value: index<Literal, "value">): Literal
 	return panic(`Unable to create literal from value of type "{type(value)}"`)
 end
 
-local function create_roblox_enum(type: TyId<StringLiteral>?): Enum
+local function create_roblox_enum(type: StringLiteral?): Enum
 	return {
 		kind = "roblox_enum",
 		type = type,
@@ -126,7 +132,7 @@ local function create_color3(): Color3
 	}
 end
 
-local function create_cframe(position: TyId<Numeral>, rotation: TyId<Numeral>): CFrame
+local function create_cframe(position: Numeral?, rotation: Numeral?): CFrame
 	return {
 		kind = "cframe",
 		position = position,
@@ -152,14 +158,14 @@ local function create_brick_color(): BrickColor
 	}
 end
 
-local function create_instance(class: TyId<StringLiteral>?): Instance
+local function create_instance(class: StringLiteral?): Instance
 	return {
 		kind = "instance",
 		class = class,
 	}
 end
 
-local function create_map(index: TyId, value: TyId, size: Range?): Map
+local function create_map(index: Ty, value: Ty, size: Range?): Map
 	return {
 		kind = "map",
 		size = size,
@@ -168,7 +174,7 @@ local function create_map(index: TyId, value: TyId, size: Range?): Map
 	}
 end
 
-local function create_field(name: string, value: TyId): Field
+local function create_field(name: string, value: Ty): Field
 	return {
 		kind = "field",
 		name = name,
@@ -183,7 +189,7 @@ local function create_struct(fields: { Field }): Struct
 	}
 end
 
-local function create_array(of: TyId, size: Range?): Array
+local function create_array(of: Ty, size: Range?): Array
 	return {
 		kind = "array",
 		of = of,
@@ -191,28 +197,14 @@ local function create_array(of: TyId, size: Range?): Array
 	}
 end
 
-local function create_union(components: { TyId }): Union
+local function create_union(components: { Ty }): Union
 	return {
 		kind = "union",
 		components = components,
 	}
 end
 
-local function create_optional(of: TyId): Optional
-	return {
-		kind = "optional",
-		of = of,
-	}
-end
-
-local function create_unit_enum(variants: { TyId<Literal> }): UnitEnum
-	return {
-		kind = "unit_enum",
-		variants = variants,
-	}
-end
-
-local function create_variant(key: TyId<Literal>, value: Struct): Variant
+local function create_variant(key: Literal, value: Struct): Variant
 	return {
 		kind = "variant",
 		key = key,
@@ -220,9 +212,9 @@ local function create_variant(key: TyId<Literal>, value: Struct): Variant
 	}
 end
 
-local function create_tagged_enum(tag: string, variants: { Variant }): TaggedEnum
+local function create_discriminated_union(tag: string, variants: { Variant }): DiscriminatedUnion
 	return {
-		kind = "tagged_enum",
+		kind = "discriminated_union",
 		tag = tag,
 		variants = variants,
 	}
@@ -234,6 +226,12 @@ local function create_unknown(): Unknown
 	}
 end
 
+local function create_blocked(): Blocked
+	return {
+		kind = "blocked",
+	}
+end
+
 local function create_generic(name: string, index: number): Generic
 	return {
 		kind = "generic",
@@ -242,19 +240,28 @@ local function create_generic(name: string, index: number): Generic
 	}
 end
 
-local function create_placeholder(): Placeholder
-	return { kind = "placeholder" }
+local function create_reference(to: TyId, arguments: { Ty }?): Reference
+	return { kind = "reference", to = to, arguments = arguments }
 end
 
-local function create_reference(to: TyId, args: { TyId }?): Reference
-	return { kind = "reference", to = to, args = args }
-end
-
-local function create_generic_type(body: TyId, args: { TyId }): GenericType
+local function create_type_function(body: Ty, parameters: { Generic }): TypeFunction
 	return {
-		kind = "generic_type",
+		kind = "type_function",
 		body = body,
-		args = args,
+		parameters = parameters,
+	}
+end
+
+local function create_type_instantiation(
+	type_function: TyId<TypeFunction>,
+	arguments: { Ty },
+	body: Ty
+): TypeInstantiation
+	return {
+		kind = "type_instantiation",
+		body = body,
+		arguments = arguments,
+		type_function = type_function,
 	}
 end
 
@@ -267,8 +274,8 @@ local RECURSIVE_TYS: { [TyKind]: boolean } = {
 	map = true,
 	array = true,
 	struct = true,
-	tagged_enum = true,
-	generic_type = true,
+	type_instantiation = true,
+	discriminated_union = true,
 }
 
 local function is_possibly_recursive(ty: Ty): boolean
@@ -281,6 +288,7 @@ return table.freeze({
 	vector = create_vector,
 	buffer = create_buffer,
 	boolean = create_boolean,
+	nnil = create_nil,
 
 	literal = create_literal,
 	string_literal = create_string_literal,
@@ -298,16 +306,15 @@ return table.freeze({
 	map = create_map,
 	array = create_array,
 	struct = create_struct,
-	optional = create_optional,
-	unit_enum = create_unit_enum,
-	tagged_enum = create_tagged_enum,
 	union = create_union,
+	discriminated_union = create_discriminated_union,
 	unknown = create_unknown,
 
+	blocked = create_blocked,
 	generic = create_generic,
 	reference = create_reference,
-	generic_type = create_generic_type,
-	placeholder = create_placeholder,
+	type_function = create_type_function,
+	type_instantiation = create_type_instantiation,
 
 	field = create_field,
 	variant = create_variant,

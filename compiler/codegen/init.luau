@@ -9,8 +9,10 @@ local append_server = require("@codegen/templates/append_server")
 local compilation = require("@config/compilation")
 local context = require("@self/context")
 
+local append_luau_type = require("@self/append_luau_type")
 local cased_method = require("@self/cased_method")
 local globals = require("@lir/build/builders/globals")
+local hir = require("@hir")
 local lir = require("@compiler/lir")
 local md5 = require("@vendor/md5")
 local panic = require("@util/panic")
@@ -309,7 +311,8 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 
 		local scope = terminator.falsey.scope
 		local chain_index = terminator.chain_index
-		if chain_index == 1 then
+		local chain_length = terminator.chain_length
+		if chain_index == 1 and chain_length > 1 then
 			ctx.if_chains[scope] = true
 		elseif chain_index == terminator.chain_length then
 			ctx.if_chains[scope] = nil
@@ -503,15 +506,21 @@ local function gen_fn_body(ctx: Context, fn_body: lir.FnBody)
 
 		builder:append(parameter.name or `p{index}`)
 
-		if parameter.static_type then
-			builder:append(": ")
-			builder:append(parameter.static_type)
-		elseif parameter.ty then
-		end
+		builder:append(": ")
+		append_luau_type(ctx, parameter.ty)
 	end
 
-	builder:append(")\n")
+	builder:append("): (")
 
+	for index, rreturn in fn_body.rets do
+		if index > 1 then
+			builder:append(", ")
+		end
+
+		append_luau_type(ctx, rreturn.ty)
+	end
+
+	builder:append(") \n")
 	builder:indent()
 
 	-- generate blocks until none are left
@@ -634,15 +643,19 @@ end
 
 export type Props = {
 	lir: lir.Lir,
+	hir: hir.Hir,
 	hash: string,
 	profile: compilation.Profile,
 }
 
 local function from_lir(props: Props, target: compilation.Target): string
+	local hhir = props.hir
 	local llir = props.lir
 	local builder = string_builder.create({})
+
 	local ctx: Context = {
 		lir = llir,
+		hir = hhir,
 		builder = builder,
 
 		current_fn = nil,
@@ -654,6 +667,30 @@ local function from_lir(props: Props, target: compilation.Target): string
 	}
 
 	append_headers(builder)
+
+	for _, type_decl in hhir.types do
+		builder:append("export type ")
+		builder:append(type_decl.name)
+
+		if type_decl.generics then
+			builder:append("<")
+			for index, generic in type_decl.generics do
+				if index > 1 then
+					builder:append(", ")
+				end
+
+				append_luau_type(ctx, generic)
+			end
+			builder:append(">")
+		end
+
+		builder:append(" = ")
+		local decl_ty = hir.ty_from_id(hhir, type_decl.ty_id)
+		append_luau_type(ctx, decl_ty)
+		builder:append("\n")
+	end
+
+	builder:append_line("")
 
 	if target ~= "types" then
 		local hash = props.hash

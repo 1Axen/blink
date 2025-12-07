@@ -15,8 +15,8 @@ export type Token =
 	| TokenBase<"word">
 	| TokenBase<"as">
 	| TokenBase<"map">
-	| TokenBase<"enum">
 	| TokenBase<"type">
+	| TokenBase<"union">
 	| TokenBase<"scope">
 	| TokenBase<"event">
 	| TokenBase<"struct">
@@ -192,8 +192,8 @@ local function tokenize(input: file.File): { Token }
 				value == "as"
 				or value == "map"
 				or value == "type"
-				or value == "enum"
 				or value == "true"
+				or value == "union"
 				or value == "false"
 				or value == "event"
 				or value == "scope"

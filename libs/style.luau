@@ -114,36 +114,73 @@ local function combine_styles(...: Styler): Styler
 	end
 end
 
+local function to_values<K, V>(tbl: { [K]: V }): { V }
+	local values = {}
+	for _, value in tbl do
+		table.insert(values, value)
+	end
+	return values
+end
+
+local colors = table.freeze({
+	red = create_styler(31, 39),
+	blue = create_styler(34, 39),
+	cyan = create_styler(36, 39),
+	gray = create_styler(90, 39),
+	grey = create_styler(90, 39),
+	black = create_styler(30, 39),
+	green = create_styler(32, 39),
+	white = create_styler(37, 39),
+	yellow = create_styler(33, 39),
+	purple = create_styler(35, 39),
+	bright_red = create_styler(91, 39),
+	bright_blue = create_styler(94, 39),
+	bright_cyan = create_styler(96, 39),
+	bright_green = create_styler(92, 39),
+	bright_white = create_styler(97, 39),
+	bright_yellow = create_styler(93, 39),
+	bright_purple = create_styler(95, 39),
+})
+
+local modifiers = table.freeze({
+	dim = create_styler(2, 22),
+	bold = create_styler(1, 22),
+	italic = create_styler(3, 23),
+	hidden = create_styler(8, 28),
+	inverse = create_styler(7, 27),
+	overline = create_styler(53, 55),
+	underline = create_styler(4, 24),
+	strikethrough = create_styler(9, 29),
+	reset = create_styler(0, 0),
+})
+
+local function random_factory(values: { Styler }): () -> Styler
+	local n_values = #values
+	local last_index = 0
+	return function()
+		while true do
+			local next_index = math.random(1, n_values)
+			if next_index == last_index then
+				continue
+			end
+
+			last_index = next_index
+			return values[next_index]
+		end
+	end
+end
+
 return table.freeze({
 	combine = combine_styles,
-	modifer = table.freeze({
-		dim = create_styler(2, 22),
-		bold = create_styler(1, 22),
-		italic = create_styler(3, 23),
-		hidden = create_styler(8, 28),
-		inverse = create_styler(7, 27),
-		overline = create_styler(53, 55),
-		underline = create_styler(4, 24),
-		strikethrough = create_styler(9, 29),
-		reset = create_styler(0, 0),
+	random_color = random_factory({
+		colors.red,
+		colors.blue,
+		colors.cyan,
+		colors.green,
+		colors.yellow,
+		colors.purple,
 	}),
-	color = table.freeze({
-		red = create_styler(31, 39),
-		blue = create_styler(34, 39),
-		cyan = create_styler(36, 39),
-		gray = create_styler(90, 39),
-		grey = create_styler(90, 39),
-		black = create_styler(30, 39),
-		green = create_styler(32, 39),
-		white = create_styler(37, 39),
-		yellow = create_styler(33, 39),
-		purple = create_styler(35, 39),
-		bright_red = create_styler(91, 39),
-		bright_blue = create_styler(94, 39),
-		bright_cyan = create_styler(96, 39),
-		bright_green = create_styler(92, 39),
-		bright_white = create_styler(97, 39),
-		bright_yellow = create_styler(93, 39),
-		bright_purple = create_styler(95, 39),
-	}),
+	random_modifier = random_factory(to_values(modifiers :: { [string]: Styler })),
+	color = colors,
+	modifer = modifiers,
 })

@@ -57,11 +57,9 @@ end
 
 local function follow(hir: Hir, ty: ty.Ty): ty.Ty
 	if ty.kind == "optional" then
-		local of = ty_from_id(hir, ty.of)
-		return follow(hir, of)
-	elseif ty.kind == "generic_type" then
-		local body = ty_from_id(hir, ty.body)
-		return follow(hir, body)
+		return follow(hir, ty.of)
+	elseif ty.kind == "type_instantiation" then
+		return follow(hir, ty.body)
 	end
 
 	-- SOLVER BUG

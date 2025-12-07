@@ -53,9 +53,9 @@ type weapon = struct {
     reserve: u8
 }
 
-type shotgun = weapon & struct {
-    pellets: u8
-}
+-- type shotgun = weapon & struct {
+--     pellets: u8
+-- }
 
 type node<T> = struct {
     value: T,
@@ -73,12 +73,11 @@ type tree<T> = struct {
 type forest<T> = tree<T>[]
 type byte_forest = forest<u8>
 
-type class = enum {
-    "Tank",
-    "Healer",
-    "Assasin",
-    "Marksman",
-}
+type class =
+    "Tank"
+    | "Healer"
+    | "Assasin"
+    | "Marksman"
 
 type purchase = struct {
     price: u32,
