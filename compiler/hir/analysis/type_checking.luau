@@ -9,28 +9,61 @@ type TyId<T = Ty> = ty.TyId<T>
 type TyKind = ty.TyKind
 
 type Hir = types.Hir
+type Node = ast.Node
+
 type Context = {
 	read hir: Hir,
-	read node: ast.Node,
+	read node: Node,
 	read encountered: { [Ty]: true? },
 }
 
-local function assert_ty_kind(ctx: Context, ty: Ty, kind: TyKind)
+local function hash_ty(hir: Hir, ty: Ty): string
+	if ty.kind == "map" then
+		return "table"
+	elseif ty.kind == "array" then
+		return "table"
+	elseif ty.kind == "struct" then
+		return "table"
+	elseif ty.kind == "discriminated_union" then
+		local variant_keys = table.create(#ty.variants) :: { string }
+		for index, variant in ty.variants do
+			local key = variant.key
+			local stringified: string
+			if key.kind == "string_literal" then
+				stringified = `"{key.value}"`
+			else
+				stringified = tostring(key.value)
+			end
+
+			variant_keys[index] = stringified
+		end
+
+		return `{ty.tag} ({table.concat(variant_keys)})`
+	elseif ty.kind == "reference" then
+		return hash_ty(hir, lookup.ty_from_id(hir, ty.to))
+	elseif ty.kind == "type_instantiation" then
+		return hash_ty(hir, ty.body)
+	end
+
+	return ty.kind
+end
+
+local function assert_ty_kind(node: Node, ty: Ty, kind: TyKind)
 	local real_kind = ty.kind
 	if real_kind ~= kind then
-		report.expect(ctx.node, kind, real_kind)
+		report.expect(node, kind, real_kind)
 	end
 end
 
-local function assert_ty_kind_one_of(ctx: Context, ty: Ty, kinds: { TyKind })
+local function assert_ty_kind_one_of(node: Node, ty: Ty, kinds: { TyKind })
 	local real_kind = ty.kind
 	if table.find(kinds, real_kind) == nil then
-		report.expect_one_of(ctx.node, kinds :: { string }, real_kind)
+		report.expect_one_of(node, kinds :: { string }, real_kind)
 	end
 end
 
-local function assert_axis_ty(ctx: Context, ty: Ty)
-	assert_ty_kind_one_of(ctx, ty, { "numeral", "number_literal" })
+local function assert_axis_ty(node: Node, ty: Ty)
+	assert_ty_kind_one_of(node, ty, { "numeral", "number_literal" })
 
 	if ty.kind ~= "numeral" then
 		return
@@ -40,11 +73,12 @@ local function assert_axis_ty(ctx: Context, ty: Ty)
 	local format = ty.format
 
 	if (format == "f" and size > 32) or (format ~= "f" and size > 24) then
-		report.cannot_represent_vector_axis(ctx.node)
+		report.cannot_represent_vector_axis(node)
 	end
 end
 
 local function explore<T>(ctx: Context, tty: Ty)
+	local node = ctx.node
 	local encountered = ctx.encountered
 	if encountered[tty] then
 		return
@@ -62,7 +96,14 @@ local function explore<T>(ctx: Context, tty: Ty)
 			explore(ctx, field.value)
 		end
 	elseif tty.kind == "union" then
+		local encountered_hashes: { [string]: true? } = {}
 		for index, component in tty.components do
+			local hash = hash_ty(ctx.hir, component)
+			if encountered_hashes[hash] then
+				report.duplicate_union_type(node :: any, node :: any)
+			end
+
+			encountered_hashes[hash] = true
 			explore(ctx, component)
 		end
 	elseif tty.kind == "discriminated_union" then
@@ -78,21 +119,21 @@ local function explore<T>(ctx: Context, tty: Ty)
 				break
 			end
 
-			assert_axis_ty(ctx, axis)
+			assert_axis_ty(node, axis)
 		end
 	elseif tty.kind == "cframe" then
 		if tty.position then
-			assert_ty_kind(ctx, tty.position, "numeral")
-			assert_axis_ty(ctx, tty.position)
+			assert_ty_kind(node, tty.position, "numeral")
+			assert_axis_ty(node, tty.position)
 		end
 
 		if tty.rotation then
-			assert_ty_kind(ctx, tty.rotation, "numeral")
+			assert_ty_kind(node, tty.rotation, "numeral")
 		end
 	elseif tty.kind == "instance" and tty.class then
-		assert_ty_kind(ctx, tty.class, "string_literal")
+		assert_ty_kind(node, tty.class, "string_literal")
 	elseif tty.kind == "roblox_enum" and tty.type then
-		assert_ty_kind(ctx, tty.type, "string_literal")
+		assert_ty_kind(node, tty.type, "string_literal")
 	end
 end
 

@@ -346,7 +346,7 @@ local function report_duplicate_union_type(duplicate: ast.Expression, previous: 
 	return diagnostics.report
 		.create("Error")
 		.with_code(codes.type_checking.DuplicateUnionType)
-		.with_message("Duplicate tyes used in union")
+		.with_message("Duplicate type used in union")
 		.with_label(
 			diagnostics.label
 				.create(duplicate.span)
