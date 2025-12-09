@@ -48,40 +48,38 @@ local function transform(ctx: Context, tty: Ty): Ty
 			return ty.struct(fields)
 		end
 	elseif tty.kind == "union" then
+		local queue = table.clone(tty.components)
 		local new_components = table.create(#tty.components) :: typeof(tty.components)
-		local invalidated = false
 
-		local queue = { tty.components } :: { { Ty } }
+		local invalidated = false
 		local nil_inserted = false
 		while true do
-			--TODO: Remove cast once table.remove decides to work
-			local components = table.remove(queue) :: { Ty }?
-			if components == nil then
+			local component = table.remove(queue)
+			if component == nil then
 				break
 			end
 
-			for _, component in components do
-				if component.kind == "union" then
-					table.insert(queue, component.components)
+			if component.kind == "union" then
+				invalidated = true
+				table.move(component.components, 1, #component.components, #queue + 1, queue)
+				continue
+			end
+
+			local transformed = transform(ctx, component)
+			if not ty_ptr_eq(transformed, component) then
+				invalidated = true
+			end
+
+			if transformed.kind == "nil" then
+				if nil_inserted then
+					invalidated = true
 					continue
 				end
 
-				local transformed = transform(ctx, component)
-				if not ty_ptr_eq(transformed, component) then
-					invalidated = true
-				end
-
-				if transformed.kind == "nil" then
-					if nil_inserted then
-						invalidated = true
-						continue
-					end
-
-					nil_inserted = true
-				end
-
-				table.insert(new_components, transformed)
+				nil_inserted = true
 			end
+
+			table.insert(new_components, transformed)
 		end
 
 		if invalidated then
