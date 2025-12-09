@@ -17,6 +17,12 @@ local function condition<A, B>(kind: index<Condition, "kind">, left: RValue<A>, 
 end
 
 return table.freeze({
+	oor = function<A, B>(left: RValue<A>, right: RValue<B>)
+		return condition("or", left, right)
+	end,
+	aand = function<A, B>(left: RValue<A>, right: RValue<B>)
+		return condition("and", left, right)
+	end,
 	equals = function<A, B>(left: RValue<A>, right: RValue<B>)
 		return condition("equals", left, right)
 	end,

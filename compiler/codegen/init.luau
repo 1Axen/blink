@@ -144,7 +144,11 @@ local function gen_condition(ctx: Context, condition: lir.Condition<any>)
 	gen_rvalue(ctx, condition.left)
 
 	local builder = ctx.builder
-	if condition.kind == "equals" then
+	if condition.kind == "or" then
+		builder:append(" or ")
+	elseif condition.kind == "and" then
+		builder:append(" and ")
+	elseif condition.kind == "equals" then
 		builder:append(" == ")
 	elseif condition.kind == "not_equals" then
 		builder:append(" ~= ")

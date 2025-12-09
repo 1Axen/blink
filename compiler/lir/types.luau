@@ -216,7 +216,7 @@ export type Condition<T> = {
 	write __phantom_type: T,
 
 	type: "condition",
-	kind: "equals" | "not_equals" | "less_than" | "less_than_or" | "greater_than" | "greater_than_or",
+	kind: "equals" | "not_equals" | "less_than" | "less_than_or" | "greater_than" | "greater_than_or" | "and" | "or",
 	left: RValue<T>,
 	right: RValue<T>,
 }
