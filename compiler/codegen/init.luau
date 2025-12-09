@@ -11,6 +11,7 @@ local context = require("@self/context")
 
 local append_luau_type = require("@self/append_luau_type")
 local cased_method = require("@self/cased_method")
+local constant = require("@lir/build/builders/constant")
 local globals = require("@lir/build/builders/globals")
 local hir = require("@hir")
 local lir = require("@compiler/lir")
@@ -319,14 +320,22 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 		end
 
 		builder:append_indent()
-		if chain_index == 1 then
-			builder:append("if ")
-		else
-			builder:append("elseif ")
-		end
 
-		gen_condition(ctx, terminator.cond)
-		builder:append(" then\n")
+		-- it's likely better to implement a proper way to represent the else case
+		-- but this works for now
+		local cond = terminator.cond
+		if chain_index == chain_length and cond.left == constant.truth and cond.right == constant.truth then
+			builder:append("else")
+		else
+			if chain_index == 1 then
+				builder:append("if ")
+			else
+				builder:append("elseif ")
+			end
+
+			gen_condition(ctx, cond)
+			builder:append(" then\n")
+		end
 
 		builder:indent()
 		context.push_block(ctx, terminator.falsey)
