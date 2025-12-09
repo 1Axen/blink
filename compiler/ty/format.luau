@@ -147,15 +147,16 @@ local function fmt_array(ty: types.Array): string
 end
 
 local function fmt_union(ty: types.Union): string
-	local stringified = ""
+	local components = ""
 	for index, tty in ty.components do
 		if index > 1 then
-			stringified ..= " | "
+			components ..= " | "
 		end
-		stringified ..= fmt_ty(tty)
+		components ..= fmt_ty(tty)
 	end
 
-	return stringified
+	local delimeter_color = style.random_color()
+	return `{delimeter_color("(")}{components}{delimeter_color(")")}`
 end
 
 local function fmt_struct(ty: types.Struct): string
