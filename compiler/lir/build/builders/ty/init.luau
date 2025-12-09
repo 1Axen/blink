@@ -4,6 +4,7 @@ local builder_types = require("@self/builder_types")
 local condition = require("@builders/condition")
 local constant = require("@builders/constant")
 local context = require("@lir/build/context")
+local control = require("@builders/control")
 local conversion = require("@util/conversion")
 local fn = require("@builders/fn")
 local globals = require("@builders/globals")
@@ -13,12 +14,15 @@ local library = require("@builders/library")
 local panic = require("@util/panic")
 local prefixes = require("@config/prefixes")
 local projection = require("@builders/projection")
+local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 local structure = require("@builders/structure")
 local ty = require("@ty")
 local ty_literal = require("@self/luau/literal")
 local ty_numeral = require("@self/luau/numeral")
 local types = require("@lir/types")
 local unary = require("@builders/unary")
+
+type Hir = hir.Hir
 
 type Ty = ty.Ty
 type TyId = ty.TyId<Ty>
@@ -35,6 +39,8 @@ type TyBuilder = builder_types.TyBuilder
 type ReadProps = builder_types.ReadProps
 type WriteProps = builder_types.WriteProps
 type Props = builder_types.Props
+
+local ALWAYS_TRUE = condition.equals(constant.truth, constant.truth)
 
 local function ty_to_str(tty: Ty): string
 	return string.split(tostring(tty), ": ")[2]
@@ -139,193 +145,386 @@ builders = {
 	brick_color = require("@self/roblox/brick_color"),
 	roblox_enum = require("@self/roblox/enum"),
 	date_time_millis = require("@self/roblox/date_time_millis"),
+}
 
-	reference = table.freeze({
-		read = function(props: ReadProps, block: Builder, ref: ty.Reference, into: LValue<any>?): Register<any>
-			local fn_set = build_ty(props.ctx, props.attributes, ref)
-			local register = into or block:reserve()
-			block:call_fn(fn_set.read, {}, { register })
-			return register :: Register<any>
-		end,
-		write = function(props: WriteProps, block: Builder, ref: ty.Reference, at: RValue<any>): ()
-			local fn_set = build_ty(props.ctx, props.attributes, ref)
-			block:call_fn(fn_set.write, { at }, {})
-		end,
-	}),
+builders.reference = table.freeze({
+	read = function(props: ReadProps, block: Builder, ref: ty.Reference, into: LValue<any>?): Register<any>
+		local fn_set = build_ty(props.ctx, props.attributes, ref)
+		local register = into or block:reserve()
+		block:call_fn(fn_set.read, {}, { register })
+		return register :: Register<any>
+	end,
+	write = function(props: WriteProps, block: Builder, ref: ty.Reference, at: RValue<any>): ()
+		local fn_set = build_ty(props.ctx, props.attributes, ref)
+		block:call_fn(fn_set.write, { at }, {})
+	end,
+})
 
-	type_instantiation = table.freeze({
-		read = function(
-			props: ReadProps,
-			block: Builder,
-			instantiation: ty.TypeInstantiation,
-			into: LValue<any>?
-		): Register<any>
-			local fn_set = build_ty(props.ctx, props.attributes, instantiation)
-			local register = into or block:reserve()
-			block:call_fn(fn_set.read, {}, { register })
-			return register :: Register<any>
-		end,
-		write = function(props: WriteProps, block: Builder, instantiation: ty.TypeInstantiation, at: RValue<any>): ()
-			local fn_set = build_ty(props.ctx, props.attributes, instantiation)
-			block:call_fn(fn_set.write, { at }, {})
-		end,
-	}),
+builders.type_instantiation = table.freeze({
+	read = function(
+		props: ReadProps,
+		block: Builder,
+		instantiation: ty.TypeInstantiation,
+		into: LValue<any>?
+	): Register<any>
+		local fn_set = build_ty(props.ctx, props.attributes, instantiation)
+		local register = into or block:reserve()
+		block:call_fn(fn_set.read, {}, { register })
+		return register :: Register<any>
+	end,
+	write = function(props: WriteProps, block: Builder, instantiation: ty.TypeInstantiation, at: RValue<any>): ()
+		local fn_set = build_ty(props.ctx, props.attributes, instantiation)
+		block:call_fn(fn_set.write, { at }, {})
+	end,
+})
 
-	map = table.freeze({
-		read = function(props: ReadProps, block: Builder, map: ty.Map, into: LValue<any>?): Register<{ [any]: any }>
-			local len = length.read(props, block, map)
-			local register = block:store(structure.map({}))
+builders.map = table.freeze({
+	read = function(props: ReadProps, block: Builder, map: ty.Map, into: LValue<any>?): Register<{ [any]: any }>
+		local len = length.read(props, block, map)
+		local register = block:store(structure.map({}))
 
-			block:for_numeric(len, function(block)
-				local key = read_ty(props, block, map.index)
-				local value = read_ty(props, block, map.value)
-				local map_index = projection.field(register, key)
-				block:store(value, map_index)
-			end)
+		block:for_numeric(len, function(block)
+			local key = read_ty(props, block, map.index)
+			local value = read_ty(props, block, map.value)
+			local map_index = projection.field(register, key)
+			block:store(value, map_index)
+		end)
 
-			if into then
-				return block:store(register, into)
+		if into then
+			return block:store(register, into)
+		end
+
+		return register
+	end,
+	write = function(props: WriteProps, block: Builder, map: ty.Map, at: RValue<{ [any]: any }>): ()
+		local elements_register = block:store(constant.zero)
+		local increase_elements = binary.add(elements_register, constant.one)
+		block:for_generic(at, function(block)
+			block:store(increase_elements, elements_register)
+		end)
+
+		length.write(props, block, map, elements_register)
+
+		block:for_generic(at, function(block, key, value)
+			write_ty(props, block, map.index, key)
+			write_ty(props, block, map.value, value)
+		end)
+	end,
+})
+
+builders.array = table.freeze({
+	read = function(props: ReadProps, block: Builder, array: ty.Array, into: LValue<any>?): Register<{ any }>
+		local len = length.read(props, block, array)
+		local register = block:store(library.table.create(len))
+
+		block:for_numeric(len, function(block, index)
+			local element = read_ty(props, block, array.of)
+			local position = projection.field(register :: any, index)
+			block:store(element, position)
+		end)
+
+		if into then
+			return block:store(register, into)
+		end
+
+		return register
+	end,
+	write = function(props: WriteProps, block: Builder, array: ty.Array, value: RValue<{ any }>): ()
+		length.write(props, block, array, unary.len(value :: any))
+		block:for_generic(value :: any, function(block, _, value)
+			write_ty(props, block, array.of, value)
+		end)
+	end,
+})
+
+builders.struct = table.freeze({
+	read = function(props: ReadProps, block: Builder, struct: ty.Struct, into: LValue<any>?): Register<any>
+		local register: Register<any> = block:store(structure.struct({}), into)
+		for _, field in struct.fields do
+			local name = field.name
+			local struct_index = projection.field(register, constant.from_value(name))
+			read_ty(props, block, field.value, struct_index)
+		end
+
+		return register
+	end,
+
+	write = function(props: WriteProps, block: Builder, struct: ty.Struct, value: RValue<any>): ()
+		for _, field in struct.fields do
+			local name = field.name
+			local struct_index = projection.field(value :: LValue<any>, constant.from_value(name))
+			local field_register = block:store(struct_index)
+			write_ty(props, block, field.value, field_register)
+		end
+	end,
+})
+
+builders.discriminated_union = table.freeze({
+	read = function(props: ReadProps, block: Builder, enum: ty.DiscriminatedUnion, into: LValue<any>?)
+		local variants = enum.variants
+		local variants_count = #variants
+
+		-- account for serdesing from 0
+		local format = conversion.to_min_numeral(variants_count - 1)
+
+		local value = into or block:reserve()
+		local stored_value = ty_numeral.read(props, block, format)
+
+		block:if_chain(variants_count + 1, function(index)
+			if index > variants_count then
+				return ALWAYS_TRUE,
+					function(block: Builder)
+						block:call(library.error("Invalid enum variant"))
+					end
 			end
 
-			return register
-		end,
-		write = function(props: WriteProps, block: Builder, map: ty.Map, at: RValue<{ [any]: any }>): ()
-			local elements_register = block:store(constant.zero)
-			local increase_elements = binary.add(elements_register, constant.one)
-			block:for_generic(at, function(block)
-				block:store(increase_elements, elements_register)
-			end)
+			local variant_value = variants[index].value
+			local variant_index = constant.from_value(index - 1)
 
-			length.write(props, block, map, elements_register)
+			local is_variant = condition.equals(stored_value, variant_index)
+			return is_variant,
+				function(block: Builder)
+					builders.struct.read(props, block, variant_value, value)
+				end
+		end)
 
-			block:for_generic(at, function(block, key, value)
-				write_ty(props, block, map.index, key)
-				write_ty(props, block, map.value, value)
-			end)
-		end,
-	}),
+		return value
+	end,
+	write = function(props: WriteProps, block: Builder, enum: ty.DiscriminatedUnion, value: RValue<any>): ()
+		local variants = enum.variants
+		local variants_count = #variants
 
-	array = table.freeze({
-		read = function(props: ReadProps, block: Builder, array: ty.Array, into: LValue<any>?): Register<{ any }>
-			local len = length.read(props, block, array)
-			local register = block:store(library.table.create(len))
+		-- account for serdesing from 0
+		local format = conversion.to_min_numeral(variants_count - 1)
+		local tag_value = block:store(projection.field(value :: any, constant.from_value(enum.tag)))
 
-			block:for_numeric(len, function(block, index)
-				local element = read_ty(props, block, array.of)
-				local position = projection.field(register :: any, index)
-				block:store(element, position)
-			end)
-
-			if into then
-				return block:store(register, into)
+		block:if_chain(variants_count + 1, function(index)
+			if index > variants_count then
+				return ALWAYS_TRUE,
+					function(block: Builder)
+						block:call(library.error("Invalid enum variant"))
+					end
 			end
 
-			return register
-		end,
-		write = function(props: WriteProps, block: Builder, array: ty.Array, value: RValue<{ any }>): ()
-			length.write(props, block, array, unary.len(value :: any))
-			block:for_generic(value :: any, function(block, _, value)
-				write_ty(props, block, array.of, value)
-			end)
-		end,
-	}),
+			local variant = variants[index]
+			local variant_value = variant.value
+			local variant_index = constant.from_value(index - 1)
 
-	struct = table.freeze({
-		read = function(props: ReadProps, block: Builder, struct: ty.Struct, into: LValue<any>?): Register<any>
-			local register: Register<any> = block:store(structure.struct({}), into)
-			for _, field in struct.fields do
-				local name = field.name
-				local struct_index = projection.field(register, constant.from_value(name))
-				read_ty(props, block, field.value, struct_index)
+			local key = variant.key
+			local is_variant = condition.equals(tag_value, constant.from_ty(key :: any))
+
+			return is_variant,
+				function(block: Builder)
+					ty_numeral.write(props, block, format, variant_index)
+					builders.struct.write(props, block, variant_value, value)
+				end
+		end)
+	end,
+})
+
+do
+	local KIND_PRIORITY: { [ty.TyKind]: number? } = {
+		["nil"] = math.huge,
+		["discriminated_union"] = 0,
+		["map"] = -1,
+		["array"] = -1,
+		["struct"] = -1,
+		["unknown"] = -math.huge,
+	}
+
+	local function ty_to_type(hhir: Hir, tty: Ty): string
+		if tty.kind == "nil" then
+			return "nil"
+		elseif tty.kind == "map" then
+			return "map"
+		elseif tty.kind == "array" then
+			return "table"
+		elseif tty.kind == "struct" then
+			return "table"
+		elseif tty.kind == "union" then
+			return panic("cannot get type of union")
+		elseif tty.kind == "blocked" then
+			return panic("cannot get type of blocked")
+		elseif tty.kind == "generic" then
+			return panic("cannot get type of generic")
+		elseif tty.kind == "buffer" then
+			return "buffer"
+		elseif tty.kind == "vector" then
+			return "Vector3"
+		elseif tty.kind == "numeral" or tty.kind == "number_literal" then
+			return "number"
+		elseif tty.kind == "string" or tty.kind == "string_literal" then
+			return "string"
+		elseif tty.kind == "boolean" or tty.kind == "boolean_literal" then
+			return "boolean"
+		elseif tty.kind == "roblox_enum" then
+			if tty.type then
+				return `Enum.{tty.type.value}`
 			end
 
-			return register
-		end,
+			return "Enum"
+		elseif tty.kind == "cframe" then
+			return "CFrame"
+		elseif tty.kind == "color3" then
+			return "Color3"
+		elseif tty.kind == "instance" then
+			return "Instance"
+		elseif tty.kind == "date_time" then
+			return "DateTime"
+		elseif tty.kind == "date_time_millis" then
+			return "DateTimeMillis"
+		elseif tty.kind == "brick_color" then
+			return "BrickColor"
+		elseif tty.kind == "unknown" then
+			return panic("cannot get type of unknown")
+		elseif tty.kind == "reference" then
+			return ty_to_type(hhir, hir.ty_from_id(hhir, tty.to))
+		elseif tty.kind == "type_instantiation" then
+			return ty_to_type(hhir, tty.body)
+		elseif tty.kind == "discriminated_union" then
+			return "table"
+		elseif tty.kind == "type_function" then
+			return panic("cannot get type of type function")
+		else
+			return strong_exhaustive_match(tty.kind)
+		end
+	end
 
-		write = function(props: WriteProps, block: Builder, struct: ty.Struct, value: RValue<any>): ()
-			for _, field in struct.fields do
-				local name = field.name
-				local struct_index = projection.field(value :: LValue<any>, constant.from_value(name))
-				local field_register = block:store(struct_index)
-				write_ty(props, block, field.value, field_register)
-			end
-		end,
-	}),
+	local function sorted_components(hhir: Hir, union: ty.Union): { Ty }
+		local components = table.clone(union.components)
+		table.sort(components, function(a: Ty, b: Ty)
+			local a_priority = KIND_PRIORITY[a.kind] or #a.kind
+			local b_priority = KIND_PRIORITY[b.kind] or #b.kind
+			return a_priority > b_priority
+		end)
+		return components
+	end
 
-	discriminated_union = table.freeze({
-		read = function(props: ReadProps, block: Builder, enum: ty.DiscriminatedUnion, into: LValue<any>?)
-			local variants = enum.variants
-			local variants_count = #variants
+	builders.union = table.freeze({
+		read = function(props: ReadProps, block: Builder, union: ty.Union, into: LValue<any>?)
+			local hhir = props.ctx.hir
 
-			-- account for serdesing from 0
-			local format = conversion.to_min_numeral(variants_count - 1)
+			local components = sorted_components(hhir, union)
+			local n_components = #components
+
+			-- add extra else chain for invalid error if no unknown components
+			local variants_index = 0
+			local components_index = 0
 
 			local value = into or block:reserve()
-			local stored_value = ty_numeral.read(props, block, format)
+			local stored_index = block:store(library.buffer.u8.read(control.advance(constant.one)))
 
-			block:if_chain(variants_count + 1, function(index)
-				if index > variants_count then
-					local fallback = condition.equals(constant.truth, constant.truth)
-					return fallback,
+			block:if_chain(n_components + 1, function(index)
+				if index > n_components then
+					return ALWAYS_TRUE,
 						function(block: Builder)
-							block:call(library.error("Invalid enum variant"))
+							block:call(library.error("Invalid union type"))
 						end
 				end
 
-				local variant_value = variants[index].value
-				local variant_index = constant.from_value(index - 1)
+				components_index += 1
 
-				local is_variant = condition.equals(stored_value, variant_index)
-				return is_variant,
-					function(block: Builder)
-						builders.struct.read(props, block, variant_value, value)
+				local component = components[components_index]
+				local ty_to_read = component
+				local component_index = constant.from_value(index - 1)
+
+				if component.kind == "discriminated_union" then
+					local variants = component.variants
+					variants_index += 1
+
+					local variant = variants[variants_index]
+					if variants_index < #variants then
+						components_index -= 1
+					else
+						variants_index = 0
+					end
+
+					ty_to_read = variant.value
+				end
+
+				return condition.equals(stored_index, component_index),
+					function(block)
+						read_ty(props, block, ty_to_read, value)
 					end
 			end)
 
 			return value
 		end,
-		write = function(props: WriteProps, block: Builder, enum: ty.DiscriminatedUnion, value: RValue<any>): ()
-			local variants = enum.variants
-			local variants_count = #variants
+		write = function(props: WriteProps, block: Builder, union: ty.Union, value: RValue<any>): ()
+			local hhir = props.ctx.hir
 
-			-- account for serdesing from 0
-			local format = conversion.to_min_numeral(variants_count - 1)
-			local tag_value = block:store(projection.field(value :: any, constant.from_value(enum.tag)))
+			local components = sorted_components(hhir, union)
+			local n_components = #components
 
-			block:if_chain(variants_count + 1, function(index)
-				if index > variants_count then
-					local fallback = condition.equals(constant.truth, constant.truth)
-					return fallback,
+			-- add extra else chain for invalid error if no unknown components
+			local n_chains = n_components
+			local is_optional = false
+
+			do
+				local first = components[1]
+				local last = components[n_components]
+
+				if first.kind == "nil" and n_components == 2 then
+					is_optional = true
+				elseif last.kind ~= "unknown" then
+					n_chains += 1
+				end
+			end
+
+			local variants_index = 0
+			local components_index = 0
+
+			local value_typeof = block:store(library.typeof(value))
+			local write_offset = block:allocate(constant.one)
+
+			block:if_chain(n_chains, function(index)
+				if index > n_components then
+					return ALWAYS_TRUE,
 						function(block: Builder)
-							block:call(library.error("Invalid enum variant"))
+							block:call(library.error("Invalid union type"))
 						end
 				end
 
-				local variant = variants[index]
-				local variant_value = variant.value
-				local variant_index = constant.from_value(index - 1)
+				components_index += 1
 
-				local key = variant.key
-				local is_variant = condition.equals(tag_value, constant.from_ty(key :: any))
+				local component = components[components_index]
+				local ty_to_write = component
+				local component_condition = ALWAYS_TRUE
 
-				return is_variant,
-					function(block: Builder)
-						ty_numeral.write(props, block, format, variant_index)
-						builders.struct.write(props, block, variant_value, value)
+				if component.kind == "nil" then
+					component_condition = condition.equals(value, constant.null)
+				elseif component.kind == "discriminated_union" then
+					local variants = component.variants
+					variants_index += 1
+
+					local variant = variants[variants_index]
+					local tag_index = projection.field(value :: any, constant.from_value(component.tag))
+
+					if variants_index < #variants then
+						components_index -= 1
+					else
+						variants_index = 0
+					end
+
+					ty_to_write = variant.value
+
+					local tag_condition = condition.equals(tag_index, constant.from_ty(variant.key :: any))
+					local type_condition = condition.equals(value_typeof, constant.from_value("table"))
+					component_condition = condition.aand(type_condition, tag_condition)
+				elseif not is_optional and component.kind ~= "unknown" then
+					local component_type = constant.from_value(ty_to_type(hhir, component))
+					component_condition = condition.equals(value_typeof, component_type)
+				end
+
+				return component_condition,
+					function(block)
+						block:call(library.buffer.u8.write(write_offset, constant.from_value(index - 1)))
+						write_ty(props, block, ty_to_write, value)
 					end
 			end)
 		end,
-	}),
-
-	union = table.freeze({
-		read = function(props: ReadProps, block: Builder, union: ty.Union, into: LValue<any>?): Register<any>
-			local register: Register<any> = block:store(structure.struct({}))
-
-			return register
-		end,
-		write = function(props: WriteProps, block: Builder, union: ty.Union, value: RValue<any>): () end,
-	}),
-}
+	})
+end
 
 return table.freeze({
 	build = build_ty,

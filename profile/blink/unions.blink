@@ -1,6 +1,6 @@
 option types_output = "../out/unions"
 
-type Union = u8 | string
+type Union = u8 | string? | unknown
 
 type GenUnion<A, B> = A | B
 type FilledUnion = GenUnion<u8, string>
@@ -15,4 +15,4 @@ type quax = struct {
 	field: u8
 }
 
-type foo_bar_quax = foo | bar | quax
+type foo_bar_quax = u8 | foo | bar | quax
