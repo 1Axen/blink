@@ -459,6 +459,13 @@ do
 			-- add extra else chain for invalid error if no unknown components
 			local n_chains = n_components
 			local is_optional = false
+			local has_catch_case = false
+
+			for _, component in components do
+				if component.kind == "discriminated_union" then
+					n_chains += #component.variants - 1
+				end
+			end
 
 			do
 				local first = components[1]
@@ -468,6 +475,7 @@ do
 					is_optional = true
 				elseif last.kind ~= "unknown" then
 					n_chains += 1
+					has_catch_case = true
 				end
 			end
 
@@ -478,7 +486,7 @@ do
 			local write_offset = block:allocate(constant.one)
 
 			block:if_chain(n_chains, function(index)
-				if index > n_components then
+				if index == n_chains and has_catch_case then
 					return ALWAYS_TRUE,
 						function(block: Builder)
 							block:call(library.error("Invalid union type"))

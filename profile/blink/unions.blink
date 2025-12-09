@@ -6,10 +6,12 @@ type GenUnion<A, B> = A | B
 type FilledUnion = GenUnion<u8, string>
 
 type foo = union "Tag" {
-	First {}
+	First {},
+	Second {}
 }
 type bar = union "Tag" {
-	Second {}
+	Third {},
+	Fourth {}
 }
 type quax = struct {
 	field: u8
