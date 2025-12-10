@@ -328,7 +328,12 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 		-- it's likely better to implement a proper way to represent the else case
 		-- but this works for now
 		local cond = terminator.cond
-		if chain_index == chain_length and cond.left == constant.truth and cond.right == constant.truth then
+		if
+			chain_index == chain_length
+			and chain_index > 1
+			and cond.left == constant.truth
+			and cond.right == constant.truth
+		then
 			builder:append("else")
 		else
 			if chain_index == 1 then
