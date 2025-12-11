@@ -50,23 +50,13 @@ local function validate(ctx: Context, block: Builder, instance: Instance, value:
 	end)
 end
 
-local function validate_optional(ctx: Context, block: Builder, instance: Instance, value: RValue<Instance>)
-	block:if_single(condition.not_equals(value, constant.null), function(block)
-		validate(ctx, block, instance, value)
-	end)
-end
-
 local function build_read(props: ReadProps, block: Builder, instance: Instance, into: LValue<any>?): Register<Instance>
 	local unknown_cursor = globals.incoming.unknown_cursor
 	local value = projection.field(globals.incoming.unknown :: LValue<any>, unknown_cursor) :: types.ProjField<Instance>
 	block:store(binary.add(unknown_cursor, constant.one), unknown_cursor)
 
 	local register = block:store(value, into)
-	if props.is_optional then
-		validate_optional(props.ctx, block, instance, register)
-	else
-		validate(props.ctx, block, instance, register)
-	end
+	validate(props.ctx, block, instance, register)
 
 	return register
 end

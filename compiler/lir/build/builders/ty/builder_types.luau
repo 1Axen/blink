@@ -17,8 +17,6 @@ type Attributes = attributes.Attributes
 
 export type ReadProps = {
 	ctx: Context,
-	-- This is an ugly hack for instances
-	is_optional: boolean?,
 	attributes: Attributes,
 }
 
