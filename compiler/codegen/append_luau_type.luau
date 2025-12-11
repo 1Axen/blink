@@ -66,10 +66,11 @@ end
 
 local function append_enum(ctx: Context, enum: ty.Enum)
 	local builder = ctx.builder
-	builder:append("Enum")
 	if enum.type then
-		builder:append(".")
+		builder:append("Enum.")
 		builder:append(enum.type.value)
+	else
+		builder:append("EnumItem")
 	end
 end
 
