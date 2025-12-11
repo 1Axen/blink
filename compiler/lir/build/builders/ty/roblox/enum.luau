@@ -38,7 +38,7 @@ local function to_static_enum_type(ctx: Context, ty: ty.Enum): types.Constant<st
 		return nil
 	end
 
-	return constant.from_value(enum_type.value)
+	return projection.index(constant.from_value("Enum"), constant.from_value(enum_type.value))
 end
 
 local function validate(props: WriteProps, block: Builder, ty: ty.Enum, at: RValue<EnumItem>)
