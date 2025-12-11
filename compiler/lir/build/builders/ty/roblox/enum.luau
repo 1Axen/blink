@@ -42,15 +42,20 @@ local function to_static_enum_type(ctx: Context, ty: ty.Enum): types.Constant<st
 end
 
 local function validate(props: WriteProps, block: Builder, ty: ty.Enum, at: RValue<EnumItem>)
+	local typeof_condition = condition.not_equals(library.typeof(at), constant.from_value("EnumItem"))
+	block:if_single(typeof_condition, function(block: fn.Builder)
+		block:call(library.error("Expected an EnumItem"))
+	end)
+
 	local static_enum_type = to_static_enum_type(props.ctx, ty)
 	if static_enum_type == nil then
 		return
 	end
 
 	local enum_type = projection.index(at :: any, const("EnumType"))
-	local type_cond = condition.not_equals(enum_type, static_enum_type)
+	local enum_type_cond = condition.not_equals(enum_type, static_enum_type)
 
-	block:if_single(type_cond, function(block)
+	block:if_single(enum_type_cond, function(block)
 		block:call(library.error(`Expected an enum of type: "{static_enum_type.value}"`))
 	end)
 end
