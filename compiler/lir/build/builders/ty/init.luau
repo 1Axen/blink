@@ -358,11 +358,7 @@ do
 		elseif tty.kind == "boolean" or tty.kind == "boolean_literal" then
 			return "boolean"
 		elseif tty.kind == "roblox_enum" then
-			if tty.type then
-				return `Enum.{tty.type.value}`
-			end
-
-			return "Enum"
+			return "EnumItem"
 		elseif tty.kind == "cframe" then
 			return "CFrame"
 		elseif tty.kind == "color3" then
@@ -390,12 +386,21 @@ do
 		end
 	end
 
+	local function ty_to_priority(tty: Ty): number
+		local kind = tty.kind
+		local priority = KIND_PRIORITY[kind] or #kind
+
+		if (tty.kind == "instance" and tty.class) or (tty.kind == "roblox_enum" and tty.type) then
+			priority += 1
+		end
+
+		return priority
+	end
+
 	local function sorted_components(hhir: Hir, union: ty.Union): { Ty }
 		local components = table.clone(union.components)
 		table.sort(components, function(a: Ty, b: Ty)
-			local a_priority = KIND_PRIORITY[a.kind] or #a.kind
-			local b_priority = KIND_PRIORITY[b.kind] or #b.kind
-			return a_priority > b_priority
+			return ty_to_priority(a) > ty_to_priority(b)
 		end)
 		return components
 	end
@@ -497,10 +502,25 @@ do
 
 				local component = components[components_index]
 				local ty_to_write = component
+
+				local component_type = constant.from_value(ty_to_type(hhir, component))
 				local component_condition = ALWAYS_TRUE
 
 				if component.kind == "nil" then
 					component_condition = condition.equals(value, constant.null)
+				elseif component.kind == "instance" and component.class then
+					local class = constant.from_value(component.class.value)
+					local type_condition = condition.equals(value_typeof, component_type)
+					local class_condition = condition.equals(library.Instance.is_a(value :: any, class), constant.truth)
+					component_condition = condition.aand(type_condition, class_condition)
+				elseif component.kind == "roblox_enum" and component.type then
+					local enum_type =
+						projection.index(constant.from_value("Enum"), constant.from_value(component.type.value))
+					local real_enum_type = projection.index(value :: any, constant.from_value("EnumType"))
+
+					local type_condition = condition.equals(value_typeof, component_type)
+					local enum_type_condition = condition.equals(real_enum_type, enum_type)
+					component_condition = condition.aand(type_condition, enum_type_condition)
 				elseif component.kind == "discriminated_union" then
 					local variants = component.variants
 					variants_index += 1
@@ -520,7 +540,6 @@ do
 					local type_condition = condition.equals(value_typeof, constant.from_value("table"))
 					component_condition = condition.aand(type_condition, tag_condition)
 				elseif not is_optional and component.kind ~= "unknown" then
-					local component_type = constant.from_value(ty_to_type(hhir, component))
 					component_condition = condition.equals(value_typeof, component_type)
 				end
 

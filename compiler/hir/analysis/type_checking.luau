@@ -17,16 +17,23 @@ type Context = {
 	read encountered: { [Ty]: true? },
 }
 
-local function hash_ty(hir: Hir, ty: Ty): string
-	if ty.kind == "map" then
+local function hash_ty(hir: Hir, tty: Ty): string
+	if tty.kind == "map" then
 		return "table"
-	elseif ty.kind == "array" then
+	elseif tty.kind == "array" then
 		return "table"
-	elseif ty.kind == "struct" then
+	elseif tty.kind == "struct" then
 		return "table"
-	elseif ty.kind == "discriminated_union" then
-		local variant_keys = table.create(#ty.variants) :: { string }
-		for index, variant in ty.variants do
+	-- TODO: Move inner ifs into the outer if once typechecking bug is fixed
+	elseif tty.kind == "instance" then
+		if tty.class then
+			return `Instance({tty.class.value})`
+		end
+	elseif tty.kind == "roblox_enum" and tty.type then
+		return `Enum.{tty.type.value}`
+	elseif tty.kind == "discriminated_union" then
+		local variant_keys = table.create(#tty.variants) :: { string }
+		for index, variant in tty.variants do
 			local key = variant.key
 			local stringified: string
 			if key.kind == "string_literal" then
@@ -38,39 +45,39 @@ local function hash_ty(hir: Hir, ty: Ty): string
 			variant_keys[index] = stringified
 		end
 
-		return `{ty.tag} ({table.concat(variant_keys)})`
-	elseif ty.kind == "reference" then
-		return hash_ty(hir, lookup.ty_from_id(hir, ty.to))
-	elseif ty.kind == "type_instantiation" then
-		return hash_ty(hir, ty.body)
+		return `{tty.tag} ({table.concat(variant_keys)})`
+	elseif tty.kind == "reference" then
+		return hash_ty(hir, lookup.ty_from_id(hir, tty.to))
+	elseif tty.kind == "type_instantiation" then
+		return hash_ty(hir, tty.body)
 	end
 
-	return ty.kind
+	return tty.kind
 end
 
-local function assert_ty_kind(node: Node, ty: Ty, kind: TyKind)
-	local real_kind = ty.kind
+local function assert_ty_kind(node: Node, tty: Ty, kind: TyKind)
+	local real_kind = tty.kind
 	if real_kind ~= kind then
 		report.expect(node, kind, real_kind)
 	end
 end
 
-local function assert_ty_kind_one_of(node: Node, ty: Ty, kinds: { TyKind })
-	local real_kind = ty.kind
+local function assert_ty_kind_one_of(node: Node, tty: Ty, kinds: { TyKind })
+	local real_kind = tty.kind
 	if table.find(kinds, real_kind) == nil then
 		report.expect_one_of(node, kinds :: { string }, real_kind)
 	end
 end
 
-local function assert_axis_ty(node: Node, ty: Ty)
-	assert_ty_kind_one_of(node, ty, { "numeral", "number_literal" })
+local function assert_axis_ty(node: Node, tty: Ty)
+	assert_ty_kind_one_of(node, tty, { "numeral", "number_literal" })
 
-	if ty.kind ~= "numeral" then
+	if tty.kind ~= "numeral" then
 		return
 	end
 
-	local size = tonumber(ty.size) :: number
-	local format = ty.format
+	local size = tonumber(tty.size) :: number
+	local format = tty.format
 
 	if (format == "f" and size > 32) or (format ~= "f" and size > 24) then
 		report.cannot_represent_vector_axis(node)

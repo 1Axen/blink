@@ -18,3 +18,6 @@ type quax = struct {
 }
 
 type foo_bar_quax = u8 | foo | bar | quax
+
+type model_instance = Instance<"Model"> | Instance
+type button_enum = Enum<"Button"> | Enum
