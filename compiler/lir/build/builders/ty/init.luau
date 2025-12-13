@@ -372,7 +372,7 @@ do
 		elseif tty.kind == "brick_color" then
 			return "BrickColor"
 		elseif tty.kind == "unknown" then
-			return panic("cannot get type of unknown")
+			return "unknown"
 		elseif tty.kind == "reference" then
 			return ty_to_type(hhir, hir.ty_from_id(hhir, tty.to))
 		elseif tty.kind == "type_instantiation" then
