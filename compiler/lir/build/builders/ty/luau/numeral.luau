@@ -177,15 +177,15 @@ end
 local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral, into: LValue<any>?): Register<number>
 	local format: concat_literal_union<ty.NumFormat, ty.NumSize> = (ty.format .. ty.size) :: any
 	if format == "u24" then
-		return read_u24(block)
+		return read_u24(block, into)
 	elseif format == "i24" then
-		return read_i24(block)
+		return read_i24(block, into)
 	elseif format == "u48" then
-		return read_u48(block)
+		return read_u48(block, into)
 	elseif format == "i48" then
-		return read_i48(block)
+		return read_i48(block, into)
 	elseif format == "f16" then
-		return read_f16(block)
+		return read_f16(block, into)
 	end
 
 	local size = size_to_byte_size(ty.size)
