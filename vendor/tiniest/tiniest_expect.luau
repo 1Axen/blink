@@ -1,6 +1,7 @@
 -- From dphfox/tiniest, licenced under BSD
 --!strict
 
+local result = require("@util/result")
 local tiniest_quote = require("./tiniest_quote")
 
 local tiniest_expect = {}
@@ -77,6 +78,12 @@ function tiniest_expect.expect(
 		b: any
 	)
 		return if a ~= b then tests else fail()
+	end
+
+	function tests.is_ok()
+		local result = a :: result.Result<any, any>
+		check(typeof(result) == "table", "expect() value must be a result")
+		return if result.ok then tests else fail(tiniest_quote(result.error))
 	end
 
 	function tests.is_true()
