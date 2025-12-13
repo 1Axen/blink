@@ -612,7 +612,6 @@ local function gen_export(ctx: Context, target: compilation.Target, export: lir.
 	if export.kind == "type" then
 		append_method(ctx, "read", export.read)
 		append_method(ctx, "write", export.write)
-		append_method(ctx, "read_from", export.read_from)
 		append_method(ctx, "write_to", export.write_to)
 	elseif export.kind == "event" then
 		if target == "server" then

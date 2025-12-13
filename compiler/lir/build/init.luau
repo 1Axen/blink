@@ -95,6 +95,18 @@ local SERVER_RECEIVE_PARAMETERS = {
 local ON_PARAMETER = fn.parameter(UNKNOWN_TY)
 local DISCONNECT_RETURN = fn.rreturn(UNKNOWN_TY)
 
+local BUFFER_RETURN = fn.rreturn(BUFFER_TY)
+local BUFFER_PARAMETER = fn.parameter(BUFFER_TY, "buf")
+
+local CURSOR_TY = ty.numeral("32", "u")
+
+local CURSOR_RETURN = fn.rreturn(CURSOR_TY)
+local CURSOR_PARAMETER = fn.parameter(CURSOR_TY, "cursor")
+local LENGTH_PARAMETER = fn.parameter(CURSOR_TY, "length")
+
+local CURSOR_OPTIONAL_TY = ty.union({ CURSOR_TY, ty.nnil() })
+local CURSOR_OPTIONAL_PARAMETER = fn.parameter(CURSOR_OPTIONAL_TY, "cursor")
+
 local function returns(ctx: Context, parameters: { hir.Parameter }): { types.Return }
 	local array = {}
 	for index, parameter in parameters do
@@ -166,9 +178,64 @@ local function build_type(ctx: Context, ttype: hir.Type): TypeExport?
 	end
 
 	local type_ty = hir.ty_from_id(ctx.hir, ttype.ty_id)
-	builders.ty.build(ctx, ttype.attributes, type_ty, ttype.name)
+	local type_fnset = builders.ty.build(ctx, ttype.attributes, type_ty, ttype.name)
 
-	return nil
+	if ttype.attributes.export ~= true then
+		return nil
+	end
+
+	local type_return = fn.rreturn(type_ty)
+	local type_parameter = fn.parameter(type_ty, "value")
+
+	local read = fn.anonymous(
+		{ BUFFER_PARAMETER, CURSOR_OPTIONAL_PARAMETER },
+		{ type_return, CURSOR_RETURN },
+		function(block: builders.Builder)
+			block:store(block:parameter(1), INCOMING.buffer)
+			block:store(condition.oor(block:parameter(2), constant.zero), INCOMING.cursor)
+
+			local value = block:reserve()
+			block:call_fn(type_fnset.read, {}, { value })
+			block:rreturn({ value, INCOMING.cursor } :: any)
+		end
+	)
+
+	local write = fn.anonymous({ type_parameter }, { BUFFER_RETURN }, function(block: builders.Builder)
+		block:store(constant.zero, OUTGOING.cursor)
+		block:call_fn(type_fnset.write, { block:parameter(1) }, {})
+		block:rreturn({ copy_outgoing_buffer(block) } :: any)
+	end)
+
+	local write_to = fn.anonymous(
+		{ type_parameter, BUFFER_PARAMETER, CURSOR_PARAMETER, LENGTH_PARAMETER },
+		{ BUFFER_RETURN, CURSOR_RETURN },
+		function(block: builders.Builder)
+			local prev_buf = block:store(OUTGOING.buffer)
+			local prev_length = block:store(OUTGOING.length)
+
+			block:store(block:parameter(2), OUTGOING.buffer)
+			block:store(block:parameter(3), OUTGOING.cursor)
+			block:store(block:parameter(4), OUTGOING.length)
+
+			block:call_fn(type_fnset.write, { block:parameter(1) }, {})
+			local trimmed_buffer = trim_outgoing_buffer(block)
+
+			block:store(prev_buf, OUTGOING.buffer)
+			block:store(prev_length, OUTGOING.length)
+
+			block:rreturn({ trimmed_buffer, OUTGOING.cursor } :: any)
+		end
+	)
+
+	return {
+		type = "export",
+		kind = "type",
+		name = ttype.name,
+
+		read = read,
+		write = write,
+		write_to = write_to,
+	}
 end
 
 local function queue_iterator(queue_projection: types.ProjField<any>, args_count: number)

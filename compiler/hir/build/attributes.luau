@@ -96,6 +96,8 @@ local function from_nodes(nodes: AttributeNodes): Attributes
 			value = attr_any(attribute)
 		elseif name == "stable" then
 			value = attr_any(attribute)
+		elseif name == "export" then
+			value = attr_any(attribute)
 		else
 			weak_exhaustive_match(name)
 			return report.invalid_attribute(attribute)

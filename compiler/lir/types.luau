@@ -486,7 +486,6 @@ export type TypeExport = {
 
 	read: AnonymousFn,
 	write: AnonymousFn,
-	read_from: AnonymousFn,
 	write_to: AnonymousFn,
 }
 

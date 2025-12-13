@@ -1,0 +1,11 @@
+option types_output = "../out/exports"
+
+@export
+type foo = u8
+
+@export
+type bar = struct {
+	name: string,
+	health: u8,
+	position: vector
+}
