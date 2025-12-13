@@ -1,5 +1,6 @@
 local ast = require("@ast")
 local lookup = require("@hir/lookup")
+local panic = require("@util/panic")
 local report = require("@hir/report")
 local ty = require("@ty")
 local types = require("@hir/types")
@@ -17,7 +18,44 @@ type Context = {
 	read encountered: { [Ty]: true? },
 }
 
+local explore: (ctx: Context, tty: Ty) -> ()
+
+local function inner_ty(hir: Hir, tty: Ty): Ty
+	local result = tty
+	while true do
+		if result.kind == "reference" then
+			result = lookup.ty_from_id(hir, result.to)
+			continue
+		elseif result.kind == "type_instantiation" then
+			result = result.body
+			continue
+		end
+
+		break
+	end
+
+	return result
+end
+
+local function is_optional_union(hir: Hir, tty: Ty): boolean
+	tty = inner_ty(hir, tty)
+
+	if tty.kind ~= "union" then
+		return false
+	end
+
+	for _, component in tty.components do
+		if component.kind == "nil" then
+			return true
+		end
+	end
+
+	return false
+end
+
 local function hash_ty(hir: Hir, tty: Ty): string
+	tty = inner_ty(hir, tty)
+
 	if tty.kind == "map" then
 		return "table"
 	elseif tty.kind == "array" then
@@ -47,9 +85,9 @@ local function hash_ty(hir: Hir, tty: Ty): string
 
 		return `{tty.tag} ({table.concat(variant_keys)})`
 	elseif tty.kind == "reference" then
-		return hash_ty(hir, lookup.ty_from_id(hir, tty.to))
+		panic("tried to hash reference")
 	elseif tty.kind == "type_instantiation" then
-		return hash_ty(hir, tty.body)
+		panic("tried to hash type instantiation")
 	end
 
 	return tty.kind
@@ -84,7 +122,39 @@ local function assert_axis_ty(node: Node, tty: Ty)
 	end
 end
 
-local function explore<T>(ctx: Context, tty: Ty)
+local function check_map(ctx: Context, map: ty.Map)
+	local hir = ctx.hir
+	local node = ctx.node
+
+	local indexer = map.index
+	if is_optional_union(hir, map.index) then
+		report.optional_indexer(node)
+	end
+
+	local value = map.value
+	if is_optional_union(hir, map.value) then
+		report.optional_value(node)
+	end
+
+	explore(ctx, indexer)
+	explore(ctx, value)
+end
+
+local function check_union(ctx: Context, union: ty.Union)
+	local node = ctx.node
+	local encountered_hashes: { [string]: true? } = {}
+	for index, component in union.components do
+		local hash = hash_ty(ctx.hir, component)
+		if encountered_hashes[hash] then
+			report.duplicate_union_type(node :: any, node :: any)
+		end
+
+		encountered_hashes[hash] = true
+		explore(ctx, component)
+	end
+end
+
+function explore(ctx: Context, tty: Ty)
 	local node = ctx.node
 	local encountered = ctx.encountered
 	if encountered[tty] then
@@ -94,8 +164,7 @@ local function explore<T>(ctx: Context, tty: Ty)
 	encountered[tty] = true
 
 	if tty.kind == "map" then
-		explore(ctx, tty.index)
-		explore(ctx, tty.value)
+		check_map(ctx, tty)
 	elseif tty.kind == "array" then
 		explore(ctx, tty.of)
 	elseif tty.kind == "struct" then
@@ -103,16 +172,7 @@ local function explore<T>(ctx: Context, tty: Ty)
 			explore(ctx, field.value)
 		end
 	elseif tty.kind == "union" then
-		local encountered_hashes: { [string]: true? } = {}
-		for index, component in tty.components do
-			local hash = hash_ty(ctx.hir, component)
-			if encountered_hashes[hash] then
-				report.duplicate_union_type(node :: any, node :: any)
-			end
-
-			encountered_hashes[hash] = true
-			explore(ctx, component)
-		end
+		check_union(ctx, tty)
 	elseif tty.kind == "discriminated_union" then
 		for index, variant in tty.variants do
 			explore(ctx, variant.key)
