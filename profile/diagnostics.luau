@@ -1,6 +1,6 @@
 --!strict
 
-local fs = require("@lute/fs")
+local fs = require("@std/fs")
 
 local diagnostics = require("@util/diagnostics")
 local file = require("@util/file")

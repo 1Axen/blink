@@ -1,4 +1,4 @@
-local fs = require("@lute/fs")
+local fs = require("@std/fs")
 local process = require("@lute/process")
 
 local file_source = fs.readfiletostring("./blink/large.blink")

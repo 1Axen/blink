@@ -1,4 +1,4 @@
-local fs = require("@lute/fs")
+local fs = require("@std/fs")
 
 local file = require("@util/file")
 local panic = require("@util/panic")
@@ -34,7 +34,7 @@ end
 local function read_directory(target: Path): Result<{ string }>
 	local path_str = path.to_string(target)
 	local success, entries = pcall(function()
-		return fs.listdir(path_str)
+		return fs.listdirectory(path_str)
 	end)
 
 	if success == false then
@@ -65,7 +65,7 @@ end
 local function write_directory(target: Path): Result
 	local path_str = path.to_string(target)
 	local success, err = pcall(function()
-		fs.mkdir(path_str)
+		fs.createdirectory(path_str)
 		return nil
 	end)
 
@@ -107,7 +107,7 @@ end
 local function remove_directory(target: Path): Result
 	local path_str = path.to_string(target)
 	local success, err = pcall(function()
-		fs.rmdir(path_str)
+		fs.removedirectory(path_str)
 		return nil
 	end)
 
@@ -152,7 +152,7 @@ end
 local function metadata(target: Path): Result<types.Metadata>
 	local path_str = path.to_string(target)
 	local success, raw_metadata = pcall(function()
-		return fs.stat(path_str)
+		return fs.metadata(path_str)
 	end)
 
 	if success == false then

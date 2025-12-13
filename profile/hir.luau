@@ -1,7 +1,7 @@
 --!strict
 
 local file = require("@util/file")
-local fs = require("@lute/fs")
+local fs = require("@std/fs")
 
 local hir = require("@compiler/hir")
 local lexer = require("@compiler/lexer")

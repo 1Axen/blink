@@ -1,7 +1,7 @@
 --!strict
 --> Temporary file used for tracking performance with every change
 
-local fs = require("@lute/fs")
+local fs = require("@std/fs")
 local time = require("@lute/time")
 
 local file = require("@util/file")
@@ -14,7 +14,7 @@ local parser = require("@compiler/parser")
 local OUT_PATH = "./out/performance.txt"
 
 if fs.exists("./out") == false then
-	fs.mkdir("./out")
+	fs.createdirectory("./out")
 end
 
 local function fs_append(path: string, text: string)
