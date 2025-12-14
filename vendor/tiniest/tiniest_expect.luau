@@ -108,6 +108,42 @@ function tiniest_expect.expect(
 		return if typeof(a) ~= b then tests else fail()
 	end
 
+	function tests.is_deep(
+		b: any
+	)
+		local function equals_deep(a: { [any]: any }, b: { [any]: any }): boolean
+			if typeof(a) == "buffer" and typeof(b) == "buffer" then
+				local a_contents = buffer.tostring(a)
+				local b_contents = buffer.tostring(b)
+				if a_contents ~= b_contents then
+					fail("contents of buffer A don't match the contents of buffer B")
+				end
+
+				return true
+			end
+
+			if typeof(a) ~= "table" or typeof(b) ~= "table" then
+				return a == b
+			end
+
+			for key, value in a do
+				if not equals_deep(value, b[key]) then
+					fail(`value "{tiniest_quote(value)}" at key "{tiniest_quote(key)}" in A doesn't match value "{tiniest_quote(b[key])}" in B`)
+				end
+			end
+
+			for key, value in b do
+				if not equals_deep(value, a[key]) then
+					fail(`value "{tiniest_quote(value)}" at key "{tiniest_quote(key)}" in B doesn't match value "{tiniest_quote(a[key])}" in A`)
+				end
+			end
+
+			return true
+		end
+
+		return if equals_deep(a, b) then tests else fail()
+	end
+
 	function tests.has_key(
 		b: any
 	)
