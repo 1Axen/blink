@@ -1,0 +1,10 @@
+option types_output = "../out/structs"
+
+type entity = struct {
+    id: u8,
+    class: string,
+    health: u8,
+    value: struct {
+		something_about_me: string
+	}
+}
