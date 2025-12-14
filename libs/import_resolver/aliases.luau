@@ -1,6 +1,6 @@
 local file = require("@util/file")
 local fs = require("@util/fs")
-local luaurc = require("@util/luaurc")
+local luaurc = require("./luaurc")
 local path = require("@util/path")
 local result = require("@util/result")
 
