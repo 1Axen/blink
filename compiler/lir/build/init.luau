@@ -796,12 +796,13 @@ end
 
 local function from_hir(hir: hir.Hir): types.Lir
 	local ctx = context.create(hir, types)
+	local globals_map: { [string]: types.RValue<any> } = {}
 	local exports_map: ExportsMap = {}
 
 	-- write globals
-	context.write_global(ctx, globals.types_map.identifier, structure.map({}))
-	context.write_global(ctx, INVOCATIONS.identifier, structure.map({}))
-	context.write_global(ctx, INVOCATIONS_BITSET.identifier, EMPTY_BITSET)
+	globals_map[globals.types_map.identifier] = structure.map({})
+	globals_map[INVOCATIONS.identifier] = structure.map({})
+	globals_map[INVOCATIONS_BITSET.identifier] = EMPTY_BITSET :: any
 
 	-- build types
 	for decl_id, decl in hir.types do
@@ -850,8 +851,8 @@ local function from_hir(hir: hir.Hir): types.Lir
 			table.insert(reliable_receivables, { id = event_id, decl = decl })
 		end
 
-		context.write_global(ctx, globals.queues_map.identifier, structure.map(queues :: any))
-		context.write_global(ctx, globals.connections_map.identifier, structure.map(connections :: any))
+		globals_map[globals.queues_map.identifier] = structure.map(queues :: any)
+		globals_map[globals.connections_map.identifier] = structure.map(connections :: any)
 	end
 
 	local client_receive_reliable = build_receive_connection(ctx, "Client", reliable_receivables)
@@ -893,10 +894,19 @@ local function from_hir(hir: hir.Hir): types.Lir
 		end)
 	end)
 
+	do
+		local templates = {}
+		for key, template in ctx.templates do
+			templates[constant.from_value(key)] = template
+		end
+
+		globals_map[globals.templates.identifier] = structure.struct(templates)
+	end
+
 	return {
 		export = build_scope(ctx, 0 :: any, exports_map),
 		fn_map = ctx.fn_map,
-		globals = ctx.globals,
+		globals = globals_map,
 		client = {
 			step_replication = client_step,
 			reliable_receive = client_receive_reliable,

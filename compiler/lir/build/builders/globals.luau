@@ -15,6 +15,7 @@ end
 
 return table.freeze({
 	create = global,
+	templates = global("templates"),
 	types_map = global("types"),
 	queues_map = global("queues"),
 	players_map = global("players_map"),

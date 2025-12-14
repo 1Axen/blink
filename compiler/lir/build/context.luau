@@ -1,4 +1,3 @@
-local globals = require("@builders/globals")
 local hir = require("@hir")
 local panic = require("@util/panic")
 local ty = require("@ty")
@@ -20,11 +19,10 @@ export type FnSet = {
 
 export type Context = {
 	fn_id: number,
-	fn_map: { [FnId]: types.Fn },
-	globals: { [string]: RValue<any> },
-	hashed_tys: { [number]: FnSet? },
-	ty_fn_set_map: { [Ty]: FnSet },
-
+	read fn_map: { [FnId]: types.Fn },
+	read templates: { [string]: RValue<any>? },
+	read hashed_tys: { [number]: FnSet? },
+	read ty_fn_set_map: { [Ty]: FnSet },
 	read hir: Hir,
 }
 
@@ -33,6 +31,7 @@ local function create(hir: Hir): Context
 		fn_id = 1,
 		fn_map = {},
 		globals = {},
+		templates = {},
 		hashed_tys = {},
 		ty_fn_set_map = {},
 		hir = hir,
@@ -52,22 +51,6 @@ local function store_fn(ctx: Context, fn: types.Fn, fn_id: FnId?): FnId
 	return fn_id
 end
 
-local function read_global<T>(ctx: Context, name: string): Global<T>
-	if ctx.globals[name] == nil then
-		return panic(`Global "{name}" doesn't exist`)
-	end
-	return globals.create(name)
-end
-
-local function write_global<T>(ctx: Context, name: string, rvalue: RValue<T>): Global<T>
-	if ctx.globals[name] then
-		return panic(`Duplicate write to global "{name}".`)
-	end
-
-	ctx.globals[name] = rvalue
-	return globals.create(name)
-end
-
 local function fn_from_id(ctx: Context, fn_id: FnId): types.Fn
 	local fn = ctx.fn_map[fn_id]
 	if fn == nil then
@@ -82,6 +65,4 @@ return table.freeze({
 	store_fn = store_fn,
 	next_fn_id = next_fn_id,
 	fn_from_id = fn_from_id,
-	read_global = read_global,
-	write_global = write_global,
 })

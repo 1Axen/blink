@@ -1,6 +1,7 @@
 local attributes = require("@config/attributes")
 local binary = require("@builders/binary")
 local builder_types = require("@self/builder_types")
+local cast = require("@builders/cast")
 local condition = require("@builders/condition")
 local constant = require("@builders/constant")
 local context = require("@lir/build/context")
@@ -42,7 +43,7 @@ type Props = builder_types.Props
 
 local ALWAYS_TRUE = condition.equals(constant.truth, constant.truth)
 
-local function ty_to_str(tty: Ty): string
+local function ty_identity(tty: Ty): string
 	return string.split(tostring(tty), ": ")[2]
 end
 
@@ -95,7 +96,7 @@ local function build_ty(ctx: Context, attributes: attributes.Attributes, tty: Ty
 	ctx.ty_fn_set_map[key_ty] = fn_set
 
 	-- build reader & writer
-	name = name or ty_to_str(tty)
+	name = name or ty_identity(tty)
 	local read_name = projection.index(globals.types_map, constant.from_value(`{prefixes.ty}read_{name}`))
 	local write_name = projection.index(globals.types_map, constant.from_value(`{prefixes.ty}write_{name}`))
 
@@ -239,7 +240,19 @@ builders.array = table.freeze({
 
 builders.struct = table.freeze({
 	read = function(props: ReadProps, block: Builder, struct: ty.Struct, into: LValue<any>?): Register<any>
-		local register: Register<any> = block:store(structure.struct({}), into)
+		local identity = ty_identity(struct)
+		local templates = props.ctx.templates
+		if templates[identity] == nil then
+			local template_fields = {}
+			for _, field in struct.fields do
+				template_fields[constant.from_value(field.name)] = cast.static(constant.null, "any") :: any
+			end
+			templates[identity] = structure.struct(template_fields)
+		end
+
+		local template = projection.field(globals.templates, constant.from_value(identity))
+		local register: Register<any> = block:store(library.table.clone(template), into)
+
 		for _, field in struct.fields do
 			local name = field.name
 			local struct_index = projection.field(register, constant.from_value(name))
