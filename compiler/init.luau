@@ -1,6 +1,7 @@
 local hir = require("@compiler/hir")
 local lexer = require("@compiler/lexer")
 local lir = require("@compiler/lir")
+local options = require("@compiler/config/options")
 local parser = require("@compiler/parser")
 
 local ast = require("@self/ast/types")
@@ -41,7 +42,8 @@ export type Targets = typeforge.StringUnionToStruct<Target, {
 	contents: string,
 }?>
 
-export type Options = {
+type FileOptions = options.FileOptions
+export type CompileOptions = {
 	profile: Profile,
 }
 
@@ -225,7 +227,7 @@ end
     Takes a path to a file to compile.
     @param `file_path` - An absolute path to the file which to compile.
 ]=]
-local function compile_from_path(entry_path: Path, options: Options): CompilationResult
+local function compile_from_path(entry_path: Path, compile_options: CompileOptions): CompilationResult
 	local read_result = fs.read_file(entry_path)
 	if read_result.ok == false then
 		return read_result
@@ -250,7 +252,7 @@ local function compile_from_path(entry_path: Path, options: Options): Compilatio
 			lir = files_lir,
 			hir = files_hir,
 			hash = md5(tostring(os.clock())),
-			profile = options.profile,
+			profile = compile_options.profile,
 		}
 
 		local entry_options = files_hir.options[0]
@@ -261,21 +263,21 @@ local function compile_from_path(entry_path: Path, options: Options): Compilatio
 		if entry_options.types_output then
 			targets.types = {
 				path = path.from_string(entry_options.types_output),
-				contents = codegen.from_lir(codegen_props, "types"),
+				contents = codegen.from_lir(codegen_props, "types", entry_options),
 			}
 		end
 
 		if entry_options.client_output then
 			targets.client = {
 				path = path.from_string(entry_options.client_output),
-				contents = codegen.from_lir(codegen_props, "client"),
+				contents = codegen.from_lir(codegen_props, "client", entry_options),
 			}
 		end
 
 		if entry_options.server_output then
 			targets.server = {
 				path = path.from_string(entry_options.server_output),
-				contents = codegen.from_lir(codegen_props, "server"),
+				contents = codegen.from_lir(codegen_props, "server", entry_options),
 			}
 		end
 	end
@@ -300,7 +302,8 @@ end
 
 local function compile_contents(
 	contents: string,
-	options: Options
+	compile_options: CompileOptions,
+	file_options: FileOptions?
 ): {
 	read types: string,
 	read client: string,
@@ -315,13 +318,15 @@ local function compile_contents(
 		hir = file_hir,
 		lir = file_lir,
 		hash = md5(tostring(os.clock())),
-		profile = options.profile,
+		profile = compile_options.profile,
 	}
 
+	file_options = file_options or {} :: FileOptions
+
 	return table.freeze({
-		types = codegen.from_lir(codegen_props, "types"),
-		client = codegen.from_lir(codegen_props, "client"),
-		server = codegen.from_lir(codegen_props, "server"),
+		types = codegen.from_lir(codegen_props, "types", file_options),
+		client = codegen.from_lir(codegen_props, "client", file_options),
+		server = codegen.from_lir(codegen_props, "server", file_options),
 	})
 end
 

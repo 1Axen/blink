@@ -16,6 +16,7 @@ local globals = require("@lir/build/builders/globals")
 local hir = require("@hir")
 local lir = require("@compiler/lir")
 local md5 = require("@vendor/md5")
+local options = require("@config/options")
 local panic = require("@util/panic")
 local string_builder = require("@util/string_builder")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
@@ -684,7 +685,7 @@ export type Props = {
 	profile: compilation.Profile,
 }
 
-local function from_lir(props: Props, target: compilation.Target): string
+local function from_lir(props: Props, target: compilation.Target, options: options.FileOptions): string
 	local hhir = props.hir
 	local llir = props.lir
 	local builder = string_builder.create({})
@@ -770,10 +771,12 @@ local function from_lir(props: Props, target: compilation.Target): string
 			builder:append(")\n")
 		end
 
-		gen_global(ctx, globals.services.run_service)
-		builder:append(".Heartbeat:Connect(")
-		gen_anon_fn(ctx, target_fns.step_replication)
-		builder:append(")\n")
+		if options.manual_replication ~= true then
+			gen_global(ctx, globals.services.run_service)
+			builder:append(".Heartbeat:Connect(")
+			gen_anon_fn(ctx, target_fns.step_replication)
+			builder:append(")\n")
+		end
 	end
 
 	builder:append_line("")
