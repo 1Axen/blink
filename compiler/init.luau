@@ -263,21 +263,21 @@ local function compile_from_path(entry_path: Path, compile_options: CompileOptio
 		if entry_options.types_output then
 			targets.types = {
 				path = path.from_string(entry_options.types_output),
-				contents = codegen.from_lir(codegen_props, "types", entry_options),
+				contents = codegen.from_lir(codegen_props, "types"),
 			}
 		end
 
 		if entry_options.client_output then
 			targets.client = {
 				path = path.from_string(entry_options.client_output),
-				contents = codegen.from_lir(codegen_props, "client", entry_options),
+				contents = codegen.from_lir(codegen_props, "client"),
 			}
 		end
 
 		if entry_options.server_output then
 			targets.server = {
 				path = path.from_string(entry_options.server_output),
-				contents = codegen.from_lir(codegen_props, "server", entry_options),
+				contents = codegen.from_lir(codegen_props, "server"),
 			}
 		end
 	end
@@ -302,8 +302,7 @@ end
 
 local function compile_contents(
 	contents: string,
-	compile_options: CompileOptions,
-	file_options: FileOptions?
+	compile_options: CompileOptions
 ): {
 	read types: string,
 	read client: string,
@@ -321,12 +320,10 @@ local function compile_contents(
 		profile = compile_options.profile,
 	}
 
-	file_options = file_options or {} :: FileOptions
-
 	return table.freeze({
-		types = codegen.from_lir(codegen_props, "types", file_options),
-		client = codegen.from_lir(codegen_props, "client", file_options),
-		server = codegen.from_lir(codegen_props, "server", file_options),
+		types = codegen.from_lir(codegen_props, "types"),
+		client = codegen.from_lir(codegen_props, "client"),
+		server = codegen.from_lir(codegen_props, "server"),
 	})
 end
 

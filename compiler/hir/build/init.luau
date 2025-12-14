@@ -536,7 +536,7 @@ local function stat_option(ctx: Context, stat: ast.StatOption)
 		report.duplicate_option(stat, existing_declaration)
 	end
 
-	local option_config = options[name]
+	local option_config = (options :: { [string]: options.Option })[name]
 	if option_config == nil then
 		report.unknown_option(stat)
 	end

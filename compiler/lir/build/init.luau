@@ -172,15 +172,15 @@ local function toggle_bitset_index(block: fn.Builder, index: types.RValue<number
 	block:store(modified_bitset, INVOCATIONS_BITSET)
 end
 
-local function build_type(ctx: Context, ttype: hir.Type): TypeExport?
-	if ttype.generics then
+local function build_type(ctx: Context, decl: hir.Type): TypeExport?
+	if decl.generics then
 		return nil
 	end
 
-	local type_ty = hir.ty_from_id(ctx.hir, ttype.ty_id)
-	local type_fnset = builders.ty.build(ctx, ttype.attributes, type_ty, ttype.name)
+	local type_ty = hir.ty_from_id(ctx.hir, decl.ty_id)
+	local type_fnset = builders.ty.build(ctx, decl.attributes, type_ty, decl.name)
 
-	if ttype.attributes.export ~= true then
+	if decl.attributes.export ~= true then
 		return nil
 	end
 
@@ -230,7 +230,9 @@ local function build_type(ctx: Context, ttype: hir.Type): TypeExport?
 	return {
 		type = "export",
 		kind = "type",
-		name = ttype.name,
+
+		name = decl.name,
+		decl = decl,
 
 		read = read,
 		write = write,
@@ -470,7 +472,10 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 	return {
 		type = "export",
 		kind = "event",
+
 		name = decl.name,
+		decl = decl,
+
 		server = {
 			on = on_server,
 			iter = iter_server,
@@ -621,7 +626,10 @@ local function build_function(ctx: Context, decl: Function, event_id: number): F
 	return {
 		type = "export",
 		kind = "function",
+
 		name = decl.name,
+		decl = decl,
+
 		on = on,
 		invoke_server = invoke_server,
 	}
@@ -794,8 +802,8 @@ local function build_receive_connection(ctx: Context, side: Side, receivables: {
 	end)
 end
 
-local function from_hir(hir: hir.Hir): types.Lir
-	local ctx = context.create(hir, types)
+local function from_hir(hhir: Hir): Lir
+	local ctx = context.create(hhir, types)
 	local globals_map: { [string]: types.RValue<any> } = {}
 	local exports_map: ExportsMap = {}
 
@@ -805,7 +813,7 @@ local function from_hir(hir: hir.Hir): types.Lir
 	globals_map[INVOCATIONS_BITSET.identifier] = EMPTY_BITSET :: any
 
 	-- build types
-	for decl_id, decl in hir.types do
+	for decl_id, decl in hhir.types do
 		exports_map[decl_id] = build_type(ctx, decl)
 	end
 
@@ -828,7 +836,7 @@ local function from_hir(hir: hir.Hir): types.Lir
 		shuffle(reliable_ids)
 		shuffle(unreliable_ids)
 
-		for decl_id, decl in hir.events do
+		for decl_id, decl in hhir.events do
 			local type = decl.type
 			local id_pool = type == "Reliable" and reliable_ids or unreliable_ids
 			local receivables = type == "Reliable" and reliable_receivables or unreliables_receivables
@@ -845,7 +853,7 @@ local function from_hir(hir: hir.Hir): types.Lir
 			exports_map[decl_id] = build_event(ctx, decl, event_id)
 		end
 
-		for decl_id, decl in hir.functs do
+		for decl_id, decl in hhir.functs do
 			local event_id = next_event_id(reliable_ids)
 			exports_map[decl_id] = build_function(ctx, decl, event_id)
 			table.insert(reliable_receivables, { id = event_id, decl = decl })

@@ -1,4 +1,5 @@
 --!strict
+local hir = require("@hir/types")
 local ty = require("@ty/types")
 
 type Ty = ty.Ty
@@ -506,7 +507,9 @@ export type FnSet = {
 export type TypeExport = {
 	type: "export",
 	kind: "type",
+
 	name: string,
+	decl: hir.Type,
 
 	read: AnonymousFn,
 	write: AnonymousFn,
@@ -516,7 +519,9 @@ export type TypeExport = {
 export type EventExport = {
 	type: "export",
 	kind: "event",
+
 	name: string,
+	decl: hir.Event,
 
 	server: {
 		fire_all: AnonymousFn,
@@ -536,7 +541,9 @@ export type EventExport = {
 export type FunctionExport = {
 	type: "export",
 	kind: "function",
+
 	name: string,
+	decl: hir.Function,
 
 	on: AnonymousFn,
 	invoke_server: AnonymousFn,

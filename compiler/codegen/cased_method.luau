@@ -1,6 +1,6 @@
 local options = require("@config/options")
 
-type Casing = index<options.FileOptions, "casing">
+export type Casing = index<options.FileOptions, "casing">
 
 local CASING_MAP: { [Casing]: number } = {
 	PascalCase = 1,
@@ -18,7 +18,6 @@ local STRINGS = {
 	iter = { "Iter", "iter", "iter" },
 	read = { "Read", "read", "read" },
 	write = { "Write", "write", "write" },
-	read_from = { "ReadFrom", "readFrom", "read_from" },
 	write_to = { "WriteTo", "writeTo", "write_to" },
 	step_replication = { "StepReplication", "stepReplication", "step_replication" },
 }

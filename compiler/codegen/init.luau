@@ -8,6 +8,7 @@ local append_headers = require("@self/templates/append_headers")
 local append_server = require("@codegen/templates/append_server")
 local compilation = require("@config/compilation")
 local context = require("@self/context")
+local id = require("@compiler/id")
 
 local append_luau_type = require("@self/append_luau_type")
 local cased_method = require("@self/cased_method")
@@ -22,6 +23,8 @@ local string_builder = require("@util/string_builder")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 local weak_exhaustive_match = require("@util/weak_exhaustive_match")
 
+type Hir = hir.Hir
+type Casing = cased_method.Casing
 type Context = context.Context
 
 local gen_lvalue: <T>(ctx: Context, lvalue: lir.LValue<T>) -> ()
@@ -608,13 +611,27 @@ function gen_fn(ctx: Context, fn: lir.Fn)
 	builder:append("\n")
 end
 
-local function append_method(ctx: Context, method: cased_method.Method, anon_fn: lir.AnonymousFn)
+local function append_method(ctx: Context, casing: Casing, method: cased_method.Method, anon_fn: lir.AnonymousFn)
 	local builder = ctx.builder
 	builder:append_indent()
-	builder:append(cased_method("snake_case", method))
+	builder:append(cased_method(casing, method))
 	builder:append(" = ")
 	gen_anon_fn(ctx, anon_fn)
 	builder:append(",\n")
+end
+
+local function casing_from_export(hhir: Hir, export: lir.Export): Casing
+	if export.kind == "scope" then
+		return options.casing.default
+	end
+
+	local file_id = id.file(export.decl.id)
+	local file_options = hhir.options[file_id]
+	if file_options == nil then
+		return panic(`Expected file {file_id} to have options`)
+	end
+
+	return file_options.casing or options.casing.default
 end
 
 local function gen_export(ctx: Context, target: compilation.Target, export: lir.Export)
@@ -629,38 +646,39 @@ local function gen_export(ctx: Context, target: compilation.Target, export: lir.
 
 	builder:indent()
 
+	local casing = casing_from_export(ctx.hir, export)
 	if export.kind == "type" then
-		append_method(ctx, "read", export.read)
-		append_method(ctx, "write", export.write)
-		append_method(ctx, "write_to", export.write_to)
+		append_method(ctx, casing, "read", export.read)
+		append_method(ctx, casing, "write", export.write)
+		append_method(ctx, casing, "write_to", export.write_to)
 	elseif export.kind == "event" then
 		if target == "server" then
 			local methods = export.server
-			append_method(ctx, "fire", methods.fire_client)
-			append_method(ctx, "fire_all", methods.fire_all)
-			append_method(ctx, "fire_list", methods.fire_list)
-			append_method(ctx, "fire_except", methods.fire_except)
+			append_method(ctx, casing, "fire", methods.fire_client)
+			append_method(ctx, casing, "fire_all", methods.fire_all)
+			append_method(ctx, casing, "fire_list", methods.fire_list)
+			append_method(ctx, casing, "fire_except", methods.fire_except)
 
 			if methods.on then
-				append_method(ctx, "on", methods.on)
+				append_method(ctx, casing, "on", methods.on)
 			elseif methods.iter then
-				append_method(ctx, "iter", methods.iter)
+				append_method(ctx, casing, "iter", methods.iter)
 			end
 		elseif target == "client" then
 			local methods = export.client
-			append_method(ctx, "fire", methods.fire_server)
+			append_method(ctx, casing, "fire", methods.fire_server)
 
 			if methods.on then
-				append_method(ctx, "on", methods.on)
+				append_method(ctx, casing, "on", methods.on)
 			elseif methods.iter then
-				append_method(ctx, "iter", methods.iter)
+				append_method(ctx, casing, "iter", methods.iter)
 			end
 		end
 	elseif export.kind == "function" then
 		if target == "server" then
-			append_method(ctx, "on", export.on)
+			append_method(ctx, casing, "on", export.on)
 		elseif target == "client" then
-			append_method(ctx, "invoke", export.invoke_server)
+			append_method(ctx, casing, "invoke", export.invoke_server)
 		end
 	elseif export.kind == "scope" then
 		for _, item in export.items do
@@ -685,10 +703,16 @@ export type Props = {
 	profile: compilation.Profile,
 }
 
-local function from_lir(props: Props, target: compilation.Target, options: options.FileOptions): string
+local function from_lir(props: Props, target: compilation.Target): string
 	local hhir = props.hir
 	local llir = props.lir
+	local options = hhir.options
 	local builder = string_builder.create({})
+
+	local entry_options = options[0]
+	if entry_options == nil then
+		return panic("Expected entry file to have options")
+	end
 
 	local ctx: Context = {
 		lir = llir,
@@ -771,7 +795,7 @@ local function from_lir(props: Props, target: compilation.Target, options: optio
 			builder:append(")\n")
 		end
 
-		if options.manual_replication ~= true then
+		if entry_options.manual_replication ~= true then
 			gen_global(ctx, globals.services.run_service)
 			builder:append(".Heartbeat:Connect(")
 			gen_anon_fn(ctx, target_fns.step_replication)

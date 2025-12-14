@@ -45,6 +45,7 @@ local options = {
 			"camelCase" :: "camelCase",
 			"snake_case" :: "snake_case",
 		},
+		default = "snake_case" :: "snake_case",
 	},
 
 	future_library = { kind = "string" :: "string" },
@@ -55,4 +56,4 @@ local options = {
 
 export type FileOptions = MakeOptionsReal<typeof(options)>
 
-return table.freeze(options :: { [string]: Option })
+return table.freeze(options)
