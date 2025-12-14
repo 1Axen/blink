@@ -24,6 +24,12 @@ end
 
 local require: any = require
 
+if fs.exists("./temp") then
+	recursive_rmdir("./temp")
+end
+
+fs.mkdir("./temp")
+
 local tests = tiniest.collect_tests(function()
 	local describe = tiniest.describe
 	local function describe_from_file(name: string)
@@ -35,15 +41,13 @@ local tests = tiniest.collect_tests(function()
 	describe_from_file("path")
 	describe_from_file("fs")
 	describe_from_file("id")
+	describe_from_file("datatypes")
 end)
 
-if fs.exists("./temp") then
-	recursive_rmdir("./temp")
+local result = tiniest.run_tests(tests, {})
+local success = result.status_tally.fail == 0
+if success then
+	-- recursive_rmdir("./temp")
 end
 
-fs.mkdir("./temp")
-local result = tiniest.run_tests(tests, {})
-recursive_rmdir("./temp")
-
-local success = result.status_tally.fail == 0
 process.exit(success and 0 or 1)
