@@ -387,7 +387,7 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 
 		local name = assert(fn.name, "cannot call an anonymous function")
 		if name.type == "projection" then
-			gen_projection(ctx, name)
+			gen_projection(ctx, name :: any)
 		elseif name.type == "constant" then
 			builder:append(name.value)
 		else
@@ -456,7 +456,7 @@ local function gen_statement(ctx: Context, statement: lir.Statement)
 
 	if statement.kind == "call" then
 		builder:append_indent()
-		gen_rvalue(ctx, statement.call)
+		gen_rvalue(ctx, statement.call :: any)
 		builder:append("\n")
 	elseif statement.kind == "assign" then
 		builder:append_indent()
@@ -595,7 +595,7 @@ function gen_fn(ctx: Context, fn: lir.Fn)
 	local name = fn.name
 	if name.type == "projection" then
 		builder:append("function ")
-		gen_projection(ctx, name)
+		gen_projection(ctx, name :: any)
 	elseif name.type == "constant" then
 		builder:append("local function ")
 		builder:append(name.value)
