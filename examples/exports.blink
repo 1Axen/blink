@@ -1,4 +1,4 @@
-option types_output = "../out/exports"
+option types_output = "./out/exports"
 
 @export
 type foo = u8

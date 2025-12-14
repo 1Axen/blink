@@ -1,0 +1,24 @@
+option client_output = "./out/generics"
+
+type list<T> = struct {
+    value: T,
+    next: list<T>?
+}
+
+type tree<T> = struct {
+    value: T,
+    forest: forest<T>
+}
+type forest<T> = tree<T>[]
+
+type byte_list = list<u8>
+type byte_forest = forest<u8>
+
+type vector2<X, Y> = vector<X, Y, 0>
+type vector2int16 = vector2<i16, i16>
+
+type array<T> = T[]
+type byte_array = array<u8>
+
+type dictionary<V> = map {[string]: V}
+type byte_dictionary = dictionary<u8>

@@ -1,0 +1,8 @@
+option types_output = "./out/imports"
+
+-- luaurc aliases support!
+import "@libs/common"
+import "./libs/common" as common_relative
+
+type byte_list = common.linked_list<u8>
+type short_list = common_relative.linked_list<u16>

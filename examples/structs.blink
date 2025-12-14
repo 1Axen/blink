@@ -1,4 +1,4 @@
-option types_output = "../out/structs"
+option types_output = "./out/structs"
 
 type entity = struct {
     id: u8,

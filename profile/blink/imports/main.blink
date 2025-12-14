@@ -1,4 +1,0 @@
-import "@libs/common"
-import "./secondary"
-
-type byte_list = common.linked_list<u8>

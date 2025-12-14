@@ -1,7 +1,0 @@
-type a = u8[-0.0..255]
-
-type c = struct {
-    field: struct {
-        
-    }
-}

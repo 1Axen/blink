@@ -22,16 +22,13 @@ sourcemap.json
 docs/.vitepress/dist
 docs/.vitepress/cache
 
-/profile/luau
-/profile/out
-/profile/performance.txt
+/examples/out
 
 *.rbxl
 *.rbxl.lock
 
 # TODO: Remove after rewrite is complete
 /old-src
-profile/tokens.json
 
 globalTypes.None.d.luau
 

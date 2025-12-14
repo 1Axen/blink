@@ -1,0 +1,54 @@
+option types_output = "./out/output_types"
+option client_output = "./out/output_client"
+option server_output = "./out/output_server"
+
+type foo = u16
+type bar = string
+
+event reliable = {
+	from: Client,
+	type: Reliable,
+	call: SingleSync,
+	data: (value: u8, foo, bar: bar)
+}
+
+event reliable_many = {
+	from: Client,
+	type: Reliable,
+	call: SingleAsync,
+	data: (value: u8, foo, bar: bar)
+}
+
+event reliable_polling = {
+	from: Client,
+	type: Reliable,
+	call: Polling,
+	data: (value: u8, foo, bar: bar)
+}
+
+event unreliable = {
+	from: Client,
+	type: Unreliable,
+	call: SingleAsync,
+	data: (value: u8, foo, bar: bar)
+}
+
+event unreliable_many = {
+	from: Client,
+	type: Unreliable,
+	call: ManyAsync,
+	data: (value: u8, foo, bar: bar)
+}
+
+event unreliable_polling = {
+	from: Client,
+	type: Unreliable,
+	call: Polling,
+	data: (value: u8, foo, bar: bar)
+}
+
+function request = {
+	yield: Coroutine,
+	data: (foo: foo, bar: bar),
+	return: (u8, string)
+}
