@@ -225,7 +225,7 @@ end
     Takes a path to a file to compile.
     @param `file_path` - An absolute path to the file which to compile.
 ]=]
-local function compile_from_path(entry_path: Path, compiler_options: Options): CompilationResult
+local function compile_from_path(entry_path: Path, options: Options): CompilationResult
 	local read_result = fs.read_file(entry_path)
 	if read_result.ok == false then
 		return read_result
@@ -250,7 +250,7 @@ local function compile_from_path(entry_path: Path, compiler_options: Options): C
 			lir = files_lir,
 			hir = files_hir,
 			hash = md5(tostring(os.clock())),
-			profile = compiler_options.profile,
+			profile = options.profile,
 		}
 
 		local entry_options = files_hir.options[0]
@@ -298,6 +298,34 @@ local function compile_from_path(entry_path: Path, compiler_options: Options): C
 	})
 end
 
+local function compile_contents(
+	contents: string,
+	options: Options
+): {
+	read types: string,
+	read client: string,
+	read server: string,
+}
+	local mock_file = file.from_source("input.blink", contents)
+	local files = { [mock_file.id] = file_to_ast(mock_file) }
+	local file_hir = hir.from_files(files)
+	local file_lir = lir.from_hir(file_hir)
+
+	local codegen_props: codegen.Props = {
+		hir = file_hir,
+		lir = file_lir,
+		hash = md5(tostring(os.clock())),
+		profile = options.profile,
+	}
+
+	return table.freeze({
+		types = codegen.from_lir(codegen_props, "types"),
+		client = codegen.from_lir(codegen_props, "client"),
+		server = codegen.from_lir(codegen_props, "server"),
+	})
+end
+
 return table.freeze({
+	compile_contents = compile_contents,
 	compile_from_path = compile_from_path,
 })
