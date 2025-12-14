@@ -1,0 +1,5 @@
+option types_output = "./out/types"
+option client_output = "./out/client"
+option server_output = "./out/server"
+option casing = "snake_case" -- camelCase, PascalCase
+option manual_replication = true
