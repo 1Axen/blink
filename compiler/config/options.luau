@@ -50,7 +50,6 @@ local options = {
 	future_library = { kind = "string" :: "string" },
 	promise_library = { kind = "string" :: "string" },
 
-	remote_folder = { kind = "string" :: "string" },
 	manual_replication = { kind = "boolean" :: "boolean" },
 }
 
