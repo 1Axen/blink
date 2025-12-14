@@ -1,4 +1,4 @@
-local json = require("@util/json")
+local json = require("@vendor/json")
 local path = require("@util/path")
 local result = require("@util/result")
 
@@ -178,7 +178,7 @@ end
 local function from_json(contents: string): result.Result<Luaurc, ParseError>
 	-- Phase 1: Decode the file contents
 	local serde_success, serde_result = pcall(function()
-		return json.decode(contents)
+		return json.deserialize(contents)
 	end)
 
 	if serde_success == false then
@@ -224,7 +224,7 @@ end
 --- Serializes the provided luaurc into a JSON formatted string.
 local function serialize(self: Luaurc): result.Result<string, SerdeError>
 	local serde_success, serde_result = pcall(function()
-		return json.encode(self)
+		return json.serialize(self :: any)
 	end)
 
 	if serde_success == false then
