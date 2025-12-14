@@ -34,10 +34,15 @@ local function clear<T>(target: RValue<{ T }>)
 	return projection.call(constant.from_value("table.clear"), { target })
 end
 
+local function clone<T>(target: RValue<{ T }>)
+	return projection.call(constant.from_value("table.clone"), { target })
+end
+
 return table.freeze({
 	create = create,
 	insert = insert,
 	find = find,
 	move = move,
 	clear = clear,
+	clone = clone,
 })
