@@ -47,7 +47,7 @@ end)
 local result = tiniest.run_tests(tests, {})
 local success = result.status_tally.fail == 0
 if success then
-	-- recursive_rmdir("./temp")
+	recursive_rmdir("./temp")
 end
 
 process.exit(success and 0 or 1)
