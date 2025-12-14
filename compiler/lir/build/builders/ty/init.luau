@@ -251,15 +251,19 @@ builders.struct = table.freeze({
 		end
 
 		local template = projection.field(globals.templates, constant.from_value(identity))
-		local register: Register<any> = block:store(library.table.clone(template), into)
+		local struct_register: Register<any> = block:store(library.table.clone(template))
 
 		for _, field in struct.fields do
 			local name = field.name
-			local struct_index = projection.field(register, constant.from_value(name))
+			local struct_index = projection.field(struct_register, constant.from_value(name))
 			read_ty(props, block, field.value, struct_index)
 		end
 
-		return register
+		if into then
+			return block:store(struct_register, into)
+		end
+
+		return struct_register
 	end,
 
 	write = function(props: WriteProps, block: Builder, struct: ty.Struct, value: RValue<any>): ()
