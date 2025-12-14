@@ -264,6 +264,29 @@ export type Structure<T> =
     | Array<T>
     | Struct<T>
 
+export type TyCast<T> = {
+	write __phantom_type: T,
+
+	type: "cast",
+	kind: "ty",
+	value: RValue<T>,
+	cast_to: Ty,
+}
+
+export type StaticCast<T> = {
+	write __phantom_type: T,
+
+	type: "cast",
+	kind: "static",
+	value: RValue<T>,
+	cast_to: string,
+}
+
+--stylua: ignore
+export type Cast<T> =
+	| TyCast<T>
+	| StaticCast<T>
+
 --- left side of an assign statement
 --stylua: ignore
 export type LValue<T> =
@@ -288,6 +311,7 @@ export type RValue<T> =
 	| Constant<T>
 	| Projection<T>
 	| AnonymousFn
+	| Cast<T>
 
 --- call
 export type StatCall = {

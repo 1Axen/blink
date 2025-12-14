@@ -38,6 +38,7 @@ export type Map<T> = types.Map<T>
 export type Array<T> = types.Array<T>
 export type Struct<T> = types.Struct<T>
 export type Structure<T> = types.Structure<T>
+export type Cast<T> = types.Cast<T>
 export type LValue<T> = types.LValue<T>
 export type RValue<T> = types.RValue<T>
 export type StatCall = types.StatCall

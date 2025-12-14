@@ -244,6 +244,23 @@ local function gen_ternary(ctx: Context, ternary: lir.Ternary<any>)
 	gen_rvalue(ctx, ternary.right)
 end
 
+local function gen_cast(ctx: Context, cast: lir.Cast<any>)
+	local builder = ctx.builder
+	builder:append("(")
+	gen_rvalue(ctx, cast.value)
+	builder:append(" :: ")
+
+	if cast.kind == "ty" then
+		append_luau_type(ctx, cast.cast_to)
+	elseif cast.kind == "static" then
+		builder:append(cast.cast_to)
+	else
+		strong_exhaustive_match(cast.kind)
+	end
+
+	builder:append(")")
+end
+
 function gen_rvalue<T>(ctx: Context, rvalue: lir.RValue<T>)
 	if rvalue.type == "id" then
 		gen_id(ctx, rvalue)
@@ -267,6 +284,8 @@ function gen_rvalue<T>(ctx: Context, rvalue: lir.RValue<T>)
 		gen_structure(ctx, rvalue)
 	elseif rvalue.type == "anon_fn" then
 		gen_anon_fn(ctx, rvalue)
+	elseif rvalue.type == "cast" then
+		gen_cast(ctx, rvalue)
 	else
 		weak_exhaustive_match(rvalue.type)
 	end
