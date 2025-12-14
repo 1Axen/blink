@@ -147,15 +147,6 @@ local function write_i48(block: Builder, value: RValue<number>)
 	write_u48(block, register :: RValue<number>)
 end
 
-local function read_f16(block: Builder, into: LValue<any>?): Register<number>
-	block:remark("f16 is not implemented")
-	return block:store(constant.zero, into)
-end
-
-local function write_f16(block: Builder, value: RValue<number>)
-	block:remark("f16 is not implemented")
-end
-
 local function validate(block: Builder, ty: ty.Numeral, value: RValue<number>)
 	local bounds = ty.bounds
 	if bounds == nil then
@@ -184,8 +175,6 @@ local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral, into
 		return read_u48(block, into)
 	elseif format == "i48" then
 		return read_i48(block, into)
-	elseif format == "f16" then
-		return read_f16(block, into)
 	end
 
 	local size = size_to_byte_size(ty.size)
@@ -214,8 +203,6 @@ local function build_write(props: WriteProps, block: Builder, ty: ty.Numeral, va
 		return write_u48(block, value)
 	elseif format == "i48" then
 		return write_i48(block, value)
-	elseif format == "f16" then
-		return write_f16(block, value)
 	end
 
 	local size = size_to_byte_size(ty.size)
@@ -242,7 +229,6 @@ return table.freeze({
 	i32 = ty.numeral("32", "i"),
 	i48 = ty.numeral("48", "i"),
 
-	f16 = ty.numeral("16", "f"),
 	f32 = ty.numeral("32", "f"),
 	f64 = ty.numeral("64", "f"),
 })

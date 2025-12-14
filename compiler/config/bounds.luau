@@ -2,7 +2,6 @@ local range = require("@util/range")
 
 local F64 = 2 ^ 53
 local F32 = 2 ^ 24
-local F16 = 2 ^ 10
 
 return table.freeze({
 	map = range.from_usize(32),
@@ -20,7 +19,6 @@ return table.freeze({
 	i32 = range.from_size(32),
 	i48 = range.from_size(48),
 
-	f16 = range.create(-F16, F16),
 	f32 = range.create(-F32, F32),
 	f64 = range.create(-F64, F64),
 

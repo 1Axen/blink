@@ -242,7 +242,6 @@ local PRIMITIVE_BUILDERS: { [string]: ((ctx: Context, expr: ast.ExprReference, p
 	i24 = ty_numeral,
 	i32 = ty_numeral,
 	i48 = ty_numeral,
-	f16 = ty_numeral,
 	f32 = ty_numeral,
 	f64 = ty_numeral,
 	string = ty_string,

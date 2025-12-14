@@ -28,7 +28,7 @@ type fixed_array = u8[16]
 type optional = username?
 
 type alpha = Enum<"AlphaMode">
-type location = CFrame<f32, f16>
+type location = CFrame<f32, f32>
 
 type color = Color3
 type brick_color = BrickColor

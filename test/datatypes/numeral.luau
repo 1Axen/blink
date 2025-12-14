@@ -32,7 +32,6 @@ local function factory(keyword: string, bounds: Range): Datatype
 end
 
 local numerals = {
-	-- "f16" :: "f16",
 	"f32" :: "f32",
 	"f64" :: "f64",
 	"i8" :: "i8",
