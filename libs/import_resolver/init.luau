@@ -42,14 +42,21 @@ export type Import = {
 type ImportResult = Result<Import, ImportError>
 
 --- A map of `directory` to `aliases`
-local cached_aliases: { [string]: aliases.Aliases } = {}
+local cached_aliases: { [string]: aliases.Aliases? } = {}
 
 --- Resolves a file system import
 local function resolve_fs_import(directory: Path, import: Path): ImportResult
 	local directory_string = path.to_string(directory)
 
 	if path.starts_with(import, "@") then
-		local aliases = cached_aliases[directory_string] or aliases.fs(directory)
+		local available_aliases = cached_aliases[directory_string]
+		if available_aliases == nil then
+			available_aliases = aliases.collect_fs(directory)
+			cached_aliases[directory_string] = available_aliases
+		end
+
+		-- TODO: remove assert once type state works
+		assert(available_aliases)
 
 		-- pop the alias from the path
 		local slice: string
@@ -58,7 +65,7 @@ local function resolve_fs_import(directory: Path, import: Path): ImportResult
 		local alias = slice :: string
 		alias = string.sub(alias, 2, #alias)
 
-		local replacement: Path? = aliases[alias]
+		local replacement: Path? = available_aliases[alias]
 		if replacement == nil then
 			return result.err({
 				kind = "UnknownAlias" :: "UnknownAlias",

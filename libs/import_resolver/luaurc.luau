@@ -137,10 +137,12 @@ local function validate_schema(schema: JSONLuaurc): Result<nil, MalformedSchema>
 
 		for key, value in aliases do
 			if typeof(key) ~= "string" then
-				return malformed_schema(`Expected key of alias to be of type "string"`)
+				return malformed_schema(`Expected key of alias to be of type "string", got "{typeof(key)}" instead`)
 			end
 			if typeof(value) ~= "string" then
-				return malformed_schema(`Expected value of alias "{key}" to be of type "string"`)
+				return malformed_schema(
+					`Expected value of alias "{key}" to be of type "string", got "{typeof(value)}" instead`
+				)
 			end
 		end
 	end
@@ -175,7 +177,7 @@ local function validate_schema(schema: JSONLuaurc): Result<nil, MalformedSchema>
 end
 
 --- Takes in the json contents of a `.luaurc` file and returns a result of a Luaurc struct
-local function from_json(contents: string): result.Result<Luaurc, ParseError>
+local function parse(contents: string): result.Result<Luaurc, ParseError>
 	-- Phase 1: Decode the file contents
 	local serde_success, serde_result = pcall(function()
 		return json.deserialize(contents)
@@ -235,7 +237,7 @@ local function serialize(self: Luaurc): result.Result<string, SerdeError>
 end
 
 return table.freeze({
-	from_json = from_json,
+	parse = parse,
 	serialize = serialize,
 
 	CONFIG_NAME = CONFIG_NAME,
