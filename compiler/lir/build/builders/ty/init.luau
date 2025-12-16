@@ -127,7 +127,7 @@ local function build_ty(ctx: Context, attributes: attributes.Attributes, tty: Ty
 end
 
 builders = {
-	["nil"] = require("@self/luau/nil"),
+	["nil"] = require("@self/luau/null"),
 	buffer = require("@self/luau/buffer"),
 	string = require("@self/luau/string"),
 	vector = require("@self/luau/vector"),
