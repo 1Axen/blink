@@ -620,6 +620,19 @@ local function append_method(ctx: Context, casing: Casing, method: cased_method.
 	builder:append(",\n")
 end
 
+local function append_method_if_exists(
+	ctx: Context,
+	casing: Casing,
+	method: cased_method.Method,
+	anon_fn: lir.AnonymousFn?
+)
+	if anon_fn == nil then
+		return
+	end
+
+	return append_method(ctx, casing, method, anon_fn)
+end
+
 local function casing_from_export(hhir: Hir, export: lir.Export): Casing
 	if export.kind == "scope" then
 		return options.casing.default
@@ -654,25 +667,17 @@ local function gen_export(ctx: Context, target: compilation.Target, export: lir.
 	elseif export.kind == "event" then
 		if target == "server" then
 			local methods = export.server
-			append_method(ctx, casing, "fire", methods.fire_client)
-			append_method(ctx, casing, "fire_all", methods.fire_all)
-			append_method(ctx, casing, "fire_list", methods.fire_list)
-			append_method(ctx, casing, "fire_except", methods.fire_except)
-
-			if methods.on then
-				append_method(ctx, casing, "on", methods.on)
-			elseif methods.iter then
-				append_method(ctx, casing, "iter", methods.iter)
-			end
+			append_method_if_exists(ctx, casing, "fire", methods.fire_client)
+			append_method_if_exists(ctx, casing, "fire_all", methods.fire_all)
+			append_method_if_exists(ctx, casing, "fire_list", methods.fire_list)
+			append_method_if_exists(ctx, casing, "fire_except", methods.fire_except)
+			append_method_if_exists(ctx, casing, "on", methods.on)
+			append_method_if_exists(ctx, casing, "iter", methods.iter)
 		elseif target == "client" then
 			local methods = export.client
-			append_method(ctx, casing, "fire", methods.fire_server)
-
-			if methods.on then
-				append_method(ctx, casing, "on", methods.on)
-			elseif methods.iter then
-				append_method(ctx, casing, "iter", methods.iter)
-			end
+			append_method_if_exists(ctx, casing, "fire", methods.fire_server)
+			append_method_if_exists(ctx, casing, "on", methods.on)
+			append_method_if_exists(ctx, casing, "iter", methods.iter)
 		end
 	elseif export.kind == "function" then
 		if target == "server" then

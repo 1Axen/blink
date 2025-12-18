@@ -300,132 +300,145 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 	local data_params_list = table.clone(data_params)
 	table.insert(data_params_list, 1, PLAYER_LIST_PARAMETER)
 
-	local fire_all = fn.anonymous(data_params, {}, function(block)
-		state.reset_outgoing(block)
-		block:call(library.buffer.u8.write(block:allocate(constant.one), id))
-		for index, fn_set in data_fn_sets do
-			block:call_fn(fn_set.write, { block:parameter(index) }, {})
-		end
+	local fire_all: AnonymousFn?, fire_list: AnonymousFn?, fire_except: AnonymousFn?, fire_client: AnonymousFn?, fire_server: AnonymousFn?
+	local on_server: AnonymousFn?, on_client: AnonymousFn?
+	local iter_server: AnonymousFn?, iter_client: AnonymousFn?
 
-		if is_unreliable then
-			local new_buffer = trim_outgoing_buffer(block)
-			block:call(library.RemoteEvent.fire_all(UNRELIABLE_EVENT, { new_buffer, OUTGOING.unknown } :: { any }))
-		else
-			local new_buffer = copy_outgoing_buffer(block)
-			block:for_generic(globals.players_map, function(block, _, player_save)
-				state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
-			end)
-		end
-	end)
+	local from = decl.from
+	local is_from_server = (from == "Server" or from == "Both")
+	local is_from_client = (from == "Client" or from == "Both")
 
-	local fire_list = fn.anonymous(data_params_list, {}, function(block)
-		state.reset_outgoing(block)
-		block:call(library.buffer.u8.write(block:allocate(constant.one), id))
-		for index, fn_set in data_fn_sets do
-			block:call_fn(fn_set.write, { block:parameter(1 + index) }, {})
-		end
+	if is_from_server then
+		fire_all = fn.anonymous(data_params, {}, function(block)
+			state.reset_outgoing(block)
+			block:call(library.buffer.u8.write(block:allocate(constant.one), id))
+			for index, fn_set in data_fn_sets do
+				block:call_fn(fn_set.write, { block:parameter(index) }, {})
+			end
 
-		local list = block:parameter(1)
-		local new_buffer = is_unreliable and trim_outgoing_buffer(block) or copy_outgoing_buffer(block)
-
-		block:for_generic(list, function(block, _, player)
 			if is_unreliable then
-				local args = { player, new_buffer, OUTGOING.unknown }
-				block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
+				local new_buffer = trim_outgoing_buffer(block)
+				block:call(library.RemoteEvent.fire_all(UNRELIABLE_EVENT, { new_buffer, OUTGOING.unknown } :: { any }))
 			else
-				local player_save = projection.field(globals.players_map, player :: any)
-				state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
+				local new_buffer = copy_outgoing_buffer(block)
+				block:for_generic(globals.players_map, function(block, _, player_save)
+					state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
+				end)
 			end
 		end)
-	end)
 
-	local fire_except = fn.anonymous(data_params_player, {}, function(block)
-		state.reset_outgoing(block)
-		block:call(library.buffer.u8.write(block:allocate(constant.one), id))
-		for index, fn_set in data_fn_sets do
-			block:call_fn(fn_set.write, { block:parameter(1 + index) }, {})
-		end
+		fire_list = fn.anonymous(data_params_list, {}, function(block)
+			state.reset_outgoing(block)
+			block:call(library.buffer.u8.write(block:allocate(constant.one), id))
+			for index, fn_set in data_fn_sets do
+				block:call_fn(fn_set.write, { block:parameter(1 + index) }, {})
+			end
 
-		local except = block:parameter(1)
-		local new_buffer = is_unreliable and trim_outgoing_buffer(block) or copy_outgoing_buffer(block)
+			local list = block:parameter(1)
+			local new_buffer = is_unreliable and trim_outgoing_buffer(block) or copy_outgoing_buffer(block)
 
-		block:for_generic(globals.players_map, function(block, player, player_save)
-			block:if_single(condition.not_equals(player, except), function(block)
+			block:for_generic(list, function(block, _, player)
 				if is_unreliable then
 					local args = { player, new_buffer, OUTGOING.unknown }
 					block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
 				else
+					local player_save = projection.field(globals.players_map, player :: any)
 					state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
 				end
 			end)
 		end)
-	end)
 
-	local fire_client = fn.anonymous(data_params_player, {}, function(block)
-		state.reset_outgoing(block)
-		block:call(library.buffer.u8.write(block:allocate(constant.one), id))
-		for index, fn_set in data_fn_sets do
-			block:call_fn(fn_set.write, { block:parameter(1 + index) }, {})
-		end
+		fire_except = fn.anonymous(data_params_player, {}, function(block)
+			state.reset_outgoing(block)
+			block:call(library.buffer.u8.write(block:allocate(constant.one), id))
+			for index, fn_set in data_fn_sets do
+				block:call_fn(fn_set.write, { block:parameter(1 + index) }, {})
+			end
 
-		local player = block:parameter(1)
+			local except = block:parameter(1)
+			local new_buffer = is_unreliable and trim_outgoing_buffer(block) or copy_outgoing_buffer(block)
 
-		if is_unreliable then
-			local new_buffer = trim_outgoing_buffer(block)
-			local args = { player, new_buffer, OUTGOING.unknown }
-			block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
-		else
-			local new_buffer = copy_outgoing_buffer(block)
-			local player_save = projection.field(globals.players_map, player :: any)
-			state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
-		end
-	end)
+			block:for_generic(globals.players_map, function(block, player, player_save)
+				block:if_single(condition.not_equals(player, except), function(block)
+					if is_unreliable then
+						local args = { player, new_buffer, OUTGOING.unknown }
+						block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
+					else
+						state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
+					end
+				end)
+			end)
+		end)
 
-	local fire_server = fn.anonymous(data_params, {}, function(block)
-		local prev_buffer: types.LValue<buffer>, prev_length: types.LValue<number>, prev_cursor: types.LValue<number>, prev_unknown: types.LValue<{ unknown }>
-		if is_unreliable then
-			-- take snapshot of outgoing state
-			prev_buffer = block:store(OUTGOING.buffer)
-			prev_length = block:store(OUTGOING.length)
-			prev_cursor = block:store(OUTGOING.cursor)
-			prev_unknown = block:store(OUTGOING.unknown)
+		fire_client = fn.anonymous(data_params_player, {}, function(block)
+			state.reset_outgoing(block)
+			block:call(library.buffer.u8.write(block:allocate(constant.one), id))
+			for index, fn_set in data_fn_sets do
+				block:call_fn(fn_set.write, { block:parameter(1 + index) }, {})
+			end
 
-			-- temporary outgoing state
-			local size = constant.from_value(296)
-			-- 296 is 3 1.5x expansions away from 1000 bytes
-			block:store(library.buffer.create(size), OUTGOING.buffer)
-			block:store(size, OUTGOING.length)
-			block:store(constant.zero, OUTGOING.cursor)
-			block:store(library.table.create(constant.from_value(16)), OUTGOING.unknown)
-		end
+			local player = block:parameter(1)
 
-		-- write event payload
-		block:call(library.buffer.u8.write(block:allocate(constant.one), id))
-		for index, fn_set in data_fn_sets do
-			block:call_fn(fn_set.write, { block:parameter(index) }, {})
-		end
+			if is_unreliable then
+				local new_buffer = trim_outgoing_buffer(block)
+				local args = { player, new_buffer, OUTGOING.unknown }
+				block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
+			else
+				local new_buffer = copy_outgoing_buffer(block)
+				local player_save = projection.field(globals.players_map, player :: any)
+				state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
+			end
+		end)
+	end
 
-		if is_unreliable then
-			-- replicate
-			local args = { trim_outgoing_buffer(block), OUTGOING.unknown } :: { any }
-			block:call(library.RemoteEvent.fire_server(UNRELIABLE_EVENT, args))
+	if is_from_client then
+		fire_server = fn.anonymous(data_params, {}, function(block)
+			local prev_buffer: types.LValue<buffer>, prev_length: types.LValue<number>, prev_cursor: types.LValue<number>, prev_unknown: types.LValue<{ unknown }>
+			if is_unreliable then
+				-- take snapshot of outgoing state
+				prev_buffer = block:store(OUTGOING.buffer)
+				prev_length = block:store(OUTGOING.length)
+				prev_cursor = block:store(OUTGOING.cursor)
+				prev_unknown = block:store(OUTGOING.unknown)
 
-			-- restore outgoing state
-			block:store(prev_buffer, OUTGOING.buffer)
-			block:store(prev_length, OUTGOING.length)
-			block:store(prev_cursor, OUTGOING.cursor)
-			block:store(prev_unknown, OUTGOING.unknown)
-		end
-	end)
+				-- temporary outgoing state
+				local size = constant.from_value(296)
+				-- 296 is 3 1.5x expansions away from 1000 bytes
+				block:store(library.buffer.create(size), OUTGOING.buffer)
+				block:store(size, OUTGOING.length)
+				block:store(constant.zero, OUTGOING.cursor)
+				block:store(library.table.create(constant.from_value(16)), OUTGOING.unknown)
+			end
 
-	local on_server: AnonymousFn?, on_client: AnonymousFn?
-	local iter_server: AnonymousFn?, iter_client: AnonymousFn?
+			-- write event payload
+			block:call(library.buffer.u8.write(block:allocate(constant.one), id))
+			for index, fn_set in data_fn_sets do
+				block:call_fn(fn_set.write, { block:parameter(index) }, {})
+			end
+
+			if is_unreliable then
+				-- replicate
+				local args = { trim_outgoing_buffer(block), OUTGOING.unknown } :: { any }
+				block:call(library.RemoteEvent.fire_server(UNRELIABLE_EVENT, args))
+
+				-- restore outgoing state
+				block:store(prev_buffer, OUTGOING.buffer)
+				block:store(prev_length, OUTGOING.length)
+				block:store(prev_cursor, OUTGOING.cursor)
+				block:store(prev_unknown, OUTGOING.unknown)
+			end
+		end)
+	end
 
 	local call = decl.call
 	local queue_projection = projection.field(QUEUES, constant.from_value(event_id))
 	if call == "Polling" then
-		iter_client = queue_iterator(queue_projection, #data_params)
-		iter_server = queue_iterator(queue_projection, #data_params_player)
+		if is_from_server then
+			iter_client = queue_iterator(queue_projection, #data_params)
+		end
+		if is_from_client then
+			iter_server = queue_iterator(queue_projection, #data_params_player)
+		end
 	else
 		local on_fn = fn.anonymous({ ON_PARAMETER }, { DISCONNECT_RETURN }, function(block)
 			local listener = block:store(block:parameter(1))
@@ -465,8 +478,13 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 			block:rreturn({ disconnect })
 		end)
 
-		on_client = on_fn
-		on_server = on_fn
+		if is_from_server then
+			on_client = on_fn
+		end
+
+		if is_from_client then
+			on_server = on_fn
+		end
 	end
 
 	return {
@@ -818,8 +836,10 @@ local function from_hir(hhir: Hir): Lir
 	end
 
 	-- build events
-	local reliable_receivables: { Receivable } = {}
-	local unreliables_receivables: { Receivable } = {}
+	local client_reliables: { Receivable } = {}
+	local client_unreliables: { Receivable } = {}
+	local server_reliables: { Receivable } = {}
+	local server_unreliables: { Receivable } = {}
 
 	do
 		local queues = {}
@@ -838,11 +858,22 @@ local function from_hir(hhir: Hir): Lir
 
 		for decl_id, decl in hhir.events do
 			local type = decl.type
-			local id_pool = type == "Reliable" and reliable_ids or unreliable_ids
-			local receivables = type == "Reliable" and reliable_receivables or unreliables_receivables
+			local is_reliable = type == "Reliable"
+			local id_pool = is_reliable and reliable_ids or unreliable_ids
 
+			local from = decl.from
 			local event_id = next_event_id(id_pool)
-			table.insert(receivables, { id = event_id, decl = decl })
+			local receivable: Receivable = { id = event_id, decl = decl }
+
+			if from == "Client" or from == "Both" then
+				local receivables = is_reliable and server_reliables or server_unreliables
+				table.insert(receivables, receivable)
+			end
+
+			if from == "Server" or from == "Both" then
+				local receivables = is_reliable and client_reliables or client_unreliables
+				table.insert(receivables, receivable)
+			end
 
 			local key = constant.from_value(event_id)
 			local call = decl.call
@@ -856,17 +887,20 @@ local function from_hir(hhir: Hir): Lir
 		for decl_id, decl in hhir.functs do
 			local event_id = next_event_id(reliable_ids)
 			exports_map[decl_id] = build_function(ctx, decl, event_id)
-			table.insert(reliable_receivables, { id = event_id, decl = decl })
+
+			local receivable: Receivable = { id = event_id, decl = decl }
+			table.insert(client_reliables, receivable)
+			table.insert(server_reliables, receivable)
 		end
 
 		globals_map[globals.queues_map.identifier] = structure.map(queues :: any)
 		globals_map[globals.connections_map.identifier] = structure.map(connections :: any)
 	end
 
-	local client_receive_reliable = build_receive_connection(ctx, "Client", reliable_receivables)
-	local client_receive_unreliable = build_receive_connection(ctx, "Client", unreliables_receivables)
-	local server_receive_reliable = build_receive_connection(ctx, "Server", reliable_receivables)
-	local server_receive_unreliable = build_receive_connection(ctx, "Server", unreliables_receivables)
+	local client_receive_reliable = build_receive_connection(ctx, "Client", client_reliables)
+	local client_receive_unreliable = build_receive_connection(ctx, "Client", client_unreliables)
+	local server_receive_reliable = build_receive_connection(ctx, "Server", server_reliables)
+	local server_receive_unreliable = build_receive_connection(ctx, "Server", server_unreliables)
 
 	local client_step = fn.anonymous({}, {}, function(block)
 		local packet_buffer = trim_outgoing_buffer(block)

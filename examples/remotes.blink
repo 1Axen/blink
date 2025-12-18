@@ -5,6 +5,13 @@ option server_output = "./out/output_server"
 type foo = u16
 type bar = string
 
+-- event Event = {
+-- 	from: Client | Server | Both,
+-- 	type: Reliable | Unreliable,
+-- 	call: SingleSync | SingleAsync | ManySync | ManyAsync | Polling,
+-- 	data: (...)
+-- }
+
 event reliable = {
 	from: Client,
 	type: Reliable,
@@ -45,6 +52,13 @@ event unreliable_polling = {
 	type: Unreliable,
 	call: Polling,
 	data: (value: u8, foo, bar: bar)
+}
+
+event reliable_both = {
+	from: Both,
+	type: Reliable,
+	call: SingleSync,
+	data: string
 }
 
 function request = {

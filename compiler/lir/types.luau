@@ -524,15 +524,15 @@ export type EventExport = {
 	decl: hir.Event,
 
 	server: {
-		fire_all: AnonymousFn,
-		fire_list: AnonymousFn,
-		fire_client: AnonymousFn,
-		fire_except: AnonymousFn,
+		fire_all: AnonymousFn?,
+		fire_list: AnonymousFn?,
+		fire_client: AnonymousFn?,
+		fire_except: AnonymousFn?,
 		on: AnonymousFn?,
 		iter: AnonymousFn?,
 	},
 	client: {
-		fire_server: AnonymousFn,
+		fire_server: AnonymousFn?,
 		on: AnonymousFn?,
 		iter: AnonymousFn?,
 	},
