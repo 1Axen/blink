@@ -10,10 +10,6 @@ type Context = {
 	read encountered: { [Ty]: true? },
 }
 
-local function ty_ptr_eq(a: Ty, b: Ty): boolean
-	return (a :: any == b :: any)
-end
-
 local function transform(ctx: Context, tty: Ty): Ty
 	local encountered = ctx.encountered
 	if encountered[tty] then
@@ -23,24 +19,24 @@ local function transform(ctx: Context, tty: Ty): Ty
 	encountered[tty] = true
 
 	if tty.kind == "map" then
-		local index = transform(ctx, tty.index) :: any
-		local value = transform(ctx, tty.value) :: any
+		local index = transform(ctx, tty.index)
+		local value = transform(ctx, tty.value)
 		if index ~= tty.index or value ~= tty.value then
 			return ty.map(index, value, tty.size)
 		end
 	elseif tty.kind == "array" then
-		local of = transform(ctx, tty.of) :: any
+		local of = transform(ctx, tty.of)
 		if tty.of ~= of then
-			return ty.array(of :: Ty)
+			return ty.array(of)
 		end
 	elseif tty.kind == "struct" then
 		local fields = table.clone(tty.fields)
 		local invalidated = false
 		for index, field in fields do
-			local value = transform(ctx, field.value) :: any
+			local value = transform(ctx, field.value)
 			if value ~= field.value then
 				invalidated = true
-				fields[index] = ty.field(field.name, value :: Ty)
+				fields[index] = ty.field(field.name, value)
 			end
 		end
 
@@ -66,7 +62,7 @@ local function transform(ctx: Context, tty: Ty): Ty
 			end
 
 			local transformed = transform(ctx, component)
-			if not ty_ptr_eq(transformed, component) then
+			if transformed ~= component then
 				invalidated = true
 			end
 
@@ -89,8 +85,8 @@ local function transform(ctx: Context, tty: Ty): Ty
 		local variants = table.clone(tty.variants)
 		local invalidated = false
 		for index, variant in variants do
-			local key = transform(ctx, variant.key) :: any
-			local value = transform(ctx, variant.value) :: any
+			local key = transform(ctx, variant.key) :: typeof(variant.key)
+			local value = transform(ctx, variant.value) :: typeof(variant.value)
 			if key ~= variant.key or variant.value ~= value then
 				invalidated = true
 				variants[index] = ty.variant(key, value)
@@ -101,16 +97,16 @@ local function transform(ctx: Context, tty: Ty): Ty
 			return ty.discriminated_union(tty.tag, variants)
 		end
 	elseif tty.kind == "type_instantiation" then
-		local body = transform(ctx, tty.body) :: any
+		local body = transform(ctx, tty.body)
 		if tty.body ~= body then
-			return ty.type_instantiation(tty.type_function, tty.arguments, body :: Ty)
+			return ty.type_instantiation(tty.type_function, tty.arguments, body)
 		end
 	elseif tty.kind == "reference" and tty.arguments then
 		local arguments = table.clone(tty.arguments)
 		local invalidated = false
 
 		for index, argument in arguments do
-			local new_argument = transform(ctx, argument) :: any
+			local new_argument = transform(ctx, argument)
 			if argument ~= new_argument then
 				invalidated = true
 				arguments[index] = new_argument

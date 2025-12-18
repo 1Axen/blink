@@ -24,34 +24,30 @@ local function hash(body: Ty, arguments: { Ty }): string
 	return table.concat(segments, "+")
 end
 
-local function ty_ptr_eq(a: Ty?, b: Ty?): boolean
-	return (a :: any == b :: any)
-end
-
 local function transform(ctx: Context, tty: Ty): Ty
 	local hir = ctx.hir
 	local arguments = ctx.arguments
 	local instantiation_cache = ctx.cache
 
 	if tty.kind == "map" then
-		local index = transform(ctx, tty.index) :: any
-		local value = transform(ctx, tty.value) :: any
+		local index = transform(ctx, tty.index)
+		local value = transform(ctx, tty.value)
 		if index ~= tty.index or value ~= tty.value then
 			return ty.map(index, value, tty.size)
 		end
 	elseif tty.kind == "array" then
-		local of = transform(ctx, tty.of) :: any
+		local of = transform(ctx, tty.of)
 		if tty.of ~= of then
-			return ty.array(of :: Ty)
+			return ty.array(of)
 		end
 	elseif tty.kind == "struct" then
 		local fields = table.clone(tty.fields)
 		local invalidated = false
 		for index, field in fields do
-			local value = transform(ctx, field.value) :: any
+			local value = transform(ctx, field.value)
 			if value ~= field.value then
 				invalidated = true
-				fields[index] = ty.field(field.name, value :: Ty)
+				fields[index] = ty.field(field.name, value)
 			end
 		end
 
@@ -62,7 +58,7 @@ local function transform(ctx: Context, tty: Ty): Ty
 		local components = table.clone(tty.components)
 		local invalidated = false
 		for index, component in components do
-			local transformed = transform(ctx, component) :: any
+			local transformed = transform(ctx, component)
 			if transformed ~= component then
 				invalidated = true
 				components[index] = transformed
@@ -76,8 +72,8 @@ local function transform(ctx: Context, tty: Ty): Ty
 		local variants = table.clone(tty.variants)
 		local invalidated = false
 		for index, variant in variants do
-			local key = transform(ctx, variant.key) :: any
-			local value = transform(ctx, variant.value) :: any
+			local key = transform(ctx, variant.key) :: typeof(variant.key)
+			local value = transform(ctx, variant.value) :: typeof(variant.value)
 			if key ~= variant.key or variant.value ~= value then
 				invalidated = true
 				variants[index] = ty.variant(key, value)
@@ -131,7 +127,7 @@ local function transform(ctx: Context, tty: Ty): Ty
 			assert(axis)
 
 			local transformed = transform(ctx, axis) :: ty.Axis
-			if not ty_ptr_eq(axis, transformed) then
+			if axis ~= transformed then
 				invalidated = true
 				axes[index] = transformed
 			end
@@ -153,19 +149,19 @@ local function transform(ctx: Context, tty: Ty): Ty
 			new_rotation = transform(ctx, rotation) :: typeof(rotation)
 		end
 
-		if not ty_ptr_eq(position, new_position) or not ty_ptr_eq(rotation, new_rotation) then
+		if position ~= new_position or rotation ~= new_rotation then
 			return ty.cframe(new_position, new_rotation)
 		end
 	elseif tty.kind == "instance" and tty.class then
 		local class = tty.class
 		local new_class = transform(ctx, class) :: typeof(class)
-		if not ty_ptr_eq(new_class, class) then
+		if new_class ~= class then
 			return ty.instance(new_class)
 		end
 	elseif tty.kind == "roblox_enum" and tty.type then
 		local enum_type = tty.type
 		local new_enum_type = transform(ctx, enum_type) :: typeof(enum_type)
-		if not ty_ptr_eq(new_enum_type, enum_type) then
+		if new_enum_type ~= enum_type then
 			return ty.roblox_enum(new_enum_type)
 		end
 	end

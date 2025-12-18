@@ -138,7 +138,7 @@ local function fmt_tys(hirr: Hir, fmt_builder: StringBuilder)
 		table.insert(sorted, ty_id)
 	end
 
-	table.sort(sorted, function(a, b)
+	table.sort(sorted, function(a: number, b: number)
 		return a < b
 	end)
 
