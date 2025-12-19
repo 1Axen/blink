@@ -20,6 +20,10 @@ local function luau_warn(...: RValue<string>): Call<nil>
 	return projection.call(constant.from_value("warn"), { ... } :: { RValue<any> })
 end
 
+local function luau_print(...: RValue<any>): Call<nil>
+	return projection.call(constant.from_value("print"), { ... } :: any)
+end
+
 local function luau_error(message: string): Call<nil>
 	return projection.call(constant.from_value("error"), { constant.from_value(message) } :: any)
 end
@@ -38,6 +42,7 @@ end
 
 return table.freeze({
 	warn = luau_warn,
+	print = luau_print,
 	error = luau_error,
 	pcall = luau_pcall,
 	typeof = luau_typeof,
