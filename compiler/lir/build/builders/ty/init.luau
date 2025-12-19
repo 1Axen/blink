@@ -186,9 +186,7 @@ builders.map = table.freeze({
 
 		block:for_numeric(len, function(block)
 			local key = read_ty(props, block, map.index)
-			local value = read_ty(props, block, map.value)
-			local map_index = projection.field(register, key)
-			block:store(value, map_index)
+			read_ty(props, block, map.value, projection.field(register, key))
 		end)
 
 		if into then
