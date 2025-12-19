@@ -16,7 +16,12 @@ local function sin(n: RValue<number>): Call<number>
 	return projection.call(constant.from_value("math.sin"), { n })
 end
 
+local function sqrt(n: RValue<number>): Call<number>
+	return projection.call(constant.from_value("math.sqrt"), { n })
+end
+
 return table.freeze({
 	cos = cos,
 	sin = sin,
+	sqrt = sqrt,
 })
