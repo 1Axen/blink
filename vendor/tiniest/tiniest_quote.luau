@@ -17,12 +17,17 @@ local function tiniest_quote(
 	elseif type(x) == "function" then
 		return "function() ... end"
 	elseif type(x) == "table" then
+		local metatable = getmetatable(x) :: any
+		if typeof(metatable) == "table" and metatable.__tostring then
+			return tostring(x)
+		end
+
 		local outer_indent_amount = given_indent_amount or 0
 		local inner_indent_amount = outer_indent_amount + 1
 		local outer_indent = string.rep("  ", outer_indent_amount)
 		local inner_indent = string.rep("  ", inner_indent_amount)
 
-		local tbl: {} = x :: any
+		local tbl: {[any]: any} = x :: any
 		local sorted_pairs = {}
 		for key, value in tbl do
 			table.insert(sorted_pairs, {
@@ -30,7 +35,7 @@ local function tiniest_quote(
 				value = tiniest_quote(value, inner_indent_amount)
 			})
 		end
-		table.sort(sorted_pairs, function(a, b)
+		table.sort(sorted_pairs, function(a: index<typeof(sorted_pairs), number>, b: index<typeof(sorted_pairs), number>)
 			return a.key < b.key
 		end)
 		local frozen = table.isfrozen(tbl)
