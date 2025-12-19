@@ -5,9 +5,11 @@ local types = require("@lir/types")
 local ty_vector = require("../luau/vector")
 
 local binary = require("@builders/binary")
+local condition = require("@builders/condition")
 local constant = require("@builders/constant")
 local fn = require("@builders/fn")
 local library = require("@builders/library")
+local numeral = require("@builders/ty/luau/numeral")
 local projection = require("@builders/projection")
 
 local context = require("@lir/build/context")
@@ -34,9 +36,10 @@ local const = constant.from_value
 
 local HALF = const(0.5)
 local VECTOR = ty.vector({})
+local DEFAULT_FORMAT = ty.numeral("32", "f")
 
-local function index_vector(vec: RValue<vector>, property: "x" | "y" | "z"): types.ProjIndex<number>
-	return projection.index(vec :: any, const(property :: string))
+local function square(value: RValue<number>)
+	return mul(value, value)
 end
 
 local function to_tys(ctx: Context, cframe_ty: ty.CFrame): (ty.Vector, ty.Vector)
@@ -60,31 +63,52 @@ local function to_tys(ctx: Context, cframe_ty: ty.CFrame): (ty.Vector, ty.Vector
 end
 
 local function build_read(props: ReadProps, block: Builder, cframe_ty: ty.CFrame, into: LValue<any>?): Register<CFrame>
-	local pos_ty, rot_ty = to_tys(props.ctx, cframe_ty)
+	local position_ty = cframe_ty.position or DEFAULT_FORMAT
+	local rotation_ty = cframe_ty.rotation or DEFAULT_FORMAT
 
-	local pos = ty_vector.read(props, block, pos_ty)
-	local axis_angle = ty_vector.read(props, block, rot_ty)
+	local position_x = numeral.read(props, block, position_ty)
+	local position_y = numeral.read(props, block, position_ty)
+	local position_z = numeral.read(props, block, position_ty)
 
-	local angle = block:store(library.vector.magnitude(axis_angle))
-	-- div specifies RValue<number> but you can also div vectors
-	-- div can't be typed correctly as RValue<number | vector>
-	-- because of solver limitations
-	local axis = block:store(binary.div_vec(axis_angle, angle))
+	local axis_x = numeral.read(props, block, rotation_ty)
+	local axis_y = numeral.read(props, block, rotation_ty)
+	local axis_z = numeral.read(props, block, rotation_ty)
 
-	local half_angle = block:store(binary.mul(angle, HALF))
-	local sin_angle = block:store(sin(half_angle))
+	local dot = binary.add(square(axis_x), binary.add(square(axis_y), square(axis_z)))
+	local magnitude = block:store(library.math.sqrt(dot))
 
-	local cframe_ctor = library.CFrame.new_quat(
-		index_vector(pos, "x"),
-		index_vector(pos, "y"),
-		index_vector(pos, "z"),
-		mul(index_vector(axis, "x"), sin_angle),
-		mul(index_vector(axis, "y"), sin_angle),
-		mul(index_vector(axis, "z"), sin_angle),
-		cos(half_angle)
-	)
+	local store_location = (into or block:reserve()) :: Register<CFrame>
+	block:if_chain(2, function(index: number)
+		if index == 1 then
+			return condition.equals(magnitude, constant.zero),
+				function(block: Builder)
+					local value = library.CFrame.new_position(position_x, position_y, position_z)
+					block:store(value, store_location)
+				end
+		end
 
-	return block:store(cframe_ctor, into)
+		return condition.equals(constant.truth, constant.truth),
+			function(block: Builder)
+				local inverse_magnitude = block:store(binary.div(constant.one, magnitude))
+
+				local half_angle = block:store(binary.mul(magnitude, HALF))
+				local sin_angle = block:store(sin(half_angle))
+
+				local cframe_ctor = library.CFrame.new_quat(
+					position_x,
+					position_y,
+					position_z,
+					mul(mul(axis_x, inverse_magnitude), sin_angle),
+					mul(mul(axis_y, inverse_magnitude), sin_angle),
+					mul(mul(axis_z, inverse_magnitude), sin_angle),
+					cos(half_angle)
+				)
+
+				block:store(cframe_ctor, store_location)
+			end
+	end)
+
+	return store_location
 end
 
 local function build_write(props: WriteProps, block: Builder, cframe_ty: ty.CFrame, value: RValue<CFrame>): ()

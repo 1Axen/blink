@@ -24,6 +24,10 @@ local function cframe_new_quat(
 	return projection.call(constant.from_value("CFrame.new"), { x, y, z, quat_x, quat_y, quat_z, quat_w })
 end
 
+local function cframe_new_position(x: RValue<number>, y: RValue<number>, z: RValue<number>): Call<CFrame>
+	return projection.call(constant.from_value("CFrame.new"), { x, y, z })
+end
+
 local function cframe_to_axis_angle(at: RValue<CFrame>): Namecall<number>
 	return projection.namecall(at :: LValue<any>, constant.from_value("ToAxisAngle"), {})
 end
@@ -83,6 +87,7 @@ end
 return table.freeze({
 	CFrame = {
 		new_quat = cframe_new_quat,
+		new_position = cframe_new_position,
 		to_axis_angle = cframe_to_axis_angle,
 	},
 
