@@ -126,6 +126,16 @@ function tiniest_expect.expect(
 				return true, nil
 			end
 
+			local meta_a = getmetatable(a) :: any
+			local meta_b = getmetatable(b) :: any
+
+			if typeof(meta_a) == "table" and meta_a == meta_b then
+				meta_a = meta_a :: { __eq: ((any, any) -> boolean)?}
+				if meta_a.__eq then
+					return meta_a.__eq(a, b), "__eq returned false"
+				end
+			end
+
 			for key, value in a do
 				local b_value = b[key]
 				local is_equal, why_not = equals_deep(value, b_value)
