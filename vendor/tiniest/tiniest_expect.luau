@@ -111,37 +111,42 @@ function tiniest_expect.expect(
 	function tests.is_deep(
 		b: any
 	)
-		local function equals_deep(a: { [any]: any }, b: { [any]: any }): boolean
+		local function equals_deep(a: { [any]: any }, b: { [any]: any }): (boolean, string?)
 			if typeof(a) == "buffer" and typeof(b) == "buffer" then
 				local a_contents = buffer.tostring(a)
 				local b_contents = buffer.tostring(b)
-				if a_contents ~= b_contents then
-					fail("contents of buffer A don't match the contents of buffer B")
-				end
-
-				return true
+				return a_contents == b_contents, "the buffer contents don't match"
 			end
 
 			if typeof(a) ~= "table" or typeof(b) ~= "table" then
-				return a == b
+				if a ~= b then
+					return false, `{tiniest_quote(a)} is not quite {tiniest_quote(b)}`
+				end
+
+				return true, nil
 			end
 
 			for key, value in a do
-				if not equals_deep(value, b[key]) then
-					fail(`value "{tiniest_quote(value)}" at key "{tiniest_quote(key)}" in A doesn't match value "{tiniest_quote(b[key])}" in B`)
+				local b_value = b[key]
+				local is_equal, why_not = equals_deep(value, b_value)
+				if not is_equal then
+					return false, `accessing {tiniest_quote(key)} results in {tiniest_quote(value)} in A and {tiniest_quote(b_value)} in B, and {why_not}`
 				end
 			end
 
 			for key, value in b do
-				if not equals_deep(value, a[key]) then
-					fail(`value "{tiniest_quote(value)}" at key "{tiniest_quote(key)}" in B doesn't match value "{tiniest_quote(a[key])}" in A`)
+				local a_value = a[key]
+				local is_equal, why_not = equals_deep(value, a_value)
+				if not is_equal then
+					return false, `accessing {tiniest_quote(key)} results in {tiniest_quote(value)} in B and {tiniest_quote(a_value)} in A, and {why_not}`
 				end
 			end
 
-			return true
+			return true, nil
 		end
 
-		return if equals_deep(a, b) then tests else fail()
+		local is_equal, why_not = equals_deep(a, b)
+		return if is_equal then tests else fail(why_not)
 	end
 
 	function tests.has_key(
