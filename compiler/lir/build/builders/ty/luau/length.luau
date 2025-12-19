@@ -78,11 +78,11 @@ local function to_exact_length(ty: VariableLengthTy): number?
 end
 
 --- Returns the numeral and range offset
-local function to_relative_range(ty: VariableLengthTy): (ty.Numeral, types.Constant<number>)
+local function to_relative_range(ty: VariableLengthTy): (ty.Numeral, number)
 	local range = to_range(ty) or to_max_range(ty)
 	local offset = range.min
 	local difference = (range.max - offset)
-	return conversion.to_min_numeral(difference), constant.from_value(offset)
+	return conversion.to_min_numeral(difference), offset
 end
 
 local function validate_exact(block: Builder, ty: VariableLengthTy, value: RValue<number>)
@@ -129,7 +129,10 @@ local function read_length(
 
 	local format, offset = to_relative_range(ty)
 	local len_register = numeral.read(props, block, format)
-	len_register = block:store(binary.add(len_register, offset), len_register)
+	if offset ~= 0 then
+		block:store(binary.add(len_register, constant.from_value(offset)), len_register)
+	end
+
 	validate_range(block, ty, len_register)
 
 	return len_register
@@ -156,8 +159,12 @@ local function write_length(
 	end
 
 	local format, offset = to_relative_range(ty)
-	numeral.write(props, block, format, binary.sub(len_register, offset))
+	local len_value = len_register
+	if offset ~= 0 then
+		len_value = binary.sub(len_register, constant.from_value(offset))
+	end
 
+	numeral.write(props, block, format, len_value)
 	return len_register
 end
 
