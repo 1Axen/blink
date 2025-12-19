@@ -10,6 +10,11 @@ local single_primitives = {
 	buffer = require("@self/buffer"),
 	vector = require("@self/vector"),
 	boolean = require("@self/boolean"),
+	Color3 = require("@self/color3"),
+	CFrame = require("@self/cframe"),
+	DateTime = require("@self/date_time"),
+	BrickColor = require("@self/brick_color"),
+	DateTimeMillis = require("@self/date_time_millis"),
 }
 
 type Primitives = typeof(single_primitives) & typeof(literal) & typeof(numeral)
