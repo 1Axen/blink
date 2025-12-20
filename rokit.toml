@@ -4,8 +4,8 @@
 # New tools can be added by running `rokit add <tool>` in a terminal.
 
 [tools]
-act = "nektos/act@0.2.82"
-lute = "luau-lang/lute@0.1.0-nightly.20251217"
+act = "nektos/act@0.2.83"
+lute = "luau-lang/lute@0.1.0-nightly.20251220"
 stylua = "JohnnyMorganz/StyLua@2.3.1"
 darklua = "seaofvoices/darklua@0.17.2"
 rojo = "rojo-rbx/rojo@7.6.1"
