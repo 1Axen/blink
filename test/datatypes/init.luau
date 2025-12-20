@@ -26,6 +26,7 @@ return table.freeze({
 		array = require("@self/array"),
 		union = require("@self/union"),
 		struct = require("@self/struct"),
+		optional = require("@self/optional"),
 		discriminated_union = require("@self/discriminated_union"),
 	}),
 	primitives = table.freeze(primitives :: Primitives),

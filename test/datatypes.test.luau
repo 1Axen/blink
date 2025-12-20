@@ -97,6 +97,7 @@ return function(tiniest: Tiniest)
 		table.insert(fields, datatype)
 		datatypes_to_test[`type_{name}`] = datatype
 		datatypes_to_test[`array_{name}`] = datatypes.structures.array(datatype)
+		datatypes_to_test[`optional_{name}`] = datatypes.structures.optional(datatype)
 
 		local key = datatype
 		if UNHASHABLE_DATATYPES[key] then
