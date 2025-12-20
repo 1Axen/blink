@@ -15,7 +15,12 @@ type CFrameMock = setmetatable<{
 	quat_scalar: number,
 }, typeof(cframe)>
 
-function cframe.new(x: number, y: number, z: number, quat_x: number, quat_y: number, quat_z: number, quat_w: number)
+function cframe.new(x: number, y: number, z: number, quat_x: number?, quat_y: number?, quat_z: number?, quat_w: number?)
+	quat_x = quat_x or 0
+	quat_y = quat_y or 0
+	quat_z = quat_z or 0
+	quat_w = quat_w or 0
+
 	local quat_vector = vector.create(quat_x, quat_y, quat_y)
 
 	-- ensure the quaternion is normalized

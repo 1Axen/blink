@@ -15,9 +15,9 @@ return function(components: { Datatype }): Datatype
 		end
 	end
 
-	local function generate()
+	local function generate(seed: number)
 		local component = components[math.random(1, #components)]
-		return component.generate()
+		return component.generate(seed)
 	end
 
 	return table.freeze({

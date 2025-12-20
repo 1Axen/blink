@@ -18,6 +18,8 @@ type TypeAPI = {
 	read: (buffer, number?) -> (any, number),
 }
 
+local SAMPLES = 255
+
 local TEMP_PATH = path.from_string("./temp")
 
 local ENV = table.freeze({
@@ -111,28 +113,38 @@ return function(tiniest: Tiniest)
 	datatypes_to_test.flat_struct = flat_struct
 	datatypes_to_test.nested_struct = datatypes.structures.struct(nested_fields)
 
-	local values: { [string]: any } = {}
-	local buffers: { [string]: buffer } = {}
+	local values: { [string]: { any } } = {}
+	local buffers: { [string]: { buffer } } = {}
 	local compiled_types = compile_datatypes("datatypes", datatypes_to_test)
 
 	for key, datatype in datatypes_to_test do
 		test(`write {key}`, function()
-			local value = datatype.generate()
-			local type_api = assert(compiled_types[key])
-			values[key] = value
-			buffers[key] = type_api.write(value)
+			local key_values = table.create(SAMPLES) :: { any }
+			local key_buffers = table.create(SAMPLES) :: { buffer }
+
+			for index = 1, SAMPLES do
+				local value = datatype.generate(index)
+				local type_api = assert(compiled_types[key])
+				key_values[index] = value
+				key_buffers[index] = type_api.write(value)
+			end
+
+			values[key] = key_values
+			buffers[key] = key_buffers
 		end)
 
 		test(`read {key}`, function()
-			local buff = buffers[key]
-			local value = values[key]
+			local key_values = values[key]
+			local key_buffers = buffers[key]
 			local type_api = assert(compiled_types[key])
-			local read_value = type_api.read(buff)
 
-			if typeof(value) == "table" or typeof(value) == "buffer" then
-				expect(read_value).is_deep(value)
-			else
-				expect(read_value).is(value)
+			for index, value in key_values do
+				local read_value = type_api.read(key_buffers[index])
+				if typeof(value) == "table" or typeof(value) == "buffer" then
+					expect(read_value).is_deep(value)
+				else
+					expect(read_value).is(value)
+				end
 			end
 		end)
 	end

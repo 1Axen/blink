@@ -16,8 +16,12 @@ local function append(builder: StringBuilder)
 	builder:append("CFrame")
 end
 
-local function generate()
+local function generate(seed: number)
 	local position = vector.create(random_float(-MAX, MAX), random_float(-MAX, MAX), random_float(-MAX, MAX))
+	if seed == 1 then
+		return cframe_mock.new(position.x, position.y, position.z)
+	end
+
 	local quat_vector, quat_scalar = random_quaternion()
 	return cframe_mock.new(position.x, position.y, position.z, quat_vector.x, quat_vector.y, quat_vector.z, quat_scalar)
 end

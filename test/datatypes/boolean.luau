@@ -8,8 +8,8 @@ local function append(builder: StringBuilder)
 	builder:append("boolean")
 end
 
-local function generate()
-	return math.random(0, 1) == 1
+local function generate(seed: number)
+	return seed % 2 == 0
 end
 
 local datatype: Datatype = table.freeze({

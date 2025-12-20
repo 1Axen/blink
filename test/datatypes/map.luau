@@ -13,10 +13,10 @@ return function(indexer: Datatype, value: Datatype): Datatype
 		builder:append("}")
 	end
 
-	local function generate()
+	local function generate(seed: number)
 		local map = {}
 		for _ = 1, math.random(0, 8) do
-			map[indexer.generate()] = value.generate()
+			map[indexer.generate(seed)] = value.generate(seed)
 		end
 		return map
 	end

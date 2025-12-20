@@ -22,11 +22,11 @@ return function(fields: { Datatype }): Datatype
 		builder:append(" }")
 	end
 
-	local function generate()
+	local function generate(seed: number)
 		local struct = {}
 		for index, field in fields do
 			local name = to_field_name(index)
-			struct[name] = field.generate()
+			struct[name] = field.generate(seed)
 		end
 
 		return struct

@@ -30,13 +30,13 @@ return function(tag: string, variants: { [any]: Datatype }): Datatype
 		builder:append("}")
 	end
 
-	local function generate()
+	local function generate(seed: number)
 		local key = keys[math.random(1, #keys)]
 		local variant = variants[key]
 
 		return {
 			[tag] = key,
-			value = variant.generate(),
+			value = variant.generate(seed),
 		}
 	end
 

@@ -4,7 +4,7 @@ type StringBuilder = string_builder.StringBuilder
 
 export type Datatype = {
 	read append: (builder: StringBuilder) -> (),
-	read generate: () -> any,
+	read generate: (seed: number) -> any,
 }
 
 return nil

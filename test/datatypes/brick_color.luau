@@ -9,9 +9,8 @@ local function append(builder: StringBuilder)
 	builder:append("BrickColor")
 end
 
-local function generate()
-	local index = math.random(0, 2 ^ 8)
-	return brick_color_mock.new(index)
+local function generate(seed: number)
+	return brick_color_mock.new(seed)
 end
 
 local datatype: Datatype = table.freeze({
