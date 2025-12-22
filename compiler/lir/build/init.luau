@@ -266,7 +266,7 @@ local function queue_iterator(queue_projection: types.ProjField<any>, args_count
 				block:rreturn({})
 			end)
 
-			local values = {}
+			local values = { row } :: { any }
 			for index = 1, args_count do
 				local column = projection.field(columns, constant.from_value(index))
 				local value = projection.field(column, row)
