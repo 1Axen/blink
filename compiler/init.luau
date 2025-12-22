@@ -234,7 +234,8 @@ local function compile_from_path(entry_path: Path, compile_options: CompileOptio
 	end
 
 	local ast_pin = os.clock()
-	local files = file_to_files_map(read_result.value, entry_path)
+	local entry_file = read_result.value
+	local files = file_to_files_map(entry_file, entry_path)
 	local ast_elapsed = (os.clock() - ast_pin)
 
 	local hir_pin = os.clock()
@@ -255,7 +256,7 @@ local function compile_from_path(entry_path: Path, compile_options: CompileOptio
 			profile = compile_options.profile,
 		}
 
-		local entry_options = files_hir.options[0]
+		local entry_options = files_hir.options[entry_file.id]
 		if entry_options == nil then
 			return panic("Unable to retrieve the entry file's options")
 		end
