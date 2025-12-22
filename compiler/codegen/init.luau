@@ -651,15 +651,25 @@ local function gen_export(ctx: Context, target: compilation.Target, export: lir.
 	local builder = ctx.builder
 
 	local name = export.name
-	if name ~= "" then
-		builder:append_line(`{name} = \{`)
-	else
+	local is_root = name == ""
+	local casing = casing_from_export(ctx.hir, export)
+
+	if is_root then
 		builder:append_line("{")
+	else
+		builder:append_line(`{name} = \{`)
 	end
 
 	builder:indent()
 
-	local casing = casing_from_export(ctx.hir, export)
+	if is_root then
+		if target == "client" then
+			append_method(ctx, casing, "step_replication", ctx.lir.client.step_replication)
+		elseif target == "server" then
+			append_method(ctx, casing, "step_replication", ctx.lir.server.step_replication)
+		end
+	end
+
 	if export.kind == "type" then
 		append_method(ctx, casing, "read", export.read)
 		append_method(ctx, casing, "write", export.write)
