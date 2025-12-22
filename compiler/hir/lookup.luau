@@ -1,6 +1,8 @@
 --!strict
 
 local ast = require("@ast")
+local file = require("@util/file")
+local options = require("@config/options")
 local ty = require("@ty/types")
 
 local panic = require("@util/panic")
@@ -55,6 +57,16 @@ local function scope_from_id(hir: Hir, scope_id: ScopeId): Scope
 	return scope
 end
 
+local function file_options(hir: Hir, file: file.File): options.FileOptions
+	local id = file.id
+	local file_options = hir.options[id]
+	if file_options == nil then
+		return panic(`Expected File {file.id} to map to file options`)
+	end
+
+	return file_options
+end
+
 local function follow(hir: Hir, ty: ty.Ty): ty.Ty
 	if ty.kind == "optional" then
 		return follow(hir, ty.of)
@@ -68,6 +80,7 @@ end
 
 return table.freeze({
 	follow = follow,
+	file_options = file_options,
 
 	ty_from_id = ty_from_id,
 	decl_from_id = decl_from_id,

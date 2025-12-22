@@ -945,8 +945,17 @@ local function from_hir(hhir: Hir): Lir
 		globals_map[globals.templates.identifier] = structure.struct(templates)
 	end
 
+	local entry_scope_id: ScopeId = 0 :: any
+	if hhir.scopes[entry_scope_id] == nil then
+		local minimum_id = math.huge
+		for scope_id in hhir.scopes do
+			minimum_id = math.min(minimum_id, scope_id :: any)
+		end
+		entry_scope_id = minimum_id :: any
+	end
+
 	return {
-		export = build_scope(ctx, 0 :: any, exports_map),
+		export = build_scope(ctx, entry_scope_id, exports_map),
 		fn_map = ctx.fn_map,
 		globals = globals_map,
 		client = {

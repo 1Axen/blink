@@ -716,18 +716,14 @@ export type Props = {
 	hir: hir.Hir,
 	hash: string,
 	profile: compilation.Profile,
+	entry_options: options.FileOptions,
 }
 
 local function from_lir(props: Props, target: compilation.Target): string
 	local hhir = props.hir
 	local llir = props.lir
-	local options = hhir.options
+	local entry_options = props.entry_options
 	local builder = string_builder.create({})
-
-	local entry_options = options[0]
-	if entry_options == nil then
-		return panic("Expected entry file to have options")
-	end
 
 	local ctx: Context = {
 		lir = llir,

@@ -249,17 +249,14 @@ local function compile_from_path(entry_path: Path, compile_options: CompileOptio
 	local codegen_pin = os.clock()
 	local targets: Targets = {}
 	do
+		local entry_options = hir.file_options(files_hir, entry_file)
 		local codegen_props: codegen.Props = {
 			lir = files_lir,
 			hir = files_hir,
 			hash = md5(tostring(os.clock())),
 			profile = compile_options.profile,
+			entry_options = entry_options,
 		}
-
-		local entry_options = files_hir.options[entry_file.id]
-		if entry_options == nil then
-			return panic("Unable to retrieve the entry file's options")
-		end
 
 		if entry_options.types_output then
 			targets.types = {
@@ -314,11 +311,13 @@ local function compile_contents(
 	local file_hir = hir.from_files(files)
 	local file_lir = lir.from_hir(file_hir)
 
+	local entry_options = hir.file_options(file_hir, mock_file)
 	local codegen_props: codegen.Props = {
 		hir = file_hir,
 		lir = file_lir,
 		hash = md5(tostring(os.clock())),
 		profile = compile_options.profile,
+		entry_options = entry_options,
 	}
 
 	return table.freeze({
