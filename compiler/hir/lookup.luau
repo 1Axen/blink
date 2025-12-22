@@ -22,7 +22,7 @@ type ScopeId = types.ScopeId
 local function ty_from_id<T>(hir: Hir, ty_id: TyId<T>): T
 	local ty = hir.tys[ty_id]
 	if ty == nil then
-		return panic("Expected ty_id to point to a ty")
+		return panic(`Expected TyId {ty_id} to map to a ty`)
 	end
 
 	return ty
@@ -31,7 +31,7 @@ end
 local function decl_from_id(hir: Hir, decl_id: DeclId): Decl
 	local decl = hir.types[decl_id]
 	if decl == nil then
-		return panic("Expected decl_id to point to a decl")
+		return panic(`Expected DeclId {decl_id} to map to a decl`)
 	end
 
 	return decl
@@ -40,7 +40,7 @@ end
 local function node_from_id(hir: Hir, node_id: NodeId): Node
 	local node = hir.nodes[node_id]
 	if node == nil then
-		return panic("Expected node_id to point to a node")
+		return panic(`Expected NodeId {node_id} to map to a node`)
 	end
 
 	return node
@@ -49,7 +49,7 @@ end
 local function scope_from_id(hir: Hir, scope_id: ScopeId): Scope
 	local scope = hir.scopes[scope_id]
 	if scope == nil then
-		return panic("Expected scope_id to point to a scope")
+		return panic(`Expected ScopeId {scope_id} to map to a scope`)
 	end
 
 	return scope
