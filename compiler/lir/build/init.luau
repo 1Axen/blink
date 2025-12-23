@@ -809,6 +809,8 @@ local function build_receive_connection(ctx: Context, side: Side, receivables: {
 
 				return event_id_matches,
 					function(block: fn.Builder)
+						block:remark(decl.name)
+
 						if decl.kind == "event" then
 							build_event_receive(ctx, side, block, decl, event_id)
 						elseif decl.kind == "function" then
@@ -876,6 +878,10 @@ local function from_hir(hhir: Hir): Lir
 			local key = constant.from_value(event_id)
 			local call = decl.call
 			local n_args = decl.data and #decl.data or 1
+
+			if from == "Client" or from == "Both" then
+				n_args += 1
+			end
 
 			queues[key] = event_queue_structure(n_args)
 			connections[key] = (call == "ManySync" or call == "ManyAsync") and structure.array({}) or nil
