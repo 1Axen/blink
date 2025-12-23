@@ -57,6 +57,8 @@ type ExportsMap = { [DeclId]: Export? }
 
 type Side = "Server" | "Client"
 
+local MAX_EVENT_IDS = 256
+
 local QUEUES = globals.queues_map
 local INCOMING = globals.incoming
 local OUTGOING = globals.outgoing
@@ -844,25 +846,21 @@ local function from_hir(hhir: Hir): Lir
 	do
 		local queues = {}
 		local connections = {}
-		local reliable_ids = table.create(256, 0)
-		local unreliable_ids = table.create(256, 0)
+		local event_ids = table.create(MAX_EVENT_IDS, 0)
 
-		for index = 1, #reliable_ids do
+		for index = 1, MAX_EVENT_IDS do
 			local id = (index - 1)
-			reliable_ids[index] = id
-			unreliable_ids[index] = id
+			event_ids[index] = id
 		end
 
-		shuffle(reliable_ids)
-		shuffle(unreliable_ids)
+		shuffle(event_ids)
 
 		for decl_id, decl in hhir.events do
 			local type = decl.type
 			local is_reliable = type == "Reliable"
-			local id_pool = is_reliable and reliable_ids or unreliable_ids
 
 			local from = decl.from
-			local event_id = next_event_id(id_pool)
+			local event_id = next_event_id(event_ids)
 			local receivable: Receivable = { id = event_id, decl = decl }
 
 			if from == "Client" or from == "Both" then
@@ -885,7 +883,7 @@ local function from_hir(hhir: Hir): Lir
 		end
 
 		for decl_id, decl in hhir.functs do
-			local event_id = next_event_id(reliable_ids)
+			local event_id = next_event_id(event_ids)
 			exports_map[decl_id] = build_function(ctx, decl, event_id)
 
 			local receivable: Receivable = { id = event_id, decl = decl }
@@ -893,8 +891,8 @@ local function from_hir(hhir: Hir): Lir
 			table.insert(server_reliables, receivable)
 		end
 
-		globals_map[globals.queues_map.identifier] = structure.map(queues :: any)
-		globals_map[globals.connections_map.identifier] = structure.map(connections :: any)
+		globals_map[QUEUES.identifier] = structure.map(queues :: any)
+		globals_map[CONNECTIONS.identifier] = structure.map(connections :: any)
 	end
 
 	local client_receive_reliable = build_receive_connection(ctx, "Client", client_reliables)
