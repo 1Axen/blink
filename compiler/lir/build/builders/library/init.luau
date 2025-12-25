@@ -45,6 +45,7 @@ return table.freeze({
 	bit32 = require("@self/bit32"),
 	debug = require("@self/debug"),
 	table = require("@self/table"),
+	string = require("@self/string"),
 	vector = require("@self/vector"),
 	buffer = require("@self/buffer"),
 	coroutine = require("@self/coroutine"),
