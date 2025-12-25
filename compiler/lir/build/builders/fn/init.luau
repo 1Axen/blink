@@ -38,11 +38,6 @@ type NumericLoopConstructor = (block: Builder, index: Register<number>) -> ()
 type GenericLoopConstructor = (block: Builder, index: Register<any>, value: Register<any>) -> ()
 
 local MAX_REGISTERS = 200
-local REGISTERS_TEMPLATE = table.create(MAX_REGISTERS, 0)
-
-for index = 1, MAX_REGISTERS do
-	REGISTERS_TEMPLATE[index] = (index - 1)
-end
 
 local function fn_return(ty: Ty): types.Return
 	return {
@@ -94,20 +89,22 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 
 	local block = next_block()
 	local blocks: { BasicBlock } = { block }
-	local registers = table.clone(REGISTERS_TEMPLATE)
+	local register_top = 0
 
 	local function next_register<T>(): Register<T>
-		local index = table.remove(registers, 1)
-		if index == nil then
+		local top = register_top
+		if top == MAX_REGISTERS then
 			return panic(`Function exceeded {MAX_REGISTERS} registers`)
 		end
+
+		register_top += 1
 
 		return {
 			__phantom_type = nil :: any,
 
 			type = "id",
 			kind = "register",
-			index = index,
+			index = top,
 		}
 	end
 
@@ -179,6 +176,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 	end
 
 	local function if_single(self: Builder, cond: Condition, body: Constructor)
+		local prev_top = register_top
 		local truthy_block = next_block(block.scope + 1)
 		local falsey_block = next_block(block.scope, block.terminator)
 
@@ -194,11 +192,13 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 
 		--> set block to after loop
 		block = falsey_block
+		register_top = prev_top
 		table.insert(blocks, falsey_block)
 	end
 
 	local function if_chain(self: Builder, length: number, chain_constructor: IfChainConstructor)
 		local scope = block.scope
+		local prev_top = register_top
 		local after_block = next_block(scope, block.terminator)
 
 		for index = 1, length do
@@ -215,14 +215,17 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 			single_constructor(self)
 
 			block = falsey_block
+			register_top = prev_top
 			table.insert(blocks, falsey_block)
 		end
 
 		block = after_block
+		register_top = prev_top
 		table.insert(blocks, after_block)
 	end
 
 	local function for_numeric(self: Builder, iterations: RValue<number>, body: NumericLoopConstructor)
+		local prev_top = register_top
 		local prev_block = block
 		local loop_block = next_block(prev_block.scope + 1)
 		local after_block = next_block(prev_block.scope, prev_block.terminator)
@@ -239,10 +242,12 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		body(self, index_register)
 
 		block = after_block
+		register_top = prev_top
 		table.insert(blocks, after_block)
 	end
 
 	local function for_generic(self: Builder, target: index<types.LoopGeneric, "target">, body: GenericLoopConstructor)
+		local prev_top = register_top
 		local prev_block = block
 		local loop_block = next_block(prev_block.scope + 1)
 		local after_block = next_block(prev_block.scope, prev_block.terminator)
@@ -260,10 +265,12 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		body(self, index_register, value_register)
 
 		block = after_block
+		register_top = prev_top
 		table.insert(blocks, after_block)
 	end
 
 	local function while_loop(self: Builder, condition: Condition, body: Constructor)
+		local prev_top = register_top
 		local prev_block = block
 		local truthy_block = next_block(prev_block.scope + 1)
 		local falsey_block = next_block(prev_block.scope, prev_block.terminator)
@@ -280,6 +287,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 
 		--> set block to after loop
 		block = falsey_block
+		register_top = prev_top
 		table.insert(blocks, falsey_block)
 	end
 
@@ -292,12 +300,11 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 	end
 
 	local function capture(self: Builder, upvalues: { Register<any> })
+		local max_register = register_top
 		for _, upvalue in upvalues do
-			local index = table.find(registers, upvalue.index)
-			if index then
-				table.remove(registers, index)
-			end
+			max_register = math.max(max_register, upvalue.index)
 		end
+		register_top = max_register + 1
 	end
 
 	local builder: Builder = table.freeze({
