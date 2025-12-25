@@ -720,7 +720,7 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 							block:capture({ callback, player, invocation_id, unpack(data_values) })
 
 							local pcall_values =
-								block:store_mult(library.pcall(callback, unpack(data_values)), #rreturn + 1)
+								block:store_mult(library.pcall(callback, player, unpack(data_values)), #rreturn + 1)
 
 							local was_successful = condition.equals(pcall_values[1], constant.truth)
 							local success_value = ternary(was_successful, constant.one, constant.zero)
