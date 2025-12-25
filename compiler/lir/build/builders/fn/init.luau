@@ -161,7 +161,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 
 	local function allocate(self: Builder, bytes: types.RValue<number>): Register<number>
 		local cursor = self:store(globals.outgoing.cursor)
-		self:call(control.allocate(bytes))
+		self:call(control.allocate(bytes) :: any)
 		return cursor
 	end
 

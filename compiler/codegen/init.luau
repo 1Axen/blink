@@ -265,7 +265,7 @@ local function gen_cast(ctx: Context, cast: lir.Cast<any>)
 	builder:append(")")
 end
 
-function gen_rvalue<T>(ctx: Context, rvalue: lir.RValue<T>)
+function gen_rvalue(ctx: Context, rvalue: lir.RValue<any>)
 	if rvalue.type == "id" then
 		gen_id(ctx, rvalue)
 	elseif rvalue.type == "control" then
@@ -303,7 +303,7 @@ local function gen_loop(ctx: Context, loop: lir.Loop)
 		context.try_see_register(ctx, loop.index)
 		gen_id(ctx, loop.index)
 		builder:append(" = 1, ")
-		gen_rvalue(ctx, loop.iterations)
+		gen_rvalue(ctx, loop.iterations :: any)
 	elseif loop.kind == "generic" then
 		context.try_see_register(ctx, loop.index)
 		gen_id(ctx, loop.index)
@@ -311,7 +311,7 @@ local function gen_loop(ctx: Context, loop: lir.Loop)
 		context.try_see_register(ctx, loop.index)
 		gen_id(ctx, loop.value)
 		builder:append(" in ")
-		gen_rvalue(ctx, loop.target)
+		gen_rvalue(ctx, loop.target :: any)
 	else
 		strong_exhaustive_match(loop.kind)
 	end
