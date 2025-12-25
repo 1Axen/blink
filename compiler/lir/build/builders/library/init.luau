@@ -20,6 +20,10 @@ local function luau_error(message: string): Call<nil>
 	return projection.call(constant.from_value("error"), { constant.from_value(message) } :: any)
 end
 
+local function luau_error_rvalue(message: RValue<string>): Call<nil>
+	return projection.call(constant.from_value("error"), { message } :: any)
+end
+
 local function luau_pcall(fn: RValue<any>, ...: RValue<any>): Call<any>
 	return projection.call(constant.from_value("pcall"), { fn, ... })
 end
@@ -39,6 +43,7 @@ return table.freeze({
 	pcall = luau_pcall,
 	typeof = luau_typeof,
 	tostring = luau_tostring,
+	error_rvalue = luau_error_rvalue,
 
 	task = require("@self/task"),
 	math = require("@self/math"),
