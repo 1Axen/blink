@@ -184,10 +184,8 @@ function append_ty(ctx: Context, tty: Ty)
 		ctx.builder:append("Color3")
 	elseif tty.kind == "instance" then
 		append_instance(ctx, tty)
-	elseif tty.kind == "date_time" then
+	elseif tty.kind == "date_time" or tty.kind == "date_time_millis" then
 		ctx.builder:append("DateTime")
-	elseif tty.kind == "date_time_millis" then
-		ctx.builder:append("DateTimeMillis")
 	elseif tty.kind == "brick_color" then
 		ctx.builder:append("BrickColor")
 	elseif tty.kind == "unknown" then
