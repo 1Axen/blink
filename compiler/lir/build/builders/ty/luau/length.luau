@@ -95,7 +95,9 @@ local function validate_exact(block: Builder, ty: VariableLengthTy, value: RValu
 	local is_exact_length = condition.equals(value, constant.from_value(exact_length))
 
 	block:if_single(is_exact_length, function(block)
-		block:call(library.error(`Expected {ty.kind} length to be {bounds.min}`))
+		local message =
+			library.string.format(`Expected {ty.kind} length to be exactly {bounds.min}, length is %f`, value)
+		block:call(library.error_rvalue(message))
 	end)
 end
 
@@ -109,11 +111,19 @@ local function validate_range(block: Builder, ty: VariableLengthTy, len_register
 	local upper = condition.greater_than(len_register, constant.from_value(bounds.max))
 
 	block:if_single(lower, function(block)
-		block:call(library.error(`Expected {ty.kind} length to be greater than or equal to {bounds.min}`))
+		local message = library.string.format(
+			`Expected {ty.kind} length to be greater than or equal to {bounds.min}, length is %f`,
+			len_register
+		)
+		block:call(library.error_rvalue(message))
 	end)
 
 	block:if_single(upper, function(block)
-		block:call(library.error(`Expected {ty.kind} length to be less than or equal to {bounds.max}`))
+		local message = library.string.format(
+			`Expected {ty.kind} length to be less than or equal to {bounds.max}, length is %f`,
+			len_register
+		)
+		block:call(library.error_rvalue(message))
 	end)
 end
 

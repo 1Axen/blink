@@ -29,7 +29,8 @@ local function validate(props: WriteProps, block: Builder, ty: Literal, value: R
 	local equals = condition.not_equals(value, constant :: any)
 
 	block:if_single(equals, function(block)
-		block:call(library.error(`Expected "{ty.value}"`))
+		local message = library.string.format(`Expected {ty.value}, got %* instead`, value)
+		block:call(library.error_rvalue(message))
 	end)
 end
 

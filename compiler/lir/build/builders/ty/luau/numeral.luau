@@ -157,11 +157,15 @@ local function validate(block: Builder, ty: ty.Numeral, value: RValue<number>)
 	local upper = condition.greater_than(value, constant.from_value(bounds.max))
 
 	block:if_single(lower, function(block)
-		block:call(library.error(`Expected number to be greater than or equal to {bounds.min}`))
+		local message =
+			library.string.format(`Expected number to be greater than or equal to {bounds.min}, number is %*`, value)
+		block:call(library.error_rvalue(message))
 	end)
 
 	block:if_single(upper, function(block)
-		block:call(library.error(`Expected number to be less than or equal to {bounds.max}`))
+		local message =
+			library.string.format(`Expected number to be less than or equal to {bounds.max}, number is %*`, value)
+		block:call(library.error_rvalue(message))
 	end)
 end
 
