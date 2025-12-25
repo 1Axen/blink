@@ -42,9 +42,12 @@ local function to_static_enum_type(ctx: Context, ty: ty.Enum): types.Constant<st
 end
 
 local function validate(props: WriteProps, block: Builder, ty: ty.Enum, at: RValue<EnumItem>)
-	local typeof_condition = condition.not_equals(library.typeof(at), constant.from_value("EnumItem"))
+	local expected_typeof = constant.from_value("EnumItem")
+	local typeof_value = library.typeof(at)
+	local typeof_condition = condition.not_equals(typeof_value, expected_typeof)
 	block:if_single(typeof_condition, function(block: fn.Builder)
-		block:call(library.error("Expected an EnumItem"))
+		local message = library.string.format("Expected an EnumItem, got %s instead", typeof_value)
+		block:call(library.error_rvalue(message))
 	end)
 
 	local static_enum_type = to_static_enum_type(props.ctx, ty)
@@ -56,7 +59,11 @@ local function validate(props: WriteProps, block: Builder, ty: ty.Enum, at: RVal
 	local enum_type_cond = condition.not_equals(enum_type, static_enum_type)
 
 	block:if_single(enum_type_cond, function(block)
-		block:call(library.error(`Expected an enum of type: "{static_enum_type.value}"`))
+		local message = library.string.format(
+			`Expected an enum of type "{static_enum_type.value}", got one of type "%*" instead`,
+			enum_type
+		)
+		block:call(library.error_rvalue(message))
 	end)
 end
 

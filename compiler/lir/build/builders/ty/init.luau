@@ -283,20 +283,21 @@ builders.discriminated_union = table.freeze({
 		local format = conversion.to_min_numeral(variants_count - 1)
 
 		local value = into or block:reserve()
-		local stored_value = ty_numeral.read(props, block, format)
+		local read_variant_index = ty_numeral.read(props, block, format)
 
 		block:if_chain(variants_count + 1, function(index)
 			if index > variants_count then
 				return ALWAYS_TRUE,
 					function(block: Builder)
-						block:call(library.error("Invalid enum variant"))
+						local message = library.string.format("Invalid enum variant %d", read_variant_index)
+						block:call(library.error_rvalue(message))
 					end
 			end
 
 			local variant_value = variants[index].value
 			local variant_index = constant.from_value(index - 1)
 
-			local is_variant = condition.equals(stored_value, variant_index)
+			local is_variant = condition.equals(read_variant_index, variant_index)
 			return is_variant,
 				function(block: Builder)
 					builders.struct.read(props, block, variant_value, value)
@@ -317,7 +318,8 @@ builders.discriminated_union = table.freeze({
 			if index > variants_count then
 				return ALWAYS_TRUE,
 					function(block: Builder)
-						block:call(library.error("Invalid enum variant"))
+						local message = library.string.format("Invalid enum variant %*", tag_value)
+						block:call(library.error_rvalue(message))
 					end
 			end
 
@@ -438,7 +440,8 @@ do
 				if index > n_components then
 					return ALWAYS_TRUE,
 						function(block: Builder)
-							block:call(library.error("Invalid union type"))
+							local message = library.string.format("Invalid union type: %d", stored_index)
+							block:call(library.error_rvalue(message))
 						end
 				end
 
@@ -509,7 +512,8 @@ do
 				if index == n_chains and has_catch_case then
 					return ALWAYS_TRUE,
 						function(block: Builder)
-							block:call(library.error("Invalid union type"))
+							local message = library.string.format("Invalid union type: %s", value_typeof)
+							block:call(library.error_rvalue(message))
 						end
 				end
 

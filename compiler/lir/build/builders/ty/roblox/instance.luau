@@ -31,9 +31,11 @@ type Register<T> = types.RegisterId<T>
 local DEFAULT_TYPE = constant.from_value("Instance")
 
 local function validate(ctx: Context, block: Builder, instance: Instance, value: RValue<Instance>)
-	local is_not_type = condition.not_equals(library.typeof(value :: any), DEFAULT_TYPE)
+	local typeof_value = library.typeof(value)
+	local is_not_type = condition.not_equals(typeof_value, DEFAULT_TYPE)
 	block:if_single(is_not_type, function(block)
-		block:call(library.error("Expected an Instance"))
+		local message = library.string.format("Expected an Instance, got %s instead", typeof_value)
+		block:call(library.error_rvalue(message))
 	end)
 
 	local class_ty = instance.class
@@ -42,11 +44,16 @@ local function validate(ctx: Context, block: Builder, instance: Instance, value:
 	end
 
 	-- LUAU
-	local class = constant.from_value(class_ty.value)
-	local is_not_class = condition.not_equals(library.Instance.is_a(value :: any, class), constant.from_value(true))
+	local expected_class = constant.from_value(class_ty.value)
+	local value_class = library.Instance.is_a(value, expected_class)
+	local is_not_class = condition.equals(value_class, constant.falsity)
 
 	block:if_single(is_not_class, function(block)
-		block:call(library.error(`Expected an Instance of class "{class.value}"`))
+		local message = library.string.format(
+			`Expected an Instance of class "{expected_class.value}", got one of class "%s" instead`,
+			value_class
+		)
+		block:call(library.error_rvalue(message))
 	end)
 end
 

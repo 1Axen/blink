@@ -27,11 +27,13 @@ type Boolean = ty.Boolean
 type Register<T> = types.RegisterId<T>
 
 local function validate(block: Builder, ty: Boolean, value: RValue<boolean>)
-	local type = constant.from_value("boolean")
-	local equals = condition.not_equals(library.typeof(value), type)
+	local expected = constant.from_value("boolean")
+	local typeof_value = library.typeof(value)
+	local is_expected_typeof = condition.not_equals(typeof_value, expected)
 
-	block:if_single(equals, function(block)
-		block:call(library.error(`Expected a boolean`))
+	block:if_single(is_expected_typeof, function(block)
+		local message = library.string.format("Expected a boolean, got %s instead", typeof_value)
+		block:call(library.error_rvalue(message))
 	end)
 end
 

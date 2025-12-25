@@ -798,7 +798,8 @@ local function build_receive_connection(ctx: Context, side: Side, receivables: {
 					local fallback = condition.equals(constant.truth, constant.truth)
 					return fallback,
 						function(block: fn.Builder)
-							block:call(library.error("Unknown event id"))
+							local message = library.string.format("Unknown event id: %d", read_event_id)
+							block:call(library.error_rvalue(message))
 						end
 				end
 
