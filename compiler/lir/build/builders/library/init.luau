@@ -1,17 +1,9 @@
 --!strict
 
-local bit32_lib = require("@self/bit32")
-local buffer_lib = require("@self/buffer")
 local constant = require("@builders/constant")
-local coroutine_lib = require("@self/coroutine")
-local debug_lib = require("@self/debug")
-local math_lib = require("@self/math")
 local projection = require("@builders/projection")
 local roblox_lib = require("@self/roblox")
-local table_lib = require("@self/table")
-local task_lib = require("@self/task")
 local types = require("@lir/types")
-local vector_lib = require("@self/vector")
 
 type Call<T> = types.ProjCall<T>
 type RValue<T> = types.RValue<T>
@@ -48,14 +40,14 @@ return table.freeze({
 	typeof = luau_typeof,
 	tostring = luau_tostring,
 
-	task = task_lib,
-	math = math_lib,
-	bit32 = bit32_lib,
-	debug = debug_lib,
-	table = table_lib,
-	vector = vector_lib,
-	buffer = buffer_lib,
-	coroutine = coroutine_lib,
+	task = require("@self/task"),
+	math = require("@self/math"),
+	bit32 = require("@self/bit32"),
+	debug = require("@self/debug"),
+	table = require("@self/table"),
+	vector = require("@self/vector"),
+	buffer = require("@self/buffer"),
+	coroutine = require("@self/coroutine"),
 
 	CFrame = roblox_lib.CFrame,
 	Color3 = roblox_lib.Color3,
