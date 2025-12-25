@@ -717,7 +717,7 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 					local player = block:store(block:parameter(1))
 					block:call(library.task.spawn(
 						fn.anonymous({}, {}, function(block)
-							block:capture({ callback, player })
+							block:capture({ callback, player, invocation_id, unpack(data_values) })
 
 							local pcall_values =
 								block:store_mult(library.pcall(callback, unpack(data_values)), #rreturn + 1)
