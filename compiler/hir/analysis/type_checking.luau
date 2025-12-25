@@ -11,6 +11,7 @@ type TyKind = ty.TyKind
 
 type Hir = types.Hir
 type Node = ast.Node
+type Hash = any
 
 type Context = {
 	read hir: Hir,
@@ -53,7 +54,7 @@ local function is_optional_union(hir: Hir, tty: Ty): boolean
 	return false
 end
 
-local function hash_ty(hir: Hir, tty: Ty): string
+local function hash_ty(hir: Hir, tty: Ty): Hash
 	tty = inner_ty(hir, tty)
 
 	if tty.kind == "map" then
@@ -84,6 +85,12 @@ local function hash_ty(hir: Hir, tty: Ty): string
 		end
 
 		return `{tty.tag} ({table.concat(variant_keys)})`
+	elseif tty.kind == "string_literal" then
+		return `"{tty.value}"`
+	elseif tty.kind == "number_literal" then
+		return tty.value
+	elseif tty.kind == "boolean_literal" then
+		return tty.value
 	elseif tty.kind == "reference" then
 		panic("tried to hash reference")
 	elseif tty.kind == "type_instantiation" then
@@ -142,7 +149,7 @@ end
 
 local function check_union(ctx: Context, union: ty.Union)
 	local node = ctx.node
-	local encountered_hashes: { [string]: true? } = {}
+	local encountered_hashes: { [Hash]: true? } = {}
 	for index, component in union.components do
 		local hash = hash_ty(ctx.hir, component)
 		if encountered_hashes[hash] then
