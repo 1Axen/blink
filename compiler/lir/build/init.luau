@@ -4,12 +4,14 @@
 
 local binary = require("@builders/binary")
 local builders = require("@builders")
+local cast = require("@builders/cast")
 local condition = require("@builders/condition")
 local constant = require("@builders/constant")
 local context = require("@self/context")
 local control = require("@builders/control")
 local fn = require("@builders/fn")
 local globals = require("@builders/globals")
+local hint = require("@builders/hint")
 local hir = require("@hir")
 local library = require("@builders/library")
 local panic = require("@util/panic")
@@ -76,44 +78,44 @@ local INVOCATIONS_BITSET = globals.invocations_bitset
 local BUFFER_TY = ty.buffer()
 local PLAYER_TY = ty.instance(ty.string_literal("Player"))
 local PLAYERS_TY = ty.array(PLAYER_TY)
-local UNKNOWN_TY = ty.unknown()
 local UNKNOWNS_TY = ty.array(ty.unknown())
 
-local PLAYER_RETURN = fn.rreturn(PLAYER_TY)
-local PLAYER_PARAMETER = fn.parameter(PLAYER_TY, "player")
-local PLAYER_LIST_PARAMETER = fn.parameter(PLAYERS_TY, "players")
+local PLAYER_RETURN = fn.rreturn(hint.ty(PLAYER_TY))
+local PLAYER_PARAMETER = fn.parameter(hint.ty(PLAYER_TY), "player")
+local PLAYER_LIST_PARAMETER = fn.parameter(hint.ty(PLAYERS_TY), "players")
 
 local RECEIVE_PARAMETERS = {
-	fn.parameter(BUFFER_TY, "packet_buffer"),
-	fn.parameter(UNKNOWNS_TY, "packet_unknowns"),
+	fn.parameter(hint.ty(BUFFER_TY), "packet_buffer"),
+	fn.parameter(hint.ty(UNKNOWNS_TY), "packet_unknowns"),
 }
 
 local SERVER_RECEIVE_PARAMETERS = {
 	PLAYER_PARAMETER,
-	fn.parameter(BUFFER_TY, "packet_buffer"),
-	fn.parameter(UNKNOWNS_TY, "packet_unknowns"),
+	fn.parameter(hint.ty(BUFFER_TY), "packet_buffer"),
+	fn.parameter(hint.ty(UNKNOWNS_TY), "packet_unknowns"),
 }
 
-local ON_PARAMETER = fn.parameter(UNKNOWN_TY)
-local DISCONNECT_RETURN = fn.rreturn(UNKNOWN_TY)
+local INDEX_TY = ty.numeral("64", "f")
+local INDEX_RETURN = fn.rreturn(hint.ty(INDEX_TY))
+local DISCONNECT_RETURN = fn.rreturn(hint.funct({}, {}))
 
-local BUFFER_RETURN = fn.rreturn(BUFFER_TY)
-local BUFFER_PARAMETER = fn.parameter(BUFFER_TY, "buf")
+local BUFFER_RETURN = fn.rreturn(hint.ty(BUFFER_TY))
+local BUFFER_PARAMETER = fn.parameter(hint.ty(BUFFER_TY), "buf")
 
 local CURSOR_TY = ty.numeral("32", "u")
 
-local CURSOR_RETURN = fn.rreturn(CURSOR_TY)
-local CURSOR_PARAMETER = fn.parameter(CURSOR_TY, "cursor")
-local LENGTH_PARAMETER = fn.parameter(CURSOR_TY, "length")
+local CURSOR_RETURN = fn.rreturn(hint.ty(CURSOR_TY))
+local CURSOR_PARAMETER = fn.parameter(hint.ty(CURSOR_TY), "cursor")
+local LENGTH_PARAMETER = fn.parameter(hint.ty(CURSOR_TY), "length")
 
 local CURSOR_OPTIONAL_TY = ty.union({ CURSOR_TY, ty.nnil() })
-local CURSOR_OPTIONAL_PARAMETER = fn.parameter(CURSOR_OPTIONAL_TY, "cursor")
+local CURSOR_OPTIONAL_PARAMETER = fn.parameter(hint.ty(CURSOR_OPTIONAL_TY), "cursor")
 
 local function returns(ctx: Context, parameters: { hir.Parameter }): { types.Return }
 	local array = {}
 	for index, parameter in parameters do
 		local ty = hir.ty_from_id(ctx.hir, parameter.ty_id)
-		array[index] = fn.rreturn(ty)
+		array[index] = fn.rreturn(hint.ty(ty))
 	end
 	return array
 end
@@ -122,7 +124,7 @@ local function parameters(ctx: Context, parameters: { hir.Parameter }): { types.
 	local array = {}
 	for index, parameter in parameters do
 		local ty = hir.ty_from_id(ctx.hir, parameter.ty_id)
-		array[index] = fn.parameter(ty, parameter.name)
+		array[index] = fn.parameter(hint.ty(ty), parameter.name)
 	end
 	return array
 end
@@ -146,7 +148,7 @@ local function next_event_id(pool: { number }): number
 end
 
 local function event_queue_structure(args_count: number): types.Struct<any>
-	local columns_array = table.create(args_count, structure.array({}))
+	local columns_array = table.create(args_count, cast.static(structure.array({}), "{any}"))
 	return structure.struct({
 		[constant.from_value("row")] = constant.zero,
 		[constant.from_value("size")] = constant.zero,
@@ -179,15 +181,15 @@ local function build_type(ctx: Context, decl: hir.Type): TypeExport?
 		return nil
 	end
 
-	local type_ty = hir.ty_from_id(ctx.hir, decl.ty_id)
-	local type_fnset = builders.ty.build(ctx, decl.attributes, type_ty, decl.name)
+	local tty = hir.ty_from_id(ctx.hir, decl.ty_id)
+	local type_fnset = builders.ty.build(ctx, decl.attributes, tty, decl.name)
 
 	if decl.attributes.export ~= true then
 		return nil
 	end
 
-	local type_return = fn.rreturn(type_ty)
-	local type_parameter = fn.parameter(type_ty, "value")
+	local type_return = fn.rreturn(hint.ty(tty))
+	local type_parameter = fn.parameter(hint.ty(tty), "value")
 
 	local read = fn.anonymous(
 		{ BUFFER_PARAMETER, CURSOR_OPTIONAL_PARAMETER },
@@ -242,17 +244,74 @@ local function build_type(ctx: Context, decl: hir.Type): TypeExport?
 	}
 end
 
-local function queue_iterator(queue_projection: types.ProjField<any>, args_count: number)
-	return fn.anonymous({}, {}, function(block)
-		local queue = block:store(queue_projection)
-		local row_index = projection.index(queue, constant.from_value("row"))
-		local size_index = projection.index(queue, constant.from_value("size"))
+local function build_event_on(
+	event: hir.Event,
+	event_connections: types.ProjField<any>,
+	data_parameters: { types.Parameter }
+)
+	local event_call = event.call
+	local is_single = (event_call == "SingleSync" or event_call == "SingleAsync")
+
+	return fn.anonymous(
+		{ fn.parameter(hint.funct(data_parameters, {}), "listener") },
+		{ DISCONNECT_RETURN },
+		function(block)
+			local listener = block:parameter(1)
+			if not is_single then
+				listener = block:store(listener)
+			end
+
+			if is_single then
+				block:if_single(condition.not_equals(event_connections, constant.null), function(block)
+					local message = library.debug.traceback(
+						constant.from_value(
+							`[Blink]: Event "{event.name}" already has a listener, the current listener will be discarded.`
+						),
+						constant.from_value(2)
+					)
+
+					block:call(library.warn(message))
+				end)
+
+				block:store(listener, event_connections)
+			else
+				block:call(library.table.insert(event_connections, listener))
+			end
+
+			local disconnect = fn.anonymous({}, {}, function(block)
+				if is_single then
+					block:store(constant.null, event_connections)
+					return
+				end
+
+				block:capture({ listener :: any })
+
+				local index = block:store(library.table.find(event_connections, listener))
+				block:if_single(condition.not_equals(index, constant.null), function()
+					block:store(constant.null, projection.field(event_connections, index))
+				end)
+			end)
+
+			block:rreturn({ disconnect })
+		end
+	)
+end
+
+local function build_event_iter(event_queue: types.ProjField<any>, data_returns: { types.Return })
+	local args_count = #data_returns
+	local iter_returns = table.clone(data_returns)
+	table.insert(iter_returns, 1, INDEX_RETURN)
+
+	return fn.anonymous({}, { fn.rreturn(hint.funct({}, iter_returns)) }, function(block)
+		local queue_local = block:store(event_queue)
+		local row_index = projection.index(queue_local, constant.from_value("row"))
+		local size_index = projection.index(queue_local, constant.from_value("size"))
 
 		local row = block:store(row_index)
 		local size = block:store(size_index)
-		local columns = block:store(projection.index(queue, constant.from_value("columns")))
+		local columns = block:store(projection.index(queue_local, constant.from_value("columns")))
 
-		local inner_iter = fn.anonymous({}, {}, function(block)
+		local inner_iter = fn.anonymous({}, iter_returns, function(block)
 			block:capture({ size, row, columns })
 			block:store(binary.add(row, constant.one), row)
 
@@ -265,7 +324,7 @@ local function queue_iterator(queue_projection: types.ProjField<any>, args_count
 					block:call(library.table.clear(column))
 				end
 
-				block:rreturn({})
+				block:rreturn({ cast.static(constant.null, "any") :: any })
 			end)
 
 			local values = { row } :: { any }
@@ -433,59 +492,21 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 	end
 
 	local call = decl.call
-	local queue_projection = projection.field(QUEUES, constant.from_value(event_id))
 	if call == "Polling" then
+		local event_queue = projection.field(QUEUES, constant.from_value(event_id))
 		if is_from_server then
-			iter_client = queue_iterator(queue_projection, #data_params)
+			iter_client = build_event_iter(event_queue, data_rets)
 		end
 		if is_from_client then
-			iter_server = queue_iterator(queue_projection, #data_params_player)
+			iter_server = build_event_iter(event_queue, data_rets_player)
 		end
 	else
-		local on_fn = fn.anonymous({ ON_PARAMETER }, { DISCONNECT_RETURN }, function(block)
-			local listener = block:store(block:parameter(1))
-			local is_single = (call == "SingleSync" or call == "SingleAsync")
-			local connection_projection = projection.field(CONNECTIONS, constant.from_value(event_id))
-
-			if is_single then
-				block:if_single(condition.not_equals(connection_projection, constant.null), function(block)
-					local message = library.debug.traceback(
-						constant.from_value(
-							"[Blink]: Event already has a listener, the current listener will be discarded."
-						),
-						constant.from_value(2)
-					)
-
-					block:call(library.warn(message))
-				end)
-
-				block:store(listener, connection_projection)
-			else
-				block:call(library.table.insert(connection_projection, listener))
-			end
-
-			local disconnect = fn.anonymous({}, {}, function(block)
-				block:capture({ listener })
-
-				if is_single then
-					block:store(constant.null, connection_projection)
-				else
-					local index = block:store(library.table.find(connection_projection, listener))
-					block:if_single(condition.not_equals(index, constant.null), function()
-						block:store(constant.null, projection.field(connection_projection, index))
-					end)
-				end
-			end)
-
-			block:rreturn({ disconnect })
-		end)
-
+		local event_connections = projection.field(CONNECTIONS, constant.from_value(event_id))
 		if is_from_server then
-			on_client = on_fn
+			on_client = build_event_on(decl, event_connections, data_params)
 		end
-
 		if is_from_client then
-			on_server = on_fn
+			on_server = build_event_on(decl, event_connections, data_params_player)
 		end
 	end
 
@@ -578,31 +599,38 @@ local function build_function(ctx: Context, decl: Function, event_id: number): F
 	local fn_returns = returns(ctx, rreturn)
 	local fn_parameters = parameters(ctx, data)
 
+	local callback_parameters = table.clone(fn_parameters)
+	table.insert(callback_parameters, 1, PLAYER_PARAMETER)
+
+	local on = fn.anonymous(
+		{ fn.parameter(hint.funct(callback_parameters, fn_returns), "callback") },
+		{ DISCONNECT_RETURN },
+		function(block)
+			local listener = block:parameter(1)
+			local callback = projection.field(CONNECTIONS, constant.from_value(event_id))
+
+			block:if_single(condition.not_equals(callback, constant.null), function(block)
+				local message = library.debug.traceback(
+					constant.from_value(
+						`[Blink]: Function "{decl.name}" already has a callback, the current callback will be discarded.`
+					),
+					constant.from_value(2)
+				)
+
+				block:call(library.warn(message))
+			end)
+
+			block:store(listener, callback)
+
+			local disconnect = fn.anonymous({}, {}, function(block)
+				block:store(constant.null, callback)
+			end)
+
+			block:rreturn({ disconnect })
+		end
+	)
+
 	local data_fn_sets = ty_pack_to_fn_sets(ctx, decl, data)
-
-	local on = fn.anonymous({ ON_PARAMETER }, { DISCONNECT_RETURN }, function(block)
-		local listener = block:store(block:parameter(1))
-		local callback = projection.field(CONNECTIONS, constant.from_value(event_id))
-
-		block:if_single(condition.not_equals(callback, constant.null), function(block)
-			local message = library.debug.traceback(
-				constant.from_value("[Blink]: Function already has a listener, the current listener will be discarded."),
-				constant.from_value(2)
-			)
-
-			block:call(library.warn(message))
-		end)
-
-		block:store(listener, callback)
-
-		local disconnect = fn.anonymous({}, {}, function(block)
-			block:capture({ listener })
-			block:store(constant.null, callback)
-		end)
-
-		block:rreturn({ disconnect })
-	end)
-
 	local invoke_server = fn.anonymous(fn_parameters, fn_returns, function(block)
 		-- store upvalue locally to speed up loads
 		local bitset = block:store(INVOCATIONS_BITSET)
@@ -884,8 +912,11 @@ local function from_hir(hhir: Hir): Lir
 				n_args += 1
 			end
 
+			if call == "ManySync" or call == "ManyAsync" then
+				connections[key] = cast.static(structure.array({}), "any")
+			end
+
 			queues[key] = event_queue_structure(n_args)
-			connections[key] = (call == "ManySync" or call == "ManyAsync") and structure.array({}) or nil
 			exports_map[decl_id] = build_event(ctx, decl, event_id)
 		end
 

@@ -15,6 +15,7 @@ local loop = require("@builders/loop")
 type Ty = ty.Ty
 
 type Fn = types.Fn
+type Hint = types.Hint
 type FnId = types.FnId
 
 type Return = types.Return
@@ -39,17 +40,17 @@ type GenericLoopConstructor = (block: Builder, index: Register<any>, value: Regi
 
 local MAX_REGISTERS = 200
 
-local function fn_return(ty: Ty): types.Return
+local function fn_return(hint: Hint): types.Return
 	return {
 		type = "return",
-		ty = ty,
+		hint = hint,
 	}
 end
 
-local function parameter(ty: Ty, name: string?): types.Parameter
+local function parameter(hint: Hint, name: string?): types.Parameter
 	return {
 		type = "parameter",
-		ty = ty,
+		hint = hint,
 		name = name,
 	}
 end

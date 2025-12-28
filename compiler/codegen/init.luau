@@ -526,6 +526,52 @@ local function gen_block(ctx: Context, block: lir.BasicBlock)
 	gen_terminator(ctx, block.terminator)
 end
 
+local function gen_hint(ctx: Context, annotation: lir.Hint)
+	local builder = ctx.builder
+	if annotation.kind == "ty" then
+		append_luau_type(ctx, annotation.ty)
+	elseif annotation.kind == "static" then
+		builder:append(annotation.static)
+	elseif annotation.kind == "function" then
+		builder:append("(")
+
+		for index, parameter in annotation.parameters do
+			if index > 1 then
+				builder:append(", ")
+			end
+
+			if parameter.name then
+				builder:append(parameter.name)
+				builder:append(": ")
+			end
+
+			gen_hint(ctx, parameter.hint)
+		end
+
+		builder:append(") -> ")
+
+		local returns = annotation.returns
+		local wrap_in_parentheses = #returns ~= 1
+		if wrap_in_parentheses then
+			builder:append("(")
+		end
+
+		for index, rreturn in returns do
+			if index > 1 then
+				builder:append(", ")
+			end
+
+			gen_hint(ctx, rreturn.hint)
+		end
+
+		if wrap_in_parentheses then
+			builder:append(")")
+		end
+	else
+		strong_exhaustive_match(annotation.kind)
+	end
+end
+
 local function gen_fn_body(ctx: Context, fn_body: lir.FnBody)
 	local builder = ctx.builder
 
@@ -546,9 +592,8 @@ local function gen_fn_body(ctx: Context, fn_body: lir.FnBody)
 		end
 
 		builder:append(parameter.name or `p{index}`)
-
 		builder:append(": ")
-		append_luau_type(ctx, parameter.ty)
+		gen_hint(ctx, parameter.hint)
 	end
 
 	builder:append("): (")
@@ -558,7 +603,7 @@ local function gen_fn_body(ctx: Context, fn_body: lir.FnBody)
 			builder:append(", ")
 		end
 
-		append_luau_type(ctx, rreturn.ty)
+		gen_hint(ctx, rreturn.hint)
 	end
 
 	builder:append(") \n")

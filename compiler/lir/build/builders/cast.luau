@@ -5,7 +5,7 @@ local types = require("@lir/types")
 
 type RValue<T> = types.RValue<T>
 
-local function cast_ty<T>(value: RValue<T>, cast_to: ty.Ty): types.TyCast<T>
+local function cast_ty<T>(value: RValue<T>, cast_to: ty.Ty): types.CastTy<T>
 	return {
 		__phantom_type = nil :: any,
 
@@ -16,7 +16,7 @@ local function cast_ty<T>(value: RValue<T>, cast_to: ty.Ty): types.TyCast<T>
 	}
 end
 
-local function cast_static<T>(value: RValue<T>, cast_to: string): types.StaticCast<T>
+local function cast_static<T>(value: RValue<T>, cast_to: string): types.CastStatic<T>
 	return {
 		__phantom_type = nil,
 		type = "cast",

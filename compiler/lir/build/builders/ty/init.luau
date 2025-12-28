@@ -9,6 +9,7 @@ local control = require("@builders/control")
 local conversion = require("@util/conversion")
 local fn = require("@builders/fn")
 local globals = require("@builders/globals")
+local hint = require("@builders/hint")
 local hir = require("@hir")
 local length = require("@builders/ty/luau/length")
 local library = require("@builders/library")
@@ -100,7 +101,7 @@ local function build_ty(ctx: Context, attributes: attributes.Attributes, tty: Ty
 	local read_name = projection.index(globals.types_map, constant.from_value(`{prefixes.ty}read_{name}`))
 	local write_name = projection.index(globals.types_map, constant.from_value(`{prefixes.ty}write_{name}`))
 
-	local read_fn = fn.create(read_name, {}, { fn.rreturn(tty) }, function(block)
+	local read_fn = fn.create(read_name, {}, { fn.rreturn(hint.ty(tty)) }, function(block)
 		local props: ReadProps = {
 			ctx = ctx,
 			attributes = attributes,
@@ -110,7 +111,7 @@ local function build_ty(ctx: Context, attributes: attributes.Attributes, tty: Ty
 		block:rreturn({ value_register })
 	end)
 
-	local write_fn = fn.create(write_name, { fn.parameter(tty) }, {}, function(block)
+	local write_fn = fn.create(write_name, { fn.parameter(hint.ty(tty)) }, {}, function(block)
 		local props: WriteProps = {
 			ctx = ctx,
 			validate = true,

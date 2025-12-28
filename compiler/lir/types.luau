@@ -265,7 +265,7 @@ export type Structure<T> =
     | Array<T>
     | Struct<T>
 
-export type TyCast<T> = {
+export type CastTy<T> = {
 	write __phantom_type: T,
 
 	type: "cast",
@@ -274,7 +274,7 @@ export type TyCast<T> = {
 	cast_to: Ty,
 }
 
-export type StaticCast<T> = {
+export type CastStatic<T> = {
 	write __phantom_type: T,
 
 	type: "cast",
@@ -285,8 +285,8 @@ export type StaticCast<T> = {
 
 --stylua: ignore
 export type Cast<T> =
-	| TyCast<T>
-	| StaticCast<T>
+	| CastTy<T>
+	| CastStatic<T>
 
 --- left side of an assign statement
 --stylua: ignore
@@ -470,14 +470,39 @@ export type BasicBlock = {
 	terminator: Terminator,
 }
 
+export type HintTy = {
+	type: "hint",
+	kind: "ty",
+	ty: Ty,
+}
+
+export type HintStatic = {
+	type: "hint",
+	kind: "static",
+	static: string,
+}
+
+export type HintFunction = {
+	type: "hint",
+	kind: "function",
+	parameters: { Parameter },
+	returns: { Return },
+}
+
+--stylua: ignore
+export type Hint = 
+	| HintTy
+	| HintStatic
+	| HintFunction
+
 export type Return = {
 	type: "return",
-	ty: Ty,
+	hint: Hint,
 }
 
 export type Parameter = {
 	type: "parameter",
-	ty: Ty,
+	hint: Hint,
 	name: string?,
 }
 
