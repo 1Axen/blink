@@ -1,14 +1,10 @@
-local brick_color_mock = require("@test/mock/brick_color_mock")
-local cframe_mock = require("@test/mock/cframe_mock")
-local color3_mock = require("@test/mock/color3_mock")
 local compiler = require("@compiler")
 local datatypes = require("./datatypes")
-local date_time_mock = require("@test/mock/date_time_mock")
+local environment_mock = require("@test/mock/environment_mock")
 local fs = require("@util/fs")
 local luau = require("@lute/luau")
 local path = require("@util/path")
 local string_builder = require("@util/string_builder")
-local typeof_mock = require("@test/mock/typeof_mock")
 
 type Tiniest = typeof(require("@vendor/tiniest/tiniest_for_lute").configure({}))
 
@@ -21,23 +17,6 @@ type TypeAPI = {
 local SAMPLES = 255
 
 local TEMP_PATH = path.from_string("./temp")
-
-local ENV = table.freeze({
-	type = type,
-	print = print,
-	error = error,
-	assert = assert,
-	math = math,
-	table = table,
-	buffer = buffer,
-	vector = vector,
-
-	typeof = typeof_mock,
-	Color3 = color3_mock,
-	CFrame = cframe_mock,
-	DateTime = date_time_mock,
-	BrickColor = brick_color_mock,
-})
 
 local PRIMITIVES = datatypes.primitives
 local UNHASHABLE_DATATYPES: { [Datatype]: true? } = {
@@ -57,7 +36,7 @@ local function compile_datatypes(file: string, types: { [string]: Datatype }): {
 
 		local bytecode = luau.compile(read_result.value)
 		local chunkname = path.to_string(luau_file_path)
-		return luau.load(bytecode, chunkname, ENV :: any)()
+		return luau.load(bytecode, chunkname, environment_mock :: any)()
 	end
 
 	local builder = string_builder.create({})
@@ -83,7 +62,7 @@ local function compile_datatypes(file: string, types: { [string]: Datatype }): {
 
 	local bytecode = luau.compile(luau_contents)
 	local chunkname = path.to_string(luau_file_path)
-	return luau.load(bytecode, chunkname, ENV :: any)()
+	return luau.load(bytecode, chunkname, environment_mock :: any)()
 end
 
 return function(tiniest: Tiniest)

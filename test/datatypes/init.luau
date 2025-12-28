@@ -1,9 +1,11 @@
 local literal = require("@self/literal")
 local numeral = require("@self/numeral")
+local string_builder = require("@util/string_builder")
 local tableext = require("@std/tableext")
 local types = require("@self/types")
 
 export type Datatype = types.Datatype
+type StringBuilder = string_builder.StringBuilder
 
 local single_primitives = {
 	string = require("@self/string"),
@@ -20,7 +22,26 @@ local single_primitives = {
 type Primitives = typeof(single_primitives) & typeof(literal) & typeof(numeral)
 local primitives = tableext.combine(single_primitives, numeral :: any, literal :: any)
 
+local primitives_array: { [number]: Datatype } = {}
+for _, datatype in primitives do
+	table.insert(primitives_array, datatype)
+end
+
+local unknown: Datatype = table.freeze({
+	append = function(builder: StringBuilder)
+		builder:append("unknown")
+	end,
+	generate = function(seed: number)
+		local index = math.max(1, seed % (#primitives + 1))
+		return primitives_array[index].generate(seed)
+	end,
+})
+
 return table.freeze({
+	roblox = table.freeze({
+		unknown = unknown,
+		instance = require("@self/instance"),
+	}),
 	structures = table.freeze({
 		map = require("@self/map"),
 		array = require("@self/array"),

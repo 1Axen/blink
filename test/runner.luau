@@ -42,6 +42,8 @@ local tests = tiniest.collect_tests(function()
 	describe_from_file("fs")
 	describe_from_file("id")
 	describe_from_file("datatypes")
+	describe_from_file("events")
+	describe_from_file("functions")
 end)
 
 local result = tiniest.run_tests(tests, {})
