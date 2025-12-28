@@ -110,7 +110,7 @@ function tiniest.configure(
 			current_context = nil
 			if not ok then
 				if typeof(err) == "table" then
-					error(err.message, 0)
+					print(err.message)
 				end
 
 				error(err, 0)
