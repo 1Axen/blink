@@ -36,9 +36,9 @@ local function append_server(builder: StringBuilder, reliable_name: string, unre
 
 	builder:append_lines({
 		"type Save = {",
-		"\tbuffers: { buffer },",
-		"\tlengths: { number },",
-		"\tunknown: { any },",
+		"\tread buffers: { buffer },",
+		"\tread lengths: { number },",
+		"\tread unknown: { any },",
 		"}",
 	})
 
