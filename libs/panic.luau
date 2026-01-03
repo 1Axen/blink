@@ -24,7 +24,7 @@ local function collect_info(): string
 	return `blink {build_version} ({build_date}) running on {platform}`
 end
 
-return function(final_words: string): never
+local function panic(final_words: string): never
 	local info = collect_info()
 	local trace = debug.traceback(nil, 2)
 	-- SOLVER BUG
@@ -40,3 +40,5 @@ return function(final_words: string): never
 
 	return error(panic_builder:finalize(), 2)
 end
+
+return panic
