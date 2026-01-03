@@ -14,6 +14,7 @@ local panic = require("@util/panic")
 local span = require("@util/span")
 local symbols = require("@compiler/symbols")
 
+local assert_panic = require("@util/assert_panic")
 local report = require("@self/report")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 
@@ -980,8 +981,8 @@ end
 
 --- Returns an AST constructed from `tokens`, errors if invalid syntax is encountered
 local function parse(file: file.File, tokens: { lexer.Token }): ast.Ast
-	assert(#tokens > 0, "Tokens are empty")
-	assert(tokens[#tokens] and tokens[#tokens].kind == "eof", "Final token should be eof")
+	assert_panic(#tokens > 0, "Tokens are empty")
+	assert_panic(tokens[#tokens] and tokens[#tokens].kind == "eof", "Final token should be eof")
 
 	local ctx: Context = {
 		tokens = tokens,

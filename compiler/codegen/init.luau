@@ -11,6 +11,7 @@ local context = require("@self/context")
 local id = require("@compiler/id")
 
 local append_luau_type = require("@self/append_luau_type")
+local assert_panic = require("@util/assert_panic")
 local cased_method = require("@self/cased_method")
 local constant = require("@lir/build/builders/constant")
 local globals = require("@lir/build/builders/globals")
@@ -389,7 +390,7 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 			builder:append(" = ")
 		end
 
-		local name = assert(fn.name, "cannot call an anonymous function")
+		local name = assert_panic(fn.name, "cannot call an anonymous function")
 		if name.type == "projection" then
 			gen_projection(ctx, name :: any)
 		elseif name.type == "constant" then
