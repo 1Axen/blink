@@ -3,7 +3,7 @@
 --> A fancy diagnostics & error reporting library based on zesterer/ariadne
 
 local file = require("@util/file")
-local option = require("@util/option")
+local panic = require("./panic")
 local span = require("@util/span")
 local string_builder = require("@util/string_builder")
 local style = require("@util/style")
@@ -111,8 +111,12 @@ local function create_report_builder(kind: ReportKind): ReportBuilder
 	function report_builder.with_label(label: LabelBuilder)
 		local built_label = label.finish()
 		if file_name == nil then
-			local label_file = option.unwrap(file.from_id(built_label.span.z))
-			file_name = label_file.name
+			local source = file.from_id(built_label.span.z)
+			if source == nil then
+				panic(`The span of label "{built_label.message}" doesn't belong to any file`)
+				error("unreachable")
+			end
+			file_name = source.name
 		end
 
 		table.insert(labels, built_label)

@@ -1,5 +1,4 @@
 local md5 = require("@vendor/md5")
-local option = require("@util/option")
 
 local EMPTY_BUFFER = buffer.create(0)
 
@@ -31,13 +30,8 @@ local function create(name: string, buffer: buffer?): File
 end
 
 --- returns the `file` corresponding to `id`
-local function from_id(id: number): option.Option<File>
-	local file = files[id]
-	if file == nil then
-		return option.none()
-	end
-
-	return option.some(file)
+local function from_id(id: number): File?
+	return files[id]
 end
 
 --- creates and returns a new file from the source contents
