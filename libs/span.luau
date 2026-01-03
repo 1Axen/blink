@@ -16,8 +16,10 @@ local function create(start: number, finish: number, file_id: number): vector
 end
 
 --- creates a span from a to b
-local function merge(a: vector, b: vector): vector
-	assert(a.z == b.z, "Spans must belong to the same file")
+local function merge(a: vector, b: vector): Span
+	if a.z ~= b.z then
+		return panic("Spans don't belong to the same file")
+	end
 	return create(a.x, b.y, a.z)
 end
 
@@ -39,6 +41,9 @@ end
 
 --- checks if two spans are intersecting, assumes `a.start` <= `b.start`
 local function intersects(a: vector, b: vector): boolean
+	if a.z ~= b.z then
+		return panic("Spans don't belong to the same file")
+	end
 	return (a.y >= b.x)
 end
 
