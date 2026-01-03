@@ -47,7 +47,6 @@ export type Function = {
 	read scope_id: ScopeId,
 	read attributes: attributes.Attributes,
 
-	read yield: "Coroutine" | "Promise" | "Future",
 	data: { Parameter }?,
 	ret: { Parameter }?,
 }

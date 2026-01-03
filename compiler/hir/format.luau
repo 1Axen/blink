@@ -107,7 +107,6 @@ local function fmt_function(decl: types.Function, fmt_builder: StringBuilder)
 	string_builder.indent(fmt_builder)
 
 	string_builder.append_line(fmt_builder, `{FIELD_STYLE("name:")} {decl.name}`)
-	string_builder.append_line(fmt_builder, `{FIELD_STYLE("yield:")} {IDENT_STYLE(decl.yield)}`)
 
 	if decl.data then
 		string_builder.append_indent(fmt_builder)

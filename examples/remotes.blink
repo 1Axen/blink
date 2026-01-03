@@ -62,7 +62,6 @@ event reliable_both = {
 }
 
 function request = {
-	yield: Coroutine,
 	data: (foo: foo, bar: bar),
 	return: (u8, string)
 }

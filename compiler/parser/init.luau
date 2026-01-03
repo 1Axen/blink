@@ -802,7 +802,6 @@ local function stat_function(ctx: Context): ast.StatFunction
 	local open = expect(ctx, "{")
 
 	local function_structure = structure(ctx, {
-		yield = { expr = identifier, optional = false },
 		data = { expr = expr_pack_or_single, optional = true },
 		["return"] = { expr = expr_pack_or_single, optional = true },
 	}, open)
@@ -816,7 +815,6 @@ local function stat_function(ctx: Context): ast.StatFunction
 		attributes = attributes,
 
 		name = name,
-		yield = function_structure.yield,
 		data = function_structure.data,
 		ret = function_structure["return"],
 	}

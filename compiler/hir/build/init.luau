@@ -512,18 +512,12 @@ local function stat_event(ctx: Context, stat: ast.StatEvent): types.Event
 end
 
 local function stat_function(ctx: Context, stat: ast.StatFunction): types.Function
-	local name = stat.name.value
-	local yield =
-		assert_identifier_one_of(ctx, stat.yield, { "Coroutine", "Promise", "Future" }).value :: index<types.Function, "yield">
-
 	return {
 		id = stat.id :: DeclId,
 		kind = "function",
 		scope_id = ctx.scope_id,
 		attributes = attributes.from_nodes(stat.attributes),
-
-		name = name,
-		yield = yield,
+		name = stat.name.value,
 	}
 end
 

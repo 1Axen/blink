@@ -3,7 +3,6 @@ local data_model_mock = require("@test/mock/data_model_mock")
 local datatypes = require("./datatypes")
 local environment_mock = require("@test/mock/environment_mock")
 local fs = require("@util/fs")
-local hir = require("@compiler/hir")
 local luau = require("@lute/luau")
 local path = require("@util/path")
 local string_builder = require("@util/string_builder")
@@ -18,11 +17,9 @@ type DataModelMock = data_model_mock.DataModelMock
 
 type Targets = typeof(compiler.compile_contents(nil :: any, nil :: any))
 
-type Yield = index<hir.Function, "yield">
 type Data = { Datatype }
 
 type Function = {
-	read yield: Yield,
 	read data: Data,
 	read ret: Data,
 }
@@ -45,15 +42,8 @@ type ServerAPI = {
 local FILE = "functions"
 local TEMP_PATH = path.from_string("./temp")
 
-local YIELD_LIST: { Yield } = {
-	"Coroutine",
-	-- "Promise",
-	-- "Future",
-}
-
-local function create_function(yield: Yield, data: Data, ret: Data): Function
+local function create_function(data: Data, ret: Data): Function
 	return table.freeze({
-		yield = yield,
 		data = data,
 		ret = ret,
 	})
@@ -66,7 +56,6 @@ local function compile_functions(events: Functions): Targets
 	for name, event in events do
 		builder:append_line(`function {name} = \{`)
 		builder:indent()
-		builder:append_line(`yield: {event.yield},`)
 
 		builder:append_indent()
 		builder:append("data: (")
@@ -144,15 +133,11 @@ return function(tiniest: Tiniest)
 	local expect = tiniest.expect
 
 	local functions: Functions = {}
-	for _, yield in YIELD_LIST do
-		local name = `{yield}`
-		functions[`{name}Single`] = create_function(yield, { datatypes.primitives.u8 }, { datatypes.primitives.string })
-		functions[`{name}Multiple`] = create_function(
-			yield,
-			{ datatypes.primitives.u8, datatypes.primitives.u16 },
-			{ datatypes.primitives.string, datatypes.primitives.boolean }
-		)
-	end
+	functions.Single = create_function({ datatypes.primitives.u8 }, { datatypes.primitives.string })
+	functions.Multiple = create_function(
+		{ datatypes.primitives.u8, datatypes.primitives.u16 },
+		{ datatypes.primitives.string, datatypes.primitives.boolean }
+	)
 
 	local targets = compile_functions(functions)
 	local server, server_functions = load_server(targets)

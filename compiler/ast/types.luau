@@ -253,7 +253,6 @@ export type StatFunction = {
 	read kind: "function",
 	read attributes: { Attribute },
 	read name: Identifier,
-	read yield: Identifier,
 	read data: ExprPack?,
 	read ret: ExprPack?,
 }
