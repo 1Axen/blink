@@ -74,12 +74,14 @@ local Asserts = {
 	end,
 
 	Instance = function(Variable: string, Class: string): AssertPrefab
+		local typeAssertion =
+			`if typeof({Variable}) ~= "Instance" then error(\`Expected an Instance, got \{typeof({Variable})} instead.\`) end`
 		return {
 			Lower = `error("Something has gone wrong")`,
 			Upper = `error("Something has gone wrong")`,
 			Exact = if Class == "Instance"
-				then `if typeof({Variable}) ~= "Instance" then error(\`Expected an Instance, got \{typeof({Variable})} instead.\`) end`
-				else `if typeof({Variable}) ~= "Instance" then error(\`Expected an Instance, got \{typeof({Variable})} instead.\`) end\nif not {Variable}:IsA("{Class}") then error(\`Expected an Instance of type "{Class}", got "\{{Variable}.ClassName}" instead.\`) end`,
+				then typeAssertion
+				else `{typeAssertion}\nif not {Variable}:IsA("{Class}") then error(\`Expected an Instance of type "{Class}", got "\{{Variable}.ClassName}" instead.\`) end`,
 		}
 	end,
 }
