@@ -2,11 +2,17 @@ local md5 = require("@vendor/md5")
 
 local EMPTY_BUFFER = buffer.create(0)
 
+--- * `.x` start byte offset
+--- * `.y` finish byte offset
+--- * `.z` line number
+export type Line = vector
+export type Lines = { Line }
+
 export type File = {
 	read id: number,
 	read name: string,
 	read buffer: buffer,
-	lines: { string }?,
+	lines: Lines?,
 }
 
 local next_id = 0
@@ -57,9 +63,35 @@ local function length(self: File): number
 end
 
 --- returns the contents of the file as an array of `\n` terminated lines.
-local function as_lines(self: File): { string }
-	-- TODO: Implement
-	return {}
+local function as_lines(self: File): Lines
+	if self.lines then
+		return self.lines
+	end
+
+	local lines = table.create(64) :: Lines
+	local contents = self.buffer
+	local file_length = length(self)
+
+	local line_index = 0
+	local line_start = 0
+	local was_newline = false
+
+	for offset = 0, file_length - 1 do
+		if was_newline then
+			line_index += 1
+			lines[line_index] = vector.create(line_start, offset - 1, line_index)
+			line_start = offset
+		end
+
+		local byte = buffer.readu8(contents, offset)
+		was_newline = byte == string.byte("\n")
+	end
+
+	-- add remainder as a line
+	table.insert(lines, vector.create(line_start, file_length, line_index + 1))
+
+	self.lines = lines
+	return lines
 end
 
 --- returns the contents of the file
