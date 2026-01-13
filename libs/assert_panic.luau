@@ -1,11 +1,10 @@
 local panic = require("@util/panic")
-type Falsy = false?
 
-type function Intersect(a, b)
-	return types.intersectionof(a, b)
+type function Truthy(a)
+	return types.intersectionof(a, types.negationof(types.optional(types.singleton(false))))
 end
 
-local function assert_panic<T>(value: T, final_words: string): Intersect<T, Falsy>
+local function assert_panic<T>(value: T, final_words: string): Truthy<T>
 	if value == false or value == nil then
 		return panic(final_words)
 	end
