@@ -294,11 +294,15 @@ end
 
 local function expr_string(ctx: Context): ast.ExprString
 	local str = expect(ctx, "string")
+	local value = span.value(str.span)
+	-- strip quotes
+	value = string.sub(value, 2, #value - 1)
+
 	return {
 		id = next_node_id(ctx),
 		span = str.span,
 		kind = "string",
-		value = span.value(str.span),
+		value = value,
 	}
 end
 

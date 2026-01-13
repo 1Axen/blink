@@ -240,7 +240,7 @@ local function tokenize(input: file.File): { Token }
 			local finish = last_position()
 
 			-- we don't care about the quotation marks
-			return create_token("string", span.create(start + 1, finish - 1, id))
+			return create_token("string", span.create(start, finish, id))
 		end
 
 		advance()
