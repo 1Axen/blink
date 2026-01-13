@@ -8,7 +8,6 @@ local ast = require("@ast")
 local id = require("@compiler/id")
 local lexer = require("@compiler/lexer")
 
-local diagnostics = require("@util/diagnostics")
 local file = require("@util/file")
 local panic = require("@util/panic")
 local span = require("@util/span")
@@ -1012,12 +1011,6 @@ local function parse(file: file.File, tokens: { lexer.Token }): ast.Ast
 
 	return ast
 end
-
---TODO: Remove
-diagnostics.set_error_fn(function(text: string)
-	print(`{text}\n`)
-	return error("something went wrong")
-end)
 
 return table.freeze({
 	parse = parse,

@@ -2,7 +2,7 @@ local fs = require("@lute/fs")
 local process = require("@lute/process")
 local tiniest = require("@vendor/tiniest/tiniest_for_lute").configure({
 	snapshot_path = "./test/__snapshots__",
-	save_snapshots = true,
+	load_snapshots = true,
 })
 
 local function recursive_rmdir(path: string)
@@ -44,6 +44,7 @@ local tests = tiniest.collect_tests(function()
 	describe_from_file("datatypes")
 	describe_from_file("events")
 	describe_from_file("functions")
+	describe_from_file("diagnostics")
 end)
 
 local result = tiniest.run_tests(tests, {})
