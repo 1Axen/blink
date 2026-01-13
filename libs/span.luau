@@ -6,8 +6,8 @@ local file = require("@util/file")
 local panic = require("./panic")
 
 --- A span stores the start and finish offset of a token or node
---- * x: start offset
---- * y: finish offset
+--- * x: start byte offset
+--- * y: finish byte offset
 --- * z: file id
 export type Span = vector
 
