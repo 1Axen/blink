@@ -8,7 +8,7 @@ local tiniest_pretty = require("./tiniest_pretty")
 local tiniest_github_actions = require("./tiniest_github_actions")
 local tiniest = require("./tiniest")
 
-local fs = require("@lute/fs")
+local fs = require("@std/fs")
 local luau = require("@lute/luau")
 local process = require("@lute/process")
 
