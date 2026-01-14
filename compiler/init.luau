@@ -17,6 +17,7 @@ local panic = require("@util/panic")
 local path = require("@util/path")
 local result = require("@util/result")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
+local style = require("@util/style")
 local symbols = require("@compiler/symbols")
 local typeforge = require("@util/typeforge")
 
@@ -73,48 +74,42 @@ type Result<T, E> = result.Result<T, E>
 export type CompilationResult = Result<Output, CompilationError>
 
 local function report_unknown_import(err: import_resolver.UnknownImport, expr: ast.ExprString): never
-	return diagnostics.report
-		.create("Error")
-		.with_code(codes.analysis.InvalidImport)
-		.with_message(`Unknown import: "{path.to_string(err.path)}"`)
-		.with_label(
-			diagnostics.label
-				.create(expr.span)
-				.with_color(diagnostics.style.color.red)
-				.with_message("Unable to locate the imported file, make sure the path is correct.")
+	return diagnostics
+		.error(codes.analysis.InvalidImport)
+		:with_message(`Unknown import: "{path.to_string(err.path)}"`)
+		:with_label(
+			diagnostics
+				.label(expr.span)
+				:with_style(style.color.red)
+				:with_message("Unable to locate the imported file, make sure the path is correct.")
 		)
-		.finish()
-		.error()
+		:error()
 end
 
 local function report_unknown_alias(err: import_resolver.UnknownAlias, expr: ast.ExprString): never
-	return diagnostics.report
-		.create("Error")
-		.with_code(codes.analysis.InvalidImport)
-		.with_message(`Unknown alias: "@{err.alias}"`)
-		.with_label(
-			diagnostics.label
-				.create(expr.span)
-				.with_color(diagnostics.style.color.red)
-				.with_message("The alias wasn't found in any luaurc files, make sure it's correct.")
+	return diagnostics
+		.error(codes.analysis.InvalidImport)
+		:with_message(`Unknown alias: "@{err.alias}"`)
+		:with_label(
+			diagnostics
+				.label(expr.span)
+				:with_style(style.color.red)
+				:with_message("The alias wasn't found in any luaurc files, make sure it's correct.")
 		)
-		.finish()
-		.error()
+		:error()
 end
 
 local function report_import_io_error(err: fs.IOError, expr: ast.ExprString): never
-	return diagnostics.report
-		.create("Error")
-		.with_code(codes.analysis.InvalidImport)
-		.with_message(`Encountered an IO error while importing "{expr.value}": {err.message}.`)
-		.with_label(
-			diagnostics.label
-				.create(expr.span)
-				.with_color(diagnostics.style.color.red)
-				.with_message("Make sure blink has permission to read the import's file contents.")
+	return diagnostics
+		.error(codes.analysis.InvalidImport)
+		:with_message(`Encountered an IO error while importing "{expr.value}": {err.message}.`)
+		:with_label(
+			diagnostics
+				.label(expr.span)
+				:with_style(style.color.red)
+				:with_message("Make sure blink has permission to read the import's file contents.")
 		)
-		.finish()
-		.error()
+		:error()
 end
 
 local function file_to_ast(file: File): Ast
