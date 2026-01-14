@@ -46,7 +46,7 @@ local function build_executable()
 	assert(archive_result.ok, archive_result.stderr)
 
 	fs.remove(exe_path)
-	log(`Built executable`)
+	log(`Built executable to {RELEASE_DIR}/blink.tar.*`)
 end
 
 do
