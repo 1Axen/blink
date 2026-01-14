@@ -35,8 +35,8 @@ local sin = library.math.sin
 local const = constant.from_value
 
 local HALF = const(0.5)
-local VECTOR = ty.vector({})
-local DEFAULT_FORMAT = ty.numeral("32", "f")
+local VECTOR = ty.vector(nil, {})
+local DEFAULT_FORMAT = ty.numeral(nil, "32", "f")
 
 local function square(value: RValue<number>)
 	return mul(value, value)
@@ -44,7 +44,7 @@ end
 
 local function to_tys(ctx: Context, cframe_ty: ty.CFrame): (ty.Vector, ty.Vector)
 	local pos_ty = if cframe_ty.position
-		then ty.vector({
+		then ty.vector(nil, {
 			x = cframe_ty.position,
 			y = cframe_ty.position,
 			z = cframe_ty.position,
@@ -52,7 +52,7 @@ local function to_tys(ctx: Context, cframe_ty: ty.CFrame): (ty.Vector, ty.Vector
 		else VECTOR
 
 	local rot_ty: ty.Vector = if cframe_ty.rotation
-		then ty.vector({
+		then ty.vector(nil, {
 			x = cframe_ty.rotation,
 			y = cframe_ty.rotation,
 			z = cframe_ty.rotation,

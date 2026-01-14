@@ -31,7 +31,7 @@ type Register<T> = types.RegisterId<T>
 
 type Axis = ty.Numeral | ty.NumberLiteral
 
-local DEFAULT_AXIS = ty.numeral("32", "f")
+local DEFAULT_AXIS = ty.numeral(nil, "32", "f")
 
 local function to_axes(ctx: Context, ty: ty.Vector): (Axis, Axis, Axis)
 	return ty.x or DEFAULT_AXIS, ty.y or DEFAULT_AXIS, ty.z or DEFAULT_AXIS

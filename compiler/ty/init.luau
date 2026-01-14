@@ -1,11 +1,13 @@
 --!strict
 
+local ast = require("@ast")
 local format = require("@self/format")
 local panic = require("@util/panic")
 local range = require("@util/range")
 local types = require("@self/types")
 
 type Range = range.Range
+type Expression = ast.Expression
 
 export type NumSize = types.NumSize
 export type NumFormat = types.NumFormat
@@ -41,18 +43,20 @@ export type TypeFunction = types.TypeFunction
 export type TypeInstantiation = types.TypeInstantiation
 export type DiscriminatedUnion = types.DiscriminatedUnion
 
-local function create_numeral(size: NumSize, format: NumFormat, bounds: Range?): Numeral
+local function create_numeral(node: Expression?, size: NumSize, format: NumFormat, bounds: Range?): Numeral
 	return {
 		kind = "numeral",
+		node = node,
 		size = size,
 		format = format,
 	}
 end
 
 --- `axes` is an array of 0-3 TyIds (Numeral or NumberLiteral) corresponding to: x, y, z; in that order
-local function create_vector(axes: { Axis? }, magnitude: Range?): Vector
+local function create_vector(node: Expression?, axes: { Axis? }, magnitude: Range?): Vector
 	return {
 		kind = "vector",
+		node = node,
 		x = axes[1],
 		y = axes[2],
 		z = axes[3],
@@ -60,205 +64,237 @@ local function create_vector(axes: { Axis? }, magnitude: Range?): Vector
 	}
 end
 
-local function create_buffer(length: Range?): Buffer
+local function create_buffer(node: Expression?, length: Range?): Buffer
 	return {
 		kind = "buffer",
+		node = node,
 		length = length,
 	}
 end
 
-local function create_string(length: Range?): String
+local function create_string(node: Expression?, length: Range?): String
 	return {
 		kind = "string",
+		node = node,
 		length = length,
 	}
 end
 
-local function create_boolean(): Boolean
+local function create_boolean(node: Expression?): Boolean
 	return {
 		kind = "boolean",
+		node = node,
 	}
 end
 
-local function create_nil(): Nil
+local function create_nil(node: Expression?): Nil
 	return {
 		kind = "nil",
+		node = node,
 	}
 end
 
-local function create_string_literal(value: string): StringLiteral
+local function create_string_literal(node: Expression?, value: string): StringLiteral
 	return {
 		kind = "string_literal",
+		node = node,
 		value = value,
 	}
 end
 
-local function create_number_literal(value: number): NumberLiteral
+local function create_number_literal(node: Expression?, value: number): NumberLiteral
 	return {
 		kind = "number_literal",
+		node = node,
 		value = value,
 	}
 end
 
-local function create_boolean_literal(value: boolean): BooleanLiteral
+local function create_boolean_literal(node: Expression?, value: boolean): BooleanLiteral
 	return {
 		kind = "boolean_literal",
+		node = node,
 		value = value,
 	}
 end
 
-local function create_literal(value: index<Literal, "value">): Literal
+local function create_literal(node: Expression?, value: index<Literal, "value">): Literal
 	if type(value) == "string" then
-		return create_string_literal(value)
+		return create_string_literal(node, value)
 	elseif type(value) == "number" then
-		return create_number_literal(value)
+		return create_number_literal(node, value)
 	elseif type(value) == "boolean" then
-		return create_boolean_literal(value)
+		return create_boolean_literal(node, value)
 	end
 
 	return panic(`Unable to create literal from value of type "{type(value)}"`)
 end
 
-local function create_roblox_enum(type: StringLiteral?): Enum
+local function create_roblox_enum(node: Expression?, type: StringLiteral?): Enum
 	return {
 		kind = "roblox_enum",
+		node = node,
 		type = type,
 	}
 end
 
-local function create_color3(): Color3
+local function create_color3(node: Expression?): Color3
 	return {
 		kind = "color3",
+		node = node,
 	}
 end
 
-local function create_cframe(position: Numeral?, rotation: Numeral?): CFrame
+local function create_cframe(node: Expression?, position: Numeral?, rotation: Numeral?): CFrame
 	return {
 		kind = "cframe",
+		node = node,
 		position = position,
 		rotation = rotation,
 	}
 end
 
-local function create_date_time(): DateTime
+local function create_date_time(node: Expression?): DateTime
 	return {
 		kind = "date_time",
+		node = node,
 	}
 end
 
-local function create_date_time_millis(): DateTimeMillis
+local function create_date_time_millis(node: Expression?): DateTimeMillis
 	return {
 		kind = "date_time_millis",
+		node = node,
 	}
 end
 
-local function create_brick_color(): BrickColor
+local function create_brick_color(node: Expression?): BrickColor
 	return {
 		kind = "brick_color",
+		node = node,
 	}
 end
 
-local function create_instance(class: StringLiteral?): Instance
+local function create_instance(node: Expression?, class: StringLiteral?): Instance
 	return {
 		kind = "instance",
+		node = node,
 		class = class,
 	}
 end
 
-local function create_map(index: Ty, value: Ty, size: Range?): Map
+local function create_map(node: Expression?, index: Ty, value: Ty, size: Range?): Map
 	return {
 		kind = "map",
+		node = node,
 		size = size,
 		index = index,
 		value = value,
 	}
 end
 
-local function create_field(name: string, value: Ty): Field
+local function create_field(node: Expression?, name: string, value: Ty): Field
 	return {
 		kind = "field",
+		node = node,
 		name = name,
 		value = value,
 	}
 end
 
-local function create_struct(fields: { Field }): Struct
+local function create_struct(node: Expression?, fields: { Field }): Struct
 	return {
 		kind = "struct",
+		node = node,
 		fields = fields,
 	}
 end
 
-local function create_array(of: Ty, size: Range?): Array
+local function create_array(node: Expression?, of: Ty, size: Range?): Array
 	return {
 		kind = "array",
+		node = node,
 		of = of,
 		size = size,
 	}
 end
 
-local function create_union(components: { Ty }): Union
+local function create_union(node: Expression?, components: { Ty }): Union
 	return {
 		kind = "union",
+		node = node,
 		components = components,
 	}
 end
 
-local function create_variant(key: Literal, value: Struct): Variant
+local function create_variant(node: Expression?, key: Literal, value: Struct): Variant
 	return {
 		kind = "variant",
+		node = node,
 		key = key,
 		value = value,
 	}
 end
 
-local function create_discriminated_union(tag: string, variants: { Variant }): DiscriminatedUnion
+local function create_discriminated_union(node: Expression?, tag: string, variants: { Variant }): DiscriminatedUnion
 	return {
 		kind = "discriminated_union",
+		node = node,
 		tag = tag,
 		variants = variants,
 	}
 end
 
-local function create_unknown(): Unknown
+local function create_unknown(node: Expression?): Unknown
 	return {
 		kind = "unknown",
+		node = node,
 	}
 end
 
-local function create_blocked(): Blocked
+local function create_blocked(node: Expression?): Blocked
 	return {
 		kind = "blocked",
+		node = node,
 	}
 end
 
-local function create_generic(name: string, index: number): Generic
+local function create_generic(node: Expression?, name: string, index: number): Generic
 	return {
 		kind = "generic",
+		node = node,
 		name = name,
 		index = index,
 	}
 end
 
-local function create_reference(to: TyId, arguments: { Ty }?): Reference
-	return { kind = "reference", to = to, arguments = arguments }
+local function create_reference(node: Expression?, to: TyId, arguments: { Ty }?): Reference
+	return {
+		kind = "reference",
+		node = node,
+		to = to,
+		arguments = arguments,
+	}
 end
 
-local function create_type_function(body: Ty, parameters: { Generic }): TypeFunction
+local function create_type_function(node: Expression?, body: Ty, parameters: { Generic }): TypeFunction
 	return {
 		kind = "type_function",
+		node = node,
 		body = body,
 		parameters = parameters,
 	}
 end
 
 local function create_type_instantiation(
+	node: Expression?,
 	type_function: TyId<TypeFunction>,
 	arguments: { Ty },
 	body: Ty
 ): TypeInstantiation
 	return {
 		kind = "type_instantiation",
+		node = node,
 		body = body,
 		arguments = arguments,
 		type_function = type_function,

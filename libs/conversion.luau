@@ -44,7 +44,7 @@ end
 --- Converts a number to the smallest possible unsigned numeral, such that it can be encoded as it.
 local function to_min_numeral(number: number): ty.Numeral
 	local size = to_min_size(number)
-	return ty.numeral(size, "u")
+	return ty.numeral(nil, size, "u")
 end
 
 return table.freeze({

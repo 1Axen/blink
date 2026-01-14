@@ -33,12 +33,12 @@ local function transform(ctx: Context, tty: Ty): Ty
 		local index = transform(ctx, tty.index)
 		local value = transform(ctx, tty.value)
 		if index ~= tty.index or value ~= tty.value then
-			return ty.map(index, value, tty.size)
+			return ty.map(tty.node, index, value, tty.size)
 		end
 	elseif tty.kind == "array" then
 		local of = transform(ctx, tty.of)
 		if tty.of ~= of then
-			return ty.array(of)
+			return ty.array(tty.node, of)
 		end
 	elseif tty.kind == "struct" then
 		local fields = table.clone(tty.fields)
@@ -47,12 +47,12 @@ local function transform(ctx: Context, tty: Ty): Ty
 			local value = transform(ctx, field.value)
 			if value ~= field.value then
 				invalidated = true
-				fields[index] = ty.field(field.name, value)
+				fields[index] = ty.field(field.node, field.name, value)
 			end
 		end
 
 		if invalidated then
-			return ty.struct(fields)
+			return ty.struct(tty.node, fields)
 		end
 	elseif tty.kind == "union" then
 		local components = table.clone(tty.components)
@@ -66,7 +66,7 @@ local function transform(ctx: Context, tty: Ty): Ty
 		end
 
 		if invalidated then
-			return ty.union(components)
+			return ty.union(tty.node, components)
 		end
 	elseif tty.kind == "discriminated_union" then
 		local variants = table.clone(tty.variants)
@@ -76,12 +76,12 @@ local function transform(ctx: Context, tty: Ty): Ty
 			local value = transform(ctx, variant.value) :: typeof(variant.value)
 			if key ~= variant.key or variant.value ~= value then
 				invalidated = true
-				variants[index] = ty.variant(key, value)
+				variants[index] = ty.variant(variant.node, key, value)
 			end
 		end
 
 		if invalidated then
-			return ty.discriminated_union(tty.tag, variants)
+			return ty.discriminated_union(tty.node, tty.tag, variants)
 		end
 	elseif tty.kind == "generic" then
 		local generic = arguments[tty.index]
@@ -110,7 +110,7 @@ local function transform(ctx: Context, tty: Ty): Ty
 				return existing_instantiation
 			end
 
-			local type_instantiation = ty.type_instantiation(to_ty_id, new_arguments, ty.blocked())
+			local type_instantiation = ty.type_instantiation(tty.node, to_ty_id, new_arguments, ty.blocked())
 			instantiation_cache[instantiation_hash] = type_instantiation
 
 			ctx.arguments = new_arguments
@@ -134,7 +134,7 @@ local function transform(ctx: Context, tty: Ty): Ty
 		end
 
 		if invalidated then
-			return ty.vector(axes, tty.magnitude)
+			return ty.vector(tty.node, axes, tty.magnitude)
 		end
 	elseif tty.kind == "cframe" then
 		local position = tty.position
@@ -150,19 +150,19 @@ local function transform(ctx: Context, tty: Ty): Ty
 		end
 
 		if position ~= new_position or rotation ~= new_rotation then
-			return ty.cframe(new_position, new_rotation)
+			return ty.cframe(tty.node, new_position, new_rotation)
 		end
 	elseif tty.kind == "instance" and tty.class then
 		local class = tty.class
 		local new_class = transform(ctx, class) :: typeof(class)
 		if new_class ~= class then
-			return ty.instance(new_class)
+			return ty.instance(tty.node, new_class)
 		end
 	elseif tty.kind == "roblox_enum" and tty.type then
 		local enum_type = tty.type
 		local new_enum_type = transform(ctx, enum_type) :: typeof(enum_type)
 		if new_enum_type ~= enum_type then
-			return ty.roblox_enum(new_enum_type)
+			return ty.roblox_enum(tty.node, new_enum_type)
 		end
 	end
 

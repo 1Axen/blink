@@ -23,7 +23,7 @@ type LValue<T> = types.LValue<T>
 type RValue<T> = types.RValue<T>
 type Register<T> = types.RegisterId<T>
 
-local FORMAT = ty.numeral("32", "f")
+local FORMAT = ty.numeral(nil, "32", "f")
 
 local function build_read(props: ReadProps, block: Builder, color3_ty: ty.Color3, into: LValue<any>?): Register<Color3>
 	local hue = numeral.read(props, block, FORMAT)

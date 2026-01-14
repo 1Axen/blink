@@ -46,8 +46,6 @@ type Context = {
 	generics: Generics?,
 }
 
-local NIL = ty.nnil()
-
 local expression: (ctx: Context, expr: ast.Expression, node_id: NodeId?, generics: Generics?) -> TyId<any>
 
 local function path_node_to_segments(path: ast.Path): { string }
@@ -96,15 +94,15 @@ end
 --> Luau Primitives
 
 local function ty_string_literal(ctx: Context, expr: ast.ExprString): ty.StringLiteral
-	return ty.string_literal(expr.value)
+	return ty.string_literal(expr, expr.value)
 end
 
 local function ty_number_literal(ctx: Context, expr: ast.ExprNumber): ty.NumberLiteral
-	return ty.number_literal(expr.value)
+	return ty.number_literal(expr, expr.value)
 end
 
 local function ty_boolean_literal(ctx: Context, expr: ast.ExprBoolean): ty.BooleanLiteral
-	return ty.boolean_literal(expr.value)
+	return ty.boolean_literal(expr, expr.value)
 end
 
 local function ty_numeral(ctx: Context, expr: ast.ExprReference, identifier: string): ty.Numeral
@@ -117,19 +115,19 @@ local function ty_numeral(ctx: Context, expr: ast.ExprReference, identifier: str
 		range = range_from_node(expr.range, bounds)
 	end
 
-	return ty.numeral(size, format, range)
+	return ty.numeral(expr, size, format, range)
 end
 
 local function ty_string(ctx: Context, expr: ast.ExprReference): ty.String
 	local bounds = bounds.string
 	local length = if expr.range then range_from_node(expr.range, bounds) else nil
-	return ty.string(length)
+	return ty.string(expr, length)
 end
 
 local function ty_buffer(ctx: Context, expr: ast.ExprReference): ty.Buffer
 	local bounds = bounds.buffer
 	local length = if expr.range then range_from_node(expr.range, bounds) else nil
-	return ty.buffer(length)
+	return ty.buffer(expr, length)
 end
 
 local function ty_vector(ctx: Context, expr: ast.ExprReference): ty.Vector
@@ -153,15 +151,15 @@ local function ty_vector(ctx: Context, expr: ast.ExprReference): ty.Vector
 		end
 	end
 
-	return ty.vector(axes, magnitude)
+	return ty.vector(expr, axes, magnitude)
 end
 
-local function ty_boolean(ctx: Context): ty.Boolean
-	return ty.boolean()
+local function ty_boolean(ctx: Context, expr: ast.ExprReference): ty.Boolean
+	return ty.boolean(expr)
 end
 
-local function ty_unknown(ctx: Context): ty.Unknown
-	return ty.unknown()
+local function ty_unknown(ctx: Context, expr: ast.ExprReference): ty.Unknown
+	return ty.unknown(expr)
 end
 
 --> ROBLOX Primitives
@@ -179,11 +177,11 @@ local function ty_roblox_enum(ctx: Context, expr: ast.ExprReference): ty.Enum
 		enum_type = expression(ctx, generic) :: ty.StringLiteral
 	end
 
-	return ty.roblox_enum(enum_type)
+	return ty.roblox_enum(expr, enum_type)
 end
 
-local function ty_color3(ctx: Context): ty.Color3
-	return ty.color3()
+local function ty_color3(ctx: Context, expr: ast.ExprReference): ty.Color3
+	return ty.color3(expr)
 end
 
 local function ty_cframe(ctx: Context, expr: ast.ExprReference): ty.CFrame
@@ -201,19 +199,19 @@ local function ty_cframe(ctx: Context, expr: ast.ExprReference): ty.CFrame
 		end
 	end
 
-	return ty.cframe(generics[1], generics[2])
+	return ty.cframe(expr, generics[1], generics[2])
 end
 
-local function ty_date_time(ctx: Context): ty.DateTime
-	return ty.date_time()
+local function ty_date_time(ctx: Context, expr: ast.ExprReference): ty.DateTime
+	return ty.date_time(expr)
 end
 
-local function ty_date_time_millis(ctx: Context): ty.DateTimeMillis
-	return ty.date_time_millis()
+local function ty_date_time_millis(ctx: Context, expr: ast.ExprReference): ty.DateTimeMillis
+	return ty.date_time_millis(expr)
 end
 
-local function ty_brick_color(ctx: Context): ty.BrickColor
-	return ty.brick_color()
+local function ty_brick_color(ctx: Context, expr: ast.ExprReference): ty.BrickColor
+	return ty.brick_color(expr)
 end
 
 local function ty_instance(ctx: Context, expr: ast.ExprReference): ty.Instance
@@ -228,7 +226,7 @@ local function ty_instance(ctx: Context, expr: ast.ExprReference): ty.Instance
 		class = expression(ctx, values[1]) :: ty.StringLiteral
 	end
 
-	return ty.instance(class)
+	return ty.instance(expr, class)
 end
 
 local PRIMITIVE_BUILDERS: { [string]: ((ctx: Context, expr: ast.ExprReference, path: string) -> Ty)? } = {
@@ -267,7 +265,7 @@ local function ty_map(ctx: Context, expr: ast.ExprMap): ty.Map
 		range = range_from_node(expr.range, bounds.map)
 	end
 
-	return ty.map(index, value, range)
+	return ty.map(expr, index, value, range)
 end
 
 local function ty_array(ctx: Context, expr: ast.ExprArray): ty.Array
@@ -277,13 +275,13 @@ local function ty_array(ctx: Context, expr: ast.ExprArray): ty.Array
 		size = range_from_node(expr.range, bounds.array)
 	end
 
-	return ty.array(of, size)
+	return ty.array(expr, of, size)
 end
 
 local function ty_field(ctx: Context, expr: ast.ExprField): ty.Field
 	local name = expr.name.value
 	local value = expression(ctx, expr.value)
-	return ty.field(name, value)
+	return ty.field(expr, name, value)
 end
 
 local function ty_struct(ctx: Context, expr: ast.ExprStruct): ty.Struct
@@ -292,7 +290,7 @@ local function ty_struct(ctx: Context, expr: ast.ExprStruct): ty.Struct
 		fields[index] = ty_field(ctx, field)
 	end
 
-	return ty.struct(fields)
+	return ty.struct(expr, fields)
 end
 
 local function ty_union(ctx: Context, expr: ast.ExprUnion): ty.Union
@@ -301,12 +299,12 @@ local function ty_union(ctx: Context, expr: ast.ExprUnion): ty.Union
 		components[index] = expression(ctx, component_expr)
 	end
 
-	return ty.union(components)
+	return ty.union(expr, components)
 end
 
 local function ty_optional(ctx: Context, expr: ast.ExprOptional): ty.Union
 	local of = expression(ctx, expr.value)
-	return ty.union({ of, NIL })
+	return ty.union(expr, { of, ty.nnil(expr) })
 end
 
 local function ty_discriminated_union(ctx: Context, expr: ast.ExprDiscriminatedUnion): ty.DiscriminatedUnion
@@ -315,16 +313,16 @@ local function ty_discriminated_union(ctx: Context, expr: ast.ExprDiscriminatedU
 	for index, node in expr.variants do
 		local key = expression(ctx, node.key) :: ty.Literal
 		local value = ty_struct(ctx, node.value)
-		local variant = ty.variant(key, value)
+		local variant = ty.variant(node, key, value)
 
 		-- add tag field to variant struct
 		local struct = variant.value
-		table.insert(struct.fields, 1, ty.field(tag, key))
+		table.insert(struct.fields, 1, ty.field(node.key :: ast.Expression, tag, key))
 
 		variants[index] = variant
 	end
 
-	return ty.discriminated_union(tag, variants)
+	return ty.discriminated_union(expr, tag, variants)
 end
 
 --- Returns the `ty_id` of the `ty` referenced
@@ -387,7 +385,7 @@ local function ty_reference(ctx: Context, expr: ast.ExprReference): Ty
 	end
 
 	-- Phase 5:
-	return ty.reference(reference_type_decl.ty_id, arguments)
+	return ty.reference(expr, reference_type_decl.ty_id, arguments)
 end
 
 function expression(ctx: Context, expr: ast.Expression | ast.Identifier, generics: Generics?): Ty
@@ -423,13 +421,15 @@ function expression(ctx: Context, expr: ast.Expression | ast.Identifier, generic
 		tty = if primitive then primitive(ctx, expr, path_str) else ty_reference(ctx, expr)
 	elseif expr.kind == "identifier" then
 		tty = ty_string_literal(ctx, expr :: any)
+	elseif expr.kind == "field" or expr.kind == "variant" then
+		panic(`Got a contextual expression kind "{expr.kind}" in a non contextual location`)
 	else
 		return strong_exhaustive_match(expr.kind)
 	end
 
 	if generics then
 		ctx.generics = nil
-		tty = ty.type_function(tty, generics.parameters)
+		tty = ty.type_function(expr :: ast.Expression, tty, generics.parameters)
 	end
 
 	return tty
@@ -462,11 +462,11 @@ local function stat_type(ctx: Context, stat: ast.StatType): types.Type
 	if stat.generics then
 		parameters = {}
 
-		for index, value in stat.generics.values do
-			store_node(ctx, value)
+		for index, node in stat.generics.values do
+			store_node(ctx, node)
 
-			local name = value.name.value
-			local generic = ty.generic(name, index)
+			local name = node.name.value
+			local generic = ty.generic(node :: any, name, index)
 			parameters[index] = generic
 		end
 	end

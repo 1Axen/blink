@@ -2,6 +2,7 @@
 --!native
 --!optimize 2
 
+local ast = require("@ast")
 local binary = require("@builders/binary")
 local builders = require("@builders")
 local cast = require("@builders/cast")
@@ -76,9 +77,9 @@ local EMPTY_BITSET = constant.from_value(2 ^ 32 - 1)
 local INVOCATIONS_BITSET = globals.invocations_bitset
 
 local BUFFER_TY = ty.buffer()
-local PLAYER_TY = ty.instance(ty.string_literal("Player"))
-local PLAYERS_TY = ty.array(PLAYER_TY)
-local UNKNOWNS_TY = ty.array(ty.unknown())
+local PLAYER_TY = ty.instance(nil, ty.string_literal(nil, "Player"))
+local PLAYERS_TY = ty.array(nil, PLAYER_TY)
+local UNKNOWNS_TY = ty.array(nil, ty.unknown())
 
 local PLAYER_RETURN = fn.rreturn(hint.ty(PLAYER_TY))
 local PLAYER_PARAMETER = fn.parameter(hint.ty(PLAYER_TY), "player")
@@ -95,20 +96,20 @@ local SERVER_RECEIVE_PARAMETERS = {
 	fn.parameter(hint.ty(UNKNOWNS_TY), "packet_unknowns"),
 }
 
-local INDEX_TY = ty.numeral("64", "f")
+local INDEX_TY = ty.numeral(nil, "64", "f")
 local INDEX_RETURN = fn.rreturn(hint.ty(INDEX_TY))
 local DISCONNECT_RETURN = fn.rreturn(hint.funct({}, {}))
 
 local BUFFER_RETURN = fn.rreturn(hint.ty(BUFFER_TY))
 local BUFFER_PARAMETER = fn.parameter(hint.ty(BUFFER_TY), "buf")
 
-local CURSOR_TY = ty.numeral("32", "u")
+local CURSOR_TY = ty.numeral(nil, "32", "u")
 
 local CURSOR_RETURN = fn.rreturn(hint.ty(CURSOR_TY))
 local CURSOR_PARAMETER = fn.parameter(hint.ty(CURSOR_TY), "cursor")
 local LENGTH_PARAMETER = fn.parameter(hint.ty(CURSOR_TY), "length")
 
-local CURSOR_OPTIONAL_TY = ty.union({ CURSOR_TY, ty.nnil() })
+local CURSOR_OPTIONAL_TY = ty.union(nil, { CURSOR_TY, ty.nnil(nil) })
 local CURSOR_OPTIONAL_PARAMETER = fn.parameter(hint.ty(CURSOR_OPTIONAL_TY), "cursor")
 
 local function returns(ctx: Context, parameters: { hir.Parameter }): { types.Return }

@@ -1,3 +1,4 @@
+local assert_panic = require("@util/assert_panic")
 local ast = require("@ast")
 local lookup = require("@hir/lookup")
 local panic = require("@util/panic")
@@ -15,7 +16,6 @@ type Hash = any
 
 type Context = {
 	read hir: Hir,
-	read node: Node,
 	read encountered: { [Ty]: true? },
 }
 
@@ -100,22 +100,24 @@ local function hash_ty(hir: Hir, tty: Ty): Hash
 	return tty.kind
 end
 
-local function assert_ty_kind(node: Node, tty: Ty, kind: TyKind)
+local function assert_ty_kind(tty: Ty, kind: TyKind)
 	local real_kind = tty.kind
 	if real_kind ~= kind then
+		local node = assert_panic(tty.node, "Expected Ty to have an AST node")
 		report.expect(node, kind, real_kind)
 	end
 end
 
-local function assert_ty_kind_one_of(node: Node, tty: Ty, kinds: { TyKind })
+local function assert_ty_kind_one_of(tty: Ty, kinds: { TyKind })
 	local real_kind = tty.kind
 	if table.find(kinds, real_kind) == nil then
+		local node = assert_panic(tty.node, "Expected Ty to have an AST node")
 		report.expect_one_of(node, kinds :: { string }, real_kind)
 	end
 end
 
-local function assert_axis_ty(node: Node, tty: Ty)
-	assert_ty_kind_one_of(node, tty, { "numeral", "number_literal" })
+local function assert_axis_ty(tty: Ty)
+	assert_ty_kind_one_of(tty, { "numeral", "number_literal" })
 
 	if tty.kind ~= "numeral" then
 		return
@@ -125,21 +127,23 @@ local function assert_axis_ty(node: Node, tty: Ty)
 	local format = tty.format
 
 	if (format == "f" and size > 32) or (format ~= "f" and size > 24) then
+		local node = assert_panic(tty.node, "Expected Ty to have an AST node")
 		report.cannot_represent_vector_axis(node)
 	end
 end
 
 local function check_map(ctx: Context, map: ty.Map)
 	local hir = ctx.hir
-	local node = ctx.node
 
 	local indexer = map.index
 	if is_optional_union(hir, map.index) then
+		local node = assert_panic(indexer.node, "Expected map indexer Ty to have an AST node")
 		report.optional_indexer(node)
 	end
 
 	local value = map.value
 	if is_optional_union(hir, map.value) then
+		local node = assert_panic(value.node, "Expected map value Ty to have an AST node")
 		report.optional_value(node)
 	end
 
@@ -148,21 +152,22 @@ local function check_map(ctx: Context, map: ty.Map)
 end
 
 local function check_union(ctx: Context, union: ty.Union)
-	local node = ctx.node
-	local encountered_hashes: { [Hash]: true? } = {}
+	local encountered_hashes: { [Hash]: Ty? } = {}
 	for index, component in union.components do
 		local hash = hash_ty(ctx.hir, component)
-		if encountered_hashes[hash] then
-			report.duplicate_union_type(node :: any, node :: any)
+		local previous = encountered_hashes[hash]
+		if previous then
+			local previous_node = assert_panic(previous.node, "Expected previous component to have an AST node")
+			local duplicate_node = assert_panic(component.node, "Expected duplicate component to have an AST node")
+			report.duplicate_union_type(duplicate_node, previous_node)
 		end
 
-		encountered_hashes[hash] = true
+		encountered_hashes[hash] = component
 		explore(ctx, component)
 	end
 end
 
 function explore(ctx: Context, tty: Ty)
-	local node = ctx.node
 	local encountered = ctx.encountered
 	if encountered[tty] then
 		return
@@ -193,21 +198,21 @@ function explore(ctx: Context, tty: Ty)
 				break
 			end
 
-			assert_axis_ty(node, axis)
+			assert_axis_ty(axis)
 		end
 	elseif tty.kind == "cframe" then
 		if tty.position then
-			assert_ty_kind(node, tty.position, "numeral")
-			assert_axis_ty(node, tty.position)
+			assert_ty_kind(tty.position, "numeral")
+			assert_axis_ty(tty.position)
 		end
 
 		if tty.rotation then
-			assert_ty_kind(node, tty.rotation, "numeral")
+			assert_ty_kind(tty.rotation, "numeral")
 		end
 	elseif tty.kind == "instance" and tty.class then
-		assert_ty_kind(node, tty.class, "string_literal")
+		assert_ty_kind(tty.class, "string_literal")
 	elseif tty.kind == "roblox_enum" and tty.type then
-		assert_ty_kind(node, tty.type, "string_literal")
+		assert_ty_kind(tty.type, "string_literal")
 	end
 end
 

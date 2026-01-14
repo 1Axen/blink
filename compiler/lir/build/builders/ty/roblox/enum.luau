@@ -30,7 +30,7 @@ type Register<T> = types.RegisterId<T>
 local const = constant.from_value
 
 local NAME_FORMAT = ty.string()
-local VALUE_FORMAT = ty.numeral("16", "u")
+local VALUE_FORMAT = ty.numeral(nil, "16", "u")
 
 local function to_static_enum_type(ctx: Context, ty: ty.Enum): types.Constant<string>?
 	local enum_type = ty.type

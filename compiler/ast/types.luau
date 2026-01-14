@@ -181,7 +181,9 @@ export type Expression =
 	| ExprArray
 	| ExprUnion
 	| ExprStruct
+	| ExprField
 	| ExprDiscriminatedUnion
+	| ExprDiscriminatedUnionVariant
 	| ExprNumber
 	| ExprString
 	| ExprBoolean
