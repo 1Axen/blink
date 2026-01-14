@@ -22,7 +22,6 @@ jobs:
 
             - name: Run tests
               run: |
-                  cd test
-                  lute run runner
+                  lute run test/runner
 
               
