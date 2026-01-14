@@ -42,7 +42,6 @@ end
 
 return function(tiniest: Tiniest)
 	local test = tiniest.test
-	local expect = tiniest.expect
 	local snapshot = tiniest.snapshot
 
 	local ast_one = from_source("file1.blink", TEMPLATE_ONE)

@@ -2,7 +2,6 @@
 --!native
 --!optimize 2
 
-local ast = require("@ast")
 local binary = require("@builders/binary")
 local builders = require("@builders")
 local cast = require("@builders/cast")
