@@ -29,17 +29,7 @@ type fixed_array = u8[16]
 
 type optional = username?
 
-type alpha = Enum<"AlphaMode">
-type location = CFrame<f32, f32>
-
-type color = Color3
-type brick_color = BrickColor
-
-type timestamp = DateTime
-type timestamp_millis = DateTimeMillis
-
 type any = unknown
-type mesh = Instance<"MeshPart">
 
 type entity<C, T> = struct {
     id: u8,

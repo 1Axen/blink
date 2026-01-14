@@ -1,0 +1,14 @@
+option types_output = "./out/roblox_types"
+option client_output = "./out/roblox_client"
+option server_output = "./out/roblox_server"
+
+type mesh = Instance<"MeshPart">
+
+type alpha = Enum<"AlphaMode">
+type location = CFrame<f32, f32>
+
+type color = Color3
+type brick_color = BrickColor
+
+type timestamp = DateTime
+type timestamp_millis = DateTimeMillis
