@@ -51,6 +51,12 @@ export type InstanceMock = setmetatable<{
 	read children: { InstanceMock },
 }, typeof(instance_class)>
 
+instance_class.__eq = (
+	function(left: InstanceMock, right: InstanceMock)
+		return left.ClassName == right.ClassName
+	end
+) :: any
+
 function instance_class.__newindex(self: InstanceMock, key: any, value: any)
 	if key == "Parent" then
 		local parent = value :: InstanceMock
