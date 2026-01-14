@@ -314,10 +314,11 @@ local function build_event_iter(event_queue: types.ProjField<any>, data_returns:
 		local inner_iter = fn.anonymous({}, iter_returns, function(block)
 			block:capture({ size, row, columns })
 			block:store(binary.add(row, constant.one), row)
+			block:store(row, row_index)
 
 			block:if_single(condition.greater_than(row, size), function(block)
 				block:store(constant.zero, size_index)
-				block:store(constant.zero, row)
+				block:store(constant.zero, row_index)
 
 				for index = 1, args_count do
 					local column = projection.field(columns, constant.from_value(index))
