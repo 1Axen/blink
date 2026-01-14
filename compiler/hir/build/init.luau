@@ -229,6 +229,21 @@ local function ty_instance(ctx: Context, expr: ast.ExprReference): ty.Instance
 	return ty.instance(expr, class)
 end
 
+local function ty_streamed_instance(ctx: Context, expr: ast.ExprReference): ty.StreamedInstance
+	local class: ty.StringLiteral?
+	local parameters = expr.generics
+	if parameters then
+		local values = parameters.values
+		if #values > 1 then
+			return report.extra_generics(parameters, 1)
+		end
+
+		class = expression(ctx, values[1]) :: ty.StringLiteral
+	end
+
+	return ty.streamed_instance(expr, class)
+end
+
 local PRIMITIVE_BUILDERS: { [string]: ((ctx: Context, expr: ast.ExprReference, path: string) -> Ty)? } = {
 	u8 = ty_numeral,
 	u16 = ty_numeral,
@@ -250,6 +265,7 @@ local PRIMITIVE_BUILDERS: { [string]: ((ctx: Context, expr: ast.ExprReference, p
 	Enum = ty_roblox_enum,
 	CFrame = ty_cframe,
 	Instance = ty_instance,
+	StreamedInstance = ty_streamed_instance,
 	Color3 = ty_color3,
 	DateTime = ty_date_time,
 	BrickColor = ty_brick_color,

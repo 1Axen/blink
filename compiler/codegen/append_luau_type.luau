@@ -42,11 +42,6 @@ local function append_struct(ctx: Context, struct: ty.Struct)
 	builder:append("}")
 end
 
--- local function append_optional(ctx: Context, optional: ty.Optional)
--- 	append_ty(ctx, optional.of)
--- 	ctx.builder:append("?")
--- end
-
 local function append_union(ctx: Context, union: ty.Union)
 	local builder = ctx.builder
 	for index, component in union.components do
@@ -146,10 +141,11 @@ local function append_type_instantiation(ctx: Context, instantiation: ty.TypeIns
 end
 
 function append_ty(ctx: Context, tty: Ty)
+	local builder = ctx.builder
 	if tty.kind == "map" then
 		append_map(ctx, tty)
 	elseif tty.kind == "nil" then
-		ctx.builder:append("nil")
+		builder:append("nil")
 	elseif tty.kind == "array" then
 		append_array(ctx, tty)
 	elseif tty.kind == "struct" then
@@ -159,37 +155,40 @@ function append_ty(ctx: Context, tty: Ty)
 	elseif tty.kind == "blocked" then
 		panic("cannot append blocked type")
 	elseif tty.kind == "generic" then
-		ctx.builder:append(tty.name)
+		builder:append(tty.name)
 	elseif tty.kind == "numeral" then
-		ctx.builder:append("number")
+		builder:append("number")
 	elseif tty.kind == "string" then
-		ctx.builder:append("string")
+		builder:append("string")
 	elseif tty.kind == "buffer" then
-		ctx.builder:append("buffer")
+		builder:append("buffer")
 	elseif tty.kind == "vector" then
-		ctx.builder:append("vector")
+		builder:append("vector")
 	elseif tty.kind == "boolean" then
-		ctx.builder:append("boolean")
+		builder:append("boolean")
 	elseif tty.kind == "string_literal" then
 		append_string_literal(ctx, tty)
 	elseif tty.kind == "number_literal" then
-		ctx.builder:append("number")
+		builder:append("number")
 	elseif tty.kind == "boolean_literal" then
-		ctx.builder:append(tostring(tty.value))
+		builder:append(tostring(tty.value))
 	elseif tty.kind == "roblox_enum" then
 		append_enum(ctx, tty)
 	elseif tty.kind == "cframe" then
-		ctx.builder:append("CFrame")
+		builder:append("CFrame")
 	elseif tty.kind == "color3" then
-		ctx.builder:append("Color3")
+		builder:append("Color3")
 	elseif tty.kind == "instance" then
 		append_instance(ctx, tty)
+	elseif tty.kind == "streamed_instance" then
+		append_instance(ctx, tty :: any)
+		builder:append("?")
 	elseif tty.kind == "date_time" or tty.kind == "date_time_millis" then
-		ctx.builder:append("DateTime")
+		builder:append("DateTime")
 	elseif tty.kind == "brick_color" then
-		ctx.builder:append("BrickColor")
+		builder:append("BrickColor")
 	elseif tty.kind == "unknown" then
-		ctx.builder:append("unknown")
+		builder:append("unknown")
 	elseif tty.kind == "reference" then
 		append_reference(ctx, tty)
 	elseif tty.kind == "type_instantiation" then

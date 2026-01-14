@@ -143,6 +143,7 @@ builders = {
 	color3 = require("@self/roblox/color3"),
 	unknown = require("@self/roblox/unknown"),
 	instance = require("@self/roblox/instance"),
+	streamed_instance = require("@self/roblox/streamed_instance"),
 	date_time = require("@self/roblox/date_time"),
 	brick_color = require("@self/roblox/brick_color"),
 	roblox_enum = require("@self/roblox/enum"),
@@ -381,7 +382,7 @@ do
 			return "CFrame"
 		elseif tty.kind == "color3" then
 			return "Color3"
-		elseif tty.kind == "instance" then
+		elseif tty.kind == "instance" or tty.kind == "streamed_instance" then
 			return "Instance"
 		elseif tty.kind == "date_time" then
 			return "DateTime"

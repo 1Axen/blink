@@ -41,6 +41,7 @@ return table.freeze({
 	roblox = table.freeze({
 		unknown = unknown,
 		instance = require("@self/instance"),
+		streamed_instance = require("@self/streamed_instance"),
 	}),
 	structures = table.freeze({
 		map = require("@self/map"),

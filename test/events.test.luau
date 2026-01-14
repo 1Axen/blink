@@ -170,6 +170,14 @@ return function(tiniest: Tiniest)
 				events[`{name}InstanceSingle`] = create_event(from, ttype, call, { datatypes.roblox.instance })
 				events[`{name}InstanceMultiple`] =
 					create_event(from, ttype, call, { PRIMITIVES.u8, datatypes.roblox.instance, PRIMITIVES.string })
+				events[`{name}StreamedInstanceSingle`] =
+					create_event(from, ttype, call, { datatypes.roblox.streamed_instance })
+				events[`{name}StreamedInstanceMultiple`] = create_event(
+					from,
+					ttype,
+					call,
+					{ PRIMITIVES.u8, datatypes.roblox.streamed_instance, PRIMITIVES.string }
+				)
 			end
 		end
 	end

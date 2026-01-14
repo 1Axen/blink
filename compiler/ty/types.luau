@@ -128,6 +128,12 @@ export type Instance = {
 	read class: StringLiteral?,
 }
 
+export type StreamedInstance = {
+	read kind: "streamed_instance",
+	read node: Expression?,
+	read class: StringLiteral?,
+}
+
 export type Map = {
 	read kind: "map",
 	read node: Expression?,
@@ -232,6 +238,7 @@ export type Ty =
     | CFrame
     | Color3
     | Instance
+	| StreamedInstance
     | BrickColor
     | DateTime
     | DateTimeMillis

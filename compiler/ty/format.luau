@@ -258,6 +258,8 @@ function fmt_ty(ty: types.Ty): string
 		return fmt_color3(ty)
 	elseif ty.kind == "instance" then
 		return fmt_instance(ty)
+	elseif ty.kind == "streamed_instance" then
+		return fmt_instance(ty :: any)
 	elseif ty.kind == "date_time" then
 		return fmt_date_time(ty)
 	elseif ty.kind == "date_time_millis" then

@@ -29,6 +29,7 @@ export type Color3 = types.Color3
 export type DateTimeMillis = types.DateTimeMillis
 export type BrickColor = types.BrickColor
 export type Instance = types.Instance
+export type StreamedInstance = types.StreamedInstance
 export type Map = types.Map
 export type Field = types.Field
 export type Struct = types.Struct
@@ -178,6 +179,14 @@ end
 local function create_instance(node: Expression?, class: StringLiteral?): Instance
 	return {
 		kind = "instance",
+		node = node,
+		class = class,
+	}
+end
+
+local function create_streamed_instance(node: Expression?, class: StringLiteral?): StreamedInstance
+	return {
+		kind = "streamed_instance",
 		node = node,
 		class = class,
 	}
@@ -335,6 +344,7 @@ return table.freeze({
 	cframe = create_cframe,
 	color3 = create_color3,
 	instance = create_instance,
+	streamed_instance = create_streamed_instance,
 	brick_color = create_brick_color,
 	date_time = create_date_time,
 	date_time_millis = create_date_time_millis,
