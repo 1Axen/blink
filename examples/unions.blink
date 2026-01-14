@@ -27,3 +27,6 @@ type state =
     | "Running"
     | "Jumping"
     | "Falling"
+
+type bool = true | false
+type length = 0 | 5 | 10
