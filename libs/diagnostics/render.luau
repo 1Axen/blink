@@ -235,10 +235,38 @@ local function render(diagnostic: types.Diagnostic): string
 			end)
 			stream:append("\n")
 
+			local finishing_multilines: { layout.MultilineLayout } = {}
+			for _, multiline in multilines do
+				if multiline.label.message == nil then
+					continue
+				end
+
+				if multiline.segment.finish.line == line_index then
+					table.insert(finishing_multilines, multiline)
+				end
+			end
+
+			local function append_finishing_edges(line_index: number, is_message: true?)
+				for _, multiline in multilines do
+					if is_message and multiline.line_index == line_index then
+						continue
+					end
+
+					if multiline.line_index > line_index then
+						continue
+					end
+
+					local label = multiline.label
+					local style = multiline.label.style or NOOP_STYLE
+					local insert = label.message and CHAR_SET.label_v or ""
+					stream:append(overlap(style(insert), multiline_padding, insert))
+				end
+			end
+
 			-- inlines
 			if #inlines > 0 then
 				append_margin(" ", CHAR_SET.margin_bar_skip)
-				append_multiline_edge(false)
+				append_finishing_edges(math.huge)
 
 				stream:append(" ")
 				append_underlines(stream, line_source, function(first: number, last: number): string
@@ -273,7 +301,7 @@ local function render(diagnostic: types.Diagnostic): string
 
 				for inline_draw_index = #inlines, 1, -1 do
 					append_margin(" ", CHAR_SET.margin_bar_skip)
-					append_multiline_edge(false)
+					append_finishing_edges(math.huge)
 					stream:append(" ")
 
 					append_underlines(stream, line_source, function(first: number, last: number): string
@@ -322,35 +350,7 @@ local function render(diagnostic: types.Diagnostic): string
 			end
 
 			-- multilines
-			local finishing_multilines: { layout.MultilineLayout } = {}
-			for _, multiline in multilines do
-				if multiline.label.message == nil then
-					continue
-				end
-
-				if multiline.segment.finish.line == line_index then
-					table.insert(finishing_multilines, multiline)
-				end
-			end
-
 			if #finishing_multilines > 0 then
-				local function append_finishing_edges(line_index: number, is_message: boolean)
-					for _, multiline in multilines do
-						if is_message and multiline.line_index == line_index then
-							continue
-						end
-
-						if multiline.line_index > line_index then
-							continue
-						end
-
-						local label = multiline.label
-						local style = multiline.label.style or NOOP_STYLE
-						local insert = label.message and CHAR_SET.label_v or ""
-						stream:append(overlap(style(insert), multiline_padding, insert))
-					end
-				end
-
 				table.sort(finishing_multilines, function(a: any, b)
 					return a.line_index < b.line_index
 				end)
@@ -360,7 +360,7 @@ local function render(diagnostic: types.Diagnostic): string
 					local multiline_line_index = multiline.line_index
 
 					append_margin(" ", CHAR_SET.margin_bar_skip)
-					append_finishing_edges(multiline_line_index, false)
+					append_finishing_edges(multiline_line_index)
 					stream:append("\n")
 
 					append_margin(" ", CHAR_SET.margin_bar_skip)
