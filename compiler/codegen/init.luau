@@ -714,6 +714,9 @@ local function gen_export(ctx: Context, target: compilation.Target, export: lir.
 		elseif target == "server" then
 			append_method(ctx, casing, "step_replication", ctx.lir.server.step_replication)
 		end
+
+		builder:append_line("exports = {")
+		builder:indent()
 	end
 
 	if export.kind == "type" then
@@ -750,6 +753,11 @@ local function gen_export(ctx: Context, target: compilation.Target, export: lir.
 			gen_export(ctx, target, item)
 			builder:append(",\n")
 		end
+	end
+
+	if is_root then
+		builder:dedent()
+		builder:append_line("}")
 	end
 
 	builder:dedent()
