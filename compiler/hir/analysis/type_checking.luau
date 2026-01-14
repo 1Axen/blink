@@ -157,9 +157,10 @@ local function check_union(ctx: Context, union: ty.Union)
 		local hash = hash_ty(ctx.hir, component)
 		local previous = encountered_hashes[hash]
 		if previous then
+			local union_node = assert_panic(union.node, "Expected union to have an AST node")
 			local previous_node = assert_panic(previous.node, "Expected previous component to have an AST node")
 			local duplicate_node = assert_panic(component.node, "Expected duplicate component to have an AST node")
-			report.duplicate_union_type(duplicate_node, previous_node)
+			report.duplicate_union_type(union_node, duplicate_node, previous_node)
 		end
 
 		encountered_hashes[hash] = component

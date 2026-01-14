@@ -240,10 +240,20 @@ local function report_invalid_option_value(stat: ast.StatOption, expected_values
 		:error()
 end
 
-local function report_duplicate_union_type(duplicate: ast.Expression, previous: ast.Expression): never
+local function report_duplicate_union_type(
+	union: ast.Expression,
+	duplicate: ast.Expression,
+	previous: ast.Expression
+): never
 	return diagnostics
 		.error(codes.type_checking.DuplicateUnionType)
 		:with_message("Duplicate type used in union")
+		:with_label(
+			diagnostics
+				.label(union.span)
+				:with_style(style.color.purple)
+				:with_message("The duplicate type was found in this union")
+		)
 		:with_label(diagnostics.label(duplicate.span):with_style(style.color.red):with_message("Duplicate type here"))
 		:with_label(diagnostics.label(previous.span):with_style(style.color.cyan):with_message("Previous type here"))
 		:error()
