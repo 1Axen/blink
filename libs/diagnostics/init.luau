@@ -59,7 +59,8 @@ function diagnostic.print(self: Diagnostic)
 end
 
 function diagnostic.error(self: Diagnostic, level: number?): never
-	error(self:render(), level)
+	local rendered = self:render()
+	error(`\n{rendered}`, level)
 end
 
 function create_diagnostic(kind: DiagnosticKind, code: number): Diagnostic
