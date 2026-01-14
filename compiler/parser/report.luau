@@ -84,7 +84,7 @@ local function report_duplicate_entry(expr: ast.Expression, original: Entry, dup
 			diagnostics
 				.label(expr.span)
 				:with_style(style.color.bright_purple)
-				:with_message(`The duplicate entry was found in {style.color.bright_purple("this")} {kind}`)
+				:with_message(`The duplicate entry was found in this {kind}`)
 		)
 		:error()
 end
