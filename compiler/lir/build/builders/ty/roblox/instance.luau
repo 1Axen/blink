@@ -51,7 +51,7 @@ local function validate(ctx: Context, block: Builder, instance: Instance, value:
 	block:if_single(is_not_class, function(block)
 		local message = library.string.format(
 			`Expected an Instance of class "{expected_class.value}", got one of class "%s" instead`,
-			value_class
+			projection.index(value :: any, constant.from_value("ClassName"))
 		)
 		block:call(library.error_rvalue(message))
 	end)
