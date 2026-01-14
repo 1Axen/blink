@@ -57,8 +57,18 @@ jobs:
       - name: Build binaries
         run: lute run build
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+      - name: Rename asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          name="./release/blink"
+          matches=(${name}*)
+          src="${matches[0]}"
+          ext="${src#${name}}"
+          mv "$src" "./release/${{ matrix.artifact_name }}.${ext#*.}"
+          
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          path: ./release/blink.tar.*
-          name: ${{ matrix.artifact_name }}
+          tag_name: ${{ github.event.release.tag_name }}
+          files: ./release/${{ matrix.artifact_name }}.*
