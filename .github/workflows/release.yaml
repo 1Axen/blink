@@ -14,18 +14,16 @@ env:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             artifact_name: blink-linux-x86_64
-          - os: ubuntu-22.04-arm
-            artifact_name: blink-linux-aarch64
           - os: macos-latest
             artifact_name: blink-macos-aarch64
           - os: windows-latest
             artifact_name: blink-windows-x86_64
             
-      fail-fast: true
 
     runs-on: ${{ matrix.os }}
     steps:
