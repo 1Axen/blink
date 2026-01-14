@@ -74,6 +74,14 @@ local TEMP_PATH = path.from_string("./temp")
 
 local PRIMITIVES = datatypes.primitives
 
+local function shift_down(tbl: { [number]: any, n: number })
+	for index = 2, tbl.n do
+		local value = tbl[index]
+		tbl[index] = nil
+		tbl[index - 1] = value
+	end
+end
+
 local function create_event(from: From, type: Type, call: Call, data: Data): Event
 	return table.freeze({
 		from = from,
@@ -191,55 +199,65 @@ return function(tiniest: Tiniest)
 			local server_event = server_events[name]
 			local client_event = client_events[name]
 
-			local data = table.create(#event.data) :: { any }
-			for index, datatype in event.data do
-				data[index] = datatype.generate(0)
-			end
-
 			local sender_api
 			local sender_event
 			local receiver_event
 			local sender_payload
 
-			if event.from == "Server" then
-				sender_api = server_events
-				receiver_event = client_event :: any
-				sender_event = server_event :: any
-				sender_payload = { player, unpack(data) }
-			else
-				sender_api = client_events
-				receiver_event = server_event
-				sender_event = client_event
-				sender_payload = data
-			end
+			local data = table.create(#event.data) :: { any }
+			for seed = 1, 2 do
+				for index, datatype in event.data do
+					data[index] = datatype.generate(seed)
+				end
 
-			local received_data: { any }?
-			if event.call == "Polling" then
-				sender_event.fire(unpack(sender_payload))
-				sender_api.step_replication()
-				received_data = { (receiver_event :: any).iter()() }
-				expect(table.remove(received_data, 1)).is(1)
-			else
-				local disconnect = receiver_event.on(function(...: any)
-					expect(received_data).never_exists()
-					received_data = { ... }
-				end)
-				sender_event.fire(unpack(sender_payload))
-				sender_api.step_replication()
-				disconnect()
-			end
+				local from = event.from == "Both" and (seed % 2 == 0 and "Server" or "Client") or event.from
+				if from == "Server" then
+					sender_api = server_events
+					receiver_event = client_event :: any
+					sender_event = server_event :: any
+					sender_payload = { player, unpack(data) }
+				else
+					sender_api = client_events
+					receiver_event = server_event
+					sender_event = client_event
+					sender_payload = data
+				end
 
-			expect(received_data).exists()
-			assert(received_data) -- type checker
+				local received_data: { [number]: any, n: number }?
+				if event.call == "Polling" then
+					sender_event.fire(unpack(sender_payload))
+					sender_api.step_replication()
+					received_data = table.pack((receiver_event :: any).iter()())
 
-			if receiver_event == server_event then
-				local received_player: PlayerMock = table.remove(received_data, 1) :: any
-				expect(received_player.UserId).is(player.UserId)
-			end
+					for _ in (receiver_event :: any).iter() do
+						expect(true).never_is_true()
+					end
 
-			for index, expected_value in data do
-				local received_value = received_data[index]
-				expect(received_value).is(expected_value)
+					expect(received_data[1]).is(1)
+					shift_down(received_data)
+				else
+					local disconnect = receiver_event.on(function(...: any)
+						expect(received_data).never_exists()
+						received_data = table.pack(...)
+					end)
+					sender_event.fire(unpack(sender_payload))
+					sender_api.step_replication()
+					disconnect()
+				end
+
+				expect(received_data).exists()
+				assert(received_data) -- type checker
+
+				if receiver_event == server_event then
+					local received_player: PlayerMock = received_data[1]
+					shift_down(received_data)
+					expect(received_player.UserId).is(player.UserId)
+				end
+
+				for index, expected_value in data do
+					local received_value = received_data[index]
+					expect(received_value).is(expected_value)
+				end
 			end
 		end)
 	end
