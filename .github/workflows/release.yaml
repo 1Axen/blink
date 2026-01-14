@@ -46,6 +46,14 @@ jobs:
       - name: Setup rokit
         uses: CompeyDev/setup-rokit@v0.1.0
 
+      - name: Setup pesde
+        uses: axiom-co/setup-pesde@v0.4.1
+        with:
+          token: ${{ secrets.PESDE_TOKEN }}
+
+      - name: Install dependencies
+        run: pesde install
+
       - name: Build binaries
         run: lute run build
 
