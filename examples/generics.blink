@@ -22,3 +22,11 @@ type byte_array = array<u8>
 
 type dictionary<V> = map {[string]: V}
 type byte_dictionary = dictionary<u8>
+
+type renderable<T> = {
+	class: T,
+	position: vector,
+	instance: Instance<T>,
+}
+
+type renderable_model = renderable<"Model">
