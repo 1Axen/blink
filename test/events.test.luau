@@ -31,22 +31,26 @@ type Event = {
 type Events = { [string]: Event }
 
 type ClientAPI = {
-	[string]: {
-		fire: (...any) -> (),
-		on: ((...any) -> ()) -> () -> (),
-		iter: () -> () -> (number, ...any),
+	exports: {
+		[string]: {
+			fire: (...any) -> (),
+			on: ((...any) -> ()) -> () -> (),
+			iter: () -> () -> (number, ...any),
+		},
 	},
 	step_replication: () -> (),
 }
 
 type ServerAPI = {
-	[string]: {
-		fire: (player: PlayerMock, ...any) -> (),
-		fire_all: (...any) -> (),
-		fire_list: (list: { PlayerMock }, ...any) -> (),
-		fire_except: (player: PlayerMock, ...any) -> (),
-		on: ((player: PlayerMock, ...any) -> ()) -> () -> (),
-		iter: () -> () -> (number, PlayerMock, ...any),
+	exports: {
+		[string]: {
+			fire: (player: PlayerMock, ...any) -> (),
+			fire_all: (...any) -> (),
+			fire_list: (list: { PlayerMock }, ...any) -> (),
+			fire_except: (player: PlayerMock, ...any) -> (),
+			on: ((player: PlayerMock, ...any) -> ()) -> () -> (),
+			iter: () -> () -> (number, PlayerMock, ...any),
+		},
 	},
 	step_replication: () -> (),
 }
@@ -196,8 +200,8 @@ return function(tiniest: Tiniest)
 
 	for name, event in events do
 		test(name, function()
-			local server_event = server_events[name]
-			local client_event = client_events[name]
+			local server_event = server_events.exports[name]
+			local client_event = client_events.exports[name]
 
 			local sender_api
 			local sender_event

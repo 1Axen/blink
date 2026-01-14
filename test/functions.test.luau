@@ -26,15 +26,19 @@ type Function = {
 type Functions = { [string]: Function }
 
 type ClientAPI = {
-	[string]: {
-		invoke: (...any) -> ...any,
+	exports: {
+		[string]: {
+			invoke: (...any) -> ...any,
+		},
 	},
 	step_replication: () -> (),
 }
 
 type ServerAPI = {
-	[string]: {
-		on: ((player: PlayerMock, ...any) -> ...any) -> () -> (),
+	exports: {
+		[string]: {
+			on: ((player: PlayerMock, ...any) -> ...any) -> () -> (),
+		},
 	},
 	step_replication: () -> (),
 }
@@ -145,8 +149,8 @@ return function(tiniest: Tiniest)
 
 	for name, funct in functions do
 		test(name, function()
-			local server_funct = server_functions[name]
-			local client_funct = client_functions[name]
+			local server_funct = server_functions.exports[name]
+			local client_funct = client_functions.exports[name]
 
 			local data = table.create(#funct.data) :: { any }
 			for index, datatype in funct.data do

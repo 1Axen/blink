@@ -14,6 +14,10 @@ type TypeAPI = {
 	read: (buffer, number?) -> (any, number),
 }
 
+type Exports = {
+	exports: { [string]: TypeAPI },
+}
+
 local SAMPLES = 255
 
 local TEMP_PATH = path.from_string("./temp")
@@ -28,7 +32,7 @@ local UNHASHABLE_DATATYPES: { [Datatype]: true? } = {
 	[PRIMITIVES.DateTimeMillis] = true,
 }
 
-local function compile_datatypes(file: string, types: { [string]: Datatype }): { [string]: TypeAPI }
+local function compile_datatypes(file: string, types: { [string]: Datatype }): Exports
 	local luau_file_path = path.append_file_name(TEMP_PATH, file, "luau")
 	if fs.exists(luau_file_path) then
 		local read_result = fs.read_string_from_file(luau_file_path)
@@ -104,7 +108,7 @@ return function(tiniest: Tiniest)
 
 			for index = 1, SAMPLES do
 				local value = datatype.generate(index)
-				local type_api = assert(compiled_types[key])
+				local type_api = assert(compiled_types.exports[key])
 				key_values[index] = value
 				key_buffers[index] = type_api.write(value)
 			end
@@ -116,7 +120,7 @@ return function(tiniest: Tiniest)
 		test(`read {key}`, function()
 			local key_values = values[key]
 			local key_buffers = buffers[key]
-			local type_api = assert(compiled_types[key])
+			local type_api = assert(compiled_types.exports[key])
 
 			for index, value in key_values do
 				local read_value = type_api.read(key_buffers[index])
