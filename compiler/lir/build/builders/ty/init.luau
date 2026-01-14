@@ -507,7 +507,7 @@ do
 			local variants_index = 0
 			local components_index = 0
 
-			local value_typeof = block:store(library.typeof(value))
+			local value_typeof = library.typeof(value)
 			local write_offset = block:allocate(constant.one)
 
 			block:if_chain(n_chains, function(index)
@@ -560,6 +560,12 @@ do
 					local tag_condition = condition.equals(tag_index, constant.from_ty(variant.key :: any))
 					local type_condition = condition.equals(value_typeof, constant.from_value("table"))
 					component_condition = condition.aand(type_condition, tag_condition)
+				elseif
+					component.kind == "string_literal"
+					or component.kind == "boolean_literal"
+					or component.kind == "number_literal"
+				then
+					component_condition = condition.equals(value, constant.from_value(component.value))
 				elseif not is_optional and component.kind ~= "unknown" then
 					component_condition = condition.equals(value_typeof, component_type)
 				end
