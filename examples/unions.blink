@@ -1,9 +1,9 @@
 option types_output = "./out/unions"
 
-type Union = u8 | string? | unknown
+type values = u8 | string? | unknown
 
-type GenUnion<A, B> = A | B
-type FilledUnion = GenUnion<u8, string>
+type union_of<A, B> = A | B
+type u8_string = union_of<u8, string>
 
 type foo = union "Tag" {
 	First {},
