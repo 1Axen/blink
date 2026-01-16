@@ -2,8 +2,6 @@
 --!native
 --!optimize 2
 
-local validator = require("@self/validator")
-
 local ast = require("@ast")
 local id = require("@compiler/id")
 local lexer = require("@compiler/lexer")
@@ -193,7 +191,7 @@ local function structure(
 
 		local previous = parsed_keys[key]
 		if previous ~= nil then
-			return report.duplicate_entry_early(previous, name)
+			return report.duplicate_entry(previous, name)
 		end
 
 		local field = fields[key]
@@ -1002,15 +1000,11 @@ local function parse(file: file.File, tokens: { lexer.Token }): ast.Ast
 		attributes = {},
 	}
 
-	local ast: ast.Ast = {
+	return {
 		kind = "ast",
 		body = block(ctx),
 		symbols = ctx.symbols,
 	}
-
-	validator.validate(ast)
-
-	return ast
 end
 
 return table.freeze({

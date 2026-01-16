@@ -1,7 +1,6 @@
 local ast = require("@ast")
 local codes = require("@config/codes")
 local diagnostics = require("@util/diagnostics")
-local fmt_range = require("@util/range/format")
 local range = require("@util/range")
 local span = require("@util/span")
 local style = require("@util/style")
@@ -89,12 +88,12 @@ end
 local function report_unrepresentable_range(node: ast.Range, bounds: range.Range): never
 	return diagnostics
 		.error(codes.type_checking.UnrepresentableRange)
-		:with_message("Range cannot be represented by the type")
+		:with_message("The specified range cannot be represented by this type")
 		:with_label(
 			diagnostics
 				.label(node.span)
 				:with_style(style.color.red)
-				:with_message(`Range should be within {fmt_range(bounds)}`)
+				:with_message(`Range should be within ({bounds.min}..{bounds.max})`)
 		)
 		:error()
 end
@@ -259,6 +258,37 @@ local function report_duplicate_union_type(
 		:error()
 end
 
+local function report_duplicate_entry(
+	expr: ast.Expression,
+	previous: ast.ExprLiteral | ast.Identifier,
+	duplicate: ast.ExprLiteral | ast.Identifier
+): never
+	local kind = expr.kind
+	return diagnostics
+		.error(codes.analysis.DuplicateEntry)
+		:with_message(`Duplicate entry "{previous.value}" in {kind}`)
+		:with_label(diagnostics.label(previous.span):with_style(style.color.cyan):with_message(`Previous entry`))
+		:with_label(diagnostics.label(duplicate.span):with_style(style.color.red):with_message(`Duplicate entry`))
+		:with_label(
+			diagnostics
+				.label(expr.span)
+				:with_style(style.color.bright_purple)
+				:with_message(`The duplicate entry was found in this {kind}`)
+		)
+		:error()
+end
+
+local function report_tag_in_variant(tag: ast.ExprString, field: ast.ExprField)
+	return diagnostics
+		.error(codes.analysis.ReservedIdentifier)
+		:with_message(`Union tag used as a field in variant`)
+		:with_label(diagnostics.label(tag.span):with_style(style.color.blue):with_message(`The union tag`))
+		:with_label(
+			diagnostics.label(field.name.span):with_style(style.color.red):with_message(`Change this field's name`)
+		)
+		:error()
+end
+
 return table.freeze({
 	expect = report_expect,
 	expect_one_of = report_expect_one_of,
@@ -287,5 +317,7 @@ return table.freeze({
 	invalid_option_type = report_invalid_option_type,
 	invalid_option_value = report_invalid_option_value,
 
+	tag_in_variant = report_tag_in_variant,
+	duplicate_entry = report_duplicate_entry,
 	duplicate_union_type = report_duplicate_union_type,
 })

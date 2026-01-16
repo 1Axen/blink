@@ -286,8 +286,16 @@ end
 
 local function ty_struct(ctx: Context, expr: ast.ExprStruct): ty.Struct
 	local fields = table.create(#expr.fields) :: { ty.Field }
+	local field_set: { [string]: ast.ExprField? } = {}
 	for index, field in expr.fields do
+		local name = field.name.value
+		local previous = field_set[name]
+		if previous ~= nil then
+			report.duplicate_entry(expr, previous.name, field.name)
+		end
+
 		fields[index] = ty_field(ctx, field)
+		field_set[name] = field
 	end
 
 	return ty.struct(expr, fields)
@@ -310,16 +318,32 @@ end
 local function ty_discriminated_union(ctx: Context, expr: ast.ExprDiscriminatedUnion): ty.DiscriminatedUnion
 	local tag = expr.tag.value
 	local variants: { ty.Variant } = {}
-	for index, node in expr.variants do
-		local key = expression(ctx, node.key) :: ty.Literal
-		local value = ty_struct(ctx, node.value)
-		local variant = ty.variant(node, key, value)
+	local variants_set: { [index<ast.ExprLiteral, "value">]: ast.ExprDiscriminatedUnionVariant? } = {}
+
+	for index, variant_node in expr.variants do
+		local key_node = variant_node.key
+		local previous = variants_set[key_node.value]
+		if previous ~= nil then
+			report.duplicate_entry(expr, previous.key, key_node)
+		end
+
+		local value_node = variant_node.value
+		for _, field in value_node.fields do
+			if field.name.value == tag then
+				report.tag_in_variant(expr.tag, field)
+			end
+		end
+
+		local key_ty = expression(ctx, key_node) :: ty.Literal
+		local value_ty = ty_struct(ctx, value_node)
+		local variant_ty = ty.variant(variant_node, key_ty, value_ty)
 
 		-- add tag field to variant struct
-		local struct = variant.value
-		table.insert(struct.fields, 1, ty.field(node.key :: ast.Expression, tag, key))
+		local struct = variant_ty.value
+		table.insert(struct.fields, 1, ty.field(key_node :: ast.Expression, tag, key_ty))
 
-		variants[index] = variant
+		variants[index] = variant_ty
+		variants_set[key_node.value] = variant_node
 	end
 
 	return ty.discriminated_union(expr, tag, variants)
