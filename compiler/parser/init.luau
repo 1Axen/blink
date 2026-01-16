@@ -343,10 +343,11 @@ local function expr_range(ctx: Context): ast.Range
 	if first.kind == "number" then
 		min = expr_number(ctx)
 
-		local second = peek(ctx)
-		if second.kind == ".." then
+		if peek_kind(ctx) == ".." then
 			expect(ctx, "..")
-			max = expr_number(ctx)
+			if peek_kind(ctx) == "number" then
+				max = expr_number(ctx)
+			end
 		else
 			-- exact range
 			max = min
