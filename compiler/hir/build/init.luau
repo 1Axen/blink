@@ -285,7 +285,7 @@ local function ty_field(ctx: Context, expr: ast.ExprField): ty.Field
 end
 
 local function ty_struct(ctx: Context, expr: ast.ExprStruct): ty.Struct
-	local fields: { ty.Field } = {}
+	local fields = table.create(#expr.fields) :: { ty.Field }
 	for index, field in expr.fields do
 		fields[index] = ty_field(ctx, field)
 	end
