@@ -6,7 +6,9 @@ local fs = require("@util/fs")
 local hir = require("@compiler/hir")
 local path = require("@util/path")
 local printext = require("@util/printext")
+local process = require("@lute/process")
 local symbols = require("@compiler/symbols")
+local system = require("@lute/system")
 
 type Path = path.Path
 type Profile = compilation.Profile
@@ -35,6 +37,10 @@ local argument = cli_builder.argument
 
 local args = { ... }
 table.remove(args, 1)
+
+if system.os == "Windows_NT" then
+	process.system("chcp 65001")
+end
 
 local function write_with_logging(file_path: Path, contents: string)
 	local str_path = path.to_string(file_path)
