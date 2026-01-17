@@ -6,8 +6,8 @@ local panic = require("@util/panic")
 local range = require("@util/range")
 local types = require("@self/types")
 
-type Range = range.Range
 type Expression = ast.Expression
+type SealedRange = range.SealedRange
 
 export type NumSize = types.NumSize
 export type NumFormat = types.NumFormat
@@ -44,7 +44,7 @@ export type TypeFunction = types.TypeFunction
 export type TypeInstantiation = types.TypeInstantiation
 export type DiscriminatedUnion = types.DiscriminatedUnion
 
-local function create_numeral(node: Expression?, size: NumSize, format: NumFormat, bounds: Range?): Numeral
+local function create_numeral(node: Expression?, size: NumSize, format: NumFormat, bounds: SealedRange?): Numeral
 	return {
 		kind = "numeral",
 		node = node,
@@ -54,7 +54,7 @@ local function create_numeral(node: Expression?, size: NumSize, format: NumForma
 end
 
 --- `axes` is an array of 0-3 TyIds (Numeral or NumberLiteral) corresponding to: x, y, z; in that order
-local function create_vector(node: Expression?, axes: { Axis? }, magnitude: Range?): Vector
+local function create_vector(node: Expression?, axes: { Axis? }, magnitude: SealedRange?): Vector
 	return {
 		kind = "vector",
 		node = node,
@@ -65,7 +65,7 @@ local function create_vector(node: Expression?, axes: { Axis? }, magnitude: Rang
 	}
 end
 
-local function create_buffer(node: Expression?, length: Range?): Buffer
+local function create_buffer(node: Expression?, length: SealedRange?): Buffer
 	return {
 		kind = "buffer",
 		node = node,
@@ -73,7 +73,7 @@ local function create_buffer(node: Expression?, length: Range?): Buffer
 	}
 end
 
-local function create_string(node: Expression?, length: Range?): String
+local function create_string(node: Expression?, length: SealedRange?): String
 	return {
 		kind = "string",
 		node = node,
@@ -192,7 +192,7 @@ local function create_streamed_instance(node: Expression?, class: StringLiteral?
 	}
 end
 
-local function create_map(node: Expression?, index: Ty, value: Ty, size: Range?): Map
+local function create_map(node: Expression?, index: Ty, value: Ty, size: SealedRange?): Map
 	return {
 		kind = "map",
 		node = node,
@@ -219,7 +219,7 @@ local function create_struct(node: Expression?, fields: { Field }): Struct
 	}
 end
 
-local function create_array(node: Expression?, of: Ty, size: Range?): Array
+local function create_array(node: Expression?, of: Ty, size: SealedRange?): Array
 	return {
 		kind = "array",
 		node = node,

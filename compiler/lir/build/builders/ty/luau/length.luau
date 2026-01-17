@@ -26,7 +26,7 @@ type TyBuilder = builder_types.TyBuilder
 type ReadProps = builder_types.ReadProps
 type WriteProps = builder_types.WriteProps
 
-type Range = range.Range
+type SealedRange = range.SealedRange
 
 type Builder = fn.Builder
 type Context = context.Context
@@ -36,7 +36,7 @@ type LValue<T = any> = types.LValue<T>
 type RValue<T = any> = types.RValue<T>
 type Register<T = any> = types.RegisterId<T>
 
-local function to_range(ty: VariableLengthTy): Range?
+local function to_range(ty: VariableLengthTy): SealedRange?
 	if ty.kind == "buffer" then
 		return ty.length
 	elseif ty.kind == "string" then
@@ -50,7 +50,7 @@ local function to_range(ty: VariableLengthTy): Range?
 	end
 end
 
-local function to_max_range(ty: VariableLengthTy): Range
+local function to_max_range(ty: VariableLengthTy): SealedRange
 	if ty.kind == "buffer" then
 		return bounds.buffer
 	elseif ty.kind == "string" then

@@ -3,8 +3,8 @@
 local ast = require("@ast")
 local range = require("@util/range")
 
-type Range = range.Range
 type Expression = ast.Expression
+type SealedRange = range.SealedRange
 
 --stylua: ignore
 export type NumFormat = 
@@ -26,7 +26,7 @@ export type Numeral = {
 	read node: Expression?,
 	read size: NumSize,
 	read format: NumFormat,
-	read bounds: Range?,
+	read bounds: SealedRange?,
 }
 
 --stylua: ignore
@@ -40,19 +40,19 @@ export type Vector = {
 	read x: Axis?,
 	read y: Axis?,
 	read z: Axis?,
-	read magnitude: Range?,
+	read magnitude: SealedRange?,
 }
 
 export type Buffer = {
 	read kind: "buffer",
 	read node: Expression?,
-	read length: Range?,
+	read length: SealedRange?,
 }
 
 export type String = {
 	read kind: "string",
 	read node: Expression?,
-	read length: Range?,
+	read length: SealedRange?,
 }
 
 export type Nil = {
@@ -137,7 +137,7 @@ export type StreamedInstance = {
 export type Map = {
 	read kind: "map",
 	read node: Expression?,
-	read size: Range?,
+	read size: SealedRange?,
 	read index: Ty,
 	read value: Ty,
 }
@@ -159,7 +159,7 @@ export type Array = {
 	read kind: "array",
 	read node: Expression?,
 	read of: Ty,
-	read size: Range?,
+	read size: SealedRange?,
 }
 
 export type Union = {

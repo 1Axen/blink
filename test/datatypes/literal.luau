@@ -2,7 +2,7 @@ local range = require("@util/range")
 local string_builder = require("@util/string_builder")
 local types = require("./types")
 
-type Range = range.Range
+type Range = range.SealedRange
 type Datatype = types.Datatype
 type StringBuilder = string_builder.StringBuilder
 

@@ -15,7 +15,7 @@ local function fmt_ty_id<T>(ty_id: types.TyId<T>)
 	return id.format(ty_id)
 end
 
-local function fmt_opt_range(range: range.Range?): string
+local function fmt_opt_range(range: range.SealedRange?): string
 	if range == nil then
 		return ""
 	end

@@ -337,12 +337,14 @@ local function expr_range(ctx: Context): ast.Range
 
 	local min: ast.ExprNumber
 	local max: ast.ExprNumber
+
 	local first = peek(ctx)
+	local last: lexer.Token = first
 	if first.kind == "number" then
 		min = expr_number(ctx)
 
 		if peek_kind(ctx) == ".." then
-			expect(ctx, "..")
+			last = expect(ctx, "..")
 			if peek_kind(ctx) == "number" then
 				max = expr_number(ctx)
 			end
@@ -351,18 +353,17 @@ local function expr_range(ctx: Context): ast.Range
 			max = min
 		end
 	elseif first.kind == ".." then
-		expect(ctx, "..")
+		last = expect(ctx, "..")
 		max = expr_number(ctx)
 	else
 		return report.expect_one_of(first, { "..", "number" })
 	end
 
-	local lower_bound = (min or max) :: ast.ExprNumber
-	local upper_bound = (max or min) :: ast.ExprNumber
+	local upper_bound = (max or last) :: ast.ExprNumber
 
 	return {
 		id = node_id,
-		span = span.merge(lower_bound.span, upper_bound.span),
+		span = span.merge(first.span, upper_bound.span),
 		kind = "range",
 		max = max,
 		min = min,

@@ -1,14 +1,14 @@
-local bounds = require("@compiler/config/bounds") :: { [string]: Range? }
+local bounds = require("@compiler/config/bounds") :: { [string]: SealedRange? }
 local range = require("@util/range")
 local string_builder = require("@util/string_builder")
 local typeforge = require("@util/typeforge")
 local types = require("./types")
 
-type Range = range.Range
 type Datatype = types.Datatype
+type SealedRange = range.SealedRange
 type StringBuilder = string_builder.StringBuilder
 
-local function factory(keyword: string, bounds: Range): Datatype
+local function factory(keyword: string, bounds: SealedRange): Datatype
 	local signed = bounds.min < 0
 	local floating = string.sub(keyword, 1, 1) == "f"
 

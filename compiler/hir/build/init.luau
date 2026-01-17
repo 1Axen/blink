@@ -27,7 +27,8 @@ type DeclId = types.DeclId
 type NodeId = ast.NodeId
 type ScopeId = types.ScopeId
 
-type Range = range.Range
+type SealedRange = range.SealedRange
+
 type Symbols = ast.Symbols
 type Collection = traverse_ast.Collection
 
@@ -61,7 +62,7 @@ end
 
 --- Converts an ast `Range` node to a `Range` object
 --- Range is validated to be within the `bounds` passed
-local function range_from_node(node: ast.Range, bounds: Range): Range
+local function range_from_node(node: ast.Range, bounds: SealedRange): SealedRange
 	local max_node = node.max
 	local min_node = node.min
 
@@ -70,9 +71,11 @@ local function range_from_node(node: ast.Range, bounds: Range): Range
 
 	if max > bounds.max or min < bounds.min then
 		return report.unrepresentable_range(node, bounds)
+	elseif min > max then
+		return report.invalid_range(node)
 	end
 
-	return range.create(min, max)
+	return range.sealed(min, max)
 end
 
 --> Luau Primitives
@@ -93,8 +96,8 @@ local function ty_numeral(ctx: Context, expr: ast.ExprReference, identifier: str
 	local size: ty.NumSize = string.sub(identifier, 2, 3) :: ty.NumSize
 	local format: ty.NumFormat = string.sub(identifier, 1, 1) :: ty.NumFormat
 
-	local range: Range?
-	local bounds: Range = (bounds :: any)[identifier]
+	local range: SealedRange?
+	local bounds: SealedRange = (bounds :: any)[identifier]
 	if expr.range then
 		range = range_from_node(expr.range, bounds)
 	end
@@ -118,7 +121,7 @@ local function ty_vector(ctx: Context, expr: ast.ExprReference): ty.Vector
 	local expr_range = expr.range
 	local expr_generics = expr.generics
 
-	local magnitude: Range?
+	local magnitude: SealedRange?
 	if expr_range then
 		magnitude = range_from_node(expr_range, bounds.vector)
 	end
@@ -260,7 +263,7 @@ local function ty_map(ctx: Context, expr: ast.ExprMap): ty.Map
 	local index = expression(ctx, expr.index)
 	local value = expression(ctx, expr.value)
 
-	local range: Range
+	local range: SealedRange
 	if expr.range then
 		range = range_from_node(expr.range, bounds.map)
 	end
@@ -270,7 +273,7 @@ end
 
 local function ty_array(ctx: Context, expr: ast.ExprArray): ty.Array
 	local of = expression(ctx, expr.value)
-	local size: Range?
+	local size: SealedRange?
 	if expr.range then
 		size = range_from_node(expr.range, bounds.array)
 	end

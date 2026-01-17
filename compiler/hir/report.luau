@@ -85,7 +85,16 @@ local function report_unknown_reference(expr: ast.ExprReference): never
 		:error()
 end
 
-local function report_unrepresentable_range(node: ast.Range, bounds: range.Range): never
+local function report_invalid_range(range: ast.Range): never
+	return diagnostics
+		.error(codes.analysis.InvalidRange)
+		:with_message("Invalid range")
+		:with_label(diagnostics.label(range.span):with_style(style.color.red):with_message("Invalid range"))
+		:with_note("Ranges must have a min smaller than or equal to it's max")
+		:error()
+end
+
+local function report_unrepresentable_range(node: ast.Range, bounds: range.SealedRange): never
 	return diagnostics
 		.error(codes.type_checking.UnrepresentableRange)
 		:with_message("The specified range cannot be represented by this type")
@@ -303,8 +312,10 @@ return table.freeze({
 
 	invalid_intersection = report_invalid_intersection,
 	unknown_reference = report_unknown_reference,
-	unrepresentable_range = report_unrepresentable_range,
 	self_recursive_type = report_cyclical_type,
+
+	invalid_range = report_invalid_range,
+	unrepresentable_range = report_unrepresentable_range,
 
 	cannot_represent_vector_axis = report_cannot_represent_vector_axis,
 
