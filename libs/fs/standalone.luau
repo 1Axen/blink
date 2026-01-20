@@ -73,7 +73,7 @@ local function write_directory(target: Path): Result
 		return io_error(err :: any)
 	end
 
-	return result.ok()
+	return result.ok(nil)
 end
 
 local function write_string_to_file(target: Path, contents: string): Result
@@ -87,7 +87,7 @@ local function write_string_to_file(target: Path, contents: string): Result
 		return io_error(err :: any)
 	end
 
-	return result.ok()
+	return result.ok(nil)
 end
 
 local function remove_file(target: Path): Result
@@ -101,7 +101,7 @@ local function remove_file(target: Path): Result
 		return io_error(err :: any)
 	end
 
-	return result.ok()
+	return result.ok(nil)
 end
 
 local function remove_directory(target: Path): Result
@@ -115,7 +115,7 @@ local function remove_directory(target: Path): Result
 		return io_error(err :: any)
 	end
 
-	return result.ok()
+	return result.ok(nil)
 end
 
 local function is_file(target: Path): boolean
@@ -186,7 +186,7 @@ local function move(from: Path, to: Path, options: types.WriteOptions?): Result
 		return io_error(err :: any)
 	end
 
-	return result.ok()
+	return result.ok(nil)
 end
 
 local function copy(from: Path, to: Path, options: types.WriteOptions?): Result
@@ -202,7 +202,7 @@ local function copy(from: Path, to: Path, options: types.WriteOptions?): Result
 		return io_error(err :: any)
 	end
 
-	return result.ok()
+	return result.ok(nil)
 end
 
 local function exists(target: Path): boolean

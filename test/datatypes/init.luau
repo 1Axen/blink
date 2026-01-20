@@ -24,7 +24,7 @@ local primitives = tableext.combine(single_primitives, numeral :: any, literal :
 
 local primitives_array: { [number]: Datatype } = {}
 for _, datatype in primitives do
-	table.insert(primitives_array, datatype)
+	table.insert(primitives_array :: any, datatype)
 end
 
 local unknown: Datatype = table.freeze({

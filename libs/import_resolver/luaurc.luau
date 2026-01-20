@@ -173,7 +173,7 @@ local function validate_schema(schema: JSONLuaurc): Result<nil, MalformedSchema>
 		end
 	end
 
-	return result.ok()
+	return result.ok(nil)
 end
 
 --- Takes in the json contents of a `.luaurc` file and returns a result of a Luaurc struct

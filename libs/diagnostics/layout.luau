@@ -54,7 +54,7 @@ local function create_file_layout(labels: { Label }): FileLayout
 		end
 	end
 
-	table.sort(multilines, function(a: { segment: Segment }, b: { segment: Segment })
+	table.sort(multilines, function(a: MultilineLayout, b: MultilineLayout)
 		local a_lines = (a.segment.finish.line - a.segment.start.line)
 		local b_lines = (b.segment.finish.line - b.segment.start.line)
 		return a_lines > b_lines

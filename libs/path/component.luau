@@ -36,7 +36,7 @@ local function from_slices(slices: { string }): { Component }
 	for index, slice in slices do
 		--> root
 		if index == 1 and slice == "" or is_drive(slice) then
-			table.insert(components, { kind = "root", value = slice })
+			table.insert(components, { kind = "root" :: "root", value = slice })
 			continue
 		elseif index == #slices and slice == "" then
 			continue
