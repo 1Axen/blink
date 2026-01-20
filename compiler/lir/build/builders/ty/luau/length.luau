@@ -92,7 +92,7 @@ local function validate_exact(block: Builder, ty: VariableLengthTy, value: RValu
 	end
 
 	local exact_length = to_exact_length(ty) :: number
-	local is_exact_length = condition.equals(value, constant.from_value(exact_length))
+	local is_exact_length = condition.not_equals(value, constant.from_value(exact_length))
 
 	block:if_single(is_exact_length, function(block)
 		local message =
