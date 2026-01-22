@@ -680,10 +680,6 @@ local function append_method_if_exists(
 end
 
 local function casing_from_export(hhir: Hir, export: lir.Export): Casing
-	if export.kind == "scope" then
-		return options.casing.default
-	end
-
 	local file_id = id.file(export.decl.id)
 	local file_options = hhir.options[file_id]
 	if file_options == nil then
