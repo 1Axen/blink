@@ -486,7 +486,7 @@ end
 local function switch_scope(ctx: Context, scope_id: ScopeId)
 	if scope_id ~= ctx.scope_id then
 		ctx.scope_id = scope_id
-		ctx.symbols = ctx.hir.scopes[scope_id]
+		ctx.symbols = ctx.hir.scopes[scope_id].symbols
 	end
 end
 

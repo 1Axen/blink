@@ -197,7 +197,7 @@ local function fmt_scopes(scopes: index<Hir, "scopes">, fmt_builder: StringBuild
 	string_builder.indent(fmt_builder)
 
 	for scope_id, scope in scopes do
-		string_builder.append_line(fmt_builder, `{id.format(scope_id)}: {fmt_types.string(scope.name)}`)
+		string_builder.append_line(fmt_builder, `{id.format(scope_id)}: {fmt_types.string(scope.symbols.name)}`)
 	end
 
 	string_builder.dedent(fmt_builder)

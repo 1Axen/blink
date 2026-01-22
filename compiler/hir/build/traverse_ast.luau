@@ -175,7 +175,11 @@ local function traverse_block(ctx: Context, block: ast.Block, prev_collection: C
 
 			ctx.scope_id = scope_id
 			ctx.symbols = scope_symbols
-			hir.scopes[scope_id] = scope_symbols
+			hir.scopes[scope_id] = {
+				kind = "scope",
+				id = scope_id,
+				symbols = scope_symbols,
+			}
 
 			traverse_block(ctx, body, collection)
 
@@ -203,7 +207,11 @@ local function traverse_ast(hir: Hir, file_id: number, ast: Ast): Collection
 		scope_id = scope_id,
 	}
 
-	hir.scopes[scope_id] = root_symbols
+	hir.scopes[scope_id] = {
+		kind = "scope",
+		id = scope_id,
+		symbols = root_symbols,
+	}
 	hir.options[file_id] = context.options
 
 	return traverse_block(context, ast.body)

@@ -577,7 +577,9 @@ export type FunctionExport = {
 export type ScopeExport = {
 	type: "export",
 	kind: "scope",
+
 	name: string,
+	decl: hir.Scope,
 
 	items: { Export },
 }

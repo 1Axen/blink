@@ -781,9 +781,10 @@ end
 local function build_scope(ctx: Context, scope_id: hir.ScopeId, exports_map: ExportsMap): ScopeExport
 	local hhir = ctx.hir
 	local scope = hir.scope_from_id(hhir, scope_id)
-	local items: { Export } = {}
+	local symbols = scope.symbols
 
-	for _, stat in scope.values do
+	local items: { Export } = {}
+	for _, stat in symbols.values do
 		local decl_id = stat.id :: DeclId
 		local export = exports_map[decl_id]
 		if export then
@@ -794,7 +795,8 @@ local function build_scope(ctx: Context, scope_id: hir.ScopeId, exports_map: Exp
 	return {
 		type = "export",
 		kind = "scope",
-		name = scope.name,
+		name = symbols.name,
+		decl = scope,
 		items = items,
 	}
 end

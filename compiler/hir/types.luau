@@ -51,6 +51,12 @@ export type Function = {
 	ret: { Parameter }?,
 }
 
+export type Scope = {
+	read id: ScopeId,
+	read kind: "scope",
+	read symbols: ast.Symbols,
+}
+
 --stylua: ignore
 export type Decl = 
     | Type
@@ -59,8 +65,6 @@ export type Decl =
 
 export type DeclId = { write __kind: "decl" }
 export type ScopeId = { write __kind: "scope" }
-
-export type Scope = ast.Symbols
 
 export type Hir = {
 	read tys: { [TyId]: Ty },
