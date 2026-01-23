@@ -4,6 +4,7 @@
 
 local ast = require("@ast")
 local bounds = require("@config/bounds")
+local collect_decls = require("@self/collect_decls")
 local compilation = require("@config/compilation")
 local lookup = require("@hir/lookup")
 local panic = require("@util/panic")
@@ -12,7 +13,6 @@ local report = require("@hir/report")
 local store_node = require("@self/store_node")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 local symbols = require("@compiler/symbols")
-local traverse_ast = require("@self/traverse_ast")
 local ty = require("@ty")
 local types = require("@hir/types")
 
@@ -30,7 +30,7 @@ type ScopeId = types.ScopeId
 type SealedRange = range.SealedRange
 
 type Symbols = ast.Symbols
-type Collection = traverse_ast.Collection
+type Collection = collect_decls.Collection
 
 type Generics = {
 	by_name: { [string]: ty.Generic },
@@ -560,7 +560,7 @@ local function from_files(files: compilation.FilesMap): Hir
 	-- traverse file asts
 	local collections: { [number]: Collection } = {}
 	for file_id, file_ast in files do
-		local collection = traverse_ast(hir, file_id, file_ast)
+		local collection = collect_decls(hir, file_id, file_ast)
 		collections[file_id] = collection
 	end
 

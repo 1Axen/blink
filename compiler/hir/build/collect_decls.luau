@@ -193,7 +193,7 @@ local function traverse_block(ctx: Context, block: ast.Block, prev_collection: C
 	return collection
 end
 
-local function traverse_ast(hir: Hir, file_id: number, ast: Ast): Collection
+local function collect_decls(hir: Hir, file_id: number, ast: Ast): Collection
 	local scope_id = ast.body.id :: ScopeId
 	local root_symbols = ast.symbols
 
@@ -217,4 +217,4 @@ local function traverse_ast(hir: Hir, file_id: number, ast: Ast): Collection
 	return traverse_block(context, ast.body)
 end
 
-return traverse_ast
+return collect_decls
