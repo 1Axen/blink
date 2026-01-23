@@ -9,7 +9,7 @@ local compilation = require("@config/compilation")
 local lookup = require("@hir/lookup")
 local panic = require("@util/panic")
 local range = require("@util/range")
-local report = require("@hir/report")
+local report = require("@compiler/report")
 local store_node = require("@self/store_node")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 local symbols = require("@compiler/symbols")
@@ -294,7 +294,7 @@ local function ty_struct(ctx: Context, expr: ast.ExprStruct): ty.Struct
 		local name = field.name.value
 		local previous = field_set[name]
 		if previous ~= nil then
-			report.duplicate_entry(expr, previous.name, field.name)
+			report.duplicate_entry(previous.name, field.name, expr)
 		end
 
 		fields[index] = ty_field(ctx, field)
@@ -327,7 +327,7 @@ local function ty_discriminated_union(ctx: Context, expr: ast.ExprDiscriminatedU
 		local key_node = variant_node.key
 		local previous = variants_set[key_node.value]
 		if previous ~= nil then
-			report.duplicate_entry(expr, previous.key, key_node)
+			report.duplicate_entry(previous.key, key_node, expr)
 		end
 
 		local value_node = variant_node.value

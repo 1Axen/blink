@@ -2,7 +2,7 @@ local ast = require("@ast")
 local attributes = require("./attributes")
 local options = require("@config/options")
 local panic = require("@util/panic")
-local report = require("@hir/report")
+local report = require("@compiler/report")
 local store_node = require("./store_node")
 local symbols = require("@compiler/symbols")
 local ty = require("@ty")
@@ -39,7 +39,7 @@ export type Collection = {
 local function assert_identifier_one_of(ident: ast.Identifier, valid: { string }): ast.Identifier
 	local value = ident.value
 	if table.find(valid, value) == nil then
-		return report.expect_one_of(ident, valid, value)
+		return report.expect_node_one_of(ident, valid, value)
 	end
 
 	return ident

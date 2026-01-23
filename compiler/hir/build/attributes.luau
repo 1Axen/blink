@@ -1,7 +1,7 @@
 local ast = require("@ast")
 local attributes = require("@config/attributes")
 local compilation = require("@config/compilation")
-local report = require("@hir/report")
+local report = require("@compiler/report")
 local weak_exhaustive_match = require("@util/weak_exhaustive_match")
 
 type Attributes = attributes.Attributes
@@ -40,13 +40,13 @@ local function attr_target(attribute: AttributeNode): compilation.Target
 	local target = attribute.args[1]
 	if target.kind ~= "string" then
 		-- LUAU
-		return report.expect(target :: any, "string", target.kind)
+		return report.expect_node(target :: any, "string", target.kind)
 	end
 
 	local value = target.value
 	if TARGETS[value] ~= true then
 		-- LUAU
-		return report.expect_one_of(target :: any, set_to_array(TARGETS), value)
+		return report.expect_node_one_of(target :: any, set_to_array(TARGETS), value)
 	end
 
 	return value :: compilation.Target
@@ -60,13 +60,13 @@ local function attr_profile(attribute: AttributeNode): compilation.Profile
 	local profile = attribute.args[1]
 	if profile.kind ~= "string" then
 		-- LUAU
-		return report.expect(profile :: any, "string", profile.kind)
+		return report.expect_node(profile :: any, "string", profile.kind)
 	end
 
 	local value = profile.value :: string
 	if PROFILES[value] ~= true then
 		-- LUAU
-		return report.expect_one_of(profile :: any, set_to_array(PROFILES), value)
+		return report.expect_node_one_of(profile :: any, set_to_array(PROFILES), value)
 	end
 
 	return value :: compilation.Profile

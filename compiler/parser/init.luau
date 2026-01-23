@@ -12,7 +12,7 @@ local span = require("@util/span")
 local symbols = require("@compiler/symbols")
 
 local assert_panic = require("@util/assert_panic")
-local report = require("@self/report")
+local report = require("@compiler/report")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 
 type Token = lexer.Token
@@ -87,7 +87,7 @@ local function expect<T>(ctx: Context, kind: T & TokenKind): lexer.TokenBase<T>
 		return consume(ctx) :: any
 	end
 
-	return report.expect(token, kind)
+	return report.expect_token(token, kind)
 end
 
 local function seperated<T>(ctx: Context, t: (Context) -> T, seperator: TokenKind, delimiter: "}" | ")" | "]" | ">"): { T }
@@ -196,7 +196,7 @@ local function structure(
 
 		local field = fields[key]
 		if field == nil then
-			report.expect_one_of_ident(name.span, key, all_keys)
+			report.expect_string_one_of(name.span, key, all_keys)
 		end
 
 		local _assign = expect(ctx, ":")
@@ -269,7 +269,7 @@ local function expr_boolean(ctx: Context): ast.ExprBoolean
 		}
 	end
 
-	return report.expect_one_of(token, { "true", "false" })
+	return report.expect_token_one_of(token, { "true", "false" })
 end
 
 local function expr_number(ctx: Context): ast.ExprNumber
@@ -307,7 +307,7 @@ local function string_or_identifier(ctx: Context): ast.Identifier | ast.ExprStri
 	local token = peek(ctx)
 	local kind = token.kind
 	if kind ~= "word" and kind ~= "string" then
-		return report.expect_one_of(token, { "word", "string" })
+		return report.expect_token_one_of(token, { "word", "string" })
 	end
 
 	if kind == "string" then
@@ -329,7 +329,7 @@ local function expr_literal(ctx: Context): ast.ExprLiteral
 		return expr_boolean(ctx)
 	end
 
-	return report.expect_one_of(token, { "string", "number", "true", "false" })
+	return report.expect_token_one_of(token, { "string", "number", "true", "false" })
 end
 
 local function expr_range(ctx: Context): ast.Range
@@ -356,7 +356,7 @@ local function expr_range(ctx: Context): ast.Range
 		last = expect(ctx, "..")
 		max = expr_number(ctx)
 	else
-		return report.expect_one_of(first, { "..", "number" })
+		return report.expect_token_one_of(first, { "..", "number" })
 	end
 
 	local upper_bound = (max or last) :: ast.ExprNumber
@@ -878,7 +878,7 @@ function expression(ctx: Context): ast.Expression
 	end
 
 	if expr == nil then
-		return report.expect_one_of(token, { "word", "string", "number", "true", "false" })
+		return report.expect_token_one_of(token, { "word", "string", "number", "true", "false" })
 	end
 
 	while peek_kind(ctx) == "[" do
@@ -915,7 +915,7 @@ function statement(ctx: Context): ast.Statement
 	end
 
 	if stat == nil then
-		return report.expect_one_of(token, { "type", "scope", "event", "struct", "function" })
+		return report.expect_token_one_of(token, { "type", "scope", "event", "struct", "function" })
 	end
 
 	-- validate attributes

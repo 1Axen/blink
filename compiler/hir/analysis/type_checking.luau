@@ -2,7 +2,7 @@ local assert_panic = require("@util/assert_panic")
 local ast = require("@ast")
 local lookup = require("@hir/lookup")
 local panic = require("@util/panic")
-local report = require("@hir/report")
+local report = require("@compiler/report")
 local ty = require("@ty")
 local types = require("@hir/types")
 
@@ -104,7 +104,7 @@ local function assert_ty_kind(tty: Ty, kind: TyKind)
 	local real_kind = tty.kind
 	if real_kind ~= kind then
 		local node = assert_panic(tty.node, "Expected Ty to have an AST node")
-		report.expect(node, kind, real_kind)
+		report.expect_node(node, kind, real_kind)
 	end
 end
 
@@ -112,7 +112,7 @@ local function assert_ty_kind_one_of(tty: Ty, kinds: { TyKind })
 	local real_kind = tty.kind
 	if table.find(kinds, real_kind) == nil then
 		local node = assert_panic(tty.node, "Expected Ty to have an AST node")
-		report.expect_one_of(node, kinds :: { string }, real_kind)
+		report.expect_node_one_of(node, kinds :: { string }, real_kind)
 	end
 end
 

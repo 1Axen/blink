@@ -1,12 +1,16 @@
 local ast = require("@ast")
 local codes = require("@config/codes")
 local diagnostics = require("@util/diagnostics")
+local lexer = require("@compiler/lexer")
 local range = require("@util/range")
 local span = require("@util/span")
 local style = require("@util/style")
 local ty = require("@ty")
 
 type TyKind = ty.TyKind
+type Token = lexer.Token
+type TokenKind = lexer.TokenKind
+export type Entry = ast.Identifier | ast.ExprNumber | ast.ExprString | ast.ExprBoolean
 
 local function path_to_segments(path: ast.Path): { string }
 	local segments: { string } = {}
@@ -21,7 +25,7 @@ local function path_to_string(path: ast.Path): string
 	return table.concat(path_to_segments(path), ".")
 end
 
-local function report_expect(node: ast.Node, expected: string, got: string): never
+local function report_expect_node(node: ast.Node, expected: string, got: string): never
 	return diagnostics
 		.error(codes.type_checking.InvalidType)
 		:with_message(`Expected "{expected}", got "{got}" instead`)
@@ -29,7 +33,7 @@ local function report_expect(node: ast.Node, expected: string, got: string): nev
 		:error()
 end
 
-local function report_expect_one_of(node: ast.Node, expected: { string }, got: string): never
+local function report_expect_node_one_of(node: ast.Node, expected: { string }, got: string): never
 	local fmted_expected = `"{table.concat(expected, '", "')}"`
 	return diagnostics
 		.error(codes.type_checking.InvalidType)
@@ -267,24 +271,23 @@ local function report_duplicate_union_type(
 		:error()
 end
 
-local function report_duplicate_entry(
-	expr: ast.Expression,
-	previous: ast.ExprLiteral | ast.Identifier,
-	duplicate: ast.ExprLiteral | ast.Identifier
-): never
-	local kind = expr.kind
-	return diagnostics
+local function report_duplicate_entry(previous: Entry, duplicate: Entry, expr: ast.Expression?): never
+	local diagnostic = diagnostics
 		.error(codes.analysis.DuplicateEntry)
-		:with_message(`Duplicate entry "{previous.value}" in {kind}`)
+		:with_message(`Duplicate entry "{previous.value}"{expr and ` in {expr.kind}` or ""}`)
 		:with_label(diagnostics.label(previous.span):with_style(style.color.cyan):with_message(`Previous entry`))
 		:with_label(diagnostics.label(duplicate.span):with_style(style.color.red):with_message(`Duplicate entry`))
-		:with_label(
+
+	if expr then
+		diagnostic:with_label(
 			diagnostics
 				.label(expr.span)
 				:with_style(style.color.bright_purple)
-				:with_message(`The duplicate entry was found in this {kind}`)
+				:with_message(`The duplicate entry was found in this {expr.kind}`)
 		)
-		:error()
+	end
+
+	return diagnostic:error()
 end
 
 local function report_tag_in_variant(tag: ast.ExprString, field: ast.ExprField)
@@ -298,9 +301,77 @@ local function report_tag_in_variant(tag: ast.ExprString, field: ast.ExprField)
 		:error()
 end
 
+local function report_expect_token(token: Token, kind: TokenKind): never
+	return diagnostics
+		.error(codes.parser.UnexpectedToken)
+		:with_message(`Expected "{kind}", got "{token.kind}" instead`)
+		:with_label(diagnostics.label(token.span):with_message("Here"):with_style(style.color.red))
+		:error()
+end
+
+local function report_expect_token_one_of(token: Token, kinds: { TokenKind }): never
+	return diagnostics
+		.error(codes.parser.UnexpectedToken)
+		:with_message(`Expected one of "{table.concat(kinds, '", "')}", got "{token.kind}" instead`)
+		:with_label(diagnostics.label(token.span):with_message("Here"):with_style(style.color.red))
+		:error()
+end
+
+local function report_expect_string_one_of(span: span.Span, got: string, expected: { string }): never
+	return diagnostics
+		.error(codes.parser.UnexpectedToken)
+		:with_message(`Expected one of "{table.concat(expected, '", "')}", got "{got}" instead`)
+		:with_label(diagnostics.label(span):with_message("Here"):with_style(style.color.red))
+		:error()
+end
+
+local function report_invalid_attribute_placement(stat: ast.Statement): never
+	return diagnostics
+		.error(codes.parser.SyntaxError)
+		:with_message('Expected a "type", "event" or "function" declaration after attribute')
+		:with_label(
+			diagnostics
+				.label(stat.span)
+				:with_style(style.color.red)
+				:with_message('Expected a "type", "event" or "function" declaration')
+		)
+		:error()
+end
+
+local function report_shadow(caster: ast.Identifier, shaded: ast.Identifier): never
+	return diagnostics
+		.error(codes.analysis.Shadow)
+		:with_message(`"{caster.value}" shadows previous declaration`)
+		:with_label(
+			diagnostics.label(caster.span):with_style(style.color.red):with_message("Duplicate declaration here")
+		)
+		:with_label(
+			diagnostics.label(shaded.span):with_style(style.color.cyan):with_message("Previously declared here")
+		)
+		:error()
+end
+
+local function report_missing_entries(struct: span.Span, entries: { string }): never
+	return diagnostics
+		.error(codes.parser.MissingEntry)
+		:with_message(`Expected fields "{table.concat(entries, '", ')}"`)
+		:with_label(diagnostics.label(struct):with_style(style.color.red):with_message("Add missing fields"))
+		:error()
+end
+
 return table.freeze({
-	expect = report_expect,
-	expect_one_of = report_expect_one_of,
+	expect_token = report_expect_token,
+	expect_token_one_of = report_expect_token_one_of,
+	expect_string_one_of = report_expect_string_one_of,
+
+	shadow = report_shadow,
+	missing_entries = report_missing_entries,
+	duplicate_entry = report_duplicate_entry,
+
+	invalid_attribute_placement = report_invalid_attribute_placement,
+
+	expect_node = report_expect_node,
+	expect_node_one_of = report_expect_node_one_of,
 	cannot_convert_type = report_cannot_convert_type,
 
 	few_generics = report_few_generics,
@@ -329,6 +400,5 @@ return table.freeze({
 	invalid_option_value = report_invalid_option_value,
 
 	tag_in_variant = report_tag_in_variant,
-	duplicate_entry = report_duplicate_entry,
 	duplicate_union_type = report_duplicate_union_type,
 })
