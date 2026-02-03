@@ -15,6 +15,7 @@ export type Token =
 	| TokenBase<"word">
 	| TokenBase<"as">
 	| TokenBase<"map">
+	| TokenBase<"from">
 	| TokenBase<"type">
 	| TokenBase<"union">
 	| TokenBase<"scope">
@@ -30,6 +31,7 @@ export type Token =
 	| TokenBase<"number">
 	| TokenBase<"string">
 	--> symbols
+	| TokenBase<"*">
 	| TokenBase<"@">
 	| TokenBase<".">
 	| TokenBase<"=">
@@ -191,6 +193,7 @@ local function tokenize(input: file.File): { Token }
 			if
 				value == "as"
 				or value == "map"
+				or value == "from"
 				or value == "type"
 				or value == "true"
 				or value == "union"
@@ -281,6 +284,8 @@ local function tokenize(input: file.File): { Token }
 			return create_token("|", value_span)
 		elseif first == string.byte("@") then
 			return create_token("@", value_span)
+		elseif first == string.byte("*") then
+			return create_token("*", value_span)
 		end
 
 		return create_token("error", value_span)

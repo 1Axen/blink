@@ -6,20 +6,22 @@ local ast = require("@ast")
 local bounds = require("@config/bounds")
 local collect_decls = require("@self/collect_decls")
 local compilation = require("@config/compilation")
-local lookup = require("@hir/lookup")
 local panic = require("@util/panic")
+local populate_imports = require("@self/populate_imports")
+local populate_options = require("@self/populate_options")
 local range = require("@util/range")
 local report = require("@compiler/report")
-local store_node = require("@self/store_node")
+local search_path = require("@self/search_path")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
-local symbols = require("@compiler/symbols")
 local ty = require("@ty")
 local types = require("@hir/types")
 
 type Ty = ty.Ty
 type Decl = types.Decl
+type Scope = types.Scope
 type Node = ast.Node
 type Hir = types.Hir
+type Decls = types.Decls
 type Ast = ast.Ast
 
 type TyId<T = Ty> = ty.TyId<T>
@@ -29,9 +31,6 @@ type ScopeId = types.ScopeId
 
 type SealedRange = range.SealedRange
 
-type Symbols = ast.Symbols
-type Collection = collect_decls.Collection
-
 type Generics = {
 	by_name: { [string]: ty.Generic },
 	parameters: { ty.Generic },
@@ -39,9 +38,7 @@ type Generics = {
 
 type Context = {
 	read hir: Hir,
-
-	symbols: Symbols,
-	scope_id: ScopeId,
+	scope: Scope,
 	generics: Generics?,
 }
 
@@ -375,9 +372,9 @@ local function ty_reference(ctx: Context, expr: ast.ExprReference): Ty
 
 	-- Phase 2:
 	local path_segments = path_node_to_segments(expr.path)
-	local referenced_node = symbols.search(ctx.symbols, path_segments)
-	if referenced_node == nil or referenced_node.kind ~= "type" then
-		return report.unknown_reference(expr)
+	local reference_decl = search_path(ctx.scope, path_segments)
+	if reference_decl == nil or reference_decl.kind ~= "type" then
+		return report.unknown_reference(expr.path)
 	end
 
 	-- Phase 3:
@@ -389,11 +386,10 @@ local function ty_reference(ctx: Context, expr: ast.ExprReference): Ty
 		end
 	end
 
-	local reference_decl_id = referenced_node.id :: DeclId
-	local reference_type_decl = lookup.decl_from_id(ctx.hir, reference_decl_id) :: types.Type
+	local reference_type = reference_decl :: types.Type
 
 	-- Phase 4:
-	local reference_parameters = reference_type_decl.generics
+	local reference_parameters = reference_type.generics
 	if reference_parameters then
 		-- Phase 4.1:
 		local n_parameters = #reference_parameters
@@ -412,12 +408,10 @@ local function ty_reference(ctx: Context, expr: ast.ExprReference): Ty
 	end
 
 	-- Phase 5:
-	return ty.reference(expr, reference_type_decl.ty_id, arguments)
+	return ty.reference(expr, reference_type.ty_id, arguments)
 end
 
 function expression(ctx: Context, expr: ast.Expression | ast.Identifier, generics: Generics?): Ty
-	store_node(ctx.hir, expr)
-
 	if generics ~= nil then
 		ctx.generics = generics
 	end
@@ -466,40 +460,32 @@ local function expr_pack(ctx: Context, expr: ast.ExprPack): { types.Parameter }
 	local parameters: { types.Parameter } = {}
 	for index, expr in expr.values do
 		local name = if expr.name then expr.name.value else nil
-		local tty = expression(ctx, expr.value)
-
-		local expr_node_id = store_node(ctx.hir, expr :: any)
-		local ty_id = expr_node_id :: TyId
-		ctx.hir.tys[ty_id] = tty
-
+		local ty_id = expr.id :: TyId
 		local parameter: types.Parameter = {
 			name = name,
 			ty_id = ty_id,
 		}
 
+		ctx.hir.tys[ty_id] = expression(ctx, expr.value)
 		table.insert(parameters, parameter)
 	end
 
 	return parameters
 end
 
-local function switch_scope(ctx: Context, scope_id: ScopeId)
-	if scope_id ~= ctx.scope_id then
-		ctx.scope_id = scope_id
-		ctx.symbols = ctx.hir.scopes[scope_id].symbols
-	end
+local function switch_scope(ctx: Context, scope: Scope)
+	ctx.scope = scope
 end
 
-local function build_tys(ctx: Context, collection: Collection)
+local function build_tys(ctx: Context, decls: Decls)
 	local hir = ctx.hir
 
-	for _, decl_type in collection.types do
-		local ty_id = decl_type.id :: TyId
-		local node_id = decl_type.id :: NodeId
-		local type_stat = lookup.node_from_id(hir, node_id) :: ast.StatType
+	for _, ttype in decls.types do
+		local node = ttype.node
+		local ty_id = ttype.id :: TyId
 
 		local generics: Generics?
-		local type_parameters = decl_type.generics
+		local type_parameters = ttype.generics
 		if type_parameters then
 			local by_name_map = {}
 			for index, generic in type_parameters do
@@ -512,75 +498,75 @@ local function build_tys(ctx: Context, collection: Collection)
 			}
 		end
 
-		switch_scope(ctx, decl_type.scope_id)
-		hir.tys[ty_id] = expression(ctx, type_stat.value, generics)
+		switch_scope(ctx, ttype.scope)
+		hir.tys[ty_id] = expression(ctx, node.value, generics)
 	end
 
-	for _, decl_event in collection.events do
-		local node = lookup.node_from_id(hir, decl_event.id :: NodeId) :: ast.StatEvent
+	for _, event in decls.events do
+		local node = event.node
 		if node.data == nil then
 			continue
 		end
 
-		switch_scope(ctx, decl_event.scope_id)
-		decl_event.data = expr_pack(ctx, node.data)
+		switch_scope(ctx, event.scope)
+		event.data = expr_pack(ctx, node.data)
 	end
 
-	for _, decl_funct in collection.functs do
-		local node = lookup.node_from_id(hir, decl_funct.id :: NodeId) :: ast.StatFunction
+	for _, funct in decls.functs do
+		switch_scope(ctx, funct.scope)
+
+		local node = funct.node
 		if node.data ~= nil then
-			switch_scope(ctx, decl_funct.scope_id)
-			decl_funct.data = expr_pack(ctx, node.data)
+			funct.data = expr_pack(ctx, node.data)
 		end
 
 		if node.ret ~= nil then
-			switch_scope(ctx, decl_funct.scope_id)
-			decl_funct.ret = expr_pack(ctx, node.ret)
+			funct.ret = expr_pack(ctx, node.ret)
 		end
 	end
 end
 
---[=[
-    Constructs a HIR from the provided files map.
-    @param `files` - A map of `file_id` to an `AST`. A `file_id` of **0** must always correspond to the **entry file**.
-]=]
-local function from_files(files: compilation.FilesMap): Hir
-	local hir: Hir = {
-		tys = {},
-		nodes = {},
-
-		types = {},
-		events = {},
-		functs = {},
-		scopes = {},
-
-		options = {},
-	}
-
-	-- traverse file asts
-	local collections: { [number]: Collection } = {}
-	for file_id, file_ast in files do
-		local collection = collect_decls(hir, file_id, file_ast)
-		collections[file_id] = collection
+--- Constructs a HIR from the provided files.
+local function from_files(files: compilation.Files): Hir
+	local file_decls_map: { [number]: Decls } = {}
+	for _, file_id in files.sorted_ids do
+		local file_ast = files.ast_map[file_id]
+		local file_decls = collect_decls(file_id, file_ast)
+		file_decls_map[file_id] = file_decls
 	end
 
-	for file_id, collection in collections do
-		local file_ast = files[file_id]
+	populate_imports(files, file_decls_map)
 
-		local scope_id = file_ast.body.id :: ScopeId
-		local root_symbols = file_ast.symbols
+	local entry_file = files.sorted_ids[#files.sorted_ids]
+	local entry_decls = file_decls_map[entry_file]
+	local entry_scope: Scope
+	do
+		local entry_ast = files.ast_map[entry_file]
+		entry_scope = entry_decls.scopes[entry_ast.body.id :: ScopeId]
+	end
 
+	local hir: Hir = {
+		tys = {},
+		types = entry_decls.types,
+		events = entry_decls.events,
+		functs = entry_decls.functs,
+		scopes = entry_decls.scopes,
+		options = {},
+		entry_scope = entry_scope,
+	}
+
+	-- record all file options
+	populate_options(hir, files)
+
+	for file_id, file_decls in file_decls_map do
+		local file_ast = files.ast_map[file_id]
+		local root_scope = file_decls.scopes[file_ast.body.id :: ScopeId]
 		local context: Context = {
 			hir = hir,
-
-			options = {},
-			options_declarations = {},
-
-			symbols = root_symbols,
-			scope_id = scope_id,
+			scope = root_scope,
 		}
 
-		build_tys(context, collection)
+		build_tys(context, file_decls)
 	end
 
 	return hir

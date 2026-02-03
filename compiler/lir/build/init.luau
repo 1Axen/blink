@@ -778,15 +778,15 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 	end
 end
 
-local function build_scope(ctx: Context, scope_id: hir.ScopeId, exports_map: ExportsMap): ScopeExport
-	local hhir = ctx.hir
-	local scope = hir.scope_from_id(hhir, scope_id)
-	local symbols = scope.symbols
-
+local function build_scope(ctx: Context, scope: hir.Scope, exports_map: ExportsMap): ScopeExport
 	local items: { Export } = {}
-	for _, stat in symbols.values do
-		local decl_id = stat.id :: DeclId
-		local export = exports_map[decl_id]
+	for _, decl in scope.values do
+		if decl.kind == "scope" then
+			table.insert(items, build_scope(ctx, decl, exports_map))
+			continue
+		end
+
+		local export = exports_map[decl.id]
 		if export then
 			table.insert(items, export)
 		end
@@ -795,7 +795,7 @@ local function build_scope(ctx: Context, scope_id: hir.ScopeId, exports_map: Exp
 	return {
 		type = "export",
 		kind = "scope",
-		name = symbols.name,
+		name = scope.name,
 		decl = scope,
 		items = items,
 	}
@@ -984,17 +984,8 @@ local function from_hir(hhir: Hir): Lir
 		globals_map[globals.templates.identifier] = structure.struct(templates)
 	end
 
-	local entry_scope_id: ScopeId = 0 :: any
-	if hhir.scopes[entry_scope_id] == nil then
-		local minimum_id = math.huge
-		for scope_id in hhir.scopes do
-			minimum_id = math.min(minimum_id, scope_id :: any)
-		end
-		entry_scope_id = minimum_id :: any
-	end
-
 	return {
-		export = build_scope(ctx, entry_scope_id, exports_map),
+		export = build_scope(ctx, hhir.entry_scope, exports_map),
 		fn_map = ctx.fn_map,
 		globals = globals_map,
 		client = {

@@ -28,7 +28,7 @@ local function fmt_generics(node: types.GenericsDef): string
 	return `<{table.concat(strings, ", ")}>`
 end
 
-local function fmt_segment(node: types.PathSegment): string
+local function fmt_identifier(node: types.Identifier): string
 	return node.value
 end
 
@@ -37,17 +37,13 @@ local function fmt_path(node: types.Path): string
 	local indices = #node.segments
 
 	for index, segment in node.segments do
-		path ..= fmt_segment(segment)
+		path ..= fmt_identifier(segment)
 		if index < indices then
 			path ..= "."
 		end
 	end
 
 	return path
-end
-
-local function fmt_identifier(node: types.Identifier): string
-	return node.value
 end
 
 local function fmt_union(expr: types.ExprUnion): string
@@ -112,7 +108,6 @@ return table.freeze({
 	range = fmt_range,
 	generic = fmt_generic,
 	generics = fmt_generics,
-	segment = fmt_segment,
 	path = fmt_path,
 	identifier = fmt_identifier,
 	expression = fmt_expression,

@@ -1,41 +1,36 @@
-local hir = require("@compiler/hir")
-local lexer = require("@compiler/lexer")
-local lir = require("@compiler/lir")
-local options = require("@compiler/config/options")
-local parser = require("@compiler/parser")
-
 local ast = require("@self/ast/types")
 local codegen = require("@self/codegen")
 local codes = require("@self/config/codes")
 local compilation = require("@self/config/compilation")
-
 local diagnostics = require("@util/diagnostics")
 local file = require("@util/file")
 local fs = require("@util/fs")
+local hir = require("@compiler/hir")
 local import_resolver = require("@util/import_resolver")
-local panic = require("@util/panic")
+local lexer = require("@compiler/lexer")
+local lir = require("@compiler/lir")
+local options = require("@compiler/config/options")
+local parser = require("@compiler/parser")
 local path = require("@util/path")
 local result = require("@util/result")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 local style = require("@util/style")
-local symbols = require("@compiler/symbols")
 local typeforge = require("@util/typeforge")
 
 local md5 = require("@vendor/md5")
 
 type Ast = ast.Ast
-type Symbols = ast.Symbols
 
 type Path = path.Path
 type File = file.File
 
+type Files = compilation.Files
 type Target = compilation.Target
 type Profile = compilation.Profile
-type FilesMap = compilation.FilesMap
 
 type Context = {
-	symbols: Symbols,
-	directory: Path,
+	read directory: Path,
+	read imports: { import_resolver.Import },
 }
 
 export type Targets = typeforge.StringUnionToStruct<Target, {
@@ -59,7 +54,7 @@ export type Timings = {
 export type Output = {
 	hir: hir.Hir,
 	lir: lir.Lir,
-	files: FilesMap,
+	files: Files,
 	timings: Timings,
 	targets: Targets,
 }
@@ -124,7 +119,7 @@ end
     @param `file_path` - An absolute path to the entry file.
     @return `files` - A map of `file id` to AST
 ]=]
-local function file_to_files_map(entry_file: File, entry_path: Path): FilesMap
+local function file_to_files_map(entry_file: File, entry_path: Path): Files
 	--[[
         Recursively goes through all files in the import chain.
         Whenever an import is encountered it's resolved and parsed.
@@ -132,19 +127,17 @@ local function file_to_files_map(entry_file: File, entry_path: Path): FilesMap
         Note that already parsed files are cached using the files map.
     ]]
 
-	local files: FilesMap = {}
-	local process_file: (file: File, file_path: Path) -> Symbols
+	local ast_map: { [number]: Ast } = {}
+	local sorted_ids: { number } = {}
+	local imports_map: { [ast.StatImport]: number } = {}
+	local ref_count_map: { [number]: number? } = {}
 
 	local function stat_import(ctx: Context, stat: ast.StatImport): never?
-		--- import `path`
 		local path_expr = stat.path
-		local name_ident = stat.name
-
 		local import_path = path.from_string(path_expr.value)
-		local import_result = import_resolver.resolve(ctx.directory, import_path)
-
-		if import_result.ok == false then
-			local err = import_result.error
+		local resolve_result = import_resolver.resolve(ctx.directory, import_path)
+		if resolve_result.ok == false then
+			local err = resolve_result.error
 			if err.kind == "IOError" then
 				return report_import_io_error(err, path_expr)
 			elseif err.kind == "UnknownAlias" then
@@ -156,22 +149,9 @@ local function file_to_files_map(entry_file: File, entry_path: Path): FilesMap
 			return strong_exhaustive_match(err.kind)
 		end
 
-		local import = import_result.value
-		local import_file = import.file
-		import_path = import.path
-
-		local file_stem = path.file_stem(import.path)
-		if file_stem == nil then
-			return panic(`Unable to extract file stem from path "{path_expr.value}"`)
-		end
-
-		local import_name = file_stem
-		if name_ident ~= nil then
-			import_name = name_ident.value
-		end
-
-		local import_symbols = process_file(import_file, import_path)
-		symbols.reference(ctx.symbols, import_symbols, import_name)
+		local import = resolve_result.value
+		imports_map[stat] = import.file.id
+		table.insert(ctx.imports, import)
 
 		return nil
 	end
@@ -186,36 +166,47 @@ local function file_to_files_map(entry_file: File, entry_path: Path): FilesMap
 		end
 	end
 
-	function process_file(file: File, file_path: Path): Symbols
+	local function process_file(file: File, file_path: Path, ref_count: number)
 		local file_id = file.id
-		local cached = files[file_id]
-
-		if cached then
-			return cached.symbols
+		local prev_ref_count = ref_count_map[file_id]
+		if prev_ref_count then
+			ref_count_map[file_id] = math.max(prev_ref_count, ref_count)
+			return
 		end
 
+		-- parse file and store
 		local ast = file_to_ast(file)
-		local symbols = ast.symbols
-		local directory = path.strip_file_name(file_path)
-
-		local context: Context = {
-			symbols = symbols,
-			directory = directory,
-		}
+		ast_map[file_id] = ast
+		ref_count_map[file_id] = ref_count
+		table.insert(sorted_ids, file_id)
 
 		-- resolve imports
+		local context: Context = {
+			imports = {},
+			directory = path.strip_file_name(file_path),
+		}
+
 		node_block(context, ast.body)
 
-		-- cache ast for future use
-		files[file_id] = ast
-
-		return symbols
+		-- process imports
+		for _, import in context.imports do
+			process_file(import.file, import.path, ref_count + 1)
+		end
 	end
 
 	-- entry file
-	process_file(entry_file, entry_path)
+	process_file(entry_file, entry_path, 0)
 
-	return files
+	-- sort ids
+	table.sort(sorted_ids, function(a: number, b: number): boolean
+		return assert(ref_count_map[a]) > assert(ref_count_map[b])
+	end)
+
+	return table.freeze({
+		ast_map = ast_map,
+		sorted_ids = sorted_ids,
+		imports_map = imports_map,
+	})
 end
 
 --[=[
@@ -302,7 +293,12 @@ local function compile_contents(
 	read server: string,
 }
 	local mock_file = file.from_source("input.blink", contents)
-	local files = { [mock_file.id] = file_to_ast(mock_file) }
+	local files: Files = {
+		ast_map = { [mock_file.id] = file_to_ast(mock_file) },
+		sorted_ids = { mock_file.id },
+		imports_map = {},
+	}
+
 	local file_hir = hir.from_files(files)
 	local file_lir = lir.from_hir(file_hir)
 

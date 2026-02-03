@@ -1,7 +1,6 @@
-local ast = require("@ast")
+local assert_panic = require("@util/assert_panic")
 local fmt_types = require("@util/format_types")
 local id = require("@compiler/id")
-local lookup = require("./lookup")
 local span = require("@util/span")
 local string_builder = require("@util/string_builder")
 local style = require("@util/style")
@@ -56,7 +55,7 @@ local function fmt_type(decl: types.Type, fmt_builder: StringBuilder)
 	string_builder.indent(fmt_builder)
 
 	string_builder.append_line(fmt_builder, `{FIELD_STYLE("name:")} {fmt_types.string(decl.name)},`)
-	string_builder.append_line(fmt_builder, `{FIELD_STYLE("scope:")} {id.format(decl.scope_id)},`)
+	string_builder.append_line(fmt_builder, `{FIELD_STYLE("scope:")} {id.format(decl.scope.id)},`)
 	string_builder.append_line(fmt_builder, `{FIELD_STYLE("ty:")} {id.format(decl.ty_id)},`)
 
 	if decl.generics then
@@ -143,10 +142,9 @@ local function fmt_tys(hirr: Hir, fmt_builder: StringBuilder)
 
 	for _, ty_id in sorted do
 		local tty = tys[ty_id]
-		local node_id = ty_id :: ast.NodeId
-		local ty_node = lookup.node_from_id(hirr, node_id)
+		local node = assert_panic(tty.node, `Ty{id.format(ty_id)} has no node`)
 
-		local source_code = span.value(ty_node.span)
+		local source_code = span.value(node.span)
 		local as_lines = string.split(source_code, "\n")
 
 		string_builder.append_indent(fmt_builder)
@@ -197,7 +195,7 @@ local function fmt_scopes(scopes: index<Hir, "scopes">, fmt_builder: StringBuild
 	string_builder.indent(fmt_builder)
 
 	for scope_id, scope in scopes do
-		string_builder.append_line(fmt_builder, `{id.format(scope_id)}: {fmt_types.string(scope.symbols.name)}`)
+		string_builder.append_line(fmt_builder, `{id.format(scope_id)}: {fmt_types.string(scope.name)}`)
 	end
 
 	string_builder.dedent(fmt_builder)

@@ -222,7 +222,6 @@ local function type_check(hir: Hir)
 	for ty_id, tty in tys do
 		local context: Context = {
 			hir = hir,
-			node = lookup.node_from_id(hir, ty_id :: ast.NodeId),
 			encountered = {},
 		}
 

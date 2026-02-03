@@ -5,19 +5,21 @@ local string_builder = require("@util/string_builder")
 type BasicBlock = lir.BasicBlock
 
 export type Context = {
-	lir: lir.Lir,
-	hir: hir.Hir,
-	builder: string_builder.StringBuilder,
+	read lir: lir.Lir,
+	read hir: hir.Hir,
+	read builder: string_builder.StringBuilder,
 
 	current_fn: lir.FnBody?,
 	current_block: BasicBlock?,
 	--- map of scopes at which an if chain is present
-	if_chains: { [number]: true },
+	read if_chains: { [number]: true },
 	--- FILO queue of blocks to process
 	block_queue: { BasicBlock },
 	--- filter to prevent duplicate insertions into the queue
 	block_queue_filter: { [number]: true },
-	seen_registers: { [number]: true },
+	read seen_registers: { [number]: true },
+
+	read type_names: { [hir.DeclId]: string },
 }
 
 --- Attempts to mark a register as seen, returns true if this is the first time this register was seen.

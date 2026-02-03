@@ -9,7 +9,6 @@ local lexer = require("@compiler/lexer")
 local file = require("@util/file")
 local panic = require("@util/panic")
 local span = require("@util/span")
-local symbols = require("@compiler/symbols")
 
 local assert_panic = require("@util/assert_panic")
 local report = require("@compiler/report")
@@ -18,8 +17,6 @@ local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 type Token = lexer.Token
 type TokenAny = lexer.TokenBase<any>
 type TokenKind = lexer.TokenKind
-
-type Symbols = ast.Symbols
 
 type Context = {
 	read tokens: { Token },
@@ -31,11 +28,8 @@ type Context = {
 	token: Token,
 	lookahead: Token,
 
-	symbols: Symbols,
 	attributes: { ast.Attribute },
 }
-
-local ROOT_SYMBOLS = ""
 
 local block: (Context, boolean) -> ast.Block
 local statement: (Context) -> ast.Statement
@@ -108,24 +102,30 @@ local function seperated<T>(ctx: Context, t: (Context) -> T, seperator: TokenKin
 	return list
 end
 
-local function path_segment(ctx: Context): ast.PathSegment
+local function identifier(ctx: Context): ast.Identifier
 	local word = expect(ctx, "word")
 	return {
-		kind = "segment",
+		id = next_node_id(ctx),
 		span = word.span,
+		kind = "identifier",
 		value = span.value(word.span),
+	}
+end
+
+local function as_identifier(ctx: Context, token: Token): ast.Identifier
+	return {
+		id = next_node_id(ctx),
+		span = token.span,
+		kind = "identifier",
+		value = span.value(token.span),
 	}
 end
 
 --- Parses word + dot as identifier (foo.bar)
 local function path(ctx: Context): ast.Path
-	local segments: { ast.PathSegment } = {}
-	local path_span: span.Span?
-
+	local segments: { ast.Identifier } = {}
 	while true do
-		local segment = path_segment(ctx)
-		table.insert(segments, segment)
-		path_span = if path_span then span.merge(path_span, segment.span) else segment.span
+		table.insert(segments, identifier(ctx))
 
 		--> end of path
 		if peek_kind(ctx) ~= "." then
@@ -139,18 +139,8 @@ local function path(ctx: Context): ast.Path
 	return {
 		id = next_node_id(ctx),
 		kind = "path",
-		span = path_span :: vector,
+		span = span.merge(segments[1].span, segments[#segments].span),
 		segments = segments,
-	}
-end
-
-local function identifier(ctx: Context): ast.Identifier
-	local word = expect(ctx, "word")
-	return {
-		id = next_node_id(ctx),
-		span = word.span,
-		kind = "identifier",
-		value = span.value(word.span),
 	}
 end
 
@@ -757,14 +747,9 @@ local function stat_scope(ctx: Context): ast.StatScope
 	local node_id = next_node_id(ctx)
 	local keyword = expect(ctx, "scope")
 	local name = identifier(ctx)
-	local _open = expect(ctx, "{")
 
-	local parent_symbols = ctx.symbols
-	ctx.symbols = symbols.inner(parent_symbols, name.value)
-
+	expect(ctx, "{")
 	local scope_block = block(ctx, true)
-	ctx.symbols = parent_symbols
-
 	local close = expect(ctx, "}")
 
 	return {
@@ -826,25 +811,70 @@ end
 
 local function stat_import(ctx: Context): ast.StatImport
 	local node_id = next_node_id(ctx)
-	local keyword = expect(ctx, "import")
+	local first = expect(ctx, "from")
 
-	local path = expr_string(ctx)
-	local full_span = span.merge(keyword.span, path.span)
+	local path_string = expr_string(ctx)
+	expect(ctx, "import")
 
-	local name: ast.Identifier?
-	local token = peek(ctx)
-	if token.kind == "as" then
-		expect(ctx, "as")
-		name = identifier(ctx)
-		full_span = span.merge(full_span, name.span)
+	local last: ast.Node | lexer.Token
+	local extra: index<ast.StatImport, "extra">
+	if peek_kind(ctx) == "*" then
+		local star = consume(ctx)
+		last = star
+
+		local into_scope: ast.Identifier?
+		if peek_kind(ctx) == "as" then
+			consume(ctx)
+			into_scope = identifier(ctx)
+			last = into_scope
+		end
+
+		extra = {
+			kind = "all",
+			star = as_identifier(ctx, star),
+			into_scope = into_scope,
+		}
+	elseif peek_kind(ctx) == "{" then
+		consume(ctx)
+
+		local values = {}
+		if peek_kind(ctx) ~= "}" then
+			while true do
+				local name = path(ctx)
+				local rename_to: ast.Identifier?
+				if peek_kind(ctx) == "as" then
+					consume(ctx)
+					rename_to = identifier(ctx)
+				end
+
+				table.insert(values, { path = name, rename_to = rename_to })
+
+				if peek_kind(ctx) == "," then
+					consume(ctx)
+					continue
+				end
+
+				break
+			end
+		end
+
+		extra = {
+			kind = "destructured",
+			values = values,
+		}
+
+		last = expect(ctx, "}")
+	else
+		return report.expect_token_one_of(consume(ctx), { "*", "{" })
 	end
 
+	local full_span = span.merge(first.span, last.span)
 	return {
 		id = node_id,
 		span = full_span,
 		kind = "import",
-		name = name,
-		path = path,
+		path = path_string,
+		extra = extra,
 	}
 end
 
@@ -902,7 +932,7 @@ function statement(ctx: Context): ast.Statement
 
 	if token.kind == "type" then
 		stat = stat_type(ctx)
-	elseif token.kind == "import" then
+	elseif token.kind == "from" then
 		stat = stat_import(ctx)
 	elseif token.kind == "scope" then
 		stat = stat_scope(ctx)
@@ -921,26 +951,6 @@ function statement(ctx: Context): ast.Statement
 	-- validate attributes
 	if #ctx.attributes > 0 then
 		return report.invalid_attribute_placement(stat)
-	end
-
-	local name = stat.name
-	if name ~= nil then
-		local name_value = name.value
-		local scope_symbols = ctx.symbols
-
-		local shaded_node = symbols.search(scope_symbols, { name_value })
-		if shaded_node ~= nil then
-			local shaded_name = shaded_node.name
-			if shaded_name == nil then
-				return panic("Expected shaded AST node to have a name")
-			end
-
-			report.shadow(name, shaded_name)
-		end
-
-		if stat.kind ~= "scope" then
-			symbols.set(scope_symbols, name_value, stat)
-		end
 	end
 
 	return stat
@@ -997,14 +1007,12 @@ local function parse(file: file.File, tokens: { lexer.Token }): ast.Ast
 		token = tokens[1],
 		lookahead = tokens[2] or tokens[1],
 
-		symbols = symbols.create(ROOT_SYMBOLS) :: Symbols,
 		attributes = {},
 	}
 
 	return {
 		kind = "ast",
 		body = block(ctx),
-		symbols = ctx.symbols,
 	}
 end
 

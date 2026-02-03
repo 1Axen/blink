@@ -20,7 +20,8 @@ export type Type = {
 	read id: DeclId,
 	read kind: "type",
 	read name: string,
-	read scope_id: ScopeId,
+	read node: ast.StatType,
+	read scope: Scope,
 	read attributes: attributes.Attributes,
 
 	read ty_id: TyId,
@@ -31,7 +32,8 @@ export type Event = {
 	read id: DeclId,
 	read kind: "event",
 	read name: string,
-	read scope_id: ScopeId,
+	read node: ast.StatEvent,
+	read scope: Scope,
 	read attributes: attributes.Attributes,
 
 	read from: "Server" | "Client" | "Both",
@@ -44,7 +46,8 @@ export type Function = {
 	read id: DeclId,
 	read kind: "function",
 	read name: string,
-	read scope_id: ScopeId,
+	read node: ast.StatFunction,
+	read scope: Scope,
 	read attributes: attributes.Attributes,
 
 	data: { Parameter }?,
@@ -54,13 +57,20 @@ export type Function = {
 export type Scope = {
 	read id: ScopeId,
 	read kind: "scope",
-	read symbols: ast.Symbols,
+	read name: string,
+	read node: ast.StatScope | ast.StatImport,
+	read scope: Scope?,
+	read attributes: attributes.Attributes,
+
+	read values: { [string]: Decl },
+	read symbols: { [string]: ast.Identifier },
 }
 
 --stylua: ignore
 export type Decl = 
     | Type
     | Event
+	| Scope
     | Function
 
 export type DeclId = { write __kind: "decl" }
@@ -68,15 +78,20 @@ export type ScopeId = { write __kind: "scope" }
 
 export type Hir = {
 	read tys: { [TyId]: Ty },
-	read nodes: { [NodeId]: Node },
-
 	read types: { [DeclId]: Type },
 	read events: { [DeclId]: Event },
 	read functs: { [DeclId]: Function },
 	read scopes: { [ScopeId]: Scope },
-
 	--- [file_id]: FileOptions
 	read options: { [number]: options.FileOptions? },
+	read entry_scope: Scope,
+}
+
+export type Decls = {
+	read types: { [DeclId]: Type },
+	read events: { [DeclId]: Event },
+	read functs: { [DeclId]: Function },
+	read scopes: { [ScopeId]: Scope },
 }
 
 return nil

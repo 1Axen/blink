@@ -7,7 +7,6 @@ local hir = require("@compiler/hir")
 local path = require("@util/path")
 local printext = require("@util/printext")
 local process = require("@lute/process")
-local symbols = require("@compiler/symbols")
 local system = require("@lute/system")
 
 type Path = path.Path
@@ -59,7 +58,6 @@ local function on_compile(context: Context)
 	local verbose: boolean = context.globalOptions.verbose
 
 	local print_hir: boolean = context.commandOptions.hir
-	local print_symbols: boolean = context.commandOptions.symbols
 
 	local watch: boolean = context.commandOptions.watch
 	local profile: Profile = context.commandOptions.profile
@@ -95,11 +93,6 @@ local function on_compile(context: Context)
 	end
 
 	local value = compilation_result.value
-
-	if print_symbols then
-		print(symbols.format(value.files[0].symbols))
-	end
-
 	if print_hir then
 		print(hir.format(value.hir))
 	end
@@ -156,14 +149,6 @@ cli.new()
 				option.new()
 					:setName("hir")
 					:setDescription("Output a formatted HIR to the stdout")
-					:setType("boolean")
-					:setDefaultValue(false)
-					:build()
-			)
-			:addOption(
-				option.new()
-					:setName("symbols")
-					:setDescription("Output formatted symbols to the stdout")
 					:setType("boolean")
 					:setDefaultValue(false)
 					:build()

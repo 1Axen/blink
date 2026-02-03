@@ -10,7 +10,8 @@ local ty = require("@ty")
 type TyKind = ty.TyKind
 type Token = lexer.Token
 type TokenKind = lexer.TokenKind
-export type Entry = ast.Identifier | ast.ExprNumber | ast.ExprString | ast.ExprBoolean
+type Identifier = ast.Identifier
+export type Entry = Identifier | ast.ExprNumber | ast.ExprString | ast.ExprBoolean
 
 local function path_to_segments(path: ast.Path): { string }
 	local segments: { string } = {}
@@ -79,9 +80,8 @@ local function report_extra_generics(node: ast.GenericsArgs, maximum: number): n
 		:error()
 end
 
-local function report_unknown_reference(expr: ast.ExprReference): never
-	local path = expr.path
-	local path_str = path_to_string(expr.path)
+local function report_unknown_reference(path: ast.Path): never
+	local path_str = path_to_string(path)
 	return diagnostics
 		.error(codes.type_checking.UnknownReference)
 		:with_message(`Unknown reference "{path_str}"`)
@@ -338,10 +338,21 @@ local function report_invalid_attribute_placement(stat: ast.Statement): never
 		:error()
 end
 
-local function report_shadow(caster: ast.Identifier, shaded: ast.Identifier): never
+local function report_shadow(name: string, a: Identifier, b: Identifier): never
+	local shaded: Identifier
+	local caster: Identifier
+
+	if a.span.x < b.span.x then
+		shaded = a
+		caster = b
+	else
+		shaded = b
+		caster = a
+	end
+
 	return diagnostics
 		.error(codes.analysis.Shadow)
-		:with_message(`"{caster.value}" shadows previous declaration`)
+		:with_message(`"{name}" shadows previous declaration`)
 		:with_label(
 			diagnostics.label(caster.span):with_style(style.color.red):with_message("Duplicate declaration here")
 		)
@@ -356,6 +367,14 @@ local function report_missing_entries(struct: span.Span, entries: { string }): n
 		.error(codes.parser.MissingEntry)
 		:with_message(`Expected fields "{table.concat(entries, '", ')}"`)
 		:with_label(diagnostics.label(struct):with_style(style.color.red):with_message("Add missing fields"))
+		:error()
+end
+
+local function report_unknown_destructure_value(value: ast.Identifier): never
+	return diagnostics
+		.error(codes.type_checking.UnknownReference)
+		:with_message(`Unable to import "{value.value}", it doesn't exist in the imported file`)
+		:with_label(diagnostics.label(value.span):with_style(style.color.red):with_message("Unknown reference"))
 		:error()
 end
 
@@ -401,4 +420,5 @@ return table.freeze({
 
 	tag_in_variant = report_tag_in_variant,
 	duplicate_union_type = report_duplicate_union_type,
+	unknown_destructure_value = report_unknown_destructure_value,
 })

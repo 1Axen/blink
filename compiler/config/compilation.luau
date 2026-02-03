@@ -16,12 +16,14 @@ local PROFILES = table.freeze({
 export type Target = keyof<typeof(TARGETS)>
 export type Profile = keyof<typeof(PROFILES)>
 
---[=[
-    Map of `file id` to `AST`.
-    Since file id's are contigous the map also works as an array.
-    Index 0 into the map *must* always be the entry file of the compilation.
-]=]
-export type FilesMap = { [number]: ast.Ast }
+export type Files = {
+	--- array of file ids sorted in descending order by reference count, reference count is transitive
+	read sorted_ids: { number },
+	--- map of file id to ast
+	read ast_map: { [number]: ast.Ast },
+	--- map of import node to file id
+	read imports_map: { [ast.StatImport]: number },
+}
 
 return table.freeze({
 	TARGETS = TARGETS,

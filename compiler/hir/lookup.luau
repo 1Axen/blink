@@ -39,15 +39,6 @@ local function decl_from_id(hir: Hir, decl_id: DeclId): Decl
 	return decl
 end
 
-local function node_from_id(hir: Hir, node_id: NodeId): Node
-	local node = hir.nodes[node_id]
-	if node == nil then
-		return panic(`Expected NodeId {node_id} to map to a node`)
-	end
-
-	return node
-end
-
 local function scope_from_id(hir: Hir, scope_id: ScopeId): Scope
 	local scope = hir.scopes[scope_id]
 	if scope == nil then
@@ -84,6 +75,5 @@ return table.freeze({
 
 	ty_from_id = ty_from_id,
 	decl_from_id = decl_from_id,
-	node_from_id = node_from_id,
 	scope_from_id = scope_from_id,
 })

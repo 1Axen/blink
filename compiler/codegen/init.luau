@@ -761,6 +761,51 @@ local function gen_export(ctx: Context, target: compilation.Target, export: lir.
 	builder:append("}")
 end
 
+local function gen_type_exports(ctx: Context)
+	local hhir = ctx.hir
+	local builder = ctx.builder
+	local type_names = ctx.type_names
+
+	local function recurse(scope: hir.Scope, prefix: string)
+		if scope.scope ~= nil then
+			prefix = `{prefix}{scope.name}_`
+		end
+
+		for _, decl in scope.values do
+			if decl.kind == "scope" then
+				recurse(decl, prefix)
+			elseif decl.kind == "type" then
+				local name = `{prefix}{decl.name}`
+				type_names[decl.id] = name
+
+				builder:append("export type ")
+				builder:append(name)
+
+				if decl.generics then
+					builder:append("<")
+					for index, generic in decl.generics do
+						if index > 1 then
+							builder:append(", ")
+						end
+
+						append_luau_type(ctx, generic)
+					end
+					builder:append(">")
+				end
+
+				builder:append(" = ")
+
+				local decl_ty = hir.ty_from_id(hhir, decl.ty_id)
+				append_luau_type(ctx, decl_ty)
+
+				builder:append("\n")
+			end
+		end
+	end
+
+	recurse(hhir.entry_scope, "")
+end
+
 export type Props = {
 	lir: lir.Lir,
 	hir: hir.Hir,
@@ -786,31 +831,13 @@ local function from_lir(props: Props, target: compilation.Target): string
 		block_queue = {},
 		block_queue_filter = {},
 		seen_registers = {},
+
+		type_names = {},
 	}
 
 	append_headers(builder)
 
-	for _, type_decl in hhir.types do
-		builder:append("export type ")
-		builder:append(type_decl.name)
-
-		if type_decl.generics then
-			builder:append("<")
-			for index, generic in type_decl.generics do
-				if index > 1 then
-					builder:append(", ")
-				end
-
-				append_luau_type(ctx, generic)
-			end
-			builder:append(">")
-		end
-
-		builder:append(" = ")
-		local decl_ty = hir.ty_from_id(hhir, type_decl.ty_id)
-		append_luau_type(ctx, decl_ty)
-		builder:append("\n")
-	end
+	gen_type_exports(ctx)
 
 	builder:append_line("")
 

@@ -79,18 +79,18 @@ local function append_instance(ctx: Context, instance: ty.Instance)
 end
 
 local function append_reference(ctx: Context, reference: ty.Reference)
-	local decl_id = reference.to :: hir.DeclId
-	local type_decl = hir.decl_from_id(ctx.hir, decl_id)
-	if type_decl.kind ~= "type" then
-		panic(`expected reference ty id to map to a type decleration, got a "{type_decl.kind}" decleration instead`)
+	local ttype = hir.decl_from_id(ctx.hir, reference.to :: hir.DeclId)
+	if ttype.kind ~= "type" then
+		panic(`expected reference ty id to map to a type decleration, got a "{ttype.kind}" decleration instead`)
 		error("never")
 	end
 
 	local builder = ctx.builder
-	builder:append(type_decl.name)
+	local type_name = ctx.type_names[ttype.id]
+	builder:append(type_name)
 
 	local arguments = reference.arguments
-	if arguments then
+	if arguments and #arguments > 0 then
 		builder:append("<")
 		for index, argument in arguments do
 			if index > 1 then

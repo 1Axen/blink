@@ -1,24 +1,14 @@
 --!strict
 
-local symbols = require("@compiler/symbols")
-
 export type NodeKind = index<Node, "kind">
 export type StatKind = index<Statement, "kind">
 export type ExprKind = index<Expression, "kind">
-
-export type Symbols = symbols.Symbols<Statement>
-
-export type PathSegment = {
-	read span: vector,
-	read kind: "segment",
-	read value: string,
-}
 
 export type Path = {
 	read id: NodeId,
 	read span: vector,
 	read kind: "path",
-	read segments: { PathSegment },
+	read segments: { Identifier },
 }
 
 export type Range = {
@@ -230,14 +220,24 @@ export type StatScope = {
 	read body: Block,
 }
 
---- import [path]
---- import [path] as [as]
+--- from "path" import *
+--- from "path" import * as name
+--- from "path" import {A, B, C as D}
 export type StatImport = {
 	read id: NodeId,
 	read span: vector,
 	read kind: "import",
-	read name: Identifier?,
 	read path: ExprString,
+
+	read extra: {
+		read kind: "all",
+		--- as name
+		read star: Identifier,
+		read into_scope: Identifier?,
+	} | {
+		read kind: "destructured",
+		read values: { { path: Path, rename_to: Identifier? } },
+	},
 }
 
 --- option [name] = [value]
@@ -290,7 +290,6 @@ export type Block = {
 export type Ast = {
 	read kind: "ast",
 	read body: Block,
-	read symbols: Symbols,
 }
 
 return nil
