@@ -3,7 +3,7 @@ option types_output = "./out/imports"
 -- luaurc aliases support!
 from "@libs/common" import *
 from "./libs/common" import * as common_relative
-from "@libs/common" import {linked_list as list}
+from "@libs/common" import {linked_list as list, math.pi as PI}
 
 type byte_list = linked_list<u8>
 type short_list = common_relative.linked_list<u16>

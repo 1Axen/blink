@@ -6,3 +6,7 @@ type node<T> = struct {
 type linked_list<T> = struct {
     head: node<T>
 }
+
+scope math {
+	type pi = 3.14
+}
