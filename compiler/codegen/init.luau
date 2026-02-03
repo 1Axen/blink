@@ -761,49 +761,26 @@ local function gen_export(ctx: Context, target: compilation.Target, export: lir.
 	builder:append("}")
 end
 
-local function gen_type_exports(ctx: Context)
+local function populate_type_names(ctx: Context)
 	local hhir = ctx.hir
-	local builder = ctx.builder
 	local type_names = ctx.type_names
 
-	local function recurse(scope: hir.Scope, prefix: string)
+	local function next_scope(scope: hir.Scope, prefix: string)
 		if scope.scope ~= nil then
 			prefix = `{prefix}{scope.name}_`
 		end
 
 		for _, decl in scope.values do
 			if decl.kind == "scope" then
-				recurse(decl, prefix)
+				next_scope(decl, prefix)
 			elseif decl.kind == "type" then
 				local name = `{prefix}{decl.name}`
 				type_names[decl.id] = name
-
-				builder:append("export type ")
-				builder:append(name)
-
-				if decl.generics then
-					builder:append("<")
-					for index, generic in decl.generics do
-						if index > 1 then
-							builder:append(", ")
-						end
-
-						append_luau_type(ctx, generic)
-					end
-					builder:append(">")
-				end
-
-				builder:append(" = ")
-
-				local decl_ty = hir.ty_from_id(hhir, decl.ty_id)
-				append_luau_type(ctx, decl_ty)
-
-				builder:append("\n")
 			end
 		end
 	end
 
-	recurse(hhir.entry_scope, "")
+	next_scope(hhir.entry_scope, "")
 end
 
 export type Props = {
@@ -837,7 +814,32 @@ local function from_lir(props: Props, target: compilation.Target): string
 
 	append_headers(builder)
 
-	gen_type_exports(ctx)
+	populate_type_names(ctx)
+	for decl_id, ttype in hhir.types do
+		local type_name = assert_panic(ctx.type_names[decl_id], "expected type to have a cached type name") :: string
+
+		builder:append("export type ")
+		builder:append(type_name)
+
+		if ttype.generics then
+			builder:append("<")
+			for index, generic in ttype.generics do
+				if index > 1 then
+					builder:append(", ")
+				end
+
+				append_luau_type(ctx, generic)
+			end
+			builder:append(">")
+		end
+
+		builder:append(" = ")
+
+		local type_ty = hir.ty_from_id(hhir, ttype.ty_id)
+		append_luau_type(ctx, type_ty)
+
+		builder:append("\n")
+	end
 
 	builder:append_line("")
 

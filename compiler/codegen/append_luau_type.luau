@@ -1,5 +1,6 @@
 local context = require("./context")
 local hir = require("@hir")
+local id = require("@compiler/id")
 local panic = require("@util/panic")
 local string_builder = require("@util/string_builder")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
@@ -87,6 +88,11 @@ local function append_reference(ctx: Context, reference: ty.Reference)
 
 	local builder = ctx.builder
 	local type_name = ctx.type_names[ttype.id]
+	if type_name == nil then
+		panic(`expected type({id.format(ttype.id)}) "{ttype.name}" to have a cached type name`)
+		error("unreachable")
+	end
+
 	builder:append(type_name)
 
 	local arguments = reference.arguments

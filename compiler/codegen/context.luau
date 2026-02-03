@@ -19,7 +19,7 @@ export type Context = {
 	block_queue_filter: { [number]: true },
 	read seen_registers: { [number]: true },
 
-	read type_names: { [hir.DeclId]: string },
+	read type_names: { [hir.DeclId]: string? },
 }
 
 --- Attempts to mark a register as seen, returns true if this is the first time this register was seen.
