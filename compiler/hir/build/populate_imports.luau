@@ -9,10 +9,17 @@ local types = require("@hir/types")
 type Decl = types.Decl
 type Scope = types.Scope
 type Decls = types.Decls
+type DeclId = types.DeclId
 type ScopeId = types.ScopeId
 
 type Files = compilation.Files
 type FileDeclsMap = { [number]: Decls }
+
+local function combine<K, V>(source: { [K]: V }, target: { [K]: V })
+	for key, value in source do
+		target[key] = value
+	end
+end
 
 local function parse_import(
 	scope: Scope,
@@ -42,6 +49,17 @@ local function parse_import(
 				symbols = import_scope.symbols,
 			}
 
+			for decl_id, child_scope in import_decls.scopes do
+				if child_scope == import_scope then
+					continue
+				end
+
+				decls.scopes[decl_id] = child_scope
+			end
+
+			combine(import_decls.events, decls.events)
+			combine(import_decls.functs, decls.functs)
+			combine(import_decls.types, decls.types)
 			store_decl(scope, decls, new_scope, into_scope)
 		else
 			for _, decl_map in { import_decls.types, import_decls.events, import_decls.functs } do
@@ -57,8 +75,8 @@ local function parse_import(
 			end
 
 			for scope_id, child_scope in import_decls.scopes do
-				-- skip the root scope
-				if child_scope.scope == nil then
+				-- skip the import scope
+				if child_scope == import_scope then
 					continue
 				end
 
