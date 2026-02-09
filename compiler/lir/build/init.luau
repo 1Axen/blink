@@ -942,6 +942,11 @@ local function from_hir(hhir: Hir): Lir
 	local server_receive_unreliable = build_receive_connection(ctx, "Server", server_unreliables)
 
 	local client_step = fn.anonymous({}, {}, function(block)
+		local is_empty = condition.equals(OUTGOING.cursor, constant.zero)
+		block:if_single(is_empty, function(block: builders.Builder)
+			block:rreturn({})
+		end)
+
 		local packet_buffer = trim_outgoing_buffer(block)
 		block:call(library.RemoteEvent.fire_server(RELIABLE_EVENT, { packet_buffer, OUTGOING.unknown } :: any))
 		block:store(constant.zero, OUTGOING.cursor)
@@ -951,27 +956,29 @@ local function from_hir(hhir: Hir): Lir
 	local server_step = fn.anonymous({}, {}, function(block)
 		block:for_generic(globals.players_map, function(block, player, save)
 			local buffers = block:store(projection.index(save, constant.from_value("buffers")))
-			local lengths = block:store(projection.index(save, constant.from_value("lengths")))
-			local unknown = block:store(projection.index(save, constant.from_value("unknown")))
+			block:if_single(condition.greater_than(unary.len(buffers), constant.zero), function(block)
+				local lengths = block:store(projection.index(save, constant.from_value("lengths")))
+				local unknown = block:store(projection.index(save, constant.from_value("unknown")))
 
-			local total_length = block:store(constant.zero)
-			block:for_generic(lengths, function(block, _, length)
-				block:store(binary.add(total_length, length), total_length)
+				local total_length = block:store(constant.zero)
+				block:for_generic(lengths, function(block, _, length)
+					block:store(binary.add(total_length, length), total_length)
+				end)
+
+				local cursor = block:store(constant.zero)
+				local packet_buffer = block:store(library.buffer.create(total_length))
+				block:for_generic(buffers, function(block, index, segment)
+					local length = projection.field(lengths, index)
+					block:call(library.buffer.copy(packet_buffer, cursor, segment))
+					block:store(binary.add(cursor, length), cursor)
+				end)
+
+				block:call(library.RemoteEvent.fire_client(RELIABLE_EVENT, { player, packet_buffer :: any, unknown }))
+
+				block:call(library.table.clear(buffers))
+				block:call(library.table.clear(lengths))
+				block:call(library.table.clear(unknown))
 			end)
-
-			local cursor = block:store(constant.zero)
-			local packet_buffer = block:store(library.buffer.create(total_length))
-			block:for_generic(buffers, function(block, index, segment)
-				local length = projection.field(lengths, index)
-				block:call(library.buffer.copy(packet_buffer, cursor, segment))
-				block:store(binary.add(cursor, length), cursor)
-			end)
-
-			block:call(library.RemoteEvent.fire_client(RELIABLE_EVENT, { player, packet_buffer :: any, unknown }))
-
-			block:call(library.table.clear(buffers))
-			block:call(library.table.clear(lengths))
-			block:call(library.table.clear(unknown))
 		end)
 	end)
 
