@@ -155,17 +155,22 @@ local function any_identifier(ctx: Context): ast.Identifier
 	}
 end
 
+type Structure = {
+	read open: lexer.Token,
+	read close: lexer.Token,
+	read fields: { [string]: any },
+}
+
 local function structure(
 	ctx: Context,
-	fields: { [string]: { expr: (ctx: Context) -> any, optional: boolean } },
-	open: lexer.TokenBase<any>
-): { [string]: any }
+	layout: { [string]: { expr: (ctx: Context) -> any, optional: boolean } }
+): Structure
 	--> key - required
 	local all_keys: { string } = {}
 	local parsed_keys: { [string]: report.Entry } = {}
 	local required_keys: { string } = {}
 
-	for key, value in fields do
+	for key, value in layout do
 		if value.optional == false then
 			table.insert(required_keys, key)
 		end
@@ -173,9 +178,9 @@ local function structure(
 		table.insert(all_keys, key)
 	end
 
-	local result: { [string]: ast.Expression } = {}
-
-	while true do
+	local open = expect(ctx, "{")
+	local fields: { [string]: ast.Expression } = {}
+	while peek_kind(ctx) ~= "}" do
 		local name = any_identifier(ctx)
 		local key = name.value
 
@@ -184,7 +189,7 @@ local function structure(
 			return report.duplicate_entry(previous, name)
 		end
 
-		local field = fields[key]
+		local field = layout[key]
 		if field == nil then
 			report.expect_string_one_of(name.span, key, all_keys)
 		end
@@ -192,7 +197,7 @@ local function structure(
 		local _assign = expect(ctx, ":")
 		local value = field.expr(ctx)
 
-		result[key] = value
+		fields[key] = value
 		parsed_keys[key] = name
 
 		local index = table.find(required_keys, key)
@@ -208,12 +213,16 @@ local function structure(
 		expect(ctx, ",")
 	end
 
-	local close = peek(ctx)
+	local close = expect(ctx, "}")
 	if #required_keys ~= 0 then
 		return report.missing_entries(span.merge(open.span, close.span), required_keys)
 	end
 
-	return result
+	return table.freeze({
+		open = open,
+		close = close,
+		fields = fields,
+	})
 end
 
 local function generic(ctx: Context): ast.GenericDef
@@ -716,17 +725,16 @@ local function stat_event(ctx: Context): ast.StatEvent
 	local keyword = expect(ctx, "event")
 	local name = identifier(ctx)
 	local _assign = expect(ctx, "=")
-	local open = expect(ctx, "{")
 
 	local event_structure = structure(ctx, {
 		from = { expr = identifier, optional = false },
 		type = { expr = identifier, optional = false },
 		call = { expr = identifier, optional = false },
-		poll = { expr = expr_boolean, optional = true },
 		data = { expr = expr_pack_or_single, optional = true },
-	}, open)
+	})
 
-	local close = expect(ctx, "}")
+	local close = event_structure.close
+	local fields = event_structure.fields
 
 	return {
 		id = node_id,
@@ -735,11 +743,10 @@ local function stat_event(ctx: Context): ast.StatEvent
 		attributes = attributes,
 
 		name = name,
-		from = event_structure.from,
-		type = event_structure.type,
-		call = event_structure.call,
-		poll = event_structure.poll,
-		data = event_structure.data,
+		from = fields.from,
+		type = fields.type,
+		call = fields.call,
+		data = fields.data,
 	}
 end
 
@@ -788,14 +795,14 @@ local function stat_function(ctx: Context): ast.StatFunction
 	local keyword = expect(ctx, "function")
 	local name = identifier(ctx)
 	local _assign = expect(ctx, "=")
-	local open = expect(ctx, "{")
 
 	local function_structure = structure(ctx, {
 		data = { expr = expr_pack_or_single, optional = true },
 		["return"] = { expr = expr_pack_or_single, optional = true },
-	}, open)
+	})
 
-	local close = expect(ctx, "}")
+	local close = function_structure.close
+	local fields = function_structure.fields
 
 	return {
 		id = node_id,
@@ -804,8 +811,8 @@ local function stat_function(ctx: Context): ast.StatFunction
 		attributes = attributes,
 
 		name = name,
-		data = function_structure.data,
-		ret = function_structure["return"],
+		data = fields.data,
+		ret = fields["return"],
 	}
 end
 
