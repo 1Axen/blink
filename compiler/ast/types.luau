@@ -208,7 +208,6 @@ export type StatEvent = {
 	read from: Identifier,
 	read type: Identifier,
 	read call: Identifier,
-	read poll: ExprBoolean?,
 	read data: ExprPack?,
 }
 
