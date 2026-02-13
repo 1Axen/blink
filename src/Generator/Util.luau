@@ -18,7 +18,7 @@ local function GetScopeIndent(CurrentScope: Scope): number
 end
 
 local function GetTypesPath(Name: string, Write: boolean, CurrentScope: Scope): string
-	return `{GetScopePrefix(nil, false, CurrentScope)}{Write and "Write" or "Read"}{Name}`
+	return `SerdesFunctions.{GetScopePrefix(nil, false, CurrentScope)}{Write and "Write" or "Read"}{Name}`
 end
 
 local function GetExportName(Name: string, CurrentScope: Scope): string

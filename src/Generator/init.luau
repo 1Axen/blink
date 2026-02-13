@@ -1108,8 +1108,8 @@ function Generators.Event(
 	end
 
 	local Arguments = `{Values}{Function and ", InvocationIdentifier: number" or ""}`
-	local Read = Blocks.Function(Util.GetPath(Identifier, false, Scope), "", `({Type})`, false, true)
-	local Write = Blocks.Function(Util.GetPath(Identifier, true, Scope), Arguments, "()", false, true)
+	local Read = Blocks.Function(Util.GetPath(Identifier, false, Scope), "", `({Type})`)
+	local Write = Blocks.Function(Util.GetPath(Identifier, true, Scope), Arguments, "()")
 
 	if not _G.RELEASE then
 		Write:Comment(`{Identifier} ({Index})`)
@@ -1285,6 +1285,7 @@ function Generator.Generate(FileContext: Context, AbstractSyntaxTree: Parser.Bod
 		ScopeValidationBody,
 		string.split(Source[1], "\r"),
 		Imports.DumpLines(),
+		{ "local SerdesFunctions = {}\n" },
 		{ `local BASE_EVENT_NAME = "{Options.RemoteScope and Options.RemoteScope .. "_" or ""}BLINK"\n` },
 		string.split(Sources.Base, "\r"),
 		(if Options.SyncValidation then SYNC_VALIDATION_BODY else {}),
