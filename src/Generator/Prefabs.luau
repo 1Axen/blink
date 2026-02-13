@@ -65,6 +65,14 @@ local Asserts = {
 		}
 	end,
 
+	Vector2 = function(Variable: string, Min: number, Max: number): AssertPrefab
+		return {
+			Lower = `if {Variable}.Magnitude < {Min} then error(\`Expected magnitude of "{Variable}" to be larger than {Min}, got \{{Variable}.Magnitude} instead.\`) end`,
+			Upper = `if {Variable}.Magnitude > {Max} then error(\`Expected magnitude of "{Variable}" to be smaller than {Max}, got \{{Variable}.Magnitude} instead.\`) end`,
+			Exact = `if {Variable}.Magnitude ~= {Max} then error(\`Expected magnitude of "{Variable}" to equal to {Max}, got \{{Variable}.Magnitude} instead.\`) end`,
+		}
+	end,
+
 	buffer = function(Variable: string, Min: number, Max: number): AssertPrefab
 		return {
 			Lower = `if buffer.len({Variable}) < {Min} then error(\`Expected size of "{Variable}" to be larger than {Min}, got \{buffer.len({Variable})} instead.\`) end`,
@@ -359,6 +367,39 @@ do
 	Primitives.vector = {
 		Type = "Vector3",
 		Generate = GeneratePrimitivePrefab("Vector3", Types.vector, Asserts.vector),
+	}
+end
+
+--> Vector2
+do
+	Types.Vector2 = {
+		Read = function(Variable: string, Block: Block, _, Components: { string }?)
+			local Prefab: TypePrefab = Types.f32
+
+			if Components then
+				Prefab = Types[Components[#Components]] or Prefab
+			end
+
+			Prefab.Read("X", Block)
+			Prefab.Read("Y", Block)
+			Block:Line(`{Block:Declare(Variable)} = Vector2.new(X, Y)`)
+		end,
+
+		Write = function(Value: string, Block: Block, _, Components: { string }?)
+			local Prefab: TypePrefab = Types.f32
+			if Components then
+				Prefab = Types[Components[#Components]] or Prefab
+			end
+
+			Block:Line(`local Vector2 = {Value}`)
+			Prefab.Write("Vector2.X", Block)
+			Prefab.Write("Vector2.Y", Block)
+		end,
+	}
+
+	Primitives.Vector2 = {
+		Type = "Vector2",
+		Generate = GeneratePrimitivePrefab("Vector2", Types.Vector2, Asserts.Vector2),
 	}
 end
 
