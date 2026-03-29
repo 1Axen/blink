@@ -143,7 +143,7 @@ local SelectionTemplate = Selection.Line:Clone()
 local CompletionTemplate = CompletionContainer.Option:Clone()
 
 local TextSize = Input.TextSize
-local TextHeight = (Input.TextSize + 3)
+local TextHeight = TextSize * Display.LineHeight
 
 --> Objects
 local SourceLexer = Lexer.new("Highlighting")
@@ -498,6 +498,7 @@ local function OnAnalysisErrorChanged()
 		Offset += (#Slice + 1)
 
 		local Line = ErrorTemplate:Clone()
+		Line.Size = UDim2.new(1, 0, 0, TextHeight)
 		local Fill = Line.Fill
 
 		if Offset < Start then
@@ -534,7 +535,7 @@ local function OnAnalysisErrorChanged()
 				local OffsetBoundsParams = Instance.new("GetTextBoundsParams")
 				OffsetBoundsParams.Text = Prefix
 				OffsetBoundsParams.Size = TextSize
-				OffsetBoundsParams.Font = Input.FontFace
+				OffsetBoundsParams.Font = Display.FontFace
 
 				local OffsetBounds = TextService:GetTextBoundsAsync(OffsetBoundsParams)
 				Fill.Position = UDim2.new(0, OffsetBounds.X, 0, 10)
@@ -615,6 +616,7 @@ local function OnSelectionChanged()
 		Offset += (#Slice + 1)
 
 		local Line = SelectionTemplate:Clone()
+		Line.Size = UDim2.new(1, 0, 0, TextHeight)
 		local Fill = Line.Fill
 
 		if Offset < Start then
@@ -778,7 +780,7 @@ local function GenerateLinesAsync()
 		Line.Text = tostring(Index)
 		Line.TextColor3 = THEME.Line.Inactive
 		Line.TextTransparency = 1
-		Line.Position = UDim2.fromOffset(0, 19 * (Index - 1))
+		Line.Position = UDim2.fromOffset(0, TextHeight * (Index - 1))
 		Line.Parent = LinesContainer
 	end
 end

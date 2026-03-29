@@ -3333,7 +3333,7 @@ ReplicatedStroage.bla.bla.bla]]></string>
 						</Font>
 						<bool name="Interactable">true</bool>
 						<int name="LayoutOrder">0</int>
-						<float name="LineHeight">1.20000005</float>
+						<float name="LineHeight">1.25</float>
 						<string name="LocalizationMatchIdentifier"></string>
 						<string name="LocalizationMatchedSourceText"></string>
 						<int name="MaxVisibleGraphemes">-1</int>
@@ -3500,7 +3500,7 @@ ReplicatedStroage.bla.bla.bla]]></string>
 						</Font>
 						<bool name="Interactable">true</bool>
 						<int name="LayoutOrder">0</int>
-						<float name="LineHeight">1.20000005</float>
+						<float name="LineHeight">1.25</float>
 						<string name="LocalizationMatchIdentifier"></string>
 						<string name="LocalizationMatchedSourceText"></string>
 						<int name="MaxVisibleGraphemes">-1</int>
