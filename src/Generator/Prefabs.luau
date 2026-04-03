@@ -464,7 +464,7 @@ end
 do
 	Types.DateTime = {
 		Read = function(Variable: string, Block: Block)
-			local UnixTimestamp = Block:Read(BYTE)
+			local UnixTimestamp = Block:Read(DOUBLE)
 			Block:Line(
 				`{Block:Declare(Variable)} = DateTime.fromUnixTimestamp(buffer.readf64({RECIEVE_BUFFER}, {UnixTimestamp}))`
 			)
@@ -485,7 +485,7 @@ end
 do
 	Types.DateTimeMillis = {
 		Read = function(Variable: string, Block: Block)
-			local UnixTimestampMillis = Block:Read(BYTE)
+			local UnixTimestampMillis = Block:Read(DOUBLE)
 			Block:Line(
 				`{Block:Declare(Variable)} = DateTime.fromUnixTimestampMillis(buffer.readf64({RECIEVE_BUFFER}, {UnixTimestampMillis}))`
 			)
