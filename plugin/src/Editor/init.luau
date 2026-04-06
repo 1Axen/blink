@@ -160,6 +160,7 @@ local Predictions: State.Class<{ Index: number, Items: { CompletionItem } }> = S
 local CursorTimer = 0
 local PreviousText = Input.Text
 local PreviousLine: TextLabel?
+local CompletionPending: boolean?
 
 local AnalysisError: State.Class<Error.Class?> = State.new(nil :: any)
 local AbstractSyntaxTree: Parser.Body?
@@ -382,6 +383,11 @@ local function OnErrorEmitted(Object: Error.Class)
 end
 
 local function OnPreRender(DeltaTime: number)
+	if CompletionPending then
+		CompletionPending = nil
+		UpdateCompletion()
+	end
+
 	if Input.CursorPosition == -1 then
 		return
 	end
@@ -590,6 +596,12 @@ local function OnCursorPositionChanged()
 	Profiler.profileBegin("Highlight LN")
 	UpdateHighlightedLine()
 	Profiler.profileEnd()
+
+	--> Set to true for re-evaluation next frame to avoid race conditions with OnSourceChanged
+	if #Predictions:Get().Items > 0 then
+		CompletionPending = true
+	end
+
 	Profiler.profileEnd()
 end
 
@@ -665,6 +677,8 @@ local function OnSelectionChanged()
 end
 
 local function OnSourceChanged()
+	CompletionPending = nil
+
 	--> Pressing enter inserts a carriage return (ROBLOX please fix)
 	local Text = Input.Text
 	local Gain = math.sign(#Text - #PreviousText)
