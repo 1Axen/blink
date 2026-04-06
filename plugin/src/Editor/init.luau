@@ -763,6 +763,9 @@ local function OnSourceChanged()
 	Profiler.profileBegin("Highlighting")
 	UpdateColors()
 	Profiler.profileEnd()
+
+	--> Update cursor after text change
+	OnCursorPositionChanged()
 end
 
 --> Create lines in the background
