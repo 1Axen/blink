@@ -160,7 +160,10 @@ local Predictions: State.Class<{ Index: number, Items: { CompletionItem } }> = S
 local CursorTimer = 0
 local PreviousText = Input.Text
 local PreviousLine: TextLabel?
+local PreviousCursorPosition: number?
+local NavigationPending: { Direction: number, Position: number }?
 local CompletionPending: boolean?
+local IgnoreCursorChange: boolean?
 
 local AnalysisError: State.Class<Error.Class?> = State.new(nil :: any)
 local AbstractSyntaxTree: Parser.Body?
@@ -191,6 +194,11 @@ local function ClearChildrenWhichAre(Parent: Instance, Class: string)
 			Child:Destroy()
 		end
 	end
+end
+
+local function GetLineAtPosition(Text: string, Position: number): number
+	local _, Count = string.gsub(string.sub(Text, 1, Position - 1), "\n", "")
+	return Count + 1
 end
 
 local function GetPrediction(): CompletionItem?
@@ -383,10 +391,29 @@ local function OnErrorEmitted(Object: Error.Class)
 end
 
 local function OnPreRender(DeltaTime: number)
-	if CompletionPending then
-		CompletionPending = nil
+	if NavigationPending then
+		local Navigation = NavigationPending
+		NavigationPending = nil
+
+		local Value = Predictions:Get()
+		local Count = #Value.Items
+		if Count > 0 then
+			--> Cursor should be first for proper autocomplete positioning
+			local NavigationPosition = Navigation.Position
+			IgnoreCursorChange = true
+			Input.CursorPosition = NavigationPosition
+			PreviousCursorPosition = NavigationPosition
+
+			Predictions:Set({
+				Index = Navigation.Direction == -1 and ((Value.Index - 2) % Count) + 1 or (Value.Index % Count) + 1,
+				Items = Value.Items,
+			})
+		end
+	elseif CompletionPending then
 		UpdateCompletion()
 	end
+
+	CompletionPending = nil
 
 	if Input.CursorPosition == -1 then
 		return
@@ -597,11 +624,27 @@ local function OnCursorPositionChanged()
 	UpdateHighlightedLine()
 	Profiler.profileEnd()
 
-	--> Set to true for re-evaluation next frame to avoid race conditions with OnSourceChanged
-	if #Predictions:Get().Items > 0 then
+	--> Ignore navigation or completion when cursor restored by OnPreRender
+	if IgnoreCursorChange then
+		IgnoreCursorChange = nil
+	elseif #Predictions:Get().Items > 0 then
 		CompletionPending = true
+
+		if PreviousCursorPosition ~= nil then
+			local InputText = Input.Text
+			local CurrentLine = GetLineAtPosition(InputText, CursorPosition)
+			local PreviousLine = GetLineAtPosition(InputText, PreviousCursorPosition)
+
+			if math.abs(CurrentLine - PreviousLine) == 1 and math.abs(CursorPosition - PreviousCursorPosition) > 1 then
+				NavigationPending = {
+					Direction = CurrentLine > PreviousLine and 1 or -1,
+					Position = PreviousCursorPosition,
+				}
+			end
+		end
 	end
 
+	PreviousCursorPosition = CursorPosition
 	Profiler.profileEnd()
 end
 
@@ -677,6 +720,7 @@ local function OnSelectionChanged()
 end
 
 local function OnSourceChanged()
+	NavigationPending = nil
 	CompletionPending = nil
 
 	--> Pressing enter inserts a carriage return (ROBLOX please fix)
@@ -779,6 +823,7 @@ local function OnSourceChanged()
 	Profiler.profileEnd()
 
 	--> Update cursor after text change
+	PreviousCursorPosition = Input.CursorPosition
 	OnCursorPositionChanged()
 end
 
