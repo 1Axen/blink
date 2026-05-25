@@ -22,7 +22,7 @@ type Context = {
 	read tokens: { Token },
 
 	read file: file.File,
-	read node_index: number,
+	node_index: number,
 
 	index: number,
 	token: Token,
