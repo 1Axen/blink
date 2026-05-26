@@ -65,7 +65,7 @@ local function parse_import(
 			for _, decl_map in { import_decls.types, import_decls.events, import_decls.functs } do
 				for _, decl in decl_map do
 					local name = decl.name
-					local _, previous = search_path(scope, name)
+					local _, previous = search_path(scope, { name })
 					if previous then
 						report.shadow(name, extra.star, previous)
 					end
