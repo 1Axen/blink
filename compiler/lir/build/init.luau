@@ -380,7 +380,12 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 
 			if is_unreliable then
 				local new_buffer = trim_outgoing_buffer(block)
-				block:call(library.RemoteEvent.fire_all(UNRELIABLE_EVENT, { new_buffer, OUTGOING.unknown } :: { any }))
+				block:if_single(condition.equals(unary.len(OUTGOING.unknown), constant.zero), function()
+					block:call(library.RemoteEvent.fire_all(UNRELIABLE_EVENT, { new_buffer } :: { any }))
+				end)
+				block:if_single(condition.not_equals(unary.len(OUTGOING.unknown), constant.zero), function()
+					block:call(library.RemoteEvent.fire_all(UNRELIABLE_EVENT, { new_buffer, OUTGOING.unknown } :: { any }))
+				end)
 			else
 				local new_buffer = copy_outgoing_buffer(block)
 				block:for_generic(globals.players_map, function(block, _, player_save)
@@ -401,8 +406,13 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 
 			block:for_generic(list, function(block, _, player)
 				if is_unreliable then
-					local args = { player, new_buffer, OUTGOING.unknown }
-					block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
+					block:if_single(condition.equals(unary.len(OUTGOING.unknown), constant.zero), function()
+						block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, { player, new_buffer } :: any))
+					end)
+					block:if_single(condition.not_equals(unary.len(OUTGOING.unknown), constant.zero), function()
+						local args = { player, new_buffer, OUTGOING.unknown }
+						block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
+					end)
 				else
 					local player_save = projection.field(globals.players_map, player :: any)
 					state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
@@ -423,8 +433,13 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 			block:for_generic(globals.players_map, function(block, player, player_save)
 				block:if_single(condition.not_equals(player, except), function(block)
 					if is_unreliable then
-						local args = { player, new_buffer, OUTGOING.unknown }
-						block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
+						block:if_single(condition.equals(unary.len(OUTGOING.unknown), constant.zero), function()
+							block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, { player, new_buffer } :: any))
+						end)
+						block:if_single(condition.not_equals(unary.len(OUTGOING.unknown), constant.zero), function()
+							local args = { player, new_buffer, OUTGOING.unknown }
+							block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
+						end)
 					else
 						state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
 					end
@@ -443,8 +458,13 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 
 			if is_unreliable then
 				local new_buffer = trim_outgoing_buffer(block)
-				local args = { player, new_buffer, OUTGOING.unknown }
-				block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
+				block:if_single(condition.equals(unary.len(OUTGOING.unknown), constant.zero), function()
+					block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, { player, new_buffer } :: any))
+				end)
+				block:if_single(condition.not_equals(unary.len(OUTGOING.unknown), constant.zero), function()
+					local args = { player, new_buffer, OUTGOING.unknown }
+					block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
+				end)
 			else
 				local new_buffer = copy_outgoing_buffer(block)
 				local player_save = projection.field(globals.players_map, player)
@@ -480,8 +500,14 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 
 			if is_unreliable then
 				-- replicate
-				local args = { trim_outgoing_buffer(block), OUTGOING.unknown } :: { any }
-				block:call(library.RemoteEvent.fire_server(UNRELIABLE_EVENT, args))
+				local new_buffer = trim_outgoing_buffer(block)
+				block:if_single(condition.equals(unary.len(OUTGOING.unknown), constant.zero), function()
+					block:call(library.RemoteEvent.fire_server(UNRELIABLE_EVENT, { new_buffer } :: any))
+				end)
+				block:if_single(condition.not_equals(unary.len(OUTGOING.unknown), constant.zero), function()
+					local args = { new_buffer, OUTGOING.unknown } :: { any }
+					block:call(library.RemoteEvent.fire_server(UNRELIABLE_EVENT, args))
+				end)
 
 				-- restore outgoing state
 				block:store(prev_buffer, OUTGOING.buffer)
@@ -819,7 +845,14 @@ local function build_receive_connection(ctx: Context, side: Side, receivables: {
 
 		block:store(packet_buffer, INCOMING.buffer)
 		block:store(constant.zero, INCOMING.cursor)
-		block:store(packet_unknowns, INCOMING.unknown)
+		block:if_single(condition.equals(packet_unknowns, constant.null), function()
+			block:store(library.table.create(constant.zero), INCOMING.unknown)
+		end)
+
+		block:if_single(condition.not_equals(packet_unknowns, constant.null), function()
+			block:store(packet_unknowns, INCOMING.unknown)
+		end)
+		
 		block:store(constant.zero, INCOMING.unknown_cursor)
 
 		local loop_condition = condition.less_than(INCOMING.cursor, packet_length)
@@ -955,7 +988,12 @@ local function from_hir(hhir: Hir): Lir
 		end)
 
 		local packet_buffer = trim_outgoing_buffer(block)
-		block:call(library.RemoteEvent.fire_server(RELIABLE_EVENT, { packet_buffer, OUTGOING.unknown } :: any))
+		block:if_single(condition.equals(unary.len(OUTGOING.unknown), constant.zero), function()
+			block:call(library.RemoteEvent.fire_server(RELIABLE_EVENT, { packet_buffer } :: any))
+		end)
+		block:if_single(condition.not_equals(unary.len(OUTGOING.unknown), constant.zero), function()
+			block:call(library.RemoteEvent.fire_server(RELIABLE_EVENT, { packet_buffer, OUTGOING.unknown } :: any))
+		end)
 		block:store(constant.zero, OUTGOING.cursor)
 		block:call(library.table.clear(OUTGOING.unknown))
 	end)
@@ -980,7 +1018,12 @@ local function from_hir(hhir: Hir): Lir
 					block:store(binary.add(cursor, length), cursor)
 				end)
 
-				block:call(library.RemoteEvent.fire_client(RELIABLE_EVENT, { player, packet_buffer :: any, unknown }))
+				block:if_single(condition.equals(unary.len(unknown), constant.zero), function()
+					block:call(library.RemoteEvent.fire_client(RELIABLE_EVENT, { player, packet_buffer :: any }))
+				end)
+				block:if_single(condition.not_equals(unary.len(unknown), constant.zero), function()
+					block:call(library.RemoteEvent.fire_client(RELIABLE_EVENT, { player, packet_buffer :: any, unknown }))
+				end)
 
 				block:call(library.table.clear(buffers))
 				block:call(library.table.clear(lengths))
