@@ -180,22 +180,33 @@ local function any_identifier(ctx: Context): ast.Identifier
 	}
 end
 
-type Structure = {
-	read open: lexer.Token,
-	read close: lexer.Token,
-	read fields: { [string]: any },
+type Shape<T> = {
+	read opener: Token,
+	read closer: Token,
+	read fields: TransformShapeLayout<T>,
 }
 
-local function structure(
-	ctx: Context,
-	layout: { [string]: { expr: (ctx: Context) -> any, optional: boolean } }
-): Structure
+type ShapeLayout = { [string]: { expr: (ctx: Context) -> any, optional: boolean } }
+
+type function TransformShapeLayout(layout: type)
+	const properties = {}
+	for key, field in layout:properties() do
+		const value = assert(field.read)
+		const expr_func = assert(value:readproperty(types.singleton("expr")))
+		const expr_type = assert(assert(expr_func:returns().head)[1])
+		properties[key] = expr_type
+	end
+
+	return types.newtable(properties)
+end
+
+local function shape<T>(ctx: Context, layout: T & ShapeLayout): Shape<T>
 	--> key - required
 	local all_keys: { string } = {}
 	local parsed_keys: { [string]: report.Entry } = {}
 	local required_keys: { string } = {}
 
-	for key, value in layout do
+	for key, value in layout :: ShapeLayout do
 		if value.optional == false then
 			table.insert(required_keys, key)
 		end
@@ -203,8 +214,8 @@ local function structure(
 		table.insert(all_keys, key)
 	end
 
-	local open = expect(ctx, "{")
-	local fields: { [string]: ast.Expression } = {}
+	local opener = expect(ctx, "{")
+	local fields: { [string]: any } = {}
 	while peek_kind(ctx) ~= "}" do
 		local name = any_identifier(ctx)
 		local key = name.value
@@ -230,23 +241,21 @@ local function structure(
 			table.remove(required_keys, index)
 		end
 
-		--> assume end of structure
-		if peek_kind(ctx) ~= "," then
+		--> no comma, must be the end of the shape
+		if not consume_if_kind(ctx, ",") then
 			break
 		end
-
-		expect(ctx, ",")
 	end
 
-	local close = expect(ctx, "}")
+	local closer = expect(ctx, "}")
 	if #required_keys ~= 0 then
-		return report.missing_entries(span.merge(open.span, close.span), required_keys)
+		return report.missing_entries(span.merge(opener.span, closer.span), required_keys)
 	end
 
 	return table.freeze({
-		open = open,
-		close = close,
-		fields = fields,
+		opener = opener,
+		closer = closer,
+		fields = fields :: any,
 	})
 end
 
@@ -744,19 +753,19 @@ local function stat_event(ctx: Context): ast.StatEvent
 	local name = identifier(ctx)
 	local _assign = expect(ctx, "=")
 
-	local event_structure = structure(ctx, {
+	local event_structure = shape(ctx, {
 		from = { expr = identifier, optional = false },
 		type = { expr = identifier, optional = false },
 		call = { expr = identifier, optional = false },
 		data = { expr = expr_pack_or_single, optional = true },
 	})
 
-	local close = event_structure.close
+	local closer = event_structure.closer
 	local fields = event_structure.fields
 
 	return {
 		id = node_id,
-		span = span.merge(keyword.span, close.span),
+		span = span.merge(keyword.span, closer.span),
 		kind = "event",
 		attributes = attributes,
 
@@ -814,17 +823,17 @@ local function stat_function(ctx: Context): ast.StatFunction
 	local name = identifier(ctx)
 	local _assign = expect(ctx, "=")
 
-	local function_structure = structure(ctx, {
+	local function_structure = shape(ctx, {
 		data = { expr = expr_pack_or_single, optional = true },
 		["return"] = { expr = expr_pack_or_single, optional = true },
 	})
 
-	local close = function_structure.close
+	local closer = function_structure.closer
 	local fields = function_structure.fields
 
 	return {
 		id = node_id,
-		span = span.merge(keyword.span, close.span),
+		span = span.merge(keyword.span, closer.span),
 		kind = "function",
 		attributes = attributes,
 
