@@ -4,8 +4,8 @@
 # New tools can be added by running `rokit add <tool>` in a terminal.
 
 [tools]
-act = "nektos/act@0.2.87"
-lute = "luau-lang/lute@0.1.0-nightly.20260411"
-stylua = "JohnnyMorganz/StyLua@2.4.1"
-rojo = "rojo-rbx/rojo@7.6.1"
+act = "nektos/act@0.2.89"
+stylua = "JohnnyMorganz/StyLua@2.5.2"
+rojo = "rojo-rbx/rojo@7.7.0"
 run-in-roblox = "rojo-rbx/run-in-roblox@0.3.0"
+lute = "luau-lang/lute@1.0.0"
