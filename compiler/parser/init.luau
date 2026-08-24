@@ -370,19 +370,11 @@ local function expr_string(ctx: Context): ast.ExprString
 end
 
 local function string_or_identifier(ctx: Context): ast.Identifier | ast.ExprString
-	local token = peek(ctx)
-	local kind = token.kind
-	if kind ~= "word" and kind ~= "string" then
-		return report.expect_token_one_of(token, { "word", "string" })
+	if peek_kind(ctx) == "string" then
+		return expr_string(ctx)
 	end
 
-	if kind == "string" then
-		return expr_string(ctx)
-	elseif kind == "word" then
-		return identifier(ctx)
-	else
-		return strong_exhaustive_match(kind)
-	end
+	return identifier(ctx)
 end
 
 local function expr_literal(ctx: Context): ast.ExprLiteral
