@@ -17,6 +17,7 @@ local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 type Token = lexer.Token
 type TokenAny = lexer.TokenBase<any>
 type TokenKind = lexer.TokenKind
+type TokenBase<T> = lexer.TokenBase<T>
 
 type Context = {
 	read tokens: { Token },
@@ -34,6 +35,10 @@ type Context = {
 local block: (Context, boolean) -> ast.Block
 local statement: (Context) -> ast.Statement
 local expression: (Context) -> ast.Expression
+
+const function coerce<T>(x: T | ""): T
+	return x
+end
 
 local function next_node_id(ctx: Context): ast.NodeId
 	local index = ctx.node_index
@@ -69,13 +74,21 @@ local function consume(ctx: Context): Token
 	return token
 end
 
+const function consume_if_kind<T>(ctx: Context, kind: T & TokenKind): TokenBase<T>?
+	if ctx.token.kind ~= kind then
+		return nil
+	end
+
+	return consume(ctx)
+end
+
 local function consume_attributes(ctx: Context): { ast.Attribute }
 	local attributes = ctx.attributes
 	ctx.attributes = {}
 	return attributes
 end
 
-local function expect<T>(ctx: Context, kind: T & TokenKind): lexer.TokenBase<T>
+local function expect<T>(ctx: Context, kind: T & TokenKind): TokenBase<T>
 	local token = peek(ctx)
 	if token.kind == kind then
 		return consume(ctx)
@@ -84,22 +97,34 @@ local function expect<T>(ctx: Context, kind: T & TokenKind): lexer.TokenBase<T>
 	return report.expect_token(token, kind)
 end
 
-local function seperated<T>(ctx: Context, t: (Context) -> T, seperator: TokenKind, delimiter: "}" | ")" | "]" | ">"): { T }
-	local list: { T } = {}
+type OpenerCloserPairs = {
+	["{"]: "}",
+	["["]: "]",
+	["("]: ")",
+	["<"]: ">",
+}
 
-	while peek_kind(ctx) ~= delimiter do
-		table.insert(list, t(ctx))
+local function list<O, T, C>(
+	ctx: Context,
+	opener: O & keyof<OpenerCloserPairs>,
+	value: (Context) -> T,
+	separator: TokenKind,
+	closer: C & index<OpenerCloserPairs, O>
+): (TokenBase<O>, { T }, TokenBase<C>)
+	const opener_token = expect(ctx, opener)
+
+	const values: { T } = {}
+	while peek_kind(ctx) ~= closer do
+		table.insert(values, value(ctx))
 
 		--> if the next token isn't the seperator assume the list ended
-		if peek_kind(ctx) ~= seperator then
+		if not consume_if_kind(ctx, separator) then
 			break
 		end
-
-		--> consume the seperator
-		consume(ctx)
 	end
 
-	return list
+	const closer_token = expect(ctx, closer :: TokenKind)
+	return opener_token, values, closer_token
 end
 
 local function identifier(ctx: Context): ast.Identifier
@@ -239,13 +264,10 @@ local function generic(ctx: Context): ast.GenericDef
 end
 
 local function generics(ctx: Context): ast.GenericsDef
-	local open = expect(ctx, "<")
-	local values: { ast.GenericDef } = seperated(ctx, generic, ",", ">")
-	local close = expect(ctx, ">")
-
+	const opener, values, closer = list(ctx, "<", generic, ",", coerce(">"))
 	return {
 		kind = "generics",
-		span = span.merge(open.span, close.span),
+		span = span.merge(opener.span, closer.span),
 		values = values,
 	}
 end
@@ -387,13 +409,10 @@ local function expr_reference(ctx: Context): ast.ExprReference
 	--> generics
 	local generics: ast.GenericsArgs?
 	if peek_kind(ctx) == "<" then
-		local open = expect(ctx, "<")
-		local values = seperated(ctx, expression, ",", ">")
-
-		local close = expect(ctx, ">")
-		node_span = span.merge(path.span, close.span)
+		local opener, values, closer = list(ctx, "<", expression, ",", coerce(">"))
+		node_span = span.merge(node_span, closer.span)
 		generics = {
-			span = span.merge(open.span, close.span),
+			span = span.merge(opener.span, closer.span),
 			kind = "generics",
 			values = values,
 		}
@@ -437,14 +456,11 @@ end
 local function expr_struct(ctx: Context): ast.ExprStruct
 	local node_id = next_node_id(ctx)
 	local keyword = expect(ctx, "struct")
-	expect(ctx, "{")
-
-	local fields = seperated(ctx, expr_field, ",", "}")
-	local close = expect(ctx, "}")
+	local _opener, fields, closer = list(ctx, "{", expr_field, ",", coerce("}"))
 
 	return {
 		id = node_id,
-		span = span.merge(keyword.span, close.span),
+		span = span.merge(keyword.span, closer.span),
 		kind = "struct",
 		fields = fields,
 	}
@@ -453,13 +469,11 @@ end
 --- Bit annoying but needed for tagged enum variants
 local function expr_inlined_struct(ctx: Context): ast.ExprStruct
 	local node_id = next_node_id(ctx)
-	local open = expect(ctx, "{")
-	local fields = seperated(ctx, expr_field, ",", "}")
-	local close = expect(ctx, "}")
+	local opener, fields, closer = list(ctx, "{", expr_field, ",", coerce("}"))
 
 	return {
 		id = node_id,
-		span = span.merge(open.span, close.span),
+		span = span.merge(opener.span, closer.span),
 		kind = "struct",
 		fields = fields,
 	}
@@ -537,14 +551,11 @@ local function expr_discriminated_union(ctx: Context): ast.ExprDiscriminatedUnio
 	local keyword = expect(ctx, "union")
 	local node_id = next_node_id(ctx)
 	local tag = expr_string(ctx)
-	expect(ctx, "{")
-
-	local variants = seperated(ctx, expr_discriminated_union_variant, ",", "}")
-	local close = expect(ctx, "}")
+	local _opener, variants, closer = list(ctx, "{", expr_discriminated_union_variant, ",", coerce("}"))
 
 	return {
 		id = node_id,
-		span = span.merge(keyword.span, close.span),
+		span = span.merge(keyword.span, closer.span),
 		kind = "discriminated_union",
 
 		tag = tag,
@@ -577,14 +588,11 @@ end
 
 local function expr_pack(ctx: Context): ast.ExprPack
 	local node_id = next_node_id(ctx)
-
-	local open = expect(ctx, "(")
-	local values = seperated(ctx, expr_pack_parameter, ",", ")")
-	local close = expect(ctx, ")")
+	local opener, values, closer = list(ctx, "(", expr_pack_parameter, ",", coerce(")"))
 
 	return {
 		id = node_id,
-		span = span.merge(open.span, close.span),
+		span = span.merge(opener.span, closer.span),
 		kind = "pack",
 
 		values = values,
@@ -689,11 +697,9 @@ local function attribute(ctx: Context): ast.Attribute
 
 	local args: { ast.ExprLiteral } = {}
 	if peek_kind(ctx) == "(" then
-		local _open = expect(ctx, "(")
-		args = seperated(ctx, expr_literal, ",", ")")
-
-		local close = expect(ctx, ")")
-		node_span = span.merge(node_span, close.span)
+		const _opener, values, closer = list(ctx, "(", expr_literal, ",", coerce(")"))
+		args = values
+		node_span = span.merge(node_span, closer.span)
 	end
 
 	return {
