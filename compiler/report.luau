@@ -378,10 +378,22 @@ local function report_unknown_destructure_value(value: ast.Identifier): never
 		:error()
 end
 
+const function report_expect_to_close(token: Token, opener: Token, closer: TokenKind): never
+	return diagnostics
+		.error(codes.parser.SyntaxError)
+		:with_message(`Expected "{closer}" (to close "{opener.kind}"), got "{token.kind}" instead`)
+		:with_label(diagnostics.label(opener.span):with_style(style.color.cyan):with_message("Opener here"))
+		:with_label(
+			diagnostics.label(token.span):with_style(style.color.red):with_message(`Expected closer "{closer}" here`)
+		)
+		:error()
+end
+
 return table.freeze({
 	expect_token = report_expect_token,
 	expect_token_one_of = report_expect_token_one_of,
 	expect_string_one_of = report_expect_string_one_of,
+	expect_to_close = report_expect_to_close,
 
 	shadow = report_shadow,
 	missing_entries = report_missing_entries,

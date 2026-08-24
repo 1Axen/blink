@@ -89,12 +89,24 @@ local function consume_attributes(ctx: Context): { ast.Attribute }
 end
 
 local function expect<T>(ctx: Context, kind: T & TokenKind): TokenBase<T>
-	local token = peek(ctx)
+	local token = consume(ctx)
 	if token.kind == kind then
-		return consume(ctx)
+		return token
 	end
 
 	return report.expect_token(token, kind)
+end
+
+const function expect_one_of<T>(ctx: Context, ...: T & TokenKind): TokenBase<T>
+	const kinds = { ... }
+	const token = consume(ctx)
+	for _, kind in kinds do
+		if kind == token.kind then
+			return token
+		end
+	end
+
+	return report.expect_token_one_of(token, kinds)
 end
 
 type OpenerCloserPairs = {
@@ -123,7 +135,11 @@ local function list<O, T, C>(
 		end
 	end
 
-	const closer_token = expect(ctx, closer :: TokenKind)
+	const closer_token = consume(ctx)
+	if closer_token.kind ~= closer then
+		report.expect_to_close(closer_token, opener_token :: Token, closer :: TokenKind)
+	end
+
 	return opener_token, values, closer_token
 end
 
@@ -253,7 +269,11 @@ local function shape<T>(ctx: Context, layout: T & ShapeLayout): Shape<T>
 		end
 	end
 
-	local closer = expect(ctx, "}")
+	local closer = consume(ctx)
+	if closer.kind ~= "}" then
+		return report.expect_to_close(closer, opener, "}")
+	end
+
 	if #required_keys ~= 0 then
 		return report.missing_entries(span.merge(opener.span, closer.span), required_keys)
 	end
