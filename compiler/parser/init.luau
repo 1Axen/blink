@@ -75,7 +75,7 @@ local function consume(ctx: Context): Token
 end
 
 const function consume_if_kind<T>(ctx: Context, kind: T & TokenKind): TokenBase<T>?
-	if ctx.token.kind ~= kind then
+	if peek_kind(ctx) ~= kind then
 		return nil
 	end
 
@@ -128,12 +128,29 @@ local function list<O, T, C>(
 end
 
 local function identifier(ctx: Context): ast.Identifier
-	local word = expect(ctx, "word")
+	local token = expect_one_of(
+		ctx,
+		"as",
+		"map",
+		"word",
+		"type",
+		"from",
+		"true",
+		"false",
+		"scope",
+		"union",
+		"event",
+		"struct",
+		"export",
+		"import",
+		"option",
+		"function"
+	)
 	return {
 		id = next_node_id(ctx),
-		span = word.span,
+		span = token.span,
 		kind = "identifier",
-		value = span.value(word.span),
+		value = span.value(token.span),
 	}
 end
 
@@ -166,17 +183,6 @@ local function path(ctx: Context): ast.Path
 		kind = "path",
 		span = span.merge(segments[1].span, segments[#segments].span),
 		segments = segments,
-	}
-end
-
---- Parses anything as an identifier
-local function any_identifier(ctx: Context): ast.Identifier
-	local token = consume(ctx)
-	return {
-		id = next_node_id(ctx),
-		span = token.span,
-		kind = "identifier",
-		value = span.value(token.span),
 	}
 end
 
@@ -217,7 +223,7 @@ local function shape<T>(ctx: Context, layout: T & ShapeLayout): Shape<T>
 	local opener = expect(ctx, "{")
 	local fields: { [string]: any } = {}
 	while peek_kind(ctx) ~= "}" do
-		local name = any_identifier(ctx)
+		local name = identifier(ctx)
 		local key = name.value
 
 		local previous = parsed_keys[key]
@@ -578,7 +584,7 @@ local function expr_pack_parameter(ctx: Context): ast.ExprPackParameter
 	local name: ast.Identifier?
 	local following = lookahead(ctx)
 	if following.kind == ":" then
-		name = any_identifier(ctx)
+		name = identifier(ctx)
 		local _ = expect(ctx, ":")
 	end
 
@@ -701,7 +707,7 @@ end
 
 local function attribute(ctx: Context): ast.Attribute
 	local at = expect(ctx, "@")
-	local name = any_identifier(ctx)
+	local name = identifier(ctx)
 	local node_span = span.merge(at.span, name.span)
 
 	local args: { ast.ExprLiteral } = {}
