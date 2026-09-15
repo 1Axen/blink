@@ -88,16 +88,12 @@ local function from_nodes(nodes: AttributeNodes): Attributes
 		local name = attribute.name.value :: keyof<Attributes>
 		local value: any?
 
-		if name == "profile" then
+		if name == "export" then
+			value = attr_any(attribute)
+		elseif name == "profile" then
 			value = attr_profile(attribute)
 		elseif name == "target" then
 			value = attr_target(attribute)
-		elseif name == "bitpack" then
-			value = attr_any(attribute)
-		elseif name == "stable" then
-			value = attr_any(attribute)
-		elseif name == "export" then
-			value = attr_any(attribute)
 		else
 			weak_exhaustive_match(name)
 			return report.invalid_attribute(attribute)

@@ -76,7 +76,6 @@ type purchase = struct {
     product: f64,
 }
 
--- @stable
 type player_data = struct {
     class: class,
     coins: u8,
@@ -90,7 +89,6 @@ type game_flags = struct {
     FriendlyDamage: boolean,
 }
 
--- @bitpack
 type game_flags_packet = struct {
     FallDamage: boolean,
     PlayerDamage: boolean,
