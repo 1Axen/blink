@@ -72,10 +72,16 @@ end
 
 local function append_instance(ctx: Context, instance: ty.Instance)
 	local builder = ctx.builder
-	if instance.class then
-		builder:append(instance.class.value)
-	else
+	const class = instance.class
+	if not class then
 		builder:append("Instance")
+		return
+	elseif class.kind == "generic" then
+		builder:append("Instance")
+	elseif class.kind == "string_literal" then
+		builder:append(class.value)
+	else
+		panic(`instance class should be either a generic or string literal, got {class.kind} instead`)
 	end
 end
 
