@@ -51,6 +51,7 @@ local function create_numeral(node: Expression?, size: NumSize, format: NumForma
 		node = node,
 		size = size,
 		format = format,
+		bounds = bounds,
 	}
 end
 
