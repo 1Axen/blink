@@ -8,6 +8,7 @@ local path = require("@util/path")
 local printext = require("@util/printext")
 local process = require("@lute/process")
 local system = require("@lute/system")
+const version = require("@build-config/version")
 
 type Path = path.Path
 type Profile = compilation.Profile
@@ -19,8 +20,7 @@ type Context = {
 }
 
 local NAME = colorful.color.green("Blink")
-local VERSION = "1.0.0"
-local HEADER = `{NAME} {VERSION}`
+local HEADER = `{NAME} {version}`
 
 local VALID_PROFILES: { [Profile]: true } = {
 	dev = true :: true,
@@ -109,7 +109,7 @@ end
 --stylua: ignore
 cli.new()
 	:setName(NAME)
-	:setVersion(VERSION)
+	:setVersion(version)
 	:setDescription("An IDL for defining structured data that compiles to fast Luau buffer serdes.")
 	:setGitRepository("https://github.com/1Axen/blink")
 	:setEpilog("Example: blink compile <file>")
