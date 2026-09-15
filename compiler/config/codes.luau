@@ -7,10 +7,10 @@ local function next_id(): number
 end
 
 local function next_category(): number
-	id /= 1000
+	id //= 1000
 	id *= 1000
 	id += 1000
-	return id
+	return next_id()
 end
 
 next_category()
