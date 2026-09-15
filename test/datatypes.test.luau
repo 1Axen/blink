@@ -33,40 +33,37 @@ local UNHASHABLE_DATATYPES: { [Datatype]: true? } = {
 }
 
 local function compile_datatypes(file: string, types: { [string]: Datatype }): Exports
+	local source: string
 	local luau_file_path = path.append_file_name(TEMP_PATH, file, "luau")
 	if fs.exists(luau_file_path) then
 		local read_result = fs.read_string_from_file(luau_file_path)
-		assert(read_result.ok)
+		source = assert(read_result.ok and read_result.value)
+	else
+		local builder = string_builder.create({})
+		for name, datatype in types do
+			builder:append_line("@export")
+			builder:append("type ")
+			builder:append(name)
+			builder:append(" = ")
+			datatype.append(builder)
+			builder:append("\n")
+		end
 
-		local bytecode = luau.compile(read_result.value)
-		local chunkname = path.to_string(luau_file_path)
-		return luau.load(bytecode, chunkname, environment_mock :: any)()
+		local contents = builder:finalize()
+		local compiled_targets = compiler.compile_contents(contents, {
+			profile = "test",
+		})
+		source = compiled_targets.types
+
+		local blink_file_path = path.append_file_name(TEMP_PATH, file, "blink")
+		assert(fs.write_string_to_file(luau_file_path, source).ok, "luau file write failed")
+		assert(fs.write_string_to_file(blink_file_path, contents).ok, "blink file write failed")
 	end
 
-	local builder = string_builder.create({})
-
-	for name, datatype in types do
-		builder:append_line("@export")
-		builder:append("type ")
-		builder:append(name)
-		builder:append(" = ")
-		datatype.append(builder)
-		builder:append("\n")
-	end
-
-	local contents = builder:finalize()
-	local compiled_targets = compiler.compile_contents(contents, {
-		profile = "test",
-	})
-
-	local luau_contents = compiled_targets.types
-	local blink_file_path = path.append_file_name(TEMP_PATH, file, "blink")
-	assert(fs.write_string_to_file(luau_file_path, luau_contents).ok, "luau file write failed")
-	assert(fs.write_string_to_file(blink_file_path, contents).ok, "blink file write failed")
-
-	local bytecode = luau.compile(luau_contents)
+	local bytecode = luau.compile(source)
 	local chunkname = path.to_string(luau_file_path)
-	return luau.load(bytecode, chunkname, environment_mock :: any)()
+	const environment = environment_mock()
+	return luau.load(bytecode, chunkname, environment)()
 end
 
 return function(tiniest: Tiniest)

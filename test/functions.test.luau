@@ -114,9 +114,7 @@ local function load_server(targets: Targets): (DataModelMock, ServerAPI)
 	assert(fs.write_string_to_file(luau_file_path, luau_contents).ok, "luau file write failed")
 
 	local data_model = data_model_mock.create_data_model("Server")
-	local environment = table.clone(environment_mock) :: { [any]: any }
-	environment.game = data_model
-	table.freeze(environment)
+	local environment = environment_mock(data_model)
 
 	local bytecode = luau.compile(luau_contents)
 	local chunkname = path.to_string(luau_file_path)
@@ -129,9 +127,7 @@ local function load_client(targets: Targets, server_data_model: DataModelMock): 
 	assert(fs.write_string_to_file(luau_file_path, luau_contents).ok, "luau file write failed")
 
 	local client_data_model, player = data_model_mock.connect_player(server_data_model)
-	local environment = table.clone(environment_mock) :: { [any]: any }
-	environment.game = client_data_model
-	table.freeze(environment)
+	local environment = environment_mock(client_data_model)
 
 	local server_replicated_storage = server_data_model:GetService("ReplicatedStorage")
 	local reliable_event = assert(server_replicated_storage:FindFirstChildOfClass("RemoteEvent"))
