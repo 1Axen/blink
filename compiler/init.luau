@@ -71,7 +71,7 @@ export type CompilationResult = Result<Output, CompilationError>
 local function report_unknown_import(err: import_resolver.UnknownImport, expr: ast.ExprString): never
 	return diagnostics
 		.error(codes.analysis.InvalidImport)
-		:with_message(`Unknown import: "{path.to_string(err.path)}"`)
+		:with_message(`Unknown import: "{err.path}"`)
 		:with_label(
 			diagnostics
 				.label(expr.span)

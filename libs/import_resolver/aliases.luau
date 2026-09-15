@@ -60,7 +60,7 @@ local function collect_fs_aliases(directory: Path): Aliases
 				insert_unique_aliases(current_directory, aliases_result.value)
 			else
 				local err = aliases_result.error
-				print(`Unable to retrieve aliases from "{path.to_string(luaurc_path)}": {err.kind} {err.message}`)
+				print(`Unable to retrieve aliases from "{luaurc_path}": {err.kind} {err.message}`)
 			end
 		end
 

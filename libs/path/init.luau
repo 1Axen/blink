@@ -15,9 +15,21 @@ end
 type Component = component.Component
 type Components = { Component }
 
-export type Path = {
+export type Path = setmetatable<{
 	read components: { Component },
-}
+}, {
+	__tostring: (Path) -> string,
+}>
+
+--- converts the path to a string
+local function to_string(self: Path): string
+	local slices = table.create(#self.components) :: { string }
+	for index, path_component in self.components do
+		slices[index] = component.to_string(path_component)
+	end
+
+	return table.concat(slices, SEPARATOR)
+end
 
 local function rsplit_file_name(file_name: string): (string, string?)
 	local reversed = string.reverse(file_name)
@@ -57,14 +69,14 @@ local function string_to_components(path: string): Components
 end
 
 local function clone(path: Path): Path
-	return { components = table.clone(path.components) }
+	return setmetatable({ components = table.clone(path.components) }, { __tostring = to_string })
 end
 
 local function from_string(str: string): Path
 	local components = string_to_components(str)
-	return {
+	return setmetatable({
 		components = components,
-	}
+	}, { __tostring = to_string })
 end
 
 local CWD_PATH = from_string(CWD)
@@ -199,16 +211,6 @@ end
 
 local function is_relative_path(self: Path): boolean
 	return (is_absolute_path(self) == false)
-end
-
---- converts the path to a string
-local function to_string(self: Path): string
-	local slices = table.create(#self.components) :: { string }
-	for index, path_component in self.components do
-		slices[index] = component.to_string(path_component)
-	end
-
-	return table.concat(slices, SEPARATOR)
 end
 
 local function to_absolute_path(self: Path): Path

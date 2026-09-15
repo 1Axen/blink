@@ -42,15 +42,13 @@ if system.os == "Windows_NT" then
 end
 
 local function write_with_logging(file_path: Path, contents: string)
-	local str_path = path.to_string(file_path)
 	local write_result = fs.write_string_to_file(file_path, contents)
-
 	if not write_result.ok then
-		printext.error(`Encountered an IO error while writing "{str_path}":\n{write_result.error.message}`)
+		printext.error(`Encountered an IO error while writing "{file_path}":\n{write_result.error.message}`)
 		return
 	end
 
-	printext.info(`Wrote output to: "{str_path}"`)
+	printext.info(`Wrote output to: "{file_path}"`)
 end
 
 local function on_compile(context: Context)
@@ -80,7 +78,7 @@ local function on_compile(context: Context)
 		printext.verbose(`Yes to all? {yes_all}`, `Watch? {watch}`)
 	end
 
-	printext.info(`Compiling "{path.to_string(input_path)}" in "{profile}" profile...`)
+	printext.info(`Compiling "{input_path}" in "{profile}" profile...`)
 	local compilation_result = compiler.compile_from_path(input_path, {
 		time = false,
 		verbose = verbose,

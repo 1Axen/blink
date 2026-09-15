@@ -88,6 +88,9 @@ return function(tiniest: Tiniest)
 			expect(path.to_string(relative)).is(RELATIVE_PATH)
 			expect(path.to_string(unix_absolute)).is(UNIX_ABSOLUTE_PATH)
 
+			expect(tostring(relative)).is(RELATIVE_PATH)
+			expect(tostring(unix_absolute)).is(UNIX_ABSOLUTE_PATH)
+
 			local replaced_path = string.gsub(path.to_string(windows_absolute), "/", "\\")
 			expect(replaced_path).is(WINDOWS_ABSOLUTE_PATH)
 		end)

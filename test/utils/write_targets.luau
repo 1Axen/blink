@@ -27,7 +27,7 @@ const function write_targets(prefix: string, targets: Targets)
 			continue
 		end
 
-		error(`failed to write "{path.to_string(target_path)}", {write_result.error.message}`)
+		error(`failed to write to "{target_path}", {write_result.error.message}`)
 	end
 
 	return table.freeze(paths) :: Paths
