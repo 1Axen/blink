@@ -200,7 +200,9 @@ function tiniest_expect.expect(
 
 	function tests.never_fails()
 		check(typeof(a) == "function", "expect() value must be function")
-		local ok, err = pcall(a)
+		local ok, err = xpcall(a, function(err)
+			return debug.traceback(tiniest_quote(err), 2) 
+		end)
 		return if ok then tests else fail(`Failed with {tiniest_quote(err)}`)
 	end
 
