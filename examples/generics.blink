@@ -23,7 +23,7 @@ type byte_array = array<u8>
 type dictionary<V> = map {[string]: V}
 type byte_dictionary = dictionary<u8>
 
-type renderable<T> = {
+type renderable<T> = struct {
 	class: T,
 	position: vector,
 	instance: Instance<T>,

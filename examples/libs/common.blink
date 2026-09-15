@@ -1,6 +1,6 @@
 type node<T> = struct {
     value: T,
-    tail: node<T>
+    tail: node<T>?
 }
 
 type linked_list<T> = struct {
