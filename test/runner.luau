@@ -31,6 +31,10 @@ local tests = tiniest.collect_tests(function()
 	describe_from_file("events")
 	describe_from_file("functions")
 	describe_from_file("diagnostics")
+
+	describe("issues", function()
+		require("./issues/92.test")(tiniest)
+	end)
 end)
 
 local result = tiniest.run_tests(tests, {})

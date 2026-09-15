@@ -44,17 +44,30 @@ local function append_server(builder: StringBuilder, reliable_name: string, unre
 
 	builder:append_line(`local {PLAYERS_MAP}: \{ [Player]: Save } = \{}`)
 	builder:append_lines({
-		`{PLAYERS}.PlayerAdded:Connect(function(player)`,
+		`const function create_save(player: Player)`,
 		`\t{PLAYERS_MAP}[player] = \{`,
-		"\t\tbuffers = table.create(16) :: { buffer },",
-		"\t\tlengths = table.create(16) :: { number },",
-		"\t\tunknown = table.create(16) :: { any }",
+		"\t\tbuffers = table.create<<buffer>>(16),",
+		"\t\tlengths = table.create<<number>>(16),",
+		"\t\tunknown = table.create<<any>>(16)",
 		"\t}",
+		`end`,
+	})
+	builder:append_lines({
+		`for _, player in {PLAYERS}:GetPlayers() do`,
+		"\tcreate_save(player)",
+		"end",
+	})
+	builder:append_lines({
+		`{PLAYERS}.PlayerAdded:Connect(function(player)`,
+		"\tcreate_save(player)",
 		"end)",
+	})
+	builder:append_lines({
 		`{PLAYERS}.PlayerRemoving:Connect(function(player)`,
 		`\t{PLAYERS_MAP}[player] = nil`,
 		"end)",
 	})
+
 	builder:append_line("")
 end
 
