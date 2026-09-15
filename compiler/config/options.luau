@@ -48,9 +48,6 @@ local options = {
 		default = "snake_case" :: "snake_case",
 	},
 
-	future_library = { kind = "string" :: "string" },
-	promise_library = { kind = "string" :: "string" },
-
 	manual_replication = { kind = "boolean" :: "boolean" },
 }
 
