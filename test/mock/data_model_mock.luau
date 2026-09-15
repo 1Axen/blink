@@ -270,6 +270,18 @@ export type PlayersMock =
 	}, typeof(players_class)>
 	& InstanceMock
 
+function players_class.GetPlayers(self: PlayersMock): { PlayerMock }
+	-- Luau bug: code too complex
+	const players: { any } = {}
+	for _, child in self:GetChildren() do
+		if child:IsA("Player") then
+			table.insert(players, child)
+		end
+	end
+
+	return players
+end
+
 function players_class.GetPlayerByUserId(self: PlayersMock, user_id: number): PlayerMock?
 	for _, child in self:GetChildren() :: { PlayerMock } do
 		if child:IsA("Player") and child.UserId == user_id then
