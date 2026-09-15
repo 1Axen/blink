@@ -751,6 +751,11 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 							local pcall_values =
 								block:store_mult(library.pcall(callback, player, unpack(data_values)), #rreturn + 1)
 
+							local player_save = block:store(projection.field(globals.players_map, player :: any))
+							block:if_single(condition.equals(player_save, constant.null), function(block)
+								block:rreturn({})
+							end)
+
 							local was_successful = condition.equals(pcall_values[1], constant.truth)
 							local success_value = ternary(was_successful, constant.one, constant.zero)
 
@@ -766,7 +771,6 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 							end)
 
 							local new_buffer = copy_outgoing_buffer(block)
-							local player_save = projection.field(globals.players_map, player :: any)
 							state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
 						end),
 						{}
