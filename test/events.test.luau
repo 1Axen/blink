@@ -1,13 +1,13 @@
 local compiler = require("@compiler")
 local data_model_mock = require("@test/mock/data_model_mock")
 local datatypes = require("./datatypes")
-local environment_mock = require("@test/mock/environment_mock")
 local fs = require("@util/fs")
 local hir = require("@compiler/hir")
-local luau = require("@lute/luau")
 local path = require("@util/path")
+local playtest_solo = require("@test/utils/playtest_solo")
 local string_builder = require("@util/string_builder")
 local tableext = require("@std/tableext")
+local write_targets = require("@test/utils/write_targets")
 
 type Tiniest = typeof(require("@vendor/tiniest/tiniest_for_lute").configure({}))
 
@@ -129,38 +129,6 @@ local function compile_events(events: Events): Targets
 	})
 end
 
-local function load_server(targets: Targets): (DataModelMock, ServerAPI)
-	local luau_contents = targets.server
-	local luau_file_path = path.append_file_name(TEMP_PATH, `{FILE}-server`, "luau")
-	assert(fs.write_string_to_file(luau_file_path, luau_contents).ok, "luau file write failed")
-
-	local data_model = data_model_mock.create_data_model("Server")
-	local environment = environment_mock(data_model)
-
-	local bytecode = luau.compile(luau_contents)
-	local chunkname = path.to_string(luau_file_path)
-	return data_model, luau.load(bytecode, chunkname, environment)() :: ServerAPI
-end
-
-local function load_client(targets: Targets, server_data_model: DataModelMock): (DataModelMock, PlayerMock, ClientAPI)
-	local luau_contents = targets.client
-	local luau_file_path = path.append_file_name(TEMP_PATH, `{FILE}-client`, "luau")
-	assert(fs.write_string_to_file(luau_file_path, luau_contents).ok, "luau file write failed")
-
-	local client_data_model, player = data_model_mock.connect_player(server_data_model)
-	local environment = environment_mock(client_data_model)
-
-	local server_replicated_storage = server_data_model:GetService("ReplicatedStorage")
-	local reliable_event = assert(server_replicated_storage:FindFirstChildOfClass("RemoteEvent"))
-	local unreliable_event = assert(server_replicated_storage:FindFirstChildOfClass("UnreliableRemoteEvent"))
-	data_model_mock.replicate_instance(reliable_event, server_data_model, client_data_model)
-	data_model_mock.replicate_instance(unreliable_event, server_data_model, client_data_model)
-
-	local bytecode = luau.compile(luau_contents)
-	local chunkname = path.to_string(luau_file_path)
-	return client_data_model, player, luau.load(bytecode, chunkname, environment)() :: ClientAPI
-end
-
 return function(tiniest: Tiniest)
 	local test = tiniest.test
 	local expect = tiniest.expect
@@ -191,9 +159,9 @@ return function(tiniest: Tiniest)
 		end
 	end
 
-	local targets = compile_events(events)
-	local universe, server_module = load_server(targets)
-	local _, player, client_module = load_client(targets, universe)
+	const targets = compile_events(events)
+	const targets_path = write_targets(FILE, targets)
+	const server_module, client_module, player = playtest_solo(targets, targets_path)
 
 	for name, event in events do
 		test(name, function()
