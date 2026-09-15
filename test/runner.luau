@@ -1,34 +1,20 @@
-local fs = require("@lute/fs")
+local fs = require("@std/fs")
+local path = require("@std/path")
 local process = require("@lute/process")
 local tiniest = require("@vendor/tiniest/tiniest_for_lute").configure({
 	snapshot_path = "./test/__snapshots__",
 	load_snapshots = true,
 })
 
-local function recursive_rmdir(path: string)
-	if not fs.exists(path) or fs.type(path) ~= "dir" then
-		return
-	end
+const require: any = require
+const temp_path = path.parse("./temp")
 
-	for _, entry in fs.listdir(path) do
-		local filename = `{path}/{entry.name}`
-		if entry.type == "dir" then
-			recursive_rmdir(filename)
-		else
-			fs.remove(filename)
-		end
-	end
-
-	fs.rmdir(path)
+if fs.exists(temp_path) then
+	print("removed stale temp directory")
+	fs.removeDirectory(temp_path, { recursive = true })
 end
 
-local require: any = require
-
-if fs.exists("./temp") then
-	recursive_rmdir("./temp")
-end
-
-fs.mkdir("./temp")
+fs.createDirectory(temp_path)
 
 local tests = tiniest.collect_tests(function()
 	local describe = tiniest.describe
@@ -50,7 +36,7 @@ end)
 local result = tiniest.run_tests(tests, {})
 local success = result.status_tally.fail == 0
 if success then
-	recursive_rmdir("./temp")
+	fs.removeDirectory(temp_path, { recursive = true })
 end
 
 process.exit(success and 0 or 1)
