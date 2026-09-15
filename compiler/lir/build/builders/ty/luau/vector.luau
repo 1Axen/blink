@@ -63,7 +63,7 @@ local function validate(block: Builder, vec: ty.Vector, value: RValue<vector>)
 		return
 	end
 
-	local magnitude = projection.index(value :: any, constant.from_value("magnitude")) :: types.ProjIndex<number>
+	local magnitude = block:store(library.vector.magnitude(value))
 	if bounds.min == bounds.max then
 		local exact_length = constant.from_value(bounds.min)
 		local is_exact_length = condition.equals(magnitude, exact_length)

@@ -24,7 +24,7 @@ return function(tiniest: Tiniest)
 	const server_module = load_server(server_dm, targets.server, tostring(targets_path.server))
 	const client_module = load_client(server_dm, client_dm, targets.client, tostring(targets_path.client))
 
-	test("early player can still be fired #92", function()
+	test("#92 early player can still be fired", function()
 		local reliable_received = false
 		local unreliable_received = false
 

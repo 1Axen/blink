@@ -9,13 +9,14 @@ local string_builder = require("@util/string_builder")
 type Tiniest = typeof(require("@vendor/tiniest/tiniest_for_lute").configure({}))
 
 type Datatype = datatypes.Datatype
-type TypeAPI = {
-	write: (any) -> (buffer, number),
-	read: (buffer, number?) -> (any, number),
-}
 
-type Exports = {
-	exports: { [string]: TypeAPI },
+type TypesAPI = {
+	exports: {
+		[string]: {
+			read: (buffer, number?) -> (any, number),
+			write: (any) -> (buffer, number),
+		},
+	},
 }
 
 local SAMPLES = 255
@@ -32,7 +33,7 @@ local UNHASHABLE_DATATYPES: { [Datatype]: true? } = {
 	[PRIMITIVES.DateTimeMillis] = true,
 }
 
-local function compile_datatypes(file: string, types: { [string]: Datatype }): Exports
+local function compile_datatypes(file: string, types: { [string]: Datatype }): TypesAPI
 	local source: string
 	local luau_file_path = path.append_file_name(TEMP_PATH, file, "luau")
 	if fs.exists(luau_file_path) then
