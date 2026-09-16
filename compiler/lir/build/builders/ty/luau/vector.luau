@@ -69,7 +69,7 @@ local function validate(block: Builder, vec: ty.Vector, value: RValue<vector>)
 		local is_exact_length = condition.equals(magnitude, exact_length)
 		block:if_single(is_exact_length, function(block)
 			local message =
-				library.string.format(`Expected vector length to be exactly {bounds.min}, length is %f`, value)
+				library.string.format(`Expected vector length to be exactly {bounds.min}, length is %f`, magnitude)
 			block:call(library.error_rvalue(message))
 		end)
 
@@ -82,7 +82,7 @@ local function validate(block: Builder, vec: ty.Vector, value: RValue<vector>)
 	block:if_single(lower, function(block)
 		local message = library.string.format(
 			`Expected vector length to be greater than or equal to {bounds.min}, length is %f`,
-			value
+			magnitude
 		)
 		block:call(library.error_rvalue(message))
 	end)
@@ -90,7 +90,7 @@ local function validate(block: Builder, vec: ty.Vector, value: RValue<vector>)
 	block:if_single(upper, function(block)
 		local message = library.string.format(
 			`Expected vector length to be less than or equal to {bounds.max}, length is %f`,
-			value
+			magnitude
 		)
 		block:call(library.error_rvalue(message))
 	end)

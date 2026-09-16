@@ -5,6 +5,7 @@ type null = nil
 type vec3 = vector
 type vec2 = vector<f32, f32, 0>
 type vec1 = vector<f32, 0, 0>
+type unit_vector = vector(1..1)
 
 type u_char = u8
 type u_short = u16
