@@ -8,7 +8,7 @@ local path = require("@util/path")
 local printext = require("@util/printext")
 local process = require("@lute/process")
 local system = require("@lute/system")
-const version = require("@build-config/version")
+const version = require("@buildconfig/version")
 
 type Path = path.Path
 type Profile = compilation.Profile

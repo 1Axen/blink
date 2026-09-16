@@ -1,5 +1,5 @@
 local string_builder = require("@util/string_builder")
-local version = require("@build-config/version")
+local version = require("@buildconfig/version")
 
 type StringBuilder = string_builder.StringBuilder
 

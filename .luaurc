@@ -6,7 +6,7 @@
         "vendor": "./vendor",
         "compiler": "./compiler",
 		"packages": "./luau_packages",
-		"build-config": "./\\.config",
+		"buildconfig": "./buildconfig",
 		"std": "~/.lute/typedefs/0.1.0/std",
         "lute": "~/.lute/typedefs/0.1.0/lute"
     }
