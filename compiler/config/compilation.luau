@@ -9,7 +9,6 @@ local TARGETS = table.freeze({
 local PROFILES = table.freeze({
 	dev = true,
 	test = true,
-	debug = true,
 	release = true,
 })
 

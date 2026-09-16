@@ -25,7 +25,6 @@ local HEADER = `{NAME} {version}`
 local VALID_PROFILES: { [Profile]: true } = {
 	dev = true :: true,
 	test = true :: true,
-	debug = true :: true,
 	release = true :: true,
 }
 
