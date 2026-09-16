@@ -114,7 +114,7 @@ local function build_ty(ctx: Context, attributes: attributes.Attributes, tty: Ty
 	local write_fn = fn.create(write_name, { fn.parameter(hint.ty(tty)) }, {}, function(block)
 		local props: WriteProps = {
 			ctx = ctx,
-			validate = true,
+			validate = ctx.profile ~= "release",
 			attributes = attributes,
 		}
 
