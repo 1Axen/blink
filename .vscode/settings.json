@@ -16,7 +16,7 @@
 	"luau-lsp.fflags.enableByDefault": false,
 	"luau-lsp.fflags.override": {
 		"LuauConst2": "true",
-		"LuauIntegerType": "true",
+		"LuauIntegerType2": "true",
 		"LuauIntegerLibrary": "true",
 	},
 
