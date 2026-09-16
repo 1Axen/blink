@@ -8,6 +8,10 @@ export type Component =
 	| { read kind: "root", read value: string } -- UNIX root or Windows drive letter
 
 local function is_drive_letter(char: string): boolean
+	if char == "" then
+		return false
+	end
+
 	local byte = string.byte(char)
 	return (byte >= 65 and byte <= 90) or (byte >= 97 and byte <= 122)
 end
