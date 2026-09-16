@@ -219,6 +219,8 @@ local function compile_from_path(entry_path: Path, compile_options: CompileOptio
 		return read_result
 	end
 
+	const profile = compile_options.profile
+
 	local ast_pin = os.clock()
 	local entry_file = read_result.value
 	local files = file_to_files_map(entry_file, entry_path)
@@ -229,7 +231,7 @@ local function compile_from_path(entry_path: Path, compile_options: CompileOptio
 	local hir_elapsed = (os.clock() - hir_pin)
 
 	local lir_pin = os.clock()
-	local files_lir = lir.from_hir(files_hir)
+	local files_lir = lir.from_hir(files_hir, profile)
 	local lir_elapsed = (os.clock() - lir_pin)
 
 	local codegen_pin = os.clock()
@@ -240,7 +242,7 @@ local function compile_from_path(entry_path: Path, compile_options: CompileOptio
 			lir = files_lir,
 			hir = files_hir,
 			hash = md5(tostring(os.clock())),
-			profile = compile_options.profile,
+			profile = profile,
 			entry_options = entry_options,
 		}
 
@@ -300,7 +302,7 @@ local function compile_contents(
 	}
 
 	local file_hir = hir.from_files(files)
-	local file_lir = lir.from_hir(file_hir)
+	local file_lir = lir.from_hir(file_hir, compile_options.profile)
 
 	local entry_options = hir.file_options(file_hir, mock_file)
 	local codegen_props: codegen.Props = {

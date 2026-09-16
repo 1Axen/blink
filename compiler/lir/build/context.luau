@@ -1,3 +1,4 @@
+local compilation = require("@config/compilation")
 local hir = require("@hir")
 local panic = require("@util/panic")
 local ty = require("@ty")
@@ -5,6 +6,7 @@ local types = require("@lir/types")
 
 type Lir = types.Lir
 type Hir = hir.Hir
+type Profile = compilation.Profile
 
 type Ty = ty.Ty
 type TyId = ty.TyId
@@ -24,9 +26,10 @@ export type Context = {
 	read hashed_tys: { [number]: FnSet? },
 	read ty_fn_set_map: { [Ty]: FnSet },
 	read hir: Hir,
+	read profile: Profile,
 }
 
-local function create(hir: Hir): Context
+local function create(hir: Hir, profile: Profile): Context
 	return {
 		fn_id = 1,
 		fn_map = {},
@@ -35,6 +38,7 @@ local function create(hir: Hir): Context
 		hashed_tys = {},
 		ty_fn_set_map = {},
 		hir = hir,
+		profile = profile,
 	}
 end
 

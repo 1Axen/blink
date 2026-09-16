@@ -1,10 +1,10 @@
---!strict
 --!native
 --!optimize 2
 
 local binary = require("@builders/binary")
 local builders = require("@builders")
 local cast = require("@builders/cast")
+local compilation = require("@config/compilation")
 local condition = require("@builders/condition")
 local constant = require("@builders/constant")
 local context = require("@self/context")
@@ -27,6 +27,7 @@ local unary = require("@builders/unary")
 
 type Lir = types.Lir
 type Hir = hir.Hir
+type Profile = compilation.Profile
 
 type Decl = hir.Decl
 type DeclId = hir.DeclId
@@ -867,8 +868,8 @@ local function build_receive_connection(ctx: Context, side: Side, receivables: {
 	end)
 end
 
-local function from_hir(hhir: Hir): Lir
-	local ctx = context.create(hhir, types)
+local function from_hir(hhir: Hir, profile: Profile): Lir
+	local ctx = context.create(hhir, profile)
 	local globals_map: { [string]: types.RValue<any> } = {}
 	local exports_map: ExportsMap = {}
 

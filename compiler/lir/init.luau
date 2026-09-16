@@ -3,6 +3,7 @@
 --!optimize 2
 
 local build = require("@self/build")
+local compilation = require("@config/compilation")
 local hir = require("@hir")
 local lookup = require("@self/lookup")
 local optimize = require("@self/optimize")
@@ -79,8 +80,8 @@ export type ScopeExport = types.ScopeExport
 export type Export = types.Export
 export type Lir = types.Lir
 
-local function lir_from_hir(hir: hir.Hir): Lir
-	local lir = build.from_hir(hir)
+local function lir_from_hir(hir: hir.Hir, profile: compilation.Profile): Lir
+	local lir = build.from_hir(hir, profile)
 	optimize.lir(lir)
 	return lir
 end
