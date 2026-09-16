@@ -27,8 +27,9 @@ type BasicBlock = types.BasicBlock
 type Loop = types.Loop
 type Condition = types.Condition<boolean>
 
-type LValue<T = any> = types.LValue<T>
-type RValue<T = any> = types.RValue<T>
+type RValue<T> = types.RValue<T>
+type Readable<T = any> = types.Readable<T>
+type Writeable<T = any> = types.Writeable<T>
 type Register<T> = types.RegisterId<T>
 
 type Context = context.Context
@@ -56,25 +57,25 @@ local function parameter(hint: Hint, name: string?): types.Parameter
 end
 
 export type Builder = {
-	read store: <T, R>(Builder, value: RValue<T>, into: LValue<R>?) -> Register<T>,
+	read store: <T>(Builder, value: Readable<T>, into: Writeable<T>?) -> Register<T>,
 	read capture: (Builder, upvalues: { Register<any> }) -> (),
 	read reserve: (Builder) -> Register<any>,
 	read parameter: (self: Builder, index: number) -> types.ParameterId<any>,
-	read store_mult: (Builder, value: RValue, count: number) -> { LValue },
+	read store_mult: (Builder, value: Readable, count: number) -> { Writeable },
 
-	read allocate: (Builder, bytes: types.RValue<number>) -> Register<number>,
+	read allocate: (Builder, bytes: types.Readable<number>) -> Register<number>,
 
-	read call: <T>(Builder, call: types.ProjCall<T> | types.ProjNamecall<T> | types.CtrlAllocate<T>) -> (),
-	read call_fn: (Builder, fn_id: FnId, args: { RValue }, rets: { LValue }) -> (),
+	read call: <T>(Builder, call: types.Callable<T>) -> (),
+	read call_fn: (Builder, fn_id: FnId, args: { Readable }, rets: { Writeable }) -> (),
 
 	read remark: (Builder, text: string) -> (),
 
-	read rreturn: (Builder, values: { RValue }) -> (),
+	read rreturn: (Builder, values: { Readable }) -> (),
 	read ccontinue: (Builder) -> (),
 	read if_chain: (Builder, length: number, constructor: IfChainConstructor) -> (),
 	read if_single: (Builder, cond: Condition, body: Constructor) -> (),
-	read for_numeric: (Builder, iterations: RValue<number>, body: NumericLoopConstructor) -> (),
-	read for_generic: (Builder, target: index<types.LoopGeneric, "target">, body: GenericLoopConstructor) -> (),
+	read for_numeric: (Builder, iterations: Readable<number>, body: NumericLoopConstructor) -> (),
+	read for_generic: (Builder, target: Readable<{ [any]: any }>, body: GenericLoopConstructor) -> (),
 	read while_loop: (Builder, condition: Condition, body: Constructor) -> (),
 }
 
@@ -102,8 +103,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		register_top += 1
 
 		return {
-			__phantom_type = nil :: any,
-
+			__readable = nil :: any,
 			type = "id",
 			kind = "register",
 			index = top,
@@ -118,8 +118,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		end
 
 		return {
-			__phantom_type = nil :: any,
-
+			__readable = nil :: any,
 			type = "id",
 			kind = "parameter",
 			index = index,
@@ -133,7 +132,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		return register
 	end
 
-	local function store<T, R>(self: Builder, value: RValue<T>, into: LValue<R>?): Register<T>
+	local function store<T, R>(self: Builder, value: Readable<T>, into: Writeable<R>?): Register<T>
 		local statements = block.statements
 		if into then
 			table.insert(statements, statement.assign(into, value))
@@ -146,8 +145,8 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 	end
 
 	--- Store the result of `value` into `count` registers
-	local function store_mult(self: Builder, value: RValue, count: number): { LValue }
-		local registers: { LValue } = {}
+	local function store_mult(self: Builder, value: Readable, count: number): { Writeable }
+		local registers: { Writeable } = {}
 		for index = 1, count do
 			registers[index] = next_register(self)
 		end
@@ -158,14 +157,14 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		return registers
 	end
 
-	local function allocate(self: Builder, bytes: types.RValue<number>): Register<number>
+	local function allocate(self: Builder, bytes: types.Readable<number>): Register<number>
 		local cursor = self:store(globals.outgoing.cursor)
-		self:call(control.allocate(bytes) :: any)
+		self:call(control.allocate(bytes))
 		return cursor
 	end
 
-	local function call<T>(self: Builder, call: types.ProjCall<T> | types.ProjNamecall<T> | types.CtrlAllocate<T>)
-		local stat = statement.call(call)
+	local function call<T>(self: Builder, call: types.Callable<T>)
+		local stat = statement.call(call :: any)
 		table.insert(block.statements, stat)
 	end
 
@@ -173,7 +172,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		table.insert(block.statements, statement.remark(text))
 	end
 
-	local function term_return(self: Builder, values: { RValue })
+	local function term_return(self: Builder, values: { Readable })
 		block.terminator = terminator.rtrn(values)
 	end
 
@@ -230,7 +229,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		table.insert(blocks, after_block)
 	end
 
-	local function for_numeric(self: Builder, iterations: RValue<number>, body: NumericLoopConstructor)
+	local function for_numeric(self: Builder, iterations: Readable<number>, body: NumericLoopConstructor)
 		local prev_top = register_top
 		local prev_block = block
 		local loop_block = next_block(prev_block.scope + 1)
@@ -252,7 +251,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		table.insert(blocks, after_block)
 	end
 
-	local function for_generic(self: Builder, target: index<types.LoopGeneric, "target">, body: GenericLoopConstructor)
+	local function for_generic(self: Builder, target: Readable<{ [any]: any }>, body: GenericLoopConstructor)
 		local prev_top = register_top
 		local prev_block = block
 		local loop_block = next_block(prev_block.scope + 1)
@@ -265,7 +264,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 
 		local index_register = next_register(self)
 		local value_register = next_register(self)
-		local numeric_loop = loop.generic(index_register, value_register, target)
+		local numeric_loop = loop.generic(index_register, value_register, target :: RValue<{ [any]: any }>)
 		prev_block.terminator = terminator.loop(numeric_loop, loop_block)
 
 		body(self, index_register, value_register)
@@ -297,7 +296,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		table.insert(blocks, falsey_block)
 	end
 
-	local function call_fn(self: Builder, fn_id: FnId, args: { RValue }, rets: { LValue })
+	local function call_fn(self: Builder, fn_id: FnId, args: { Readable }, rets: { Writeable })
 		local next_block = next_block(block.scope, block.terminator)
 		block.terminator = terminator.call(fn_id, args, rets, next_block)
 

@@ -25,8 +25,8 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T> = types.LValue<T>
-type RValue<T> = types.RValue<T>
+type Writeable<T> = types.Writeable<T>
+type Readable<T> = types.Readable<T>
 type Register<T> = types.RegisterId<T>
 
 type Axis = ty.Numeral | ty.NumberLiteral
@@ -47,7 +47,7 @@ local function read_axis(props: ReadProps, block: Builder, axis_ty: Axis): Regis
 	return panic(`Unexpected vector axis ty kind "{axis_ty.kind}"`)
 end
 
-local function write_axis(props: WriteProps, block: Builder, axis_ty: Axis, value: RValue<number>)
+local function write_axis(props: WriteProps, block: Builder, axis_ty: Axis, value: Readable<number>)
 	if axis_ty.kind == "numeral" then
 		return numeral.write(props, block, axis_ty, value)
 	elseif axis_ty.kind == "number_literal" then
@@ -57,7 +57,7 @@ local function write_axis(props: WriteProps, block: Builder, axis_ty: Axis, valu
 	panic(`Unexpected vector axis ty kind "{axis_ty.kind}"`)
 end
 
-local function validate(block: Builder, vec: ty.Vector, value: RValue<vector>)
+local function validate(block: Builder, vec: ty.Vector, value: Readable<vector>)
 	local bounds = vec.magnitude
 	if bounds == nil then
 		return
@@ -96,7 +96,7 @@ local function validate(block: Builder, vec: ty.Vector, value: RValue<vector>)
 	end)
 end
 
-local function build_read(props: ReadProps, block: Builder, vec: ty.Vector, into: LValue<any>?): Register<vector>
+local function build_read(props: ReadProps, block: Builder, vec: ty.Vector, into: Writeable<any>?): Register<vector>
 	local ty_x, ty_y, ty_z = to_axes(props.ctx, vec)
 	local axis_x = read_axis(props, block, ty_x)
 	local axis_y = read_axis(props, block, ty_y)
@@ -107,7 +107,7 @@ local function build_read(props: ReadProps, block: Builder, vec: ty.Vector, into
 	return register
 end
 
-local function build_write(props: WriteProps, block: Builder, vec: ty.Vector, value: RValue<vector>)
+local function build_write(props: WriteProps, block: Builder, vec: ty.Vector, value: Readable<vector>)
 	if props.validate then
 		validate(block, vec, value)
 	end

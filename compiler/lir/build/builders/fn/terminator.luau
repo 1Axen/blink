@@ -12,10 +12,12 @@ type TermReturn = types.TermReturn
 type TermIfChain = types.TermIfChain
 
 type Loop = types.Loop
-type LValue = types.LValue<any>
-type RValue = types.RValue<any>
+type Readable = types.Readable<any>
+type Writeable = types.Writeable<any>
 type Condition = types.Condition<boolean>
 type BasicBlock = types.BasicBlock
+
+type LValue = types.LValue<any>
 
 local function term_if_single(condition: Condition, truthy: BasicBlock, falsey: BasicBlock): TermIf
 	return {
@@ -69,13 +71,13 @@ local function term_loop(loop: Loop, destination: BasicBlock): TermLoop
 	}
 end
 
-local function term_call(fn: types.FnId, args: { RValue }, rets: { LValue }, destination: BasicBlock): TermCall
+local function term_call(fn: types.FnId, args: { Readable }, rets: { Writeable }, destination: BasicBlock): TermCall
 	return {
 		type = "terminator",
 		kind = "call",
 		fn = fn,
 		args = args,
-		rets = rets,
+		rets = rets :: { LValue },
 		destination = destination,
 	}
 end
@@ -90,7 +92,7 @@ local function term_while(condition: Condition, truthy: BasicBlock, falsey: Basi
 	}
 end
 
-local function term_return(values: { RValue }): TermReturn
+local function term_return(values: { Readable }): TermReturn
 	return {
 		type = "terminator",
 		kind = "return",

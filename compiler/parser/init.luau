@@ -12,7 +12,6 @@ local span = require("@util/span")
 
 local assert_panic = require("@util/assert_panic")
 local report = require("@compiler/report")
-local strong_exhaustive_match = require("@util/strong_exhaustive_match")
 
 type Token = lexer.Token
 type TokenAny = lexer.TokenBase<any>

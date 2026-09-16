@@ -23,8 +23,8 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T> = types.LValue<T>
-type RValue<T> = types.RValue<T>
+type Writeable<T> = types.Writeable<T>
+type Readable<T> = types.Readable<T>
 type Register<T> = types.RegisterId<T>
 
 local const = constant.from_value
@@ -41,7 +41,7 @@ local function to_static_enum_type(ctx: Context, ty: ty.Enum): types.Constant<st
 	return projection.index(constant.from_value("Enum"), constant.from_value(enum_type.value))
 end
 
-local function validate(props: WriteProps, block: Builder, ty: ty.Enum, at: RValue<EnumItem>)
+local function validate(props: WriteProps, block: Builder, ty: ty.Enum, at: Readable<EnumItem>)
 	local expected_typeof = constant.from_value("EnumItem")
 	local typeof_value = library.typeof(at)
 	local typeof_condition = condition.not_equals(typeof_value, expected_typeof)
@@ -67,7 +67,7 @@ local function validate(props: WriteProps, block: Builder, ty: ty.Enum, at: RVal
 	end)
 end
 
-local function build_read(props: ReadProps, block: Builder, ty: ty.Enum, into: LValue<any>?): Register<EnumItem>
+local function build_read(props: ReadProps, block: Builder, ty: ty.Enum, into: Writeable<any>?): Register<EnumItem>
 	-- Enum[name]
 	local name = ty_string.read(props, block, NAME_FORMAT, attributes)
 	local enum = projection.field(const("Enum"), name :: any) :: types.ProjField<Enum>
@@ -80,7 +80,7 @@ local function build_read(props: ReadProps, block: Builder, ty: ty.Enum, into: L
 	return block:store(enum_item, into)
 end
 
-local function build_write(props: WriteProps, block: Builder, ty: ty.Enum, value: RValue<EnumItem>): ()
+local function build_write(props: WriteProps, block: Builder, ty: ty.Enum, value: Readable<EnumItem>): ()
 	if props.validate then
 		validate(props, block, ty, value)
 	end

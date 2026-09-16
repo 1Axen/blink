@@ -6,7 +6,8 @@ type Global<T = any> = types.Global<T>
 
 local function global<T>(identifier: string): Global<T>
 	return {
-		__phantom_type = nil :: any,
+		__readable = nil :: any,
+		__writeable = nil :: any,
 
 		type = "global",
 		identifier = identifier,
@@ -32,7 +33,7 @@ return table.freeze({
 	incoming = {
 		buffer = global("in_buffer") :: Global<buffer>,
 		cursor = global("in_cursor") :: Global<number>,
-		unknown = global("in_unknown") :: Global<{ unknown }>,
+		unknown = global("in_unknown") :: Global<{ any }>,
 		unknown_cursor = global("in_unknown_cursor") :: Global<number>,
 	},
 
@@ -40,7 +41,7 @@ return table.freeze({
 		buffer = global("out_buffer") :: Global<buffer>,
 		cursor = global("out_cursor") :: Global<number>,
 		length = global("out_length") :: Global<number>,
-		unknown = global("out_unknown") :: Global<{ unknown }>,
+		unknown = global("out_unknown") :: Global<{ any }>,
 	},
 
 	events = {

@@ -2,7 +2,8 @@
 
 local types = require("@lir/types")
 
-type RValue<T> = types.RValue<T>
+type RValue = types.RValue<any>
+type Readable<T> = types.Readable<T>
 type BinaryAdd<T> = types.BinaryAdd<T>
 type BinarySub<T> = types.BinarySub<T>
 type BinaryMul<T> = types.BinaryMul<T>
@@ -11,108 +12,108 @@ type BinaryMod<T> = types.BinaryMod<T>
 type BinaryPow<T> = types.BinaryPow<T>
 type BinaryIDiv<T> = types.BinaryIDiv<T>
 
-local function binary_add(left: RValue<number>, right: RValue<number>): BinaryAdd<number>
+local function binary_add(left: Readable<number>, right: Readable<number>): BinaryAdd<number>
 	return {
-		__phantom_type = nil :: any,
+		__readable = nil :: any,
 
 		type = "binary",
 		kind = "add",
-		left = left,
-		right = right,
+		left = left :: RValue,
+		right = right :: RValue,
 	}
 end
 
-local function binary_sub(left: RValue<number>, right: RValue<number>): BinarySub<number>
+local function binary_sub(left: Readable<number>, right: Readable<number>): BinarySub<number>
 	return {
-		__phantom_type = nil :: any,
+		__readable = nil :: any,
 
 		type = "binary",
 		kind = "sub",
-		left = left,
-		right = right,
+		left = left :: RValue,
+		right = right :: RValue,
 	}
 end
 
-local function binary_mul(left: RValue<number>, right: RValue<number>): BinaryMul<number>
+local function binary_mul(left: Readable<number>, right: Readable<number>): BinaryMul<number>
 	return {
-		__phantom_type = nil :: any,
+		__readable = nil :: any,
 
 		type = "binary",
 		kind = "mul",
-		left = left,
-		right = right,
+		left = left :: RValue,
+		right = right :: RValue,
 	}
 end
 
-local function binary_div(left: RValue<number>, right: RValue<number>): BinaryDiv<number>
+local function binary_div(left: Readable<number>, right: Readable<number>): BinaryDiv<number>
 	return {
-		__phantom_type = nil :: any,
+		__readable = nil :: any,
 
 		type = "binary",
 		kind = "div",
-		left = left,
-		right = right,
+		left = left :: RValue,
+		right = right :: RValue,
 	}
 end
 
-local function binary_mod(left: RValue<number>, right: RValue<number>): BinaryMod<number>
+local function binary_mod(left: Readable<number>, right: Readable<number>): BinaryMod<number>
 	return {
-		__phantom_type = nil :: any,
+		__readable = nil :: any,
 
 		type = "binary",
 		kind = "mod",
-		left = left,
-		right = right,
+		left = left :: RValue,
+		right = right :: RValue,
 	}
 end
 
-local function binary_pow(left: RValue<number>, right: RValue<number>): BinaryPow<number>
+local function binary_pow(left: Readable<number>, right: Readable<number>): BinaryPow<number>
 	return {
-		__phantom_type = nil :: any,
+		__readable = nil :: any,
 
 		type = "binary",
 		kind = "pow",
-		left = left,
-		right = right,
+		left = left :: RValue,
+		right = right :: RValue,
 	}
 end
 
-local function binary_idiv(left: RValue<number>, right: RValue<number>): BinaryIDiv<number>
+local function binary_idiv(left: Readable<number>, right: Readable<number>): BinaryIDiv<number>
 	return {
-		__phantom_type = nil :: any,
+		__readable = nil :: any,
 
 		type = "binary",
 		kind = "idiv",
-		left = left,
-		right = right,
+		left = left :: RValue,
+		right = right :: RValue,
 	}
 end
 
-local function binary_add_vec(left: RValue<vector>, right: RValue<number>): BinaryAdd<vector>
+local function binary_add_vec(left: Readable<vector>, right: Readable<number>): BinaryAdd<vector>
 	return binary_add(left :: any, right) :: any
 end
 
-local function binary_sub_vec(left: RValue<vector>, right: RValue<number>): BinarySub<vector>
+local function binary_sub_vec(left: Readable<vector>, right: Readable<number>): BinarySub<vector>
 	return binary_sub(left :: any, right) :: any
 end
 
-local function binary_mul_vec(left: RValue<vector>, right: RValue<number>): BinaryMul<vector>
+local function binary_mul_vec(left: Readable<vector>, right: Readable<number>): BinaryMul<vector>
 	return binary_mul(left :: any, right) :: any
 end
 
-local function binary_div_vec(left: RValue<vector>, right: RValue<number>): BinaryDiv<vector>
+local function binary_div_vec(left: Readable<vector>, right: Readable<number>): BinaryDiv<vector>
 	return binary_div(left :: any, right) :: any
 end
 
-local function binary_mod_vec(left: RValue<vector>, right: RValue<number>): BinaryMod<vector>
+local function binary_mod_vec(left: Readable<vector>, right: Readable<number>): BinaryMod<vector>
 	return binary_mod(left :: any, right) :: any
 end
 
-local function binary_pow_vec(left: RValue<vector>, right: RValue<number>): BinaryPow<vector>
+local function binary_pow_vec(left: Readable<vector>, right: Readable<number>): BinaryPow<vector>
 	return binary_pow(left :: any, right) :: any
 end
 
-local function binary_idiv_vec(left: RValue<vector>, right: RValue<number>): BinaryIDiv<vector>
+local function binary_idiv_vec(left: Readable<vector>, right: Readable<number>): BinaryIDiv<vector>
 	return binary_idiv(left :: any, right) :: any
 end
 

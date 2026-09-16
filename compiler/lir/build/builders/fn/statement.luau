@@ -8,9 +8,12 @@ type Remark = types.StatRemark
 type LocalAssign = types.StatLocalAssign
 type MultiAssign = types.StatMultiAssign
 
-type LValue = types.LValue<any>
-type RValue = types.RValue<any>
+type Readable = types.Readable<any>
+type Writeable = types.Writeable<any>
 type Register = types.RegisterId<any>
+
+type RValue = types.RValue<any>
+type LValue = types.LValue<any>
 
 local function stat_call(call: index<Call, "call">): Call
 	return {
@@ -20,12 +23,12 @@ local function stat_call(call: index<Call, "call">): Call
 	}
 end
 
-local function stat_assign(into: LValue, value: RValue?): Assign
+local function stat_assign(into: Writeable, value: Readable?): Assign
 	return {
 		type = "statement",
 		kind = "assign",
-		into = into,
-		value = value,
+		into = into :: LValue,
+		value = value :: RValue,
 	}
 end
 
@@ -37,21 +40,21 @@ local function stat_remark(text: string): Remark
 	}
 end
 
-local function stat_multi_assign(into: { LValue }, value: RValue): MultiAssign
+local function stat_multi_assign(into: { Writeable }, value: Readable): MultiAssign
 	return {
 		type = "statement",
 		kind = "multi_assign",
-		into = into,
-		value = value,
+		into = into :: { LValue },
+		value = value :: RValue,
 	}
 end
 
-local function stat_local_assign(into: Register, value: RValue?): LocalAssign
+local function stat_local_assign(into: Register, value: Readable?): LocalAssign
 	return {
 		type = "statement",
 		kind = "local_assign",
 		into = into,
-		value = value,
+		value = value :: RValue?,
 	}
 end
 

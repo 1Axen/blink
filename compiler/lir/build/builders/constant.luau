@@ -26,7 +26,7 @@ local function create_or_reuse(value: ConstantValue): Constant
 	end
 
 	local constant: Constant = {
-		__phantom_type = nil :: any,
+		__readable = nil :: any,
 
 		type = "constant",
 		value = value,

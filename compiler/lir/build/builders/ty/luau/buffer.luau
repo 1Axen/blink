@@ -22,11 +22,11 @@ type Context = context.Context
 type Attributes = attributes.Attributes
 
 type Buffer = ty.Buffer
-type LValue<T> = types.LValue<T>
-type RValue<T> = types.RValue<T>
+type Writeable<T> = types.Writeable<T>
+type Readable<T> = types.Readable<T>
 type Register<T> = types.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, buf: ty.Buffer, into: LValue<any>?): Register<buffer>
+local function build_read(props: ReadProps, block: Builder, buf: ty.Buffer, into: Writeable<any>?): Register<buffer>
 	local len = length.read(props, block, buf)
 	local register = block:store(library.buffer.create(len), into)
 	local buffer_copy = library.buffer.copy(register, constant.zero, globals.incoming.buffer, control.advance(len), len)
@@ -35,7 +35,7 @@ local function build_read(props: ReadProps, block: Builder, buf: ty.Buffer, into
 	return register
 end
 
-local function build_write(props: WriteProps, block: Builder, buf: ty.Buffer, value: RValue<buffer>): ()
+local function build_write(props: WriteProps, block: Builder, buf: ty.Buffer, value: Readable<buffer>): ()
 	local len = length.write(props, block, buf, library.buffer.len(value))
 	local cursor = block:allocate(len)
 	local buffer_copy = library.buffer.copy(globals.outgoing.buffer, cursor, value, constant.zero, len)

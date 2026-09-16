@@ -2,18 +2,19 @@
 
 local types = require("@lir/types")
 
-type RValue<T = any> = types.RValue<T>
+type RValue<T> = types.RValue<T>
+type Readable<T> = types.Readable<T>
 type Condition = types.Condition<boolean>
 
 local function condition(kind: index<Condition, "kind">)
-	return function<A, B>(left: RValue<A>, right: RValue<B>): Condition
+	return function<A, B>(left: Readable<A>, right: Readable<B>): Condition
 		return {
-			__phantom_type = nil :: any,
+			__readable = nil :: any,
 
 			type = "condition",
 			kind = kind,
-			left = left,
-			right = right,
+			left = left :: RValue<A>,
+			right = right :: RValue<B>,
 		}
 	end
 end

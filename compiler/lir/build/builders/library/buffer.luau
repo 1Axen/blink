@@ -6,8 +6,8 @@ local constant = require("@builders/constant")
 local globals = require("@builders/globals")
 local projection = require("@builders/projection")
 
-type LValue<T> = types.LValue<T>
-type RValue<T> = types.RValue<T>
+type Writeable<T> = types.Writeable<T>
+type Readable<T> = types.Readable<T>
 type Register<T> = types.RegisterId<T>
 
 type Call<T> = types.ProjCall<T>
@@ -27,29 +27,29 @@ local function index(library: string, method: string): Index<any>
 	return projection.index(library_const, method_const)
 end
 
-local function create(size: RValue<number>): Call<buffer>
+local function create(size: Readable<number>): Call<buffer>
 	return projection.call(index("buffer", "create"), { size })
 end
 
-local function len(of: RValue<buffer>): Call<number>
+local function len(of: Readable<buffer>): Call<number>
 	return projection.call(index("buffer", "len"), { of })
 end
 
 local function copy(
-	target: RValue<buffer>,
-	target_offset: RValue<number>,
-	source: RValue<buffer>,
-	source_offset: RValue<number>?,
-	count: RValue<number>?
+	target: Readable<buffer>,
+	target_offset: Readable<number>,
+	source: Readable<buffer>,
+	source_offset: Readable<number>?,
+	count: Readable<number>?
 ): Call<nil>
 	return projection.call(index("buffer", "copy"), { target, target_offset, source, source_offset, count })
 end
 
-local function read_string(advance: Advance, bytes: RValue<number>): Call<string>
+local function read_string(advance: Advance, bytes: Readable<number>): Call<string>
 	return projection.call(index("buffer", "readstring"), { READ_BUFFER, advance, bytes })
 end
 
-local function write_string(allocate: Register<number>, bytes: RValue<number>, value: RValue<string>): Call<nil>
+local function write_string(allocate: Register<number>, bytes: Readable<number>, value: Readable<string>): Call<nil>
 	return projection.call(index("buffer", `writestring`), { WRITE_BUFFER, allocate, value, bytes })
 end
 
@@ -60,7 +60,7 @@ local function read_number(format: string)
 end
 
 local function write_number(format: string)
-	return function(allocate: Register<number>, value: RValue<number>): Call<nil>
+	return function(allocate: Register<number>, value: Readable<number>): Call<nil>
 		return projection.call(index("buffer", `write{format}`), { WRITE_BUFFER, allocate, value })
 	end
 end
@@ -69,7 +69,7 @@ local function read_integer(advance: Advance): Call<integer>
 	return projection.call(index("buffer", "readinteger"), { READ_BUFFER, advance })
 end
 
-local function write_integer(allocate: Register<number>, value: RValue<integer>): Call<nil>
+local function write_integer(allocate: Register<number>, value: Readable<integer>): Call<nil>
 	return projection.call(index("buffer", "writeinteger"), { WRITE_BUFFER, allocate, value })
 end
 

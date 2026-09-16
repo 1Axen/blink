@@ -39,8 +39,8 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T> = lir_types.LValue<T>
-type RValue<T> = lir_types.RValue<T>
+type LValue<T> = lir_types.Writeable<T>
+type RValue<T> = lir_types.Readable<T>
 type Register<T> = lir_types.RegisterId<T>
 
 type Call<T> = lir_types.ProjCall<T>

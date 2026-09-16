@@ -26,13 +26,13 @@ type Attributes = attributes.Attributes
 
 type Unknown = ty.Unknown
 
-type LValue<T> = types.LValue<T>
-type RValue<T> = types.RValue<T>
+type Writeable<T> = types.Writeable<T>
+type Readable<T> = types.Readable<T>
 type Register<T> = types.RegisterId<T>
 
 local FORMAT = numeral.u8
 
-local function build_read(props: ReadProps, block: Builder, _: Unknown, into: LValue<any>?)
+local function build_read(props: ReadProps, block: Builder, _: Unknown, into: Writeable<any>?)
 	local byte_register = numeral.read(props, block, FORMAT)
 	local value_register = (into or block:reserve())
 
@@ -40,13 +40,13 @@ local function build_read(props: ReadProps, block: Builder, _: Unknown, into: LV
 	block:if_single(exists, function(block)
 		local unknown_cursor = globals.incoming.unknown_cursor
 		block:store(binary.add(unknown_cursor, constant.one), unknown_cursor)
-		block:store(projection.field(globals.incoming.unknown :: LValue<any>, unknown_cursor), value_register)
+		block:store(projection.field(globals.incoming.unknown :: Writeable<any>, unknown_cursor), value_register)
 	end)
 
 	return value_register
 end
 
-local function build_write(props: WriteProps, block: Builder, _: Unknown, value: RValue<any>): ()
+local function build_write(props: WriteProps, block: Builder, _: Unknown, value: Readable<any>): ()
 	local exists = condition.not_equals(value, constant.null)
 	local cursor = block:allocate(constant.one)
 

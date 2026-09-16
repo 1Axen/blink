@@ -6,35 +6,35 @@ local constant = require("@builders/constant")
 local projection = require("@builders/projection")
 
 type Call<T> = types.ProjCall<T>
-type RValue<T> = types.RValue<T>
+type Readable<T> = types.Readable<T>
 
-local function create(size: RValue<number>): Call<{ any }>
+local function create(size: Readable<number>): Call<{ any }>
 	return projection.call(constant.from_value("table.create"), { size })
 end
 
-local function insert<T>(into: RValue<{ T }>, value: RValue<T>)
+local function insert<T>(into: Readable<{ T }>, value: Readable<T>)
 	return projection.call(constant.from_value("table.insert"), { into, value })
 end
 
 local function move<T>(
-	source: RValue<{ T }>,
-	from: RValue<number>,
-	to: RValue<number>,
-	at: RValue<number>,
-	destination: RValue<{ T }>
+	source: Readable<{ T }>,
+	from: Readable<number>,
+	to: Readable<number>,
+	at: Readable<number>,
+	destination: Readable<{ T }>
 )
 	return projection.call(constant.from_value("table.move"), { source, from, to, at, destination })
 end
 
-local function find<T>(target: RValue<{ T }>, value: RValue<any>, start_at: RValue<number>?): Call<number?>
+local function find<T>(target: Readable<{ T }>, value: Readable<any>, start_at: Readable<number>?): Call<number?>
 	return projection.call(constant.from_value("table.find"), { target, value, start_at :: any })
 end
 
-local function clear<T>(target: RValue<{ T }>)
+local function clear<T>(target: Readable<{ T }>)
 	return projection.call(constant.from_value("table.clear"), { target })
 end
 
-local function clone<T>(target: RValue<{ T }>)
+local function clone<T>(target: Readable<{ T }>)
 	return projection.call(constant.from_value("table.clone"), { target })
 end
 

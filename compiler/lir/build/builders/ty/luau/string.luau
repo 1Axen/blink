@@ -22,17 +22,17 @@ type Context = context.Context
 type Attributes = attributes.Attributes
 
 type String = ty.String
-type LValue<T> = types.LValue<T>
-type RValue<T> = types.RValue<T>
+type Writeable<T> = types.Writeable<T>
+type Readable<T> = types.Readable<T>
 type Register<T> = types.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, ty: String, into: LValue<any>?): Register<string>
+local function build_read(props: ReadProps, block: Builder, ty: String, into: Writeable<any>?): Register<string>
 	local len = length.read(props, block, ty)
 	local cursor = control.advance(len)
 	return block:store(library.buffer.string.read(cursor, len), into)
 end
 
-local function build_write(props: WriteProps, block: Builder, ty: String, value: RValue<string>): ()
+local function build_write(props: WriteProps, block: Builder, ty: String, value: Readable<string>): ()
 	local len = length.write(props, block, ty, unary.len(value :: any))
 	local cursor = block:allocate(len)
 	block:call(library.buffer.string.write(cursor, len, value))

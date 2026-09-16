@@ -7,8 +7,8 @@ local fn = require("@builders/fn")
 
 type Ty = ty.Ty
 type TyId = ty.TyId
-type LValue<T> = types.LValue<T>
-type RValue<T> = types.RValue<T>
+type Writeable<T> = types.Writeable<T>
+type Readable<T> = types.Readable<T>
 type Register<T> = types.RegisterId<T>
 
 type Builder = fn.Builder
@@ -29,8 +29,8 @@ export type WriteProps = {
 export type Props = | ReadProps | WriteProps
 
 export type TyBuilder = {
-	read read: (props: ReadProps, block: Builder, ty: Ty, into: LValue<any>?) -> Register<any>,
-	read write: (props: WriteProps, block: Builder, ty: Ty, value: RValue<any>) -> (),
+	read read: (props: ReadProps, block: Builder, ty: Ty, into: Writeable<any>?) -> Register<any>,
+	read write: (props: WriteProps, block: Builder, ty: Ty, value: Readable<any>) -> (),
 }
 
 return nil

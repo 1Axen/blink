@@ -17,16 +17,16 @@ type Context = context.Context
 type Attributes = attributes.Attributes
 
 type Nil = ty.Nil
-type LValue<T = any> = types.LValue<T>
-type RValue<T = any> = types.RValue<T>
-type Register<T = any> = types.RegisterId<T>
+type Readable<T> = types.Readable<T>
+type Writeable<T> = types.Writeable<T>
+type Register<T> = types.RegisterId<T>
 
-local function build_read(props: ReadProps, block: Builder, _: Nil, into: LValue<any>?): Register<nil>
+local function build_read(props: ReadProps, block: Builder, _: Nil, into: Writeable<nil>?): Register<nil>
 	-- noop
 	return into :: Register<nil> or block:reserve()
 end
 
-local function build_write(props: WriteProps, block: Builder, nnil: Nil, value: RValue): ()
+local function build_write(props: WriteProps, block: Builder, nnil: Nil, value: Readable<nil>): ()
 	-- noop
 end
 

@@ -2,21 +2,20 @@
 
 local types = require("@lir/types")
 
-type RValue<T> = types.RValue<T>
+type Readable<T> = types.Readable<T>
 
-local function ctrl_advance(bytes: RValue<number>): types.CtrlAdvance<number>
+local function ctrl_advance(bytes: Readable<number>): types.CtrlAdvance<number>
 	return {
-		__phantom_type = nil :: any,
-
+		__readable = nil :: any,
 		type = "control",
 		kind = "advance",
 		bytes = bytes :: any,
 	}
 end
 
-local function ctrl_allocate(bytes: RValue<number>): types.CtrlAllocate<nil>
+local function ctrl_allocate(bytes: Readable<number>): types.CtrlAllocate<nil>
 	return {
-		__phantom_type = nil,
+		__readable = nil,
 		type = "control",
 		kind = "allocate",
 		bytes = bytes :: any,

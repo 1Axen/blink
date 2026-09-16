@@ -42,6 +42,8 @@ type Fn = types.Fn
 type FnId = types.FnId
 type AnonymousFn = types.AnonymousFn
 
+type Readable<T> = types.Readable<T>
+
 type Context = context.Context
 type Builder = builders.Builder
 
@@ -172,7 +174,7 @@ local function copy_outgoing_buffer(block: fn.Builder): types.RegisterId<buffer>
 	return new_buffer
 end
 
-local function toggle_bitset_index(block: fn.Builder, index: types.RValue<number>, bitset: types.RValue<number>?)
+local function toggle_bitset_index(block: fn.Builder, index: Readable<number>, bitset: Readable<number>?)
 	local modified_bitset = library.bit32.bxor(bitset or INVOCATIONS_BITSET, binary.pow(constant.two, index))
 	block:store(modified_bitset, INVOCATIONS_BITSET)
 end
@@ -197,7 +199,7 @@ local function build_type(ctx: Context, decl: hir.Type): TypeExport?
 		{ type_return, CURSOR_RETURN },
 		function(block: builders.Builder)
 			block:store(block:parameter(1), INCOMING.buffer)
-			block:store(condition.oor(block:parameter(2), constant.zero), INCOMING.cursor)
+			block:store(condition.oor(block:parameter(2), constant.zero) :: Readable<number>, INCOMING.cursor)
 
 			local value = block:reserve()
 			block:call_fn(type_fnset.read, {}, { value })
@@ -293,7 +295,7 @@ local function build_event_on(
 				end)
 			end)
 
-			block:rreturn({ disconnect })
+			block:rreturn({ disconnect :: any })
 		end
 	)
 end
@@ -339,7 +341,7 @@ local function build_event_iter(event_queue: types.ProjField<any>, data_returns:
 			block:rreturn(values)
 		end)
 
-		block:rreturn({ inner_iter })
+		block:rreturn({ inner_iter :: any })
 	end)
 end
 
@@ -456,7 +458,7 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 
 	if is_from_client then
 		fire_server = fn.anonymous(data_params, {}, function(block)
-			local prev_buffer: types.LValue<buffer>, prev_length: types.LValue<number>, prev_cursor: types.LValue<number>, prev_unknown: types.LValue<{ unknown }>
+			local prev_buffer: types.Writeable<buffer>, prev_length: types.Writeable<number>, prev_cursor: types.Writeable<number>, prev_unknown: types.Writeable<{ unknown }>
 			if is_unreliable then
 				-- take snapshot of outgoing state
 				prev_buffer = block:store(OUTGOING.buffer)
@@ -540,7 +542,7 @@ local function build_event_receive(ctx: Context, side: Side, block: fn.Builder, 
 	local fn_sets = ty_pack_to_fn_sets(ctx, decl, decl.data or {})
 	local queue = projection.field(QUEUES, constant.from_value(event_id))
 
-	local values: { types.RegisterId<any> } = {}
+	local values: { types.Id<any> } = {}
 	if side == "Server" then
 		-- player parameter
 		table.insert(values, block:parameter(1))
@@ -628,7 +630,7 @@ local function build_function(ctx: Context, decl: Function, event_id: number): F
 				block:store(constant.null, callback)
 			end)
 
-			block:rreturn({ disconnect })
+			block:rreturn({ disconnect :: any })
 		end
 	)
 
@@ -773,7 +775,7 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 
 							local new_buffer = copy_outgoing_buffer(block)
 							state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
-						end),
+						end) :: any,
 						{}
 					))
 				end
@@ -870,7 +872,7 @@ end
 
 local function from_hir(hhir: Hir, profile: Profile): Lir
 	local ctx = context.create(hhir, profile)
-	local globals_map: { [string]: types.RValue<any> } = {}
+	local globals_map: { [string]: Readable<any> } = {}
 	local exports_map: ExportsMap = {}
 
 	-- write globals
@@ -997,7 +999,7 @@ local function from_hir(hhir: Hir, profile: Profile): Lir
 	do
 		local templates = {}
 		for key, template in ctx.templates do
-			templates[constant.from_value(key)] = template
+			templates[constant.from_value(key)] = assert(template, "unreachable")
 		end
 
 		globals_map[globals.templates.identifier] = structure.struct(templates)

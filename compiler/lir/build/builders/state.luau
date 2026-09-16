@@ -10,8 +10,8 @@ local library = require("./library")
 local projection = require("@builders/projection")
 local unary = require("./unary")
 
-type LValue<T> = types.LValue<T>
-type RValue<T> = types.RValue<T>
+type Writeable<T> = types.Writeable<T>
+type Readable<T> = types.Readable<T>
 type Register<T> = types.RegisterId<T>
 
 type Call<T> = types.ProjCall<T>
@@ -22,7 +22,7 @@ type Namecall<T> = types.ProjNamecall<T>
 type Advance = types.CtrlAdvance<number>
 type Allocate = types.CtrlAllocate<number>
 
-type Save = { write __phantom_type: "__SYMBOL__save", type: "save" }
+type Save = { write __readable: "__SYMBOL__save", type: "save" }
 
 local OUTGOING = globals.outgoing
 
@@ -35,7 +35,7 @@ local function create_save()
 	return projection.call(constant.from_value("create_save"), {})
 end
 
-local function update_save(block: fn.Builder, save: LValue<Save>, buf: RValue<buffer>, len: RValue<number>)
+local function update_save(block: fn.Builder, save: Writeable<Save>, buf: Readable<buffer>, len: Readable<number>)
 	local out_unknown = OUTGOING.unknown
 	local save_buffers = projection.index(save :: any, constant.from_value("buffers"))
 	local save_lengths = projection.index(save :: any, constant.from_value("lengths"))

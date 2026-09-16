@@ -24,13 +24,13 @@ type Attributes = attributes.Attributes
 
 type Instance = ty.Instance
 
-type LValue<T> = types.LValue<T>
-type RValue<T> = types.RValue<T>
+type Writeable<T> = types.Writeable<T>
+type Readable<T> = types.Readable<T>
 type Register<T> = types.RegisterId<T>
 
 local DEFAULT_TYPE = constant.from_value("Instance")
 
-local function validate(ctx: Context, block: Builder, instance: Instance, value: RValue<Instance>)
+local function validate(ctx: Context, block: Builder, instance: Instance, value: Readable<Instance>)
 	block:if_single(condition.not_equals(value, constant.null), function(block: fn.Builder)
 		local typeof_value = library.typeof(value)
 		local is_not_type = condition.not_equals(typeof_value, DEFAULT_TYPE)
@@ -59,9 +59,15 @@ local function validate(ctx: Context, block: Builder, instance: Instance, value:
 	end)
 end
 
-local function build_read(props: ReadProps, block: Builder, instance: Instance, into: LValue<any>?): Register<Instance>
+local function build_read(
+	props: ReadProps,
+	block: Builder,
+	instance: Instance,
+	into: Writeable<any>?
+): Register<Instance>
 	local unknown_cursor = globals.incoming.unknown_cursor
-	local value = projection.field(globals.incoming.unknown :: LValue<any>, unknown_cursor) :: types.ProjField<Instance>
+	local value =
+		projection.field(globals.incoming.unknown :: Writeable<any>, unknown_cursor) :: types.ProjField<Instance>
 	block:store(binary.add(unknown_cursor, constant.one), unknown_cursor)
 
 	local register = block:store(value, into)
@@ -70,7 +76,7 @@ local function build_read(props: ReadProps, block: Builder, instance: Instance, 
 	return register
 end
 
-local function build_write(props: WriteProps, block: Builder, instance: Instance, value: RValue<Instance>): ()
+local function build_write(props: WriteProps, block: Builder, instance: Instance, value: Readable<Instance>): ()
 	if props.validate then
 		validate(props.ctx, block, instance, value)
 	end

@@ -19,12 +19,12 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T = any> = types.LValue<T>
-type RValue<T = any> = types.RValue<T>
+type Writeable<T = any> = types.Writeable<T>
+type Readable<T = any> = types.Readable<T>
 type Literal = ty.Literal
 type Register<T = any> = types.RegisterId<T>
 
-local function validate(props: WriteProps, block: Builder, ty: Literal, value: RValue)
+local function validate(props: WriteProps, block: Builder, ty: Literal, value: Readable)
 	local constant = constant.from_ty(ty :: any)
 	local equals = condition.not_equals(value, constant :: any)
 
@@ -34,12 +34,12 @@ local function validate(props: WriteProps, block: Builder, ty: Literal, value: R
 	end)
 end
 
-local function build_read<A>(props: ReadProps, block: Builder, literal: ty.Literal, into: LValue<any>?): Register<A>
+local function build_read<A>(props: ReadProps, block: Builder, literal: ty.Literal, into: Writeable?): Register<A>
 	local constant = constant.from_ty((literal :: any) :: { kind: any, value: A })
 	return block:store(constant, into)
 end
 
-local function build_write(props: WriteProps, block: Builder, literal: ty.Literal, value: RValue): ()
+local function build_write(props: WriteProps, block: Builder, literal: ty.Literal, value: Readable): ()
 	if props.validate then
 		validate(props, block, literal, value)
 	end

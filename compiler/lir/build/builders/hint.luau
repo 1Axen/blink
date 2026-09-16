@@ -4,7 +4,7 @@ local ty = require("@ty")
 local types = require("@lir/types")
 
 type Ty = ty.Ty
-type RValue<T> = types.RValue<T>
+type Readable<T> = types.Readable<T>
 
 local function hint_ty(tty: Ty): types.HintTy
 	return {

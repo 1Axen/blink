@@ -3,25 +3,26 @@
 local ty = require("@ty")
 local types = require("@lir/types")
 
-type RValue<T> = types.RValue<T>
+type RValue = types.RValue<any>
+type Readable<T> = types.Readable<T>
 
-local function cast_ty<T>(value: RValue<T>, cast_to: ty.Ty): types.CastTy<T>
+local function cast_ty<T>(value: Readable<T>, cast_to: ty.Ty): types.CastTy<T>
 	return {
-		__phantom_type = nil :: any,
+		__readable = nil :: any,
 
 		type = "cast",
 		kind = "ty",
-		value = value,
+		value = value :: RValue,
 		cast_to = cast_to,
 	}
 end
 
-local function cast_static<T>(value: RValue<T>, cast_to: string): types.CastStatic<T>
+local function cast_static<T>(value: Readable<T>, cast_to: string): types.CastStatic<T>
 	return {
-		__phantom_type = nil,
+		__readable = nil :: any,
 		type = "cast",
 		kind = "static",
-		value = value,
+		value = value :: RValue,
 		cast_to = cast_to,
 	}
 end

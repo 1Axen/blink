@@ -28,8 +28,8 @@ type Hir = hir.Hir
 type Casing = cased_method.Casing
 type Context = context.Context
 
-local gen_lvalue: <T>(ctx: Context, lvalue: lir.LValue<T>) -> ()
-local gen_rvalue: <T>(ctx: Context, rvalue: lir.RValue<T>) -> ()
+local gen_lvalue: <T>(ctx: Context, lvalue: lir.Writeable<T>) -> ()
+local gen_rvalue: <T>(ctx: Context, rvalue: lir.Readable<T>) -> ()
 local gen_anon_fn: (ctx: Context, anon_fn: lir.AnonymousFn) -> ()
 local gen_fn: (ctx: Context, fn: lir.Fn) -> ()
 
@@ -51,7 +51,7 @@ local function gen_constant_with_qoutes(ctx: Context, constant: lir.Constant)
 	builder:append(tostring(constant.value))
 end
 
-local function gen_projection<T>(ctx: Context, projection: lir.Projection<T>)
+local function gen_projection<T>(ctx: Context, projection: lir.Projection<any>)
 	local builder = ctx.builder
 	local base = projection.base
 	if base.type == "constant" then
@@ -118,7 +118,7 @@ local function gen_global(ctx: Context, global: lir.Global<any>)
 	ctx.builder:append(global.identifier)
 end
 
-function gen_lvalue(ctx: Context, lvalue: lir.LValue<any>)
+function gen_lvalue<T>(ctx: Context, lvalue: lir.LValue<any>)
 	if lvalue.type == "id" then
 		gen_id(ctx, lvalue)
 	elseif lvalue.type == "global" then
@@ -888,7 +888,7 @@ local function from_lir(props: Props, target: compilation.Target): string
 			builder:append(".")
 			builder:append(signal_name)
 			builder:append(":Connect(")
-			gen_anon_fn(ctx, target_fns[key])
+			gen_anon_fn(ctx, (target_fns :: { [string]: any })[key])
 			builder:append(")\n")
 		end
 

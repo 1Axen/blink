@@ -12,7 +12,7 @@ type Ty = ty.Ty
 type TyId = ty.TyId
 type FnId = types.FnId
 type Global<T> = types.Global<T>
-type RValue<T> = types.RValue<T>
+type Readable<T> = types.Readable<T>
 
 export type FnSet = {
 	read: FnId,
@@ -22,7 +22,7 @@ export type FnSet = {
 export type Context = {
 	fn_id: number,
 	read fn_map: { [FnId]: types.Fn },
-	read templates: { [string]: RValue<any>? },
+	read templates: { [string]: Readable<any>? },
 	read hashed_tys: { [number]: FnSet? },
 	read ty_fn_set_map: { [Ty]: FnSet },
 	read hir: Hir,

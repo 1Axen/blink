@@ -21,12 +21,12 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T> = types.LValue<T>
-type RValue<T> = types.RValue<T>
+type Writeable<T> = types.Writeable<T>
+type Readable<T> = types.Readable<T>
 type Boolean = ty.Boolean
 type Register<T> = types.RegisterId<T>
 
-local function validate(block: Builder, ty: Boolean, value: RValue<boolean>)
+local function validate(block: Builder, ty: Boolean, value: Readable<boolean>)
 	local expected = constant.from_value("boolean")
 	local typeof_value = library.typeof(value)
 	local is_expected_typeof = condition.not_equals(typeof_value, expected)
@@ -37,7 +37,12 @@ local function validate(block: Builder, ty: Boolean, value: RValue<boolean>)
 	end)
 end
 
-local function build_read(props: ReadProps, block: Builder, boolean: ty.Boolean, into: LValue<any>?): Register<boolean>
+local function build_read(
+	props: ReadProps,
+	block: Builder,
+	boolean: ty.Boolean,
+	into: Writeable<any>?
+): Register<boolean>
 	local bytes = constant.from_value(1)
 	local advance = control.advance(bytes)
 	local buffer_read = library.buffer.u8.read(advance)
@@ -48,7 +53,7 @@ local function build_read(props: ReadProps, block: Builder, boolean: ty.Boolean,
 	return block:store(conversion, into)
 end
 
-local function build_write(props: WriteProps, block: Builder, boolean: ty.Boolean, value: RValue<boolean>): ()
+local function build_write(props: WriteProps, block: Builder, boolean: ty.Boolean, value: Readable<boolean>): ()
 	if props.validate then
 		validate(block, boolean, value)
 	end

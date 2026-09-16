@@ -24,8 +24,8 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T> = types.LValue<T>
-type RValue<T> = types.RValue<T>
+type Writeable<T> = types.Writeable<T>
+type Readable<T> = types.Readable<T>
 type Register<T> = types.RegisterId<T>
 
 local mul = binary.mul
@@ -38,7 +38,7 @@ local HALF = const(0.5)
 local VECTOR = ty.vector(nil, {})
 local DEFAULT_FORMAT = ty.numeral(nil, "32", "f")
 
-local function square(value: RValue<number>)
+local function square(value: Readable<number>)
 	return mul(value, value)
 end
 
@@ -62,7 +62,12 @@ local function to_tys(ctx: Context, cframe_ty: ty.CFrame): (ty.Vector, ty.Vector
 	return pos_ty, rot_ty
 end
 
-local function build_read(props: ReadProps, block: Builder, cframe_ty: ty.CFrame, into: LValue<any>?): Register<CFrame>
+local function build_read(
+	props: ReadProps,
+	block: Builder,
+	cframe_ty: ty.CFrame,
+	into: Writeable<any>?
+): Register<CFrame>
 	local position_ty = cframe_ty.position or DEFAULT_FORMAT
 	local rotation_ty = cframe_ty.rotation or DEFAULT_FORMAT
 
@@ -111,7 +116,7 @@ local function build_read(props: ReadProps, block: Builder, cframe_ty: ty.CFrame
 	return store_location
 end
 
-local function build_write(props: WriteProps, block: Builder, cframe_ty: ty.CFrame, value: RValue<CFrame>): ()
+local function build_write(props: WriteProps, block: Builder, cframe_ty: ty.CFrame, value: Readable<CFrame>): ()
 	local pos_ty, rot_ty = to_tys(props.ctx, cframe_ty)
 
 	-- position

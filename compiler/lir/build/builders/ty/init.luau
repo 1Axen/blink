@@ -29,8 +29,8 @@ type Hir = hir.Hir
 type Ty = ty.Ty
 type TyId = ty.TyId<Ty>
 
-type LValue<T> = types.LValue<T>
-type RValue<T> = types.RValue<T>
+type Writeable<T> = types.Writeable<T>
+type Readable<T> = types.Readable<T>
 type Register<T> = types.RegisterId<T>
 
 type Builder = fn.Builder
@@ -59,12 +59,12 @@ local function builder_from_ty(ty: Ty): TyBuilder
 	return builder
 end
 
-local function read_ty(props: ReadProps, block: Builder, ty: Ty, into: LValue<any>?): LValue<any>
+local function read_ty(props: ReadProps, block: Builder, ty: Ty, into: Writeable<any>?): Writeable<any>
 	local builder = builder_from_ty(ty)
 	return builder.read(props, block, ty, into)
 end
 
-local function write_ty(props: WriteProps, block: Builder, ty: Ty, value: RValue<any>)
+local function write_ty(props: WriteProps, block: Builder, ty: Ty, value: Readable<any>)
 	local builder = builder_from_ty(ty)
 	builder.write(props, block, ty, value)
 end
@@ -152,13 +152,13 @@ builders = {
 }
 
 builders.reference = table.freeze({
-	read = function(props: ReadProps, block: Builder, ref: ty.Reference, into: LValue<any>?): Register<any>
+	read = function(props: ReadProps, block: Builder, ref: ty.Reference, into: Writeable<any>?): Register<any>
 		local fn_set = build_ty(props.ctx, props.attributes, ref)
 		local register = into or block:reserve()
 		block:call_fn(fn_set.read, {}, { register })
 		return register :: Register<any>
 	end,
-	write = function(props: WriteProps, block: Builder, ref: ty.Reference, at: RValue<any>): ()
+	write = function(props: WriteProps, block: Builder, ref: ty.Reference, at: Readable<any>): ()
 		local fn_set = build_ty(props.ctx, props.attributes, ref)
 		block:call_fn(fn_set.write, { at }, {})
 	end,
@@ -169,21 +169,21 @@ builders.type_instantiation = table.freeze({
 		props: ReadProps,
 		block: Builder,
 		instantiation: ty.TypeInstantiation,
-		into: LValue<any>?
+		into: Writeable<any>?
 	): Register<any>
 		local fn_set = build_ty(props.ctx, props.attributes, instantiation)
 		local register = into or block:reserve()
 		block:call_fn(fn_set.read, {}, { register })
 		return register :: Register<any>
 	end,
-	write = function(props: WriteProps, block: Builder, instantiation: ty.TypeInstantiation, at: RValue<any>): ()
+	write = function(props: WriteProps, block: Builder, instantiation: ty.TypeInstantiation, at: Readable<any>): ()
 		local fn_set = build_ty(props.ctx, props.attributes, instantiation)
 		block:call_fn(fn_set.write, { at }, {})
 	end,
 }) :: TyBuilder
 
 builders.map = table.freeze({
-	read = function(props: ReadProps, block: Builder, map: ty.Map, into: LValue<any>?): Register<{ [any]: any }>
+	read = function(props: ReadProps, block: Builder, map: ty.Map, into: Writeable<any>?): Register<{ [any]: any }>
 		local len = length.read(props, block, map)
 		local register = block:store(structure.map({}))
 
@@ -198,7 +198,7 @@ builders.map = table.freeze({
 
 		return register
 	end,
-	write = function(props: WriteProps, block: Builder, map: ty.Map, at: RValue<{ [any]: any }>): ()
+	write = function(props: WriteProps, block: Builder, map: ty.Map, at: Readable<{ [any]: any }>): ()
 		local elements_register = block:store(constant.zero)
 		local increase_elements = binary.add(elements_register, constant.one)
 		block:for_generic(at, function(block)
@@ -215,7 +215,7 @@ builders.map = table.freeze({
 }) :: TyBuilder
 
 builders.array = table.freeze({
-	read = function(props: ReadProps, block: Builder, array: ty.Array, into: LValue<any>?): Register<{ any }>
+	read = function(props: ReadProps, block: Builder, array: ty.Array, into: Writeable<any>?): Register<{ any }>
 		local len = length.read(props, block, array)
 		local register = block:store(library.table.create(len))
 
@@ -229,7 +229,7 @@ builders.array = table.freeze({
 
 		return register
 	end,
-	write = function(props: WriteProps, block: Builder, array: ty.Array, value: RValue<{ any }>): ()
+	write = function(props: WriteProps, block: Builder, array: ty.Array, value: Readable<{ any }>): ()
 		length.write(props, block, array, unary.len(value :: any))
 		block:for_generic(value :: any, function(block, _, value)
 			write_ty(props, block, array.of, value)
@@ -238,7 +238,7 @@ builders.array = table.freeze({
 }) :: TyBuilder
 
 builders.struct = table.freeze({
-	read = function(props: ReadProps, block: Builder, struct: ty.Struct, into: LValue<any>?): Register<any>
+	read = function(props: ReadProps, block: Builder, struct: ty.Struct, into: Writeable<any>?): Register<any>
 		local identity = ty_identity(struct)
 		local templates = props.ctx.templates
 		if templates[identity] == nil then
@@ -265,10 +265,10 @@ builders.struct = table.freeze({
 		return struct_register
 	end,
 
-	write = function(props: WriteProps, block: Builder, struct: ty.Struct, value: RValue<any>): ()
+	write = function(props: WriteProps, block: Builder, struct: ty.Struct, value: Readable<any>): ()
 		for _, field in struct.fields do
 			local name = field.name
-			local struct_index = projection.field(value :: LValue<any>, constant.from_value(name))
+			local struct_index = projection.field(value :: Writeable<any>, constant.from_value(name))
 			local field_register = block:store(struct_index)
 			write_ty(props, block, field.value, field_register)
 		end
@@ -276,7 +276,7 @@ builders.struct = table.freeze({
 }) :: TyBuilder
 
 builders.discriminated_union = table.freeze({
-	read = function(props: ReadProps, block: Builder, enum: ty.DiscriminatedUnion, into: LValue<any>?)
+	read = function(props: ReadProps, block: Builder, enum: ty.DiscriminatedUnion, into: Writeable<any>?)
 		local variants = enum.variants
 		local variants_count = #variants
 
@@ -307,7 +307,7 @@ builders.discriminated_union = table.freeze({
 
 		return value
 	end,
-	write = function(props: WriteProps, block: Builder, enum: ty.DiscriminatedUnion, value: RValue<any>): ()
+	write = function(props: WriteProps, block: Builder, enum: ty.DiscriminatedUnion, value: Readable<any>): ()
 		local variants = enum.variants
 		local variants_count = #variants
 
@@ -426,7 +426,7 @@ do
 	end
 
 	builders.union = table.freeze({
-		read = function(props: ReadProps, block: Builder, union: ty.Union, into: LValue<any>?)
+		read = function(props: ReadProps, block: Builder, union: ty.Union, into: Writeable<any>?)
 			local hhir = props.ctx.hir
 
 			local components = sorted_components(hhir, union)
@@ -476,7 +476,7 @@ do
 
 			return value
 		end,
-		write = function(props: WriteProps, block: Builder, union: ty.Union, value: RValue<any>): ()
+		write = function(props: WriteProps, block: Builder, union: ty.Union, value: Readable<any>): ()
 			local hhir = props.ctx.hir
 
 			local components = sorted_components(hhir, union)

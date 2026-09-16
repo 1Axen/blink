@@ -6,25 +6,25 @@ local constant = require("@builders/constant")
 local projection = require("@builders/projection")
 
 type Call<T> = types.ProjCall<T>
-type RValue<T> = types.RValue<T>
+type Readable<T> = types.Readable<T>
 
-local function bor(...: RValue<number>): Call<number>
+local function bor(...: Readable<number>): Call<number>
 	return projection.call(constant.from_value("bit32.bor"), { ... })
 end
 
-local function bxor(...: RValue<number>): Call<number>
+local function bxor(...: Readable<number>): Call<number>
 	return projection.call(constant.from_value("bit32.bxor"), { ... })
 end
 
-local function lshift(x: RValue<number>, disp: types.Constant<number>): Call<number>
+local function lshift(x: Readable<number>, disp: types.Constant<number>): Call<number>
 	return projection.call(constant.from_value("bit32.lshift"), { x, disp })
 end
 
-local function rshift(x: RValue<number>, disp: types.Constant<number>): Call<number>
+local function rshift(x: Readable<number>, disp: types.Constant<number>): Call<number>
 	return projection.call(constant.from_value("bit32.rshift"), { x, disp })
 end
 
-local function countrz(n: RValue<number>): Call<number>
+local function countrz(n: Readable<number>): Call<number>
 	return projection.call(constant.from_value("bit32.countrz"), { n })
 end
 

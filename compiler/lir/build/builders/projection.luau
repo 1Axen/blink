@@ -7,14 +7,14 @@ type ProjField<T> = types.ProjField<T>
 type ProjIndex<T> = types.ProjIndex<T>
 type ProjNamecall<T> = types.ProjNamecall<T>
 
-type RValue<T> = types.RValue<T>
+type Readable<T> = types.Readable<T>
 type Constant<T> = types.Constant<T>
 
-type Base = types.LValue<any> | Constant<string>
+type Base = types.Writeable<any> | Constant<string>
 
 local function proj_call(base: Base, args: { any }): any
 	return {
-		__phantom_type = nil :: any,
+		__readable = nil :: any,
 		type = "projection",
 		kind = "call",
 		base = base,
@@ -22,9 +22,10 @@ local function proj_call(base: Base, args: { any }): any
 	}
 end
 
-local function proj_field<T>(base: Base, field: RValue<T>): any
+local function proj_field<T>(base: Base, field: Readable<T>): any
 	return {
-		__phantom_type = nil :: any,
+		__readable = nil :: any,
+		__writeable = nil :: any,
 		type = "projection",
 		kind = "field",
 		base = base,
@@ -34,7 +35,8 @@ end
 
 local function proj_index<T>(base: Base, element: types.Constant<string>): any
 	return {
-		__phantom_type = nil :: any,
+		__readable = nil :: any,
+		__writeable = nil :: any,
 		type = "projection",
 		kind = "index",
 		base = base,
@@ -44,7 +46,8 @@ end
 
 local function proj_namecall<T>(base: Base, method: Constant<string>, args: { any }): any
 	return {
-		__phantom_type = nil :: any,
+		__readable = nil :: any,
+		__writeable = nil :: any,
 		type = "projection",
 		kind = "namecall",
 		base = base,

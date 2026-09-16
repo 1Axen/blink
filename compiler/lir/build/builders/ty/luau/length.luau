@@ -32,9 +32,9 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T = any> = types.LValue<T>
-type RValue<T = any> = types.RValue<T>
-type Register<T = any> = types.RegisterId<T>
+type Writeable<T> = types.Writeable<T>
+type Readable<T> = types.Readable<T>
+type Register<T> = types.RegisterId<T>
 
 local function to_range(ty: VariableLengthTy): SealedRange?
 	if ty.kind == "buffer" then
@@ -85,7 +85,7 @@ local function to_relative_range(ty: VariableLengthTy): (ty.Numeral, number)
 	return conversion.to_min_numeral(difference), offset
 end
 
-local function validate_exact(block: Builder, ty: VariableLengthTy, value: RValue<number>)
+local function validate_exact(block: Builder, ty: VariableLengthTy, value: Readable<number>)
 	local bounds = to_range(ty)
 	if bounds == nil then
 		return
@@ -101,7 +101,7 @@ local function validate_exact(block: Builder, ty: VariableLengthTy, value: RValu
 	end)
 end
 
-local function validate_range(block: Builder, ty: VariableLengthTy, len_register: LValue<number>)
+local function validate_range(block: Builder, ty: VariableLengthTy, len_register: Writeable<number>)
 	local bounds = to_range(ty)
 	if bounds == nil then
 		return
@@ -131,7 +131,7 @@ local function read_length(
 	props: ReadProps,
 	block: Builder,
 	ty: VariableLengthTy
-): types.RegisterId<number> | types.Constant<number>
+): Register<number> | types.Constant<number>
 	local exact_length = to_exact_length(ty)
 	if exact_length ~= nil then
 		return constant.from_value(exact_length)
@@ -152,8 +152,8 @@ local function write_length(
 	props: WriteProps,
 	block: Builder,
 	ty: VariableLengthTy,
-	value: RValue<number>
-): types.RegisterId<number> | types.Constant<number>
+	value: Readable<number>
+): Register<number> | types.Constant<number>
 	local exact_length = to_exact_length(ty)
 	if exact_length then
 		if props.validate then
