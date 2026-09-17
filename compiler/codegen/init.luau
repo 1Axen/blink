@@ -37,6 +37,14 @@ local EVENT_GLOBALS = globals.events
 local RELIABLE_EVENT = EVENT_GLOBALS.reliable.identifier
 local UNRELIABLE_EVENT = EVENT_GLOBALS.unreliable.identifier
 
+const function append_comment(ctx: Context, comment: string)
+	if ctx.profile == "release" then
+		return
+	end
+
+	ctx.builder:append_line(comment)
+end
+
 local function gen_constant(ctx: Context, constant: lir.Constant)
 	ctx.builder:append(tostring(constant.value))
 end
@@ -334,7 +342,8 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 		context.push_block(ctx, terminator.falsey)
 		context.push_block(ctx, terminator.truthy)
 	elseif terminator.kind == "if_chain" then
-		builder:append_line(
+		append_comment(
+			ctx,
 			`-- if ({terminator.chain_index}/{terminator.chain_length}) (bb{terminator.truthy.index}, bb{terminator.falsey.index})`
 		)
 
@@ -413,7 +422,7 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 		context.push_block(ctx, terminator.destination)
 	elseif terminator.kind == "goto" then
 		local destination = terminator.destination
-		builder:append_line(`-- goto (bb{destination.index})`)
+		append_comment(ctx, `-- goto (bb{destination.index})`)
 		builder:dedent()
 
 		if ctx.if_chains[destination.scope] then
@@ -513,7 +522,7 @@ local function gen_statement(ctx: Context, statement: lir.Statement)
 		gen_rvalue(ctx, statement.value)
 		builder:append("\n")
 	elseif statement.kind == "remark" then
-		builder:append_line(`-- REMARK: {statement.text}`)
+		append_comment(ctx, `-- REMARK: {statement.text}`)
 	else
 		weak_exhaustive_match(statement.kind)
 	end
@@ -521,15 +530,13 @@ end
 
 local function gen_block(ctx: Context, block: lir.BasicBlock)
 	local index = block.index
-	local builder = ctx.builder
-
 	ctx.current_block = block
 
-	builder:append_line(`-- bb{index} \{`)
+	append_comment(ctx, `-- bb{index} \{`)
 	for _, statement in block.statements do
 		gen_statement(ctx, statement)
 	end
-	builder:append_line(`-- bb{index} \}`)
+	append_comment(ctx, `-- bb{index} \}`)
 
 	gen_terminator(ctx, block.terminator)
 end
@@ -801,12 +808,14 @@ export type Props = {
 local function from_lir(props: Props, target: compilation.Target): string
 	local hhir = props.hir
 	local llir = props.lir
+	const profile = props.profile
 	local entry_options = props.entry_options
 	local builder = string_builder.create({})
 
 	local ctx: Context = {
 		lir = llir,
 		hir = hhir,
+		profile = profile,
 		builder = builder,
 
 		current_fn = nil,

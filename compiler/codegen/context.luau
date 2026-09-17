@@ -1,3 +1,4 @@
+local compilation = require("@config/compilation")
 local hir = require("@hir")
 local lir = require("@compiler/lir/types")
 local string_builder = require("@util/string_builder")
@@ -7,6 +8,7 @@ type BasicBlock = lir.BasicBlock
 export type Context = {
 	read lir: lir.Lir,
 	read hir: hir.Hir,
+	read profile: compilation.Profile,
 	read builder: string_builder.StringBuilder,
 
 	current_fn: lir.FnBody?,
