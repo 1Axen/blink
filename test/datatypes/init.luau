@@ -21,11 +21,15 @@ local single_primitives = {
 }
 
 type Primitives = typeof(single_primitives) & typeof(literal) & typeof(numeral)
-local primitives = tableext.combine(single_primitives, numeral :: any, literal :: any)
+local primitives = tableext.combine<<string, Datatype>>(
+	single_primitives,
+	numeral :: { [string]: Datatype },
+	literal :: { [string]: Datatype }
+)
 
-local primitives_array: { [number]: Datatype } = {}
+local primitives_array: { Datatype } = {}
 for _, datatype in primitives do
-	table.insert(primitives_array :: any, datatype)
+	table.insert(primitives_array, datatype)
 end
 
 local unknown: Datatype = table.freeze({
@@ -33,7 +37,7 @@ local unknown: Datatype = table.freeze({
 		builder:append("unknown")
 	end,
 	generate = function(seed: number)
-		local index = math.max(1, seed % (#primitives + 1))
+		local index = math.max(1, seed % (#primitives_array + 1))
 		return primitives_array[index].generate(seed)
 	end,
 })

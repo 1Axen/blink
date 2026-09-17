@@ -74,7 +74,7 @@ return function(tiniest: Tiniest)
 	local datatypes_to_test: { [string]: Datatype } = {}
 
 	local fields = {}
-	for name, datatype in datatypes.primitives do
+	for name, datatype in PRIMITIVES do
 		table.insert(fields, datatype)
 		datatypes_to_test[`type_{name}`] = datatype
 		datatypes_to_test[`array_{name}`] = datatypes.structures.array(datatype)
