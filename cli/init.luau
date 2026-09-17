@@ -23,6 +23,8 @@ type Context = {
 local NAME = colorful.color.green("Blink")
 local HEADER = `{NAME} {version}`
 
+const PROFILE_STYLE = colorful.combineStyles({ colorful.modifier.bold, colorful.modifier.underline })
+
 local VALID_PROFILES: { [Profile]: true } = {
 	dev = true,
 	test = true,
@@ -111,7 +113,7 @@ local function on_compile(context: Context)
 		error(`Unable to find entry file "{input}"`)
 	end
 
-	printext.info(`Compiling "{input_path}" in "{profile}" profile...`)
+	printext.info(`Compiling "{input_path}" in {PROFILE_STYLE(profile)} profile...`)
 	local compilation_result = compiler.compile_from_path(input_path, {
 		profile = profile,
 	})
