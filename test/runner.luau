@@ -37,6 +37,7 @@ local tests = tiniest.collect_tests(function()
 		require("./issues/92.test")(tiniest)
 		require("./issues/94.test")(tiniest)
 		require("./issues/90.test")(tiniest)
+		require("./issues/91.test")(tiniest)
 	end)
 end)
 

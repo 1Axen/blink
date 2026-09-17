@@ -18,6 +18,7 @@ return function(data_model: DataModelMock?): Environment
 		print = print,
 		error = error,
 		pcall = pcall,
+		xpcall = xpcall,
 		bit32 = bit32,
 		debug = debug,
 		assert = assert,

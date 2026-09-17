@@ -28,6 +28,10 @@ local function luau_pcall(fn: Readable<any>, ...: Readable<any>): Call<any>
 	return projection.call(constant.from_value("pcall"), { fn, ... })
 end
 
+local function luau_xpcall(fn: Readable<any>, err: Readable<any>, ...: Readable<any>): Call<any>
+	return projection.call(constant.from_value("xpcall"), { fn, err, ... })
+end
+
 local function luau_typeof<T>(of: Readable<T>): Call<string>
 	return projection.call(constant.from_value("typeof"), { of })
 end
@@ -41,6 +45,7 @@ return table.freeze({
 	print = luau_print,
 	error = luau_error,
 	pcall = luau_pcall,
+	xpcall = luau_xpcall,
 	typeof = luau_typeof,
 	tostring = luau_tostring,
 	error_rvalue = luau_error_rvalue,

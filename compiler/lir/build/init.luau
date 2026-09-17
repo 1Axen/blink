@@ -114,6 +114,8 @@ local LENGTH_PARAMETER = fn.parameter(hint.ty(CURSOR_TY), "length")
 local CURSOR_OPTIONAL_TY = ty.union(nil, { CURSOR_TY, ty.nnil(nil) })
 local CURSOR_OPTIONAL_PARAMETER = fn.parameter(hint.ty(CURSOR_OPTIONAL_TY), "cursor")
 
+const ERROR_PARAMETER = fn.parameter(hint.static("any"), "err")
+
 const function blink_trace(message: Readable<string>, level: number?)
 	message = library.string.format("[Blink]: %s", message)
 	return library.debug.traceback(message, constant.from_value(level or 2))
@@ -473,42 +475,92 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 	end
 
 	if is_from_client then
-		fire_server = fn.anonymous(data_params, {}, function(block)
-			local prev_buffer: types.Writeable<buffer>, prev_length: types.Writeable<number>, prev_cursor: types.Writeable<number>, prev_unknown: types.Writeable<{ unknown }>
-			if is_unreliable then
+		const serdes_error = fn.anonymous({ ERROR_PARAMETER }, {}, function(block: builders.Builder)
+			const message = library.string.format(`Error serializing event "{decl.name}"\\n%*`, block:parameter(1))
+			block:rreturn({ blink_trace(message, 2) })
+		end)
+
+		if is_unreliable then
+			fire_server = fn.anonymous(data_params, {}, function(block)
 				-- take snapshot of outgoing state
-				prev_buffer = block:store(OUTGOING.buffer)
-				prev_length = block:store(OUTGOING.length)
-				prev_cursor = block:store(OUTGOING.cursor)
-				prev_unknown = block:store(OUTGOING.unknown)
+				local prev_buffer = block:store(OUTGOING.buffer)
+				local prev_length = block:store(OUTGOING.length)
+				local prev_cursor = block:store(OUTGOING.cursor)
+				local prev_unknown = block:store(OUTGOING.unknown)
 
-				-- temporary outgoing state
-				local size = constant.from_value(296)
-				-- 296 is 3 1.5x expansions away from 1000 bytes
-				block:store(library.buffer.create(size), OUTGOING.buffer)
-				block:store(size, OUTGOING.length)
-				block:store(constant.zero, OUTGOING.cursor)
-				block:store(library.table.create(constant.from_value(16)), OUTGOING.unknown)
-			end
+				const write_data = fn.anonymous(data_params, {}, function(block)
+					-- temporary outgoing state
+					-- 296 is 3 1.5x expansions away from 1000 bytes
+					local size = constant.from_value(296)
+					block:store(library.buffer.create(size), OUTGOING.buffer)
+					block:store(size, OUTGOING.length)
+					block:store(constant.zero, OUTGOING.cursor)
+					block:store(library.table.create(constant.from_value(16)), OUTGOING.unknown)
 
-			-- write event payload
-			block:call(library.buffer.u8.write(block:allocate(constant.one), id))
-			for index, fn_set in data_fn_sets do
-				block:call_fn(fn_set.write, { block:parameter(index) }, {})
-			end
+					-- write event payload
+					block:call(library.buffer.u8.write(block:allocate(constant.one), id))
+					for index, fn_set in data_fn_sets do
+						block:call_fn(fn_set.write, { block:parameter(index) }, {})
+					end
 
-			if is_unreliable then
-				-- replicate
-				local args = { trim_outgoing_buffer(block), OUTGOING.unknown }
-				block:call(library.RemoteEvent.fire_server(UNRELIABLE_EVENT, args))
+					-- fire server
+					local args = { trim_outgoing_buffer(block), OUTGOING.unknown }
+					block:call(library.RemoteEvent.fire_server(UNRELIABLE_EVENT, args))
+				end)
+
+				const args = {}
+				for index in data_params do
+					args[index] = block:parameter(index)
+				end
+				const success, err = unpack(block:store_mult(library.xpcall(write_data, serdes_error, unpack(args)), 2))
 
 				-- restore outgoing state
 				block:store(prev_buffer, OUTGOING.buffer)
 				block:store(prev_length, OUTGOING.length)
 				block:store(prev_cursor, OUTGOING.cursor)
 				block:store(prev_unknown, OUTGOING.unknown)
-			end
-		end)
+
+				block:if_single(condition.equals(success, constant.falsity), function(block: builders.Builder)
+					block:call(library.error_rvalue(err))
+				end)
+			end)
+		else
+			fire_server = fn.anonymous(data_params, {}, function(block)
+				const prev_cursor = block:store(OUTGOING.cursor)
+				const prev_unknown_length = block:store(unary.len(OUTGOING.unknown))
+
+				const write_data = fn.anonymous(data_params, {}, function(block)
+					-- write event payload
+					block:call(library.buffer.u8.write(block:allocate(constant.one), id))
+					for index, fn_set in data_fn_sets do
+						block:call_fn(fn_set.write, { block:parameter(index) }, {})
+					end
+				end)
+
+				const args = {}
+				for index in data_params do
+					args[index] = block:parameter(index)
+				end
+
+				const success, err = unpack(block:store_mult(library.xpcall(write_data, serdes_error, unpack(args)), 2))
+				-- serialization failed, we have to to undo the work we did
+				block:if_single(condition.equals(success, constant.falsity), function(block: Builder)
+					-- its fine to leave the nonsense bytes as long as we roll back the cursor and trim unknown
+					block:store(prev_cursor, OUTGOING.cursor)
+
+					-- for index = prev_unknown_length + 1, #out_unknown do
+					const index = block:store(binary.add(prev_unknown_length, constant.one))
+					const unknown_length = block:store(unary.len(OUTGOING.unknown))
+					block:while_loop(condition.less_than_or(index, unknown_length), function(block: Builder)
+						block:store(constant.null, projection.field(OUTGOING.unknown, index))
+						block:store(binary.add(index, constant.one), index)
+					end)
+
+					-- finally emit the error that we caught
+					block:call(library.error_rvalue(err))
+				end)
+			end)
+		end
 	end
 
 	local call = decl.call
@@ -674,7 +726,6 @@ local function build_function(ctx: Context, decl: Function, event_id: number): F
 		-- write function payload
 		block:call(library.buffer.u8.write(block:allocate(constant.one), id))
 		block:call(library.buffer.u8.write(block:allocate(constant.one), bitset_index))
-
 		for index, fn_set in data_fn_sets do
 			block:call_fn(fn_set.write, { block:parameter(index) }, {})
 		end
