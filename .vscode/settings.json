@@ -12,10 +12,10 @@
 
 	"luau-lsp.diagnostics.workspace": true,
 
+	"luau-lsp.fflags.sync": true,
 	"luau-lsp.fflags.enableNewSolver": true,
 	"luau-lsp.fflags.enableByDefault": false,
 	"luau-lsp.fflags.override": {
-		"LuauConst2": "true",
 		"LuauIntegerType2": "true",
 		"LuauIntegerLibrary": "true",
 	},
