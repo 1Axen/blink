@@ -9,6 +9,7 @@ local printext = require("@util/printext")
 local process = require("@lute/process")
 local system = require("@lute/system")
 const version = require("@buildconfig/version")
+local format_types = require("@util/format_types")
 
 type Path = path.Path
 type Profile = compilation.Profile
@@ -40,6 +41,48 @@ if system.os == "Windows_NT" then
 	process.system("chcp 65001")
 end
 
+const function strip_ansi(str: string)
+	return string.gsub(str, "\27%[[%d;]*%a", "")
+end
+
+const function format_seconds_taken(seconds: number): string
+	if seconds < 1e-6 then
+		return string.format(`%03i {colorful.color.greenBright("ns")}`, seconds * 1e9)
+	elseif seconds < 1e-3 then
+		return string.format(`%03i {colorful.color.green("us")}`, seconds * 1e6)
+	elseif seconds < 1 then
+		return string.format(`%.1f {colorful.color.yellow("ms")}`, seconds * 1e3)
+	else
+		return string.format(`%.1f {colorful.color.red("s")}`, seconds)
+	end
+end
+
+const function format_options(options: { [string]: any })
+	const lines = {}
+	for name, value in options do
+		table.insert(lines, `• {name} = {format_types.any(value)}`)
+	end
+
+	return `\n{table.concat(lines, "\n")}`
+end
+
+const function format_timings(timings: compiler.Timings)
+	const lines = {}
+	const function append_timing(tag: string, seconds: number)
+		const formatted_seconds = format_seconds_taken(seconds)
+		const horizontal_padding = string.rep(" ", 8 - #strip_ansi(formatted_seconds))
+		table.insert(lines, `{formatted_seconds}{horizontal_padding}| {tag}`)
+	end
+
+	append_timing("ast", timings.ast)
+	append_timing("hir", timings.hir)
+	append_timing("lir", timings.lir)
+	append_timing("codegen", timings.codegen)
+	append_timing("total", timings.total)
+
+	return `Compilation timings:\n{table.concat(lines, "\n")}`
+end
+
 local function write_with_logging(file_path: Path, contents: string)
 	local write_result = fs.write_string_to_file(file_path, contents)
 	if not write_result.ok then
@@ -51,13 +94,8 @@ local function write_with_logging(file_path: Path, contents: string)
 end
 
 local function on_compile(context: Context)
-	local yes_all: boolean = context.globalOptions.yes
-	local verbose: boolean = context.globalOptions.verbose
-
-	local print_hir: boolean = context.commandOptions.hir
-
-	local watch: boolean = context.commandOptions.watch
-	local profile: Profile = context.commandOptions.profile
+	const options = context.commandOptions
+	local profile: Profile = options.profile
 
 	if VALID_PROFILES[profile] ~= true then
 		error(`Unknown compiler profile "{profile}".`)
@@ -73,14 +111,8 @@ local function on_compile(context: Context)
 		error(`Unable to find entry file "{input}"`)
 	end
 
-	if verbose then
-		printext.verbose(`Yes to all? {yes_all}`, `Watch? {watch}`)
-	end
-
 	printext.info(`Compiling "{input_path}" in "{profile}" profile...`)
 	local compilation_result = compiler.compile_from_path(input_path, {
-		time = false,
-		verbose = verbose,
 		profile = profile,
 	})
 
@@ -89,19 +121,28 @@ local function on_compile(context: Context)
 		return
 	end
 
-	local value = compilation_result.value
-	if print_hir then
-		print(hir.format(value.hir))
+	local compiled = compilation_result.value
+	if options.hir then
+		print(hir.format(compiled.hir))
 	end
 
-	local targets = value.targets
-	local input_directory = path.strip_file_name(input_path)
+	if options.timings then
+		printext.info(format_timings(compiled.timings))
+	end
 
+	local targets = compiled.targets
+	local input_directory = path.strip_file_name(input_path)
 	for _, target in targets :: { [string]: index<typeof(targets), keyof<typeof(targets)>> } do
 		assert(target)
 		local output_path = path.join(input_directory, target.path)
 		output_path = path.with_extension(output_path, "luau")
 		write_with_logging(output_path, target.contents)
+	end
+end
+
+const function before_run(context: Context)
+	if context.globalOptions.verbose then
+		printext.verbose(format_options(context.commandOptions))
 	end
 end
 
@@ -112,19 +153,11 @@ cli.new()
 	:setDescription("An IDL for defining structured data that compiles to fast Luau buffer serdes.")
 	:setGitRepository("https://github.com/1Axen/blink")
 	:setEpilog("Example: blink compile <file>")
+	:setBeforeRunHook(before_run)
 	:addOption(
 		option.new()
 			:setName("verbose")
-			:setDescription("Enable verbose logging.")
-			:setType("boolean")
-			:setDefaultValue(false)
-			:build()
-	)
-	:addOption(
-		option.new()
-			:setName("yes")
-			:addAlias("y")
-			:setDescription("Accept all prompts.")
+			:setDescription("Enable verbose logging")
 			:setType("boolean")
 			:setDefaultValue(false)
 			:build()
@@ -152,21 +185,21 @@ cli.new()
 			)
 			:addOption(
 				option.new()
-					:setName("watch")
-					:addAlias("w")
-					:setDescription("Watch the blink project for changes, and recompile upon one being made.")	
-					:setType("boolean")
-					:setDefaultValue(false)
-					:build()
-			)
-			:addOption(
-				option.new()
 					:setName("profile")
 					:addAlias("p")
 					:setDescription("Profile to use for the compilation")	
 					:setType("string")
 					:setDefaultValue("dev")
 					:build()
+			)
+			:addOption(
+				option.new()
+					:setName("timings")
+					:addAlias("t")
+					:setDescription("Output how long each compilation step took")
+					:setType("boolean")
+					:setDefaultValue(false)
+					:build()	
 			)
 			:build()
 	)
