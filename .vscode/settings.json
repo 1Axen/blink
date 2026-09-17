@@ -37,4 +37,6 @@
 		"**/luau_packages/**",
 		"temp/**"
 	],
+	
+	"stylua.searchBinaryInPATH": true
 }

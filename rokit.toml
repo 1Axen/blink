@@ -5,7 +5,7 @@
 
 [tools]
 act = "nektos/act@0.2.89"
-stylua = "JohnnyMorganz/StyLua@2.5.2"
+stylua = "1Axen/StyLua@2.5.3"
 rojo = "rojo-rbx/rojo@7.7.0"
 run-in-roblox = "rojo-rbx/run-in-roblox@0.3.0"
 lute = "luau-lang/lute@1.0.0"
