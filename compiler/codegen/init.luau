@@ -38,7 +38,7 @@ local RELIABLE_EVENT = EVENT_GLOBALS.reliable.identifier
 local UNRELIABLE_EVENT = EVENT_GLOBALS.unreliable.identifier
 
 const function append_comment(ctx: Context, comment: string)
-	if ctx.profile == "release" then
+	if ctx.profile ~= "test" then
 		return
 	end
 
