@@ -114,6 +114,11 @@ local LENGTH_PARAMETER = fn.parameter(hint.ty(CURSOR_TY), "length")
 local CURSOR_OPTIONAL_TY = ty.union(nil, { CURSOR_TY, ty.nnil(nil) })
 local CURSOR_OPTIONAL_PARAMETER = fn.parameter(hint.ty(CURSOR_OPTIONAL_TY), "cursor")
 
+const function blink_trace(message: Readable<string>, level: number?)
+	message = library.string.format("[Blink]: %s", message)
+	return library.debug.traceback(message, constant.from_value(level or 2))
+end
+
 local function returns(ctx: Context, parameters: { hir.Parameter }): { types.Return }
 	local array = {}
 	for index, parameter in parameters do
@@ -266,13 +271,11 @@ local function build_event_on(
 
 			if is_single then
 				block:if_single(condition.not_equals(event_connections, constant.null), function(block)
-					local message = library.debug.traceback(
+					local message = blink_trace(
 						constant.from_value(
-							`[Blink]: Event "{event.name}" already has a listener, the current listener will be discarded.`
-						),
-						constant.from_value(2)
+							`Event "{event.name}" already has a listener, the current listener will be discarded.`
+						)
 					)
-
 					block:call(library.warn(message))
 				end)
 
@@ -614,11 +617,10 @@ local function build_function(ctx: Context, decl: Function, event_id: number): F
 			local callback = projection.field(CONNECTIONS, constant.from_value(event_id))
 
 			block:if_single(condition.not_equals(callback, constant.null), function(block)
-				local message = library.debug.traceback(
+				local message = blink_trace(
 					constant.from_value(
-						`[Blink]: Function "{decl.name}" already has a callback, the current callback will be discarded.`
-					),
-					constant.from_value(2)
+						`Function "{decl.name}" already has a callback, the current callback will be discarded.`
+					)
 				)
 
 				block:call(library.warn(message))
