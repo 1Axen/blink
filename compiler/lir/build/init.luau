@@ -119,6 +119,10 @@ const function blink_trace(message: Readable<string>, level: number?)
 	return library.debug.traceback(message, constant.from_value(level or 2))
 end
 
+const function player_left_message(player: Readable<Player>)
+	return blink_trace(library.string.format(`Cannot fire player "%*", they have already left the server.`, player))
+end
+
 local function returns(ctx: Context, parameters: { hir.Parameter }): { types.Return }
 	local array = {}
 	for index, parameter in parameters do
@@ -402,15 +406,20 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 				block:call_fn(fn_set.write, { block:parameter(1 + index) }, {})
 			end
 
-			local list = block:parameter(1)
+			local players = block:parameter(1) :: types.ParameterId<{ Player }>
 			local new_buffer = is_unreliable and trim_outgoing_buffer(block) or copy_outgoing_buffer(block)
 
-			block:for_generic(list, function(block, _, player)
+			block:for_generic(players, function(block, _, player)
 				if is_unreliable then
 					local args = { player, new_buffer, OUTGOING.unknown }
 					block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args))
 				else
-					local player_save = projection.field(globals.players_map, player)
+					local player_save = block:store(projection.field(globals.players_map, player))
+					block:if_single(condition.equals(player_save, constant.null), function(block: Builder)
+						block:call(library.warn(player_left_message(player)))
+						block:ccontinue()
+					end)
+
 					state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
 				end
 			end)
@@ -439,13 +448,18 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 		end)
 
 		fire_client = fn.anonymous(data_params_player, {}, function(block)
+			local player = block:parameter(1)
+			local player_save = block:store(projection.field(globals.players_map, player))
+			block:if_single(condition.equals(player_save, constant.null), function(block: builders.Builder)
+				block:call(library.warn(player_left_message(player)))
+				block:rreturn({})
+			end)
+
 			state.reset_outgoing(block)
 			block:call(library.buffer.u8.write(block:allocate(constant.one), id))
 			for index, fn_set in data_fn_sets do
 				block:call_fn(fn_set.write, { block:parameter(1 + index) }, {})
 			end
-
-			local player = block:parameter(1)
 
 			if is_unreliable then
 				local new_buffer = trim_outgoing_buffer(block)
@@ -453,7 +467,6 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 				block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args))
 			else
 				local new_buffer = copy_outgoing_buffer(block)
-				local player_save = projection.field(globals.players_map, player)
 				state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
 			end
 		end)
