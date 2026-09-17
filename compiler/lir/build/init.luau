@@ -151,11 +151,11 @@ local function next_event_id(pool: { number }): number
 end
 
 local function event_queue_structure(args_count: number): types.Struct<any>
-	local columns_array = table.create(args_count, cast.static(structure.array({}), "{any}"))
-	return structure.struct({
+	local columns_array = table.create<<Readable<any>>>(args_count, cast.static(structure.array({}), "{any}"))
+	return structure.struct<<any>>({
 		[constant.from_value("row")] = constant.zero,
 		[constant.from_value("size")] = constant.zero,
-		[constant.from_value("columns")] = structure.array(columns_array :: any) :: any,
+		[constant.from_value("columns")] = structure.array(columns_array),
 	})
 end
 
@@ -199,18 +199,18 @@ local function build_type(ctx: Context, decl: hir.Type): TypeExport?
 		{ type_return, CURSOR_RETURN },
 		function(block: builders.Builder)
 			block:store(block:parameter(1), INCOMING.buffer)
-			block:store(condition.oor(block:parameter(2), constant.zero) :: Readable<number>, INCOMING.cursor)
+			block:store(condition.oor(block:parameter(2), constant.zero) :: Readable<any>, INCOMING.cursor)
 
 			local value = block:reserve()
 			block:call_fn(type_fnset.read, {}, { value })
-			block:rreturn({ value, INCOMING.cursor } :: any)
+			block:rreturn({ value, INCOMING.cursor })
 		end
 	)
 
 	local write = fn.anonymous({ type_parameter }, { BUFFER_RETURN }, function(block: builders.Builder)
 		block:store(constant.zero, OUTGOING.cursor)
 		block:call_fn(type_fnset.write, { block:parameter(1) }, {})
-		block:rreturn({ copy_outgoing_buffer(block) } :: any)
+		block:rreturn({ copy_outgoing_buffer(block) })
 	end)
 
 	local write_to = fn.anonymous(
@@ -230,7 +230,7 @@ local function build_type(ctx: Context, decl: hir.Type): TypeExport?
 			block:store(prev_buf, OUTGOING.buffer)
 			block:store(prev_length, OUTGOING.length)
 
-			block:rreturn({ trimmed_buffer, OUTGOING.cursor } :: any)
+			block:rreturn({ trimmed_buffer, OUTGOING.cursor })
 		end
 	)
 
@@ -328,7 +328,7 @@ local function build_event_iter(event_queue: types.ProjField<any>, data_returns:
 					block:call(library.table.clear(column))
 				end
 
-				block:rreturn({ cast.static(constant.null, "any") :: any })
+				block:rreturn({ cast.static(constant.null, "any") })
 			end)
 
 			local values = { row } :: { any }
@@ -407,7 +407,7 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 					local args = { player, new_buffer, OUTGOING.unknown }
 					block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
 				else
-					local player_save = projection.field(globals.players_map, player :: any)
+					local player_save = projection.field(globals.players_map, player)
 					state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
 				end
 			end)
@@ -558,9 +558,9 @@ local function build_event_receive(ctx: Context, side: Side, block: fn.Builder, 
 		local connection = projection.field(CONNECTIONS, constant.from_value(event_id))
 		block:if_single(condition.not_equals(connection, constant.null), function(block)
 			if call == "SingleSync" then
-				block:call(projection.call(connection :: any, values :: any))
+				block:call(projection.call(connection, values :: { Readable<any> }))
 			else
-				block:call(library.task.spawn(connection :: any, values :: any))
+				block:call(library.task.spawn(connection, values :: { Readable<any> }))
 			end
 
 			block:ccontinue()
@@ -571,9 +571,9 @@ local function build_event_receive(ctx: Context, side: Side, block: fn.Builder, 
 		block:if_single(is_connected, function(block)
 			block:for_generic(connections, function(block, _, connection)
 				if call == "ManySync" then
-					block:call(projection.call(connection :: any, values :: any))
+					block:call(projection.call(connection, values :: { Readable<any> }))
 				else
-					block:call(library.task.spawn(connection :: any, values :: any))
+					block:call(library.task.spawn(connection, values :: { Readable<any> }))
 				end
 			end)
 
@@ -754,7 +754,7 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 							local pcall_values =
 								block:store_mult(library.pcall(callback, player, unpack(data_values)), #rreturn + 1)
 
-							local player_save = block:store(projection.field(globals.players_map, player :: any))
+							local player_save = block:store(projection.field(globals.players_map, player))
 							block:if_single(condition.equals(player_save, constant.null), function(block)
 								block:rreturn({})
 							end)
@@ -878,7 +878,7 @@ local function from_hir(hhir: Hir, profile: Profile): Lir
 	-- write globals
 	globals_map[globals.types_map.identifier] = structure.map({})
 	globals_map[INVOCATIONS.identifier] = structure.map({})
-	globals_map[INVOCATIONS_BITSET.identifier] = EMPTY_BITSET :: any
+	globals_map[INVOCATIONS_BITSET.identifier] = EMPTY_BITSET
 
 	-- build types
 	for decl_id, decl in hhir.types do
@@ -946,8 +946,8 @@ local function from_hir(hhir: Hir, profile: Profile): Lir
 			table.insert(server_reliables, receivable)
 		end
 
-		globals_map[QUEUES.identifier] = structure.map(queues :: any)
-		globals_map[CONNECTIONS.identifier] = structure.map(connections :: any)
+		globals_map[QUEUES.identifier] = structure.map(queues :: { [Readable<any>]: Readable<any> })
+		globals_map[CONNECTIONS.identifier] = structure.map(connections :: { [Readable<any>]: Readable<any> })
 	end
 
 	local client_receive_reliable = build_receive_connection(ctx, "Client", client_reliables)
@@ -962,7 +962,7 @@ local function from_hir(hhir: Hir, profile: Profile): Lir
 		end)
 
 		local packet_buffer = trim_outgoing_buffer(block)
-		block:call(library.RemoteEvent.fire_server(RELIABLE_EVENT, { packet_buffer, OUTGOING.unknown } :: any))
+		block:call(library.RemoteEvent.fire_server(RELIABLE_EVENT, { packet_buffer, OUTGOING.unknown }))
 		block:store(constant.zero, OUTGOING.cursor)
 		block:call(library.table.clear(OUTGOING.unknown))
 	end)
@@ -987,7 +987,7 @@ local function from_hir(hhir: Hir, profile: Profile): Lir
 					block:store(binary.add(cursor, length), cursor)
 				end)
 
-				block:call(library.RemoteEvent.fire_client(RELIABLE_EVENT, { player, packet_buffer :: any, unknown }))
+				block:call(library.RemoteEvent.fire_client(RELIABLE_EVENT, { player, packet_buffer, unknown }))
 
 				block:call(library.table.clear(buffers))
 				block:call(library.table.clear(lengths))
@@ -1008,7 +1008,7 @@ local function from_hir(hhir: Hir, profile: Profile): Lir
 	return {
 		export = build_scope(ctx, hhir.entry_scope, exports_map),
 		fn_map = ctx.fn_map,
-		globals = globals_map,
+		globals = globals_map :: { [string]: types.RValue<any> },
 		client = {
 			step_replication = client_step,
 			reliable_receive = client_receive_reliable,

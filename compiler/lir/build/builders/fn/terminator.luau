@@ -17,6 +17,7 @@ type Writeable = types.Writeable<any>
 type Condition = types.Condition<boolean>
 type BasicBlock = types.BasicBlock
 
+type RValue = types.RValue<any>
 type LValue = types.LValue<any>
 
 local function term_if_single(condition: Condition, truthy: BasicBlock, falsey: BasicBlock): TermIf
@@ -76,7 +77,7 @@ local function term_call(fn: types.FnId, args: { Readable }, rets: { Writeable }
 		type = "terminator",
 		kind = "call",
 		fn = fn,
-		args = args,
+		args = args :: { RValue },
 		rets = rets :: { LValue },
 		destination = destination,
 	}
@@ -96,7 +97,7 @@ local function term_return(values: { Readable }): TermReturn
 	return {
 		type = "terminator",
 		kind = "return",
-		values = values,
+		values = values :: { RValue },
 	}
 end
 

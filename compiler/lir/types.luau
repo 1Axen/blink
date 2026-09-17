@@ -12,7 +12,7 @@ export type ConstantValue =
     | nil
 
 export type Constant<T = ConstantValue> = {
-	write __readable: T,
+	read __readable: T,
 
 	type: "constant",
 	value: T,
@@ -20,8 +20,8 @@ export type Constant<T = ConstantValue> = {
 
 --- An index into the parameters table
 export type ParameterId<T> = {
-	write __writeable: T,
-	write __readable: T,
+	read __readable: T,
+	read __writeable: T,
 
 	type: "id",
 	kind: "parameter",
@@ -30,8 +30,8 @@ export type ParameterId<T> = {
 
 --- An index into the register table
 export type RegisterId<T> = {
-	write __writeable: T,
-	write __readable: T,
+	read __readable: T,
+	read __writeable: T,
 
 	type: "id",
 	kind: "register",
@@ -45,8 +45,8 @@ export type Id<T> =
 
 --- base(args...)
 export type ProjCall<T> = {
-	write __readable: T,
-	write __callable: T,
+	read __readable: T,
+	read __callable: T,
 
 	type: "projection",
 	kind: "call",
@@ -56,8 +56,8 @@ export type ProjCall<T> = {
 
 --- base[field]
 export type ProjField<T> = {
-	write __writeable: T,
-	write __readable: T,
+	read __readable: T,
+	read __writeable: T,
 
 	type: "projection",
 	kind: "field",
@@ -67,8 +67,8 @@ export type ProjField<T> = {
 
 --- base.index
 export type ProjIndex<T> = {
-	write __writeable: T,
-	write __readable: T,
+	read __readable: T,
+	read __writeable: T,
 
 	type: "projection",
 	kind: "index",
@@ -78,8 +78,8 @@ export type ProjIndex<T> = {
 
 --- base:method(args...)
 export type ProjNamecall<T> = {
-	write __readable: T,
-	write __callable: T,
+	read __readable: T,
+	read __callable: T,
 
 	type: "projection",
 	kind: "namecall",
@@ -97,7 +97,7 @@ export type Projection<T> =
 
 --- left + right
 export type BinaryAdd<T> = {
-	write __readable: T,
+	read __readable: T,
 
 	type: "binary",
 	kind: "add",
@@ -107,7 +107,7 @@ export type BinaryAdd<T> = {
 
 --- left - right
 export type BinarySub<T> = {
-	write __readable: T,
+	read __readable: T,
 
 	type: "binary",
 	kind: "sub",
@@ -117,7 +117,7 @@ export type BinarySub<T> = {
 
 --- left * right
 export type BinaryMul<T> = {
-	write __readable: T,
+	read __readable: T,
 
 	type: "binary",
 	kind: "mul",
@@ -127,7 +127,7 @@ export type BinaryMul<T> = {
 
 --- left / right
 export type BinaryDiv<T> = {
-	write __readable: T,
+	read __readable: T,
 
 	type: "binary",
 	kind: "div",
@@ -137,7 +137,7 @@ export type BinaryDiv<T> = {
 
 --- left % right
 export type BinaryMod<T> = {
-	write __readable: T,
+	read __readable: T,
 
 	type: "binary",
 	kind: "mod",
@@ -147,7 +147,7 @@ export type BinaryMod<T> = {
 
 --- left ^ right
 export type BinaryPow<T> = {
-	write __readable: T,
+	read __readable: T,
 
 	type: "binary",
 	kind: "pow",
@@ -157,7 +157,7 @@ export type BinaryPow<T> = {
 
 --- left // right
 export type BinaryIDiv<T> = {
-	write __readable: T,
+	read __readable: T,
 
 	type: "binary",
 	kind: "idiv",
@@ -177,7 +177,7 @@ export type BinaryOp<T> =
 
 --- #%of
 export type UnaryLen<T> = {
-	write __readable: T,
+	read __readable: T,
 
 	type: "unary",
 	kind: "len",
@@ -190,7 +190,7 @@ export type UnaryOp<T> =
 
 --- advance(bytes)
 export type CtrlAdvance<T> = {
-	write __readable: T,
+	read __readable: T,
 
 	type: "control",
 	kind: "advance",
@@ -199,8 +199,8 @@ export type CtrlAdvance<T> = {
 
 --- allocate(bytes)
 export type CtrlAllocate<T> = {
-	write __readable: T,
-	write __callable: T,
+	read __readable: T,
+	read __callable: T,
 
 	type: "control",
 	kind: "allocate",
@@ -213,8 +213,8 @@ export type Control<T> =
 	| CtrlAllocate<T>
 
 export type Global<T> = {
-	write __writeable: T,
-	write __readable: T,
+	read __writeable: T,
+	read __readable: T,
 
 	type: "global",
 	identifier: string,
@@ -222,7 +222,7 @@ export type Global<T> = {
 
 --- left == / ~=/ >= / > / < / <= right
 export type Condition<T> = {
-	write __readable: T,
+	read __readable: T,
 
 	type: "condition",
 	kind: "equals" | "not_equals" | "less_than" | "less_than_or" | "greater_than" | "greater_than_or" | "and" | "or",
@@ -232,7 +232,7 @@ export type Condition<T> = {
 
 --- if cond then left else right
 export type Ternary<T> = {
-	write __readable: T,
+	read __readable: T,
 
 	type: "ternary",
 	cond: Condition<T>,
@@ -242,7 +242,7 @@ export type Ternary<T> = {
 
 -- { values }
 export type Map<T> = {
-	write __readable: { T },
+	read __readable: { T },
 
 	type: "structure",
 	kind: "map",
@@ -251,7 +251,7 @@ export type Map<T> = {
 
 -- { values }
 export type Array<T> = {
-	write __readable: { T },
+	read __readable: { T },
 
 	type: "structure",
 	kind: "array",
@@ -260,7 +260,7 @@ export type Array<T> = {
 
 -- { values }
 export type Struct<T> = {
-	write __readable: { T },
+	read __readable: { T },
 
 	type: "structure",
 	kind: "struct",
@@ -274,7 +274,7 @@ export type Structure<T> =
     | Struct<T>
 
 export type CastTy<T> = {
-	write __readable: T,
+	read __readable: T,
 
 	type: "cast",
 	kind: "ty",
@@ -283,7 +283,7 @@ export type CastTy<T> = {
 }
 
 export type CastStatic<T> = {
-	write __readable: T,
+	read __readable: T,
 
 	type: "cast",
 	kind: "static",
@@ -323,16 +323,16 @@ export type RValue<T> =
 	| Cast<T>
 
 export type Callable<T> = {
-	write __callable: T,
+	read __callable: T,
 }
 
 export type Writeable<T> = {
-	write __readable: T,
-	write __writeable: T,
+	read __readable: T,
+	read __writeable: T,
 }
 
 export type Readable<T> = {
-	write __readable: T,
+	read __readable: T,
 }
 
 --- call

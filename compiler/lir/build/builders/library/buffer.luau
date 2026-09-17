@@ -42,7 +42,13 @@ local function copy(
 	source_offset: Readable<number>?,
 	count: Readable<number>?
 ): Call<nil>
-	return projection.call(index("buffer", "copy"), { target, target_offset, source, source_offset, count })
+	return projection.call(index("buffer", "copy"), {
+		target,
+		target_offset,
+		source,
+		source_offset :: Readable<number>,
+		count :: Readable<number>,
+	})
 end
 
 local function read_string(advance: Advance, bytes: Readable<number>): Call<string>

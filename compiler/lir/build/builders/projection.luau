@@ -12,7 +12,7 @@ type Constant<T> = types.Constant<T>
 
 type Base = types.Writeable<any> | Constant<string>
 
-local function proj_call(base: Base, args: { any }): any
+local function proj_call(base: Base, args: { Readable<any> }): any
 	return {
 		__readable = nil :: any,
 		type = "projection",
@@ -44,7 +44,7 @@ local function proj_index<T>(base: Base, element: types.Constant<string>): any
 	}
 end
 
-local function proj_namecall<T>(base: Base, method: Constant<string>, args: { any }): any
+local function proj_namecall<T>(base: Base, method: Constant<string>, args: { Readable<any> }): any
 	return {
 		__readable = nil :: any,
 		__writeable = nil :: any,

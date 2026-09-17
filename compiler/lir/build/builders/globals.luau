@@ -19,33 +19,33 @@ return table.freeze({
 	templates = global("templates"),
 	types_map = global("types"),
 	queues_map = global("queues"),
-	players_map = global("players_map"),
+	players_map = global<<{ [Player]: any }>>("players_map"),
 	connections_map = global("connections"),
 	invocations_map = global("invocations"),
-	invocations_bitset = global("invocations_bitset"),
+	invocations_bitset = global<<number>>("invocations_bitset"),
 
 	services = {
-		players = global("PLAYERS") :: Global<Players>,
-		run_service = global("RUN_SERVICE") :: Global<RunService>,
-		replicated_storage = global("REPLICATED_STORAGE") :: Global<ReplicatedStorage>,
+		players = global<<Players>>("PLAYERS"),
+		run_service = global<<RunService>>("RUN_SERVICE"),
+		replicated_storage = global<<ReplicatedStorage>>("REPLICATED_STORAGE"),
 	},
 
 	incoming = {
-		buffer = global("in_buffer") :: Global<buffer>,
-		cursor = global("in_cursor") :: Global<number>,
-		unknown = global("in_unknown") :: Global<{ any }>,
-		unknown_cursor = global("in_unknown_cursor") :: Global<number>,
+		buffer = global<<buffer>>("in_buffer"),
+		cursor = global<<number>>("in_cursor"),
+		unknown = global<<{ any }>>("in_unknown"),
+		unknown_cursor = global<<number>>("in_unknown_cursor"),
 	},
 
 	outgoing = {
-		buffer = global("out_buffer") :: Global<buffer>,
-		cursor = global("out_cursor") :: Global<number>,
-		length = global("out_length") :: Global<number>,
-		unknown = global("out_unknown") :: Global<{ any }>,
+		buffer = global<<buffer>>("out_buffer"),
+		cursor = global<<number>>("out_cursor"),
+		length = global<<number>>("out_length"),
+		unknown = global<<{ any }>>("out_unknown"),
 	},
 
 	events = {
-		reliable = global("RELIABLE_EVENT") :: Global<RemoteEvent>,
-		unreliable = global("UNRELIABLE_EVENT") :: Global<RemoteEvent>,
+		reliable = global<<RemoteEvent>>("RELIABLE_EVENT"),
+		unreliable = global<<RemoteEvent>>("UNRELIABLE_EVENT"),
 	},
 })

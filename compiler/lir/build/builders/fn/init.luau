@@ -104,6 +104,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 
 		return {
 			__readable = nil :: any,
+			__writeable = nil :: any,
 			type = "id",
 			kind = "register",
 			index = top,
@@ -119,6 +120,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 
 		return {
 			__readable = nil :: any,
+			__writeable = nil :: any,
 			type = "id",
 			kind = "parameter",
 			index = index,

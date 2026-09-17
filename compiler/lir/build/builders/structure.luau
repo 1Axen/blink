@@ -15,7 +15,7 @@ local function structure_map(values: { [Readable<any>]: Readable<any> }): Struct
 		__readable = nil :: any,
 		type = "structure",
 		kind = "map",
-		values = values,
+		values = values :: { [RValue<any>]: RValue<any> },
 	}
 end
 
