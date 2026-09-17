@@ -113,9 +113,9 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 
 	local function parameter_id(self: Builder, index: number): types.ParameterId<any>
 		if index > n_params then
-			return panic(`tried using argument #{index}, but fn only has {n_params} argument(s)`)
+			return panic(`tried using parameter #{index}, but fn only has {n_params} parameter(s)`)
 		elseif index < 0 then
-			return panic(`negative argument id #{index}`)
+			return panic(`negative parameter id #{index}`)
 		end
 
 		return {
