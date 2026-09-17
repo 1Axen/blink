@@ -217,6 +217,19 @@ function explore(ctx: Context, tty: Ty)
 	end
 end
 
+const function check_export_concrete(hir: Hir, decl: types.Type)
+	if decl.attributes.export ~= true then
+		return
+	end
+
+	const ty = hir.tys[decl.ty_id]
+	if ty.kind ~= "type_function" then
+		return
+	end
+
+	report.export_requires_concrete_type(decl.node)
+end
+
 local function type_check(hir: Hir)
 	local tys = hir.tys
 	for ty_id, tty in tys do
@@ -226,6 +239,10 @@ local function type_check(hir: Hir)
 		}
 
 		explore(context, tty)
+	end
+
+	for _, decl in hir.types do
+		check_export_concrete(hir, decl)
 	end
 end
 

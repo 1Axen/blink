@@ -1,3 +1,4 @@
+local assert_panic = require("@util/assert_panic")
 local ast = require("@ast")
 local codes = require("@config/codes")
 local diagnostics = require("@util/diagnostics")
@@ -389,6 +390,29 @@ const function report_expect_to_close(token: Token, opener: Token, closer: Token
 		:error()
 end
 
+const function report_export_requires_concrete_type(stat: ast.StatType): never
+	local export_attribute: ast.Attribute
+	for _, attribute in stat.attributes do
+		if attribute.name.value == "export" then
+			export_attribute = attribute
+		end
+	end
+
+	assert_panic(export_attribute, "expected statement to have an export attribute")
+
+	return diagnostics
+		.error(codes.type_checking.ExportRequiresConcreteType)
+		:with_message(`Cannot export a generic type`)
+		:with_label(
+			diagnostics
+				.label(export_attribute.span)
+				:with_style(style.color.red)
+				:with_message("Remove @export attribute")
+		)
+		:with_label(diagnostics.label(stat.span):with_message("Remove @export attribute from this type"))
+		:error()
+end
+
 return table.freeze({
 	expect_token = report_expect_token,
 	expect_token_one_of = report_expect_token_one_of,
@@ -433,4 +457,6 @@ return table.freeze({
 	tag_in_variant = report_tag_in_variant,
 	duplicate_union_type = report_duplicate_union_type,
 	unknown_destructure_value = report_unknown_destructure_value,
+
+	export_requires_concrete_type = report_export_requires_concrete_type,
 })

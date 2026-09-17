@@ -45,6 +45,7 @@ type_checking.InvalidAttribute = next_id()
 type_checking.FewAttributeParameters = next_id()
 type_checking.ExtraAttributeParameters = next_id()
 type_checking.DuplicateUnionType = next_id()
+type_checking.ExportRequiresConcreteType = next_id()
 
 return table.freeze({
 	parser = parser,
