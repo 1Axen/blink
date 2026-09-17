@@ -133,7 +133,7 @@ local function parameters(ctx: Context, parameters: { hir.Parameter }): { types.
 end
 
 local function ty_pack_to_fn_sets(ctx: Context, decl: hir.Decl, pack: { hir.Parameter }): { types.FnSet }
-	local fn_sets = table.create(#pack) :: { types.FnSet }
+	local fn_sets = table.create<<types.FnSet>>(#pack)
 	for index, parameter in pack do
 		local parameter_ty = hir.ty_from_id(ctx.hir, parameter.ty_id)
 		fn_sets[index] = builders.ty.build(ctx, decl.attributes, parameter_ty)
@@ -287,7 +287,7 @@ local function build_event_on(
 					return
 				end
 
-				block:capture({ listener :: any })
+				block:capture({ listener :: types.RegisterId<any> })
 
 				local index = block:store(library.table.find(event_connections, listener))
 				block:if_single(condition.not_equals(index, constant.null), function()
@@ -310,7 +310,7 @@ local function build_event_iter(event_queue: types.ProjField<any>, data_returns:
 		local row_index = projection.index(queue_local, constant.from_value("row"))
 		local size_index = projection.index(queue_local, constant.from_value("size"))
 
-		local row = block:store(row_index)
+		local row = block:store<<number>>(row_index)
 		local size = block:store(size_index)
 		local columns = block:store(projection.index(queue_local, constant.from_value("columns")))
 
@@ -331,7 +331,7 @@ local function build_event_iter(event_queue: types.ProjField<any>, data_returns:
 				block:rreturn({ cast.static(constant.null, "any") })
 			end)
 
-			local values = { row } :: { any }
+			local values = { row }
 			for index = 1, args_count do
 				local column = projection.field(columns, constant.from_value(index))
 				local value = projection.field(column, row)
@@ -383,7 +383,7 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 
 			if is_unreliable then
 				local new_buffer = trim_outgoing_buffer(block)
-				block:call(library.RemoteEvent.fire_all(UNRELIABLE_EVENT, { new_buffer, OUTGOING.unknown } :: { any }))
+				block:call(library.RemoteEvent.fire_all(UNRELIABLE_EVENT, { new_buffer, OUTGOING.unknown }))
 			else
 				local new_buffer = copy_outgoing_buffer(block)
 				block:for_generic(globals.players_map, function(block, _, player_save)
@@ -405,7 +405,7 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 			block:for_generic(list, function(block, _, player)
 				if is_unreliable then
 					local args = { player, new_buffer, OUTGOING.unknown }
-					block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
+					block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args))
 				else
 					local player_save = projection.field(globals.players_map, player)
 					state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
@@ -427,7 +427,7 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 				block:if_single(condition.not_equals(player, except), function(block)
 					if is_unreliable then
 						local args = { player, new_buffer, OUTGOING.unknown }
-						block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
+						block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args))
 					else
 						state.update_save(block, player_save, new_buffer, OUTGOING.cursor)
 					end
@@ -447,7 +447,7 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 			if is_unreliable then
 				local new_buffer = trim_outgoing_buffer(block)
 				local args = { player, new_buffer, OUTGOING.unknown }
-				block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args :: { any }))
+				block:call(library.RemoteEvent.fire_client(UNRELIABLE_EVENT, args))
 			else
 				local new_buffer = copy_outgoing_buffer(block)
 				local player_save = projection.field(globals.players_map, player)
@@ -483,7 +483,7 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 
 			if is_unreliable then
 				-- replicate
-				local args = { trim_outgoing_buffer(block), OUTGOING.unknown } :: { any }
+				local args = { trim_outgoing_buffer(block), OUTGOING.unknown }
 				block:call(library.RemoteEvent.fire_server(UNRELIABLE_EVENT, args))
 
 				-- restore outgoing state
@@ -558,9 +558,9 @@ local function build_event_receive(ctx: Context, side: Side, block: fn.Builder, 
 		local connection = projection.field(CONNECTIONS, constant.from_value(event_id))
 		block:if_single(condition.not_equals(connection, constant.null), function(block)
 			if call == "SingleSync" then
-				block:call(projection.call(connection, values :: { Readable<any> }))
+				block:call(projection.call(connection, values))
 			else
-				block:call(library.task.spawn(connection, values :: { Readable<any> }))
+				block:call(library.task.spawn(connection, values))
 			end
 
 			block:ccontinue()
@@ -571,9 +571,9 @@ local function build_event_receive(ctx: Context, side: Side, block: fn.Builder, 
 		block:if_single(is_connected, function(block)
 			block:for_generic(connections, function(block, _, connection)
 				if call == "ManySync" then
-					block:call(projection.call(connection, values :: { Readable<any> }))
+					block:call(projection.call(connection, values))
 				else
-					block:call(library.task.spawn(connection, values :: { Readable<any> }))
+					block:call(library.task.spawn(connection, values))
 				end
 			end)
 
@@ -719,7 +719,7 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 
 			local thread_status = library.coroutine.status(invocation_thread)
 			block:if_single(condition.equals(thread_status, constant.from_value("suspended")), function(block)
-				block:call(library.coroutine.resume(invocation_thread, success_status :: any, unpack(return_registers)))
+				block:call(library.coroutine.resume(invocation_thread, success_status, unpack(return_registers)))
 			end)
 		end)
 	elseif side == "Server" then
@@ -946,8 +946,8 @@ local function from_hir(hhir: Hir, profile: Profile): Lir
 			table.insert(server_reliables, receivable)
 		end
 
-		globals_map[QUEUES.identifier] = structure.map(queues :: { [Readable<any>]: Readable<any> })
-		globals_map[CONNECTIONS.identifier] = structure.map(connections :: { [Readable<any>]: Readable<any> })
+		globals_map[QUEUES.identifier] = structure.map(queues)
+		globals_map[CONNECTIONS.identifier] = structure.map(connections)
 	end
 
 	local client_receive_reliable = build_receive_connection(ctx, "Client", client_reliables)

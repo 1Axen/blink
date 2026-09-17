@@ -25,8 +25,8 @@ type Literal = ty.Literal
 type Register<T = any> = types.RegisterId<T>
 
 local function validate(props: WriteProps, block: Builder, ty: Literal, value: Readable)
-	local constant = constant.from_ty(ty :: any)
-	local equals = condition.not_equals(value, constant :: any)
+	local constant = constant.from_ty(ty)
+	local equals = condition.not_equals(value, constant)
 
 	block:if_single(equals, function(block)
 		local message = library.string.format(`Expected {ty.value}, got %* instead`, value)
@@ -35,7 +35,7 @@ local function validate(props: WriteProps, block: Builder, ty: Literal, value: R
 end
 
 local function build_read<A>(props: ReadProps, block: Builder, literal: ty.Literal, into: Writeable?): Register<A>
-	local constant = constant.from_ty((literal :: any) :: { kind: any, value: A })
+	local constant = constant.from_ty(literal)
 	return block:store(constant, into)
 end
 

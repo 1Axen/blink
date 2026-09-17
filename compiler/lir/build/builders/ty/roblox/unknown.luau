@@ -40,7 +40,7 @@ local function build_read(props: ReadProps, block: Builder, _: Unknown, into: Wr
 	block:if_single(exists, function(block)
 		local unknown_cursor = globals.incoming.unknown_cursor
 		block:store(binary.add(unknown_cursor, constant.one), unknown_cursor)
-		block:store(projection.field(globals.incoming.unknown :: Writeable<any>, unknown_cursor), value_register)
+		block:store(projection.field(globals.incoming.unknown, unknown_cursor), value_register)
 	end)
 
 	return value_register

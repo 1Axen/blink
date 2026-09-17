@@ -47,7 +47,7 @@ export type function Writeable(t: type): type
 
 	if t:is("union") then
 		local components = t:components()
-		local writeable_components = table.create(#components) :: { type }
+		local writeable_components = table.create<<type>>(#components)
 		for index, component in components do
 			writeable_components[index] = make_writeable(component)
 		end
@@ -76,7 +76,7 @@ export type function NonNil(t: type)
 	end
 
 	local components = t:components()
-	local new_components = table.create(#components) :: { type }
+	local new_components = table.create<<type>>(#components)
 
 	for _, component in components do
 		if component.tag ~= "nil" then
@@ -91,6 +91,32 @@ export type function NonNil(t: type)
 	end
 
 	return types.unionof(table.unpack(new_components))
+end
+
+export type function ConcatStringletonUnions(left: type, right: type)
+	local concatenated = {}
+	local right_components = right:components()
+	for _, left_singleton in left:components() do
+		const left_value = left_singleton:value()
+		assert(typeof(left_value) == "string", "expected left union to be of only stringletons")
+
+		for _, right_singleton in right_components do
+			const right_value = right_singleton:value()
+			assert(typeof(right_value) == "string", "expected right union to be of only stringletons")
+
+			table.insert(concatenated, types.singleton(left_value .. right_value))
+		end
+	end
+
+	return types.unionof(table.unpack(concatenated))
+end
+
+export type function CastUnknownToAny(x: type)
+	if x:is("unknown") then
+		return types.any
+	end
+
+	return x
 end
 
 return nil

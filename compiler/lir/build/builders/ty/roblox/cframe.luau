@@ -66,7 +66,7 @@ local function build_read(
 	props: ReadProps,
 	block: Builder,
 	cframe_ty: ty.CFrame,
-	into: Writeable<any>?
+	into: Writeable<CFrame>?
 ): Register<CFrame>
 	local position_ty = cframe_ty.position or DEFAULT_FORMAT
 	local rotation_ty = cframe_ty.rotation or DEFAULT_FORMAT
@@ -82,7 +82,7 @@ local function build_read(
 	local dot = binary.add(square(axis_x), binary.add(square(axis_y), square(axis_z)))
 	local magnitude = block:store(library.math.sqrt(dot))
 
-	local store_location = (into or block:reserve()) :: Register<CFrame>
+	local store_location = (into or block:reserve())
 	block:if_chain(2, function(index: number)
 		if index == 1 then
 			return condition.equals(magnitude, constant.zero),
@@ -120,12 +120,12 @@ local function build_write(props: WriteProps, block: Builder, cframe_ty: ty.CFra
 	local pos_ty, rot_ty = to_tys(props.ctx, cframe_ty)
 
 	-- position
-	local position = block:store(projection.index(value :: any, const("Position"))) :: Register<vector>
+	local position = block:store(projection.index(value, const("Position")))
 	ty_vector.write(props, block, pos_ty, position)
 
 	-- rotation
-	local axis_angle = block:store_mult(library.CFrame.to_axis_angle(value) :: any, 2) :: { Register<number> }
-	local rotation = block:store(binary.mul_vec(axis_angle[1] :: any, axis_angle[2]))
+	local axis_angle = block:store_mult(library.CFrame.to_axis_angle(value), 2)
+	local rotation = block:store(binary.mul_vec(axis_angle[1] :: Readable<any>, axis_angle[2]))
 	ty_vector.write(props, block, rot_ty, rotation)
 end
 

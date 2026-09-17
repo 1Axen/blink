@@ -72,7 +72,12 @@ local function term_loop(loop: Loop, destination: BasicBlock): TermLoop
 	}
 end
 
-local function term_call(fn: types.FnId, args: { Readable }, rets: { Writeable }, destination: BasicBlock): TermCall
+local function term_call(
+	fn: types.FnId,
+	args: { read Readable },
+	rets: { read Writeable },
+	destination: BasicBlock
+): TermCall
 	return {
 		type = "terminator",
 		kind = "call",
@@ -93,7 +98,7 @@ local function term_while(condition: Condition, truthy: BasicBlock, falsey: Basi
 	}
 end
 
-local function term_return(values: { Readable }): TermReturn
+local function term_return(values: { read Readable }): TermReturn
 	return {
 		type = "terminator",
 		kind = "return",

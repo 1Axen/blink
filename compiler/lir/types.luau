@@ -323,6 +323,7 @@ export type RValue<T> =
 	| Cast<T>
 
 export type Callable<T> = {
+	read __readable: T,
 	read __callable: T,
 }
 

@@ -416,8 +416,7 @@ local function expr_range(ctx: Context): ast.Range
 		return report.expect_token_one_of(first, { "..", "number" })
 	end
 
-	local upper_bound = (max or last) :: ast.ExprNumber
-
+	local upper_bound: { read span: vector } = (max or last)
 	return {
 		id = node_id,
 		span = span.merge(first.span, upper_bound.span),

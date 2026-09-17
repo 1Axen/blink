@@ -114,7 +114,7 @@ local function tokenize(input: file.File): { Token }
 	end
 
 	local function advance()
-		position = math.min(position + 1, length) :: number
+		position = math.min(position + 1, length)
 	end
 
 	local function advance_peek(): number
@@ -130,8 +130,7 @@ local function tokenize(input: file.File): { Token }
 		return (position - 1)
 	end
 
-	local tokens = table.create(64) :: { Token }
-
+	local tokens = table.create<<Token>>(64)
 	local function create_token(kind: TokenKind, span: span.Span): Token
 		return { kind = kind, span = span } :: Token
 	end
@@ -148,7 +147,7 @@ local function tokenize(input: file.File): { Token }
 		--> whitespace is lost when lexed, lossy lexer :(
 		if is_whitespace(first) then
 			--> keep clearing whitespace
-			local char = first :: number
+			local char = first
 			repeat
 				char = advance_peek()
 			until not (is_whitespace(char))
@@ -180,12 +179,12 @@ local function tokenize(input: file.File): { Token }
 
 			return nil
 		--> word, can't start with numeral
-		elseif is_letter(first :: number) or first == UNDERSCORE then
+		elseif is_letter(first) or first == UNDERSCORE then
 			--> consume full word
-			local char = first :: number
+			local char = first
 			repeat
 				char = advance_peek()
-			until not (is_letter(char) or is_digit(char :: number) or char == UNDERSCORE)
+			until not (is_letter(char) or is_digit(char) or char == UNDERSCORE)
 
 			local finish = last_position()
 			local value = to_string(start)
@@ -212,8 +211,8 @@ local function tokenize(input: file.File): { Token }
 			end
 
 			return create_token("word", value_span)
-		elseif is_digit(first :: number) or first == HYPHEN then
-			local char = first :: number
+		elseif is_digit(first) or first == HYPHEN then
+			local char = first
 			local decimal = false
 
 			if char == HYPHEN then

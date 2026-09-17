@@ -2,19 +2,15 @@
 
 local types = require("@lir/types")
 
-type ProjCall<T> = types.ProjCall<T>
-type ProjField<T> = types.ProjField<T>
-type ProjIndex<T> = types.ProjIndex<T>
-type ProjNamecall<T> = types.ProjNamecall<T>
-
 type Readable<T> = types.Readable<T>
 type Constant<T> = types.Constant<T>
 
 type Base = types.Writeable<any> | Constant<string>
 
-local function proj_call(base: Base, args: { Readable<any> }): any
+local function proj_call(base: Base, args: { read Readable<any> }): any
 	return {
 		__readable = nil :: any,
+		__callable = nil :: any,
 		type = "projection",
 		kind = "call",
 		base = base,
@@ -22,7 +18,7 @@ local function proj_call(base: Base, args: { Readable<any> }): any
 	}
 end
 
-local function proj_field<T>(base: Base, field: Readable<T>): any
+local function proj_field(base: Base, field: Readable<any>): any
 	return {
 		__readable = nil :: any,
 		__writeable = nil :: any,
@@ -33,7 +29,7 @@ local function proj_field<T>(base: Base, field: Readable<T>): any
 	}
 end
 
-local function proj_index<T>(base: Base, element: types.Constant<string>): any
+local function proj_index(base: Base, element: types.Constant<string>): any
 	return {
 		__readable = nil :: any,
 		__writeable = nil :: any,
@@ -44,10 +40,10 @@ local function proj_index<T>(base: Base, element: types.Constant<string>): any
 	}
 end
 
-local function proj_namecall<T>(base: Base, method: Constant<string>, args: { Readable<any> }): any
+local function proj_namecall(base: Base, method: Constant<string>, args: { read Readable<any> }): any
 	return {
 		__readable = nil :: any,
-		__writeable = nil :: any,
+		__callable = nil :: any,
 		type = "projection",
 		kind = "namecall",
 		base = base,

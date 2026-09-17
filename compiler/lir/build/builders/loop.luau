@@ -2,7 +2,6 @@
 
 local types = require("@lir/types")
 
-type RValue = types.RValue<any>
 type Numeric = types.LoopNumeric
 type Generic = types.LoopGeneric
 type Readable<T = any> = types.Readable<T>
@@ -13,7 +12,7 @@ local function loop_numeric(index: Register<number>, iterations: Readable<number
 		type = "loop",
 		kind = "numeric",
 		index = index,
-		iterations = iterations :: RValue,
+		iterations = iterations :: types.RValue<number>,
 	}
 end
 

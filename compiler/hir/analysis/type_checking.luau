@@ -71,7 +71,7 @@ local function hash_ty(hir: Hir, tty: Ty): Hash
 	elseif tty.kind == "roblox_enum" and tty.type then
 		return `Enum.{tty.type.value}`
 	elseif tty.kind == "discriminated_union" then
-		local variant_keys = table.create(#tty.variants) :: { string }
+		local variant_keys = table.create<<string>>(#tty.variants)
 		for index, variant in tty.variants do
 			local key = variant.key
 			local stringified: string

@@ -36,7 +36,7 @@ local function from_slice(slice: string): Component
 end
 
 local function from_slices(slices: { string }): { Component }
-	local components = table.create(#slices) :: { Component }
+	local components = table.create<<Component>>(#slices)
 	for index, slice in slices do
 		--> root
 		if index == 1 and slice == "" or is_drive(slice) then

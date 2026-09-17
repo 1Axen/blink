@@ -41,7 +41,7 @@ local function read_directory(target: Path): Result<{ string }>
 		return io_error(entries :: any)
 	end
 
-	local directory_entries = table.create(#entries) :: { string }
+	local directory_entries = table.create<<string>>(#entries)
 	for index, entry in entries do
 		directory_entries[index] = entry.name
 	end

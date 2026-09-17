@@ -9,7 +9,7 @@ type ProjCall<T> = types.ProjCall<T>
 type Readable<T> = types.Readable<T>
 
 local function traceback(message: Readable<string>, level: Readable<number>?): ProjCall<string>
-	return projection.call(constant.from_value("debug.traceback"), { message, level } :: any)
+	return projection.call(constant.from_value("debug.traceback"), { message, level :: Readable<number> })
 end
 
 local function traceback_thread(
@@ -17,7 +17,7 @@ local function traceback_thread(
 	message: Readable<string>,
 	level: Readable<number>?
 ): ProjCall<string>
-	return projection.call(constant.from_value("debug.traceback"), { thread, message, level } :: any)
+	return projection.call(constant.from_value("debug.traceback"), { thread, message, level :: Readable<number> })
 end
 
 return table.freeze({

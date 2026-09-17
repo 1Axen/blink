@@ -26,6 +26,7 @@ type Readable<T> = types.Readable<T>
 type Register<T> = types.RegisterId<T>
 
 local FORMAT = ty_numeral.f64
+const TIMESTAMP_FIELD = constant.from_value("UnixTimestamp")
 
 local function build_read(
 	props: ReadProps,
@@ -38,9 +39,7 @@ local function build_read(
 end
 
 local function build_write(props: WriteProps, block: Builder, date_time: ty.DateTime, value: Readable<DateTime>): ()
-	local timestamp = (
-		projection.index(value :: any, constant.from_value("UnixTimestamp")) :: any
-	) :: types.ProjIndex<number>
+	local timestamp = projection.index(value, TIMESTAMP_FIELD)
 	ty_numeral.write(props, block, FORMAT, timestamp)
 end
 

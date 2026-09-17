@@ -2,7 +2,7 @@
 
 local types = require("@lir/types")
 
-type RValue = types.RValue<any>
+type RValue = types.RValue<number>
 type Readable<T> = types.Readable<T>
 type BinaryAdd<T> = types.BinaryAdd<T>
 type BinarySub<T> = types.BinarySub<T>

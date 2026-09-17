@@ -26,6 +26,7 @@ type Readable<T> = types.Readable<T>
 type Register<T> = types.RegisterId<T>
 
 local FORMAT = ty_numeral.u16
+const NUMBER_FIELD = constant.from_value("Number")
 
 local function build_read(
 	props: ReadProps,
@@ -43,7 +44,7 @@ local function build_write(
 	brick_color: ty.BrickColor,
 	value: Readable<BrickColor>
 ): ()
-	local number = projection.index(value :: any, constant.from_value("Number")) :: types.ProjIndex<number>
+	local number = projection.index(value, NUMBER_FIELD)
 	ty_numeral.write(props, block, FORMAT, number)
 end
 

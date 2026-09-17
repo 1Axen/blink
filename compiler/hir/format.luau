@@ -20,10 +20,7 @@ local function fmt_attributes(attributes: any, fmt_builder: StringBuilder)
 		string_builder.append(fmt_builder, ATTRIBUTE_STYLE(`@{name}`))
 
 		if value ~= true then
-			string_builder.append(
-				fmt_builder,
-				`{ATTRIBUTE_STYLE("(")}{fmt_types.any(value :: any)}{ATTRIBUTE_STYLE(")")}`
-			)
+			string_builder.append(fmt_builder, `{ATTRIBUTE_STYLE("(")}{fmt_types.any(value)}{ATTRIBUTE_STYLE(")")}`)
 		end
 
 		string_builder.append(fmt_builder, " ")

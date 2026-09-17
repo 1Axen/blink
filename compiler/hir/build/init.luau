@@ -94,11 +94,11 @@ local function ty_boolean_literal(ctx: Context, expr: ast.ExprBoolean): ty.Boole
 end
 
 local function ty_numeral(ctx: Context, expr: ast.ExprReference, identifier: string): ty.Numeral
-	local size: ty.NumSize = string.sub(identifier, 2, 3) :: ty.NumSize
-	local format: ty.NumFormat = string.sub(identifier, 1, 1) :: ty.NumFormat
+	local size = string.sub(identifier, 2, 3) :: ty.NumSize
+	local format = string.sub(identifier, 1, 1) :: ty.NumFormat
 
 	local range: SealedRange?
-	local bounds: SealedRange = (bounds :: any)[identifier]
+	local bounds: SealedRange = (bounds :: { [string]: SealedRange })[identifier]
 	if expr.range then
 		range = range_from_node(expr.range, bounds)
 	end
@@ -294,7 +294,7 @@ local function ty_field(ctx: Context, expr: ast.ExprField): ty.Field
 end
 
 local function ty_struct(ctx: Context, expr: ast.ExprStruct): ty.Struct
-	local fields = table.create(#expr.fields) :: { ty.Field }
+	local fields = table.create<<ty.Field>>(#expr.fields)
 	local field_set: { [string]: ast.ExprField? } = {}
 	for index, field in expr.fields do
 		local name = field.name.value

@@ -112,7 +112,7 @@ local function render(diagnostic: types.Diagnostic): string
 	for file_id in files_to_render do
 		local file_to_render = assert_panic(file.from_id(file_id), "Expected a file to render")
 
-		local file_labels = table.create(#all_labels) :: { types.Label }
+		local file_labels = table.create<<types.Label>>(#all_labels)
 		for _, label in all_labels do
 			if label.span.z == file_id then
 				table.insert(file_labels, label)
@@ -372,7 +372,7 @@ local function render(diagnostic: types.Diagnostic): string
 					stream:append(style(CHAR_SET.label_bottom_left))
 					stream:append(string.rep(style(CHAR_SET.label_h), 2))
 					stream:append(" ")
-					stream:append(style(label.message :: string))
+					stream:append(style(label.message or ""))
 
 					stream:append("\n")
 				end

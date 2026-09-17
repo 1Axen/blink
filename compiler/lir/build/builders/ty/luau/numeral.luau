@@ -1,6 +1,6 @@
 local attributes = require("@config/attributes")
-local lir_types = require("@lir/types")
 local ty = require("@ty")
+local types = require("@lir/types")
 
 local binary = require("@builders/binary")
 local condition = require("@builders/condition")
@@ -13,23 +13,11 @@ local context = require("@lir/build/context")
 
 local panic = require("@util/panic")
 local strong_exhaustive_match = require("@util/strong_exhaustive_match")
-
-type function concat_literal_union(left: any, right: any)
-	local left_components: { any } = left:components()
-	local right_components: { any } = right:components()
-
-	local combined_components = {}
-	for _, left_singleton in left_components do
-		for _, right_singleton in right_components do
-			local combined_singleton = types.singleton(left_singleton:value() .. right_singleton:value())
-			table.insert(combined_components, combined_singleton)
-		end
-	end
-
-	return types.unionof(table.unpack(combined_components))
-end
+local typeforge = require("@util/typeforge")
 
 local builder_types = require("../builder_types")
+
+type NumeralKinds = typeforge.ConcatStringletonUnions<ty.NumFormat, ty.NumSize>
 
 type TyBuilder = builder_types.TyBuilder
 type ReadProps = builder_types.ReadProps
@@ -39,16 +27,16 @@ type Builder = fn.Builder
 type Context = context.Context
 type Attributes = attributes.Attributes
 
-type LValue<T> = lir_types.Writeable<T>
-type RValue<T> = lir_types.Readable<T>
-type Register<T> = lir_types.RegisterId<T>
+type Register<T> = types.RegisterId<T>
+type Readable<T> = types.Readable<T>
+type Writeable<T> = types.Writeable<T>
 
-type Call<T> = lir_types.ProjCall<T>
-type Advance = lir_types.CtrlAdvance<number>
-type Allocate = lir_types.CtrlAllocate<number>
+type Call<T> = types.ProjCall<T>
+type Advance = types.CtrlAdvance<number>
+type Allocate = types.CtrlAllocate<number>
 
 type ReadCtor = (cursor: Advance) -> Call<number>
-type WriteCtor = (cursor: Register<number>, value: RValue<number>) -> Call<nil>
+type WriteCtor = (cursor: Register<number>, value: Readable<number>) -> Call<nil>
 
 local BYTE = constant.from_value(2 ^ 8)
 local SHORT = constant.from_value(2 ^ 16)
@@ -91,17 +79,17 @@ local function read_24()
 	return binary.add(lower, upper)
 end
 
-local function read_u24(block: Builder, into: LValue<any>?): Register<number>
+local function read_u24(block: Builder, into: Writeable<any>?): Register<number>
 	return block:store(read_24(), into)
 end
 
-local function read_i24(block: Builder, into: LValue<any>?): Register<number>
+local function read_i24(block: Builder, into: Writeable<any>?): Register<number>
 	local value = read_24()
 	value = binary.sub(value, constant.from_value(2 ^ 23))
 	return block:store(value, into)
 end
 
-local function write_u24(block: Builder, value: RValue<number>)
+local function write_u24(block: Builder, value: Readable<number>)
 	local lower_offset = block:allocate(constant.from_value(1))
 	block:call(library.buffer.u8.write(lower_offset, value))
 
@@ -109,9 +97,9 @@ local function write_u24(block: Builder, value: RValue<number>)
 	block:call(library.buffer.u16.write(upper_offset, binary.idiv(value, BYTE)))
 end
 
-local function write_i24(block: Builder, value: RValue<number>)
+local function write_i24(block: Builder, value: Readable<number>)
 	local register = block:store(binary.add(value, constant.from_value(2 ^ 23)))
-	write_u24(block, register :: RValue<number>)
+	write_u24(block, register)
 end
 
 local function read_48()
@@ -124,11 +112,11 @@ local function read_48()
 	return binary.add(lower, upper)
 end
 
-local function read_u48(block: Builder, into: LValue<any>?): Register<number>
+local function read_u48(block: Builder, into: Writeable<any>?): Register<number>
 	return block:store(read_48(), into)
 end
 
-local function write_u48(block: Builder, value: RValue<number>)
+local function write_u48(block: Builder, value: Readable<number>)
 	local lower_offset = block:allocate(constant.from_value(2))
 	block:call(library.buffer.u16.write(lower_offset, value))
 
@@ -136,18 +124,18 @@ local function write_u48(block: Builder, value: RValue<number>)
 	block:call(library.buffer.u32.write(upper_offset, binary.idiv(value, SHORT)))
 end
 
-local function read_i48(block: Builder, into: LValue<any>?): Register<number>
+local function read_i48(block: Builder, into: Writeable<any>?): Register<number>
 	local value = read_48()
 	value = binary.sub(value, constant.from_value(2 ^ 47))
 	return block:store(value, into)
 end
 
-local function write_i48(block: Builder, value: RValue<number>)
+local function write_i48(block: Builder, value: Readable<number>)
 	local register = block:store(binary.add(value, constant.from_value(2 ^ 47)))
-	write_u48(block, register :: RValue<number>)
+	write_u48(block, register)
 end
 
-local function validate(block: Builder, ty: ty.Numeral, value: RValue<number>)
+local function validate(block: Builder, ty: ty.Numeral, value: Readable<number>)
 	local bounds = ty.bounds
 	if bounds == nil then
 		return
@@ -169,8 +157,8 @@ local function validate(block: Builder, ty: ty.Numeral, value: RValue<number>)
 	end)
 end
 
-local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral, into: LValue<any>?): Register<number>
-	local format: concat_literal_union<ty.NumFormat, ty.NumSize> = (ty.format .. ty.size) :: any
+local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral, into: Writeable<any>?): Register<number>
+	local format = (ty.format .. ty.size) :: NumeralKinds
 	if format == "u24" then
 		return read_u24(block, into)
 	elseif format == "i24" then
@@ -193,12 +181,12 @@ local function build_read(props: ReadProps, block: Builder, ty: ty.Numeral, into
 	return register
 end
 
-local function build_write(props: WriteProps, block: Builder, ty: ty.Numeral, value: RValue<number>)
+local function build_write(props: WriteProps, block: Builder, ty: ty.Numeral, value: Readable<number>)
 	if props.validate then
 		validate(block, ty, value)
 	end
 
-	local format: concat_literal_union<ty.NumFormat, ty.NumSize> = (ty.format .. ty.size) :: any
+	local format = (ty.format .. ty.size) :: NumeralKinds
 	if format == "u24" then
 		return write_u24(block, value)
 	elseif format == "i24" then

@@ -33,8 +33,8 @@ export type FileLayout = {
 }
 
 local function create_file_layout(labels: { Label }): FileLayout
-	local inlines = table.create(#labels) :: { InlineLayout }
-	local multilines = table.create(#labels) :: { MultilineLayout }
+	local inlines = table.create<<InlineLayout>>(#labels)
+	local multilines = table.create<<MultilineLayout>>(#labels)
 
 	for _, label in labels do
 		local segment = fileext.segment_from_span(label.span)
@@ -75,7 +75,7 @@ local function create_file_layout(labels: { Label }): FileLayout
 	end
 
 	local slots: { [number]: number? } = {}
-	local lines = table.create(#labels) :: { LineLayout }
+	local lines = table.create<<LineLayout>>(#labels)
 	local max_multiline_nesting = 0
 
 	for line in line_indices do

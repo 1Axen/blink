@@ -5,7 +5,7 @@ local style = require("@util/style")
 local DOUBLE_DOTS = style.modifer.dim("..")
 
 local function fmt_range(range: range.SealedRange): string
-	local components = table.create(3) :: { string }
+	local components = table.create<<string>>(3)
 	if range.min then
 		table.insert(components, fmt_types.number(range.min))
 	end

@@ -39,7 +39,7 @@ local function build_read(
 end
 
 local function build_write(props: WriteProps, block: Builder, color3_ty: ty.Color3, value: Readable<Color3>): ()
-	local components = block:store_mult(library.Color3.to_HSV(value) :: any, 3) :: { Register<number> }
+	local components = block:store_mult(library.Color3.to_HSV(value), 3)
 	numeral.write(props, block, FORMAT, components[1])
 	numeral.write(props, block, FORMAT, components[2])
 	numeral.write(props, block, FORMAT, components[3])

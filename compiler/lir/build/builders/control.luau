@@ -15,7 +15,6 @@ end
 
 local function ctrl_allocate(bytes: Readable<number>): types.CtrlAllocate<nil>
 	return {
-		__readable = nil,
 		type = "control",
 		kind = "allocate",
 		bytes = bytes :: any,

@@ -92,7 +92,7 @@ local function parse_import(
 	elseif extra.kind == "destructured" then
 		for _, value in extra.values do
 			local path = value.path
-			local segments = table.create(#path.segments) :: { string }
+			local segments = table.create<<string>>(#path.segments)
 			for index, segment in path.segments do
 				segments[index] = segment.value
 			end

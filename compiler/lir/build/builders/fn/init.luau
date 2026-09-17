@@ -57,20 +57,20 @@ local function parameter(hint: Hint, name: string?): types.Parameter
 end
 
 export type Builder = {
-	read store: <T>(Builder, value: Readable<T>, into: Writeable<T>?) -> Register<T>,
+	read store: <T>(Builder, value: Readable<T>, into: Writeable<any>?) -> Register<T>,
 	read capture: (Builder, upvalues: { Register<any> }) -> (),
 	read reserve: (Builder) -> Register<any>,
 	read parameter: (self: Builder, index: number) -> types.ParameterId<any>,
-	read store_mult: (Builder, value: Readable, count: number) -> { Writeable },
+	read store_mult: <T>(Builder, value: Readable<T>, count: number) -> { Writeable<T> },
 
 	read allocate: (Builder, bytes: types.Readable<number>) -> Register<number>,
 
 	read call: <T>(Builder, call: types.Callable<T>) -> (),
-	read call_fn: (Builder, fn_id: FnId, args: { Readable }, rets: { Writeable }) -> (),
+	read call_fn: (Builder, fn_id: FnId, args: { read Readable }, rets: { read Writeable }) -> (),
 
 	read remark: (Builder, text: string) -> (),
 
-	read rreturn: (Builder, values: { Readable }) -> (),
+	read rreturn: (Builder, values: { read Readable }) -> (),
 	read ccontinue: (Builder) -> (),
 	read if_chain: (Builder, length: number, constructor: IfChainConstructor) -> (),
 	read if_single: (Builder, cond: Condition, body: Constructor) -> (),
@@ -86,7 +86,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 			scope = scope or 0,
 			index = 0,
 			statements = {},
-			terminator = term or terminator.none() :: Terminator,
+			terminator = term or terminator.none(),
 		}
 	end
 
@@ -174,7 +174,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		table.insert(block.statements, statement.remark(text))
 	end
 
-	local function term_return(self: Builder, values: { Readable })
+	local function term_return(self: Builder, values: { read Readable })
 		block.terminator = terminator.rtrn(values)
 	end
 
@@ -242,7 +242,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		block = loop_block
 		table.insert(blocks, loop_block)
 
-		local index_register = next_register(self) :: Register<number>
+		local index_register = next_register<<number>>(self)
 		local numeric_loop = loop.numeric(index_register, iterations)
 		prev_block.terminator = terminator.loop(numeric_loop, loop_block)
 
@@ -298,7 +298,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		table.insert(blocks, falsey_block)
 	end
 
-	local function call_fn(self: Builder, fn_id: FnId, args: { Readable }, rets: { Writeable })
+	local function call_fn(self: Builder, fn_id: FnId, args: { read Readable }, rets: { read Writeable })
 		local next_block = next_block(block.scope, block.terminator)
 		block.terminator = terminator.call(fn_id, args, rets, next_block)
 
@@ -306,7 +306,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 		table.insert(blocks, next_block)
 	end
 
-	local function capture(self: Builder, upvalues: { Register<any> })
+	local function capture(self: Builder, upvalues: { read Register<any> })
 		local max_register = register_top
 		for _, upvalue in upvalues do
 			max_register = math.max(max_register, upvalue.index)
@@ -315,7 +315,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 	end
 
 	local builder: Builder = table.freeze({
-		store = store :: any,
+		store = store,
 		capture = capture,
 		reserve = reserve,
 		parameter = parameter_id,
@@ -323,7 +323,7 @@ local function construct_fn(n_params: number, constructor: Constructor): { Basic
 
 		allocate = allocate,
 
-		call = call :: any,
+		call = call,
 		call_fn = call_fn,
 
 		remark = remark,

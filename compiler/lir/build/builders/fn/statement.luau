@@ -40,7 +40,7 @@ local function stat_remark(text: string): Remark
 	}
 end
 
-local function stat_multi_assign(into: { Writeable }, value: Readable): MultiAssign
+local function stat_multi_assign(into: { read Writeable }, value: Readable): MultiAssign
 	return {
 		type = "statement",
 		kind = "multi_assign",

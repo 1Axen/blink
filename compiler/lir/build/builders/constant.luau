@@ -38,7 +38,7 @@ local function create_or_reuse(value: ConstantValue): Constant
 	return constant
 end
 
-local function from_ty<A>(ty: { kind: index<ty.Literal, "kind">, value: A }): Constant<A>
+local function from_ty<A>(ty: { read kind: index<ty.Literal, "kind">, read value: A }): Constant<A>
 	return create_or_reuse(ty.value)
 end
 

@@ -64,7 +64,7 @@ local function to_max_range(ty: VariableLengthTy): SealedRange
 	end
 end
 
-local function to_exact_length(ty: VariableLengthTy): number?
+local function to_exact_length(ty: VariableLengthTy): types.Constant<number>?
 	local ty_range = to_range(ty)
 	if ty_range == nil then
 		return nil
@@ -74,7 +74,7 @@ local function to_exact_length(ty: VariableLengthTy): number?
 		return nil
 	end
 
-	return ty_range.min
+	return constant.from_value(ty_range.min)
 end
 
 --- Returns the numeral and range offset
@@ -85,16 +85,13 @@ local function to_relative_range(ty: VariableLengthTy): (ty.Numeral, number)
 	return conversion.to_min_numeral(difference), offset
 end
 
-local function validate_exact(block: Builder, ty: VariableLengthTy, value: Readable<number>)
+local function validate_exact(block: Builder, ty: VariableLengthTy, value: Readable<number>, exact: Readable<number>)
 	local bounds = to_range(ty)
 	if bounds == nil then
 		return
 	end
 
-	local exact_length = to_exact_length(ty) :: number
-	local is_exact_length = condition.not_equals(value, constant.from_value(exact_length))
-
-	block:if_single(is_exact_length, function(block)
+	block:if_single(condition.not_equals(value, exact), function(block)
 		local message =
 			library.string.format(`Expected {ty.kind} length to be exactly {bounds.min}, length is %f`, value)
 		block:call(library.error_rvalue(message))
@@ -134,7 +131,7 @@ local function read_length(
 ): Register<number> | types.Constant<number>
 	local exact_length = to_exact_length(ty)
 	if exact_length ~= nil then
-		return constant.from_value(exact_length)
+		return exact_length
 	end
 
 	local format, offset = to_relative_range(ty)
@@ -157,10 +154,9 @@ local function write_length(
 	local exact_length = to_exact_length(ty)
 	if exact_length then
 		if props.validate then
-			validate_exact(block, ty, value)
+			validate_exact(block, ty, value, exact_length)
 		end
-
-		return constant.from_value(exact_length)
+		return exact_length
 	end
 
 	local len_register = block:store(value)

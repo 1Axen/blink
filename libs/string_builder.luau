@@ -61,11 +61,12 @@ end
 local recycling_bin: { buffer } = {}
 
 local function borrow_buffer(): buffer
-	if #recycling_bin == 0 then
-		return buffer.create(DEFAULT_LENGTH)
+	const recycled = table.remove(recycling_bin)
+	if recycled then
+		return recycled
 	end
 
-	return table.remove(recycling_bin, 1) :: buffer
+	return buffer.create(DEFAULT_LENGTH)
 end
 
 local function return_buffer(buf: buffer)

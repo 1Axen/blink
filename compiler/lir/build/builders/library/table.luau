@@ -27,7 +27,7 @@ local function move<T>(
 end
 
 local function find<T>(target: Readable<{ T }>, value: Readable<any>, start_at: Readable<number>?): Call<number?>
-	return projection.call(constant.from_value("table.find"), { target, value, start_at :: any })
+	return projection.call(constant.from_value("table.find"), { target, value, start_at :: Readable<number> })
 end
 
 local function clear<T>(target: Readable<{ T }>)

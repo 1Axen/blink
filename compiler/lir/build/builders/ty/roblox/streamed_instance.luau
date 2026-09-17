@@ -52,7 +52,7 @@ local function validate(ctx: Context, block: Builder, instance: Instance, value:
 		block:if_single(is_not_class, function(block)
 			local message = library.string.format(
 				`Expected an Instance of class "{expected_class.value}", got one of class "%s" instead`,
-				projection.index(value :: any, constant.from_value("ClassName"))
+				projection.index(value, constant.from_value("ClassName"))
 			)
 			block:call(library.error_rvalue(message))
 		end)
@@ -66,8 +66,7 @@ local function build_read(
 	into: Writeable<any>?
 ): Register<Instance>
 	local unknown_cursor = globals.incoming.unknown_cursor
-	local value =
-		projection.field(globals.incoming.unknown :: Writeable<any>, unknown_cursor) :: types.ProjField<Instance>
+	local value = projection.field(globals.incoming.unknown, unknown_cursor) :: types.ProjField<Instance>
 	block:store(binary.add(unknown_cursor, constant.one), unknown_cursor)
 
 	local register = block:store(value, into)

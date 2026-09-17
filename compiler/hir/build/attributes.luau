@@ -63,7 +63,7 @@ local function attr_profile(attribute: AttributeNode): compilation.Profile
 		return report.expect_node(profile, "string", profile.kind)
 	end
 
-	local value = profile.value :: string
+	local value = profile.value
 	if PROFILES[value] ~= true then
 		-- LUAU
 		return report.expect_node_one_of(profile, set_to_array(PROFILES), value)

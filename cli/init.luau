@@ -23,9 +23,9 @@ local NAME = colorful.color.green("Blink")
 local HEADER = `{NAME} {version}`
 
 local VALID_PROFILES: { [Profile]: true } = {
-	dev = true :: true,
-	test = true :: true,
-	release = true :: true,
+	dev = true,
+	test = true,
+	release = true,
 }
 
 local cli = cli_builder.cli

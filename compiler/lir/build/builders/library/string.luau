@@ -10,7 +10,7 @@ type Readable<T> = types.Readable<T>
 type Constant<T> = types.Constant<T>
 
 local function string_format<T>(template: string, ...: Readable<T>): Call<string>
-	return projection.call(constant.from_value("string.format"), { constant.from_value(template), ... } :: any)
+	return projection.call(constant.from_value("string.format"), { constant.from_value(template), ... })
 end
 
 return table.freeze({

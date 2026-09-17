@@ -29,18 +29,18 @@ const INTEGER_SIZE = constant.from_value(8)
 const INTEGER_TYPE = constant.from_value("integer")
 
 local function validate(block: Builder, _, value: Readable<integer>)
-	local typeof_value = library.typeof(value :: any)
-	local is_not_expected_typeof = condition.not_equals(typeof_value :: any, INTEGER_TYPE)
+	local typeof_value = library.typeof(value)
+	local is_not_expected_typeof = condition.not_equals(typeof_value, INTEGER_TYPE)
 
 	block:if_single(is_not_expected_typeof, function(block)
-		local message = library.string.format("Expected an integer, got %s instead", typeof_value :: any)
-		block:call(library.error_rvalue(message) :: any)
+		local message = library.string.format("Expected an integer, got %s instead", typeof_value)
+		block:call(library.error_rvalue(message))
 	end)
 end
 
 local function build_read(props: ReadProps, block: Builder, _, into: Writeable<any>?): Register<integer>
 	local advance = control.advance(INTEGER_SIZE)
-	return block:store(library.buffer.integer.read(advance) :: any, into :: any)
+	return block:store(library.buffer.integer.read(advance), into)
 end
 
 local function build_write(props: WriteProps, block: Builder, tty: ty.Integer, value: Readable<integer>): ()

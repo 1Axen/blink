@@ -99,7 +99,7 @@ local function transform(ctx: Context, tty: Ty): Ty
 				return panic("Expected reference to a type function to have arguments")
 			end
 
-			local new_arguments = table.create(#reference_arguments) :: Arguments
+			local new_arguments = table.create<<Ty>>(#reference_arguments)
 			for index, argument in reference_arguments do
 				new_arguments[index] = transform(ctx, argument)
 			end

@@ -23,7 +23,7 @@ export type Path = setmetatable<{
 
 --- converts the path to a string
 local function to_string(self: Path): string
-	local slices = table.create(#self.components) :: { string }
+	local slices = table.create<<string>>(#self.components)
 	for index, path_component in self.components do
 		slices[index] = component.to_string(path_component)
 	end

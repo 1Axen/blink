@@ -9,7 +9,7 @@ type Call<T> = types.ProjCall<T>
 type Readable<T> = types.Readable<T>
 
 local function luau_warn(...: Readable<string>): Call<nil>
-	return projection.call(constant.from_value("warn"), { ... } :: { Readable<any> })
+	return projection.call(constant.from_value("warn"), { ... })
 end
 
 local function luau_print(...: Readable<any>): Call<nil>

@@ -25,7 +25,6 @@ local function create(name: string, buffer: buffer?): File
 	local file: File = {
 		id = next_id,
 		name = name,
-		lines = nil :: any,
 		buffer = buffer or EMPTY_BUFFER,
 	}
 
@@ -68,7 +67,7 @@ local function as_lines(self: File): Lines
 		return self.lines
 	end
 
-	local lines = table.create(64) :: Lines
+	local lines = table.create<<Line>>(64)
 	local contents = self.buffer
 	local file_length = length(self)
 

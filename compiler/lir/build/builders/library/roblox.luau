@@ -67,15 +67,15 @@ local function instance_wait_for_child(parent: Readable<Instance>, name: Readabl
 	return projection.namecall(parent :: Writeable<any>, constant.from_value("WaitForChild"), { name })
 end
 
-local function fire_all(remote: Readable<RemoteEvent>, args: { Readable<any> }): Namecall<nil>
+local function fire_all(remote: Readable<RemoteEvent>, args: { read Readable<any> }): Namecall<nil>
 	return projection.namecall(remote :: Writeable<any>, constant.from_value("FireAllClients"), args)
 end
 
-local function fire_client(remote: Readable<RemoteEvent>, args: { Readable<any> }): Namecall<nil>
+local function fire_client(remote: Readable<RemoteEvent>, args: { read Readable<any> }): Namecall<nil>
 	return projection.namecall(remote :: Writeable<any>, constant.from_value("FireClient"), args)
 end
 
-local function fire_server(remote: Readable<RemoteEvent>, args: { Readable<any> }): Namecall<nil>
+local function fire_server(remote: Readable<RemoteEvent>, args: { read Readable<any> }): Namecall<nil>
 	return projection.namecall(remote :: Writeable<any>, constant.from_value("FireServer"), args)
 end
 

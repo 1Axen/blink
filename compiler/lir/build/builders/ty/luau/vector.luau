@@ -41,7 +41,7 @@ local function read_axis(props: ReadProps, block: Builder, axis_ty: Axis): Regis
 	if axis_ty.kind == "numeral" then
 		return numeral.read(props, block, axis_ty)
 	elseif axis_ty.kind == "number_literal" then
-		return literal.read(props, block, axis_ty) :: Register<number>
+		return literal.read<<number>>(props, block, axis_ty)
 	end
 
 	return panic(`Unexpected vector axis ty kind "{axis_ty.kind}"`)
@@ -51,7 +51,7 @@ local function write_axis(props: WriteProps, block: Builder, axis_ty: Axis, valu
 	if axis_ty.kind == "numeral" then
 		return numeral.write(props, block, axis_ty, value)
 	elseif axis_ty.kind == "number_literal" then
-		return literal.write(props, block, axis_ty, value :: any)
+		return literal.write(props, block, axis_ty, value)
 	end
 
 	panic(`Unexpected vector axis ty kind "{axis_ty.kind}"`)
@@ -113,9 +113,9 @@ local function build_write(props: WriteProps, block: Builder, vec: ty.Vector, va
 	end
 
 	local ty_x, ty_y, ty_z = to_axes(props.ctx, vec)
-	write_axis(props, block, ty_x, projection.index(value :: any, constant.from_value("x")))
-	write_axis(props, block, ty_y, projection.index(value :: any, constant.from_value("y")))
-	write_axis(props, block, ty_z, projection.index(value :: any, constant.from_value("z")))
+	write_axis(props, block, ty_x, projection.index(value, constant.from_value("x")))
+	write_axis(props, block, ty_y, projection.index(value, constant.from_value("y")))
+	write_axis(props, block, ty_z, projection.index(value, constant.from_value("z")))
 end
 
 return table.freeze({

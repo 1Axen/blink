@@ -75,13 +75,13 @@ function fmt_expression(expr: types.Expression): string
 	elseif expr.kind == "number" then
 		return tostring(expr.value)
 	elseif expr.kind == "array" then
-		return `{fmt_expression((expr :: types.ExprArray).value)}[]`
+		return `{fmt_expression(expr.value)}[]`
 	elseif expr.kind == "boolean" then
-		return tostring((expr :: types.ExprBoolean).value)
+		return tostring(expr.value)
 	elseif expr.kind == "optional" then
-		return `{fmt_expression((expr :: types.ExprOptional).value)}?`
+		return `{fmt_expression(expr.value)}?`
 	elseif expr.kind == "tagged_enum" then
-		return `enum "{fmt_expression((expr :: types.ExprDiscriminatedUnion).tag)}" \{ ... \}`
+		return `enum "{fmt_expression(expr.tag)}" \{ ... \}`
 	elseif expr.kind == "reference" then
 		return fmt_path(expr.path)
 	end

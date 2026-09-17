@@ -28,7 +28,7 @@ local function panic(final_words: string): never
 	local info = collect_info()
 	local trace = debug.traceback(nil, 2)
 	-- SOLVER BUG
-	local name: string, line: number = (debug.info :: any)(2, "nl")
+	local name: string, line: number = debug.info(2, "nl")
 	local panic_builder = string_builder.create({})
 
 	panic_builder:append_line(`panicked in {name}:{line}: {final_words}`)

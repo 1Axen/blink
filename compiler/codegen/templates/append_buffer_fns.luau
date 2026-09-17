@@ -15,7 +15,7 @@ local out_unknown: { any } = table.create(64)
 
 local function advance(bytes: number): number
 	local cursor = in_cursor
-	in_cursor = (cursor + bytes) :: number
+	in_cursor = (cursor + bytes)
 	return cursor
 end
 

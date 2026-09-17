@@ -75,7 +75,7 @@ end
 
 local function lines_of_segment(segment_file: File, segment: Segment): { Line }
 	local lines = file.as_lines(segment_file)
-	local segment_lines = table.create(segment.finish.line - segment.start.line) :: { Line }
+	local segment_lines = table.create<<Line>>(segment.finish.line - segment.start.line)
 	for index = segment.start.line, segment.finish.line do
 		table.insert(segment_lines, lines[index])
 	end

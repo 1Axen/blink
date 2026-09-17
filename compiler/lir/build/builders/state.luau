@@ -37,9 +37,9 @@ end
 
 local function update_save(block: fn.Builder, save: Writeable<Save>, buf: Readable<buffer>, len: Readable<number>)
 	local out_unknown = OUTGOING.unknown
-	local save_buffers = projection.index(save :: any, constant.from_value("buffers"))
-	local save_lengths = projection.index(save :: any, constant.from_value("lengths"))
-	local save_unknown = block:store(projection.index(save :: any, constant.from_value("unknown")))
+	local save_buffers = projection.index(save, constant.from_value("buffers"))
+	local save_lengths = projection.index(save, constant.from_value("lengths"))
+	local save_unknown = block:store(projection.index(save, constant.from_value("unknown")))
 
 	block:call(library.table.insert(save_buffers, buf))
 	block:call(library.table.insert(save_lengths, len))
@@ -47,8 +47,8 @@ local function update_save(block: fn.Builder, save: Writeable<Save>, buf: Readab
 		library.table.move(
 			out_unknown,
 			constant.one,
-			unary.len(out_unknown :: any),
-			binary.add(unary.len(save_unknown :: any), constant.one),
+			unary.len(out_unknown),
+			binary.add(unary.len(save_unknown), constant.one),
 			save_unknown
 		)
 	)

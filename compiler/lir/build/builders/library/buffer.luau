@@ -21,7 +21,7 @@ type Allocate = types.CtrlAllocate<number>
 local READ_BUFFER = globals.incoming.buffer
 local WRITE_BUFFER = globals.outgoing.buffer
 
-local function index(library: string, method: string): Index<any>
+local function index(library: string, method: string)
 	local library_const = constant.from_value(library)
 	local method_const = constant.from_value(method)
 	return projection.index(library_const, method_const)

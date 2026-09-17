@@ -220,7 +220,7 @@ builders.array = table.freeze({
 		local register = block:store(library.table.create(len))
 
 		block:for_numeric(len, function(block, index)
-			read_ty(props, block, array.of, projection.field(register :: any, index))
+			read_ty(props, block, array.of, projection.field(register, index))
 		end)
 
 		if into then
@@ -230,8 +230,8 @@ builders.array = table.freeze({
 		return register
 	end,
 	write = function(props: WriteProps, block: Builder, array: ty.Array, value: Readable<{ any }>): ()
-		length.write(props, block, array, unary.len(value :: any))
-		block:for_generic(value :: any, function(block, _, value)
+		length.write(props, block, array, unary.len(value))
+		block:for_generic(value, function(block, _, value)
 			write_ty(props, block, array.of, value)
 		end)
 	end,
@@ -244,7 +244,7 @@ builders.struct = table.freeze({
 		if templates[identity] == nil then
 			local template_fields = {}
 			for _, field in struct.fields do
-				template_fields[constant.from_value(field.name)] = cast.static(constant.null, "any") :: any
+				template_fields[constant.from_value(field.name)] = cast.static(constant.null, "any")
 			end
 			templates[identity] = structure.struct(template_fields)
 		end
@@ -268,7 +268,7 @@ builders.struct = table.freeze({
 	write = function(props: WriteProps, block: Builder, struct: ty.Struct, value: Readable<any>): ()
 		for _, field in struct.fields do
 			local name = field.name
-			local struct_index = projection.field(value :: Writeable<any>, constant.from_value(name))
+			local struct_index = projection.field(value, constant.from_value(name))
 			local field_register = block:store(struct_index)
 			write_ty(props, block, field.value, field_register)
 		end
@@ -313,7 +313,7 @@ builders.discriminated_union = table.freeze({
 
 		-- account for serdesing from 0
 		local format = conversion.to_min_numeral(variants_count - 1)
-		local tag_value = block:store(projection.field(value :: any, constant.from_value(enum.tag)))
+		local tag_value = block:store(projection.field(value, constant.from_value(enum.tag)))
 
 		block:if_chain(variants_count + 1, function(index)
 			if index > variants_count then
@@ -329,7 +329,7 @@ builders.discriminated_union = table.freeze({
 			local variant_index = constant.from_value(index - 1)
 
 			local key = variant.key
-			local is_variant = condition.equals(tag_value, constant.from_ty(key :: any))
+			local is_variant = condition.equals(tag_value, constant.from_ty(key))
 
 			return is_variant,
 				function(block: Builder)
@@ -533,12 +533,12 @@ do
 				elseif component.kind == "instance" and component.class then
 					local class = constant.from_value(component.class.value)
 					local type_condition = condition.equals(value_typeof, component_type)
-					local class_condition = condition.equals(library.Instance.is_a(value :: any, class), constant.truth)
+					local class_condition = condition.equals(library.Instance.is_a(value, class), constant.truth)
 					component_condition = condition.aand(type_condition, class_condition)
 				elseif component.kind == "roblox_enum" and component.type then
 					local enum_type =
 						projection.index(constant.from_value("Enum"), constant.from_value(component.type.value))
-					local real_enum_type = projection.index(value :: any, constant.from_value("EnumType"))
+					local real_enum_type = projection.index(value, constant.from_value("EnumType"))
 
 					local type_condition = condition.equals(value_typeof, component_type)
 					local enum_type_condition = condition.equals(real_enum_type, enum_type)
@@ -548,7 +548,7 @@ do
 					variants_index += 1
 
 					local variant = variants[variants_index]
-					local tag_index = projection.field(value :: any, constant.from_value(component.tag))
+					local tag_index = projection.field(value, constant.from_value(component.tag))
 
 					if variants_index < #variants then
 						components_index -= 1
@@ -558,7 +558,7 @@ do
 
 					ty_to_write = variant.value
 
-					local tag_condition = condition.equals(tag_index, constant.from_ty(variant.key :: any))
+					local tag_condition = condition.equals(tag_index, constant.from_ty(variant.key))
 					local type_condition = condition.equals(value_typeof, constant.from_value("table"))
 					component_condition = condition.aand(type_condition, tag_condition)
 				elseif
