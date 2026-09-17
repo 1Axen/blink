@@ -52,7 +52,7 @@ end
 local function gen_constant_with_qoutes(ctx: Context, constant: lir.Constant)
 	local builder = ctx.builder
 	if type(constant.value) == "string" then
-		builder:append(`'{constant.value}'`)
+		builder:append(`\`{constant.value}\``)
 		return
 	end
 
