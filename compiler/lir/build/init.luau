@@ -258,10 +258,40 @@ local function build_type(ctx: Context, decl: hir.Type): TypeExport?
 	}
 end
 
+const function clear_event_queue(
+	block: Builder,
+	size_field: Readable<any>,
+	row_field: Readable<any>,
+	n_columns: number,
+	columns: Readable<any>
+)
+	block:remark(`CLEAR QUEUE n={n_columns}`)
+	block:store(constant.zero, row_field)
+	block:store(constant.zero, size_field)
+	for index = 1, n_columns do
+		const column = projection.field(columns, constant.from_value(index))
+		block:call(library.table.clear(column))
+	end
+end
+
+const function call_listener(
+	block: Builder,
+	call_type: index<hir.Event, "call">,
+	listener: types.Writeable<any>,
+	values: { read Readable<any> }
+)
+	if call_type == "SingleSync" or call_type == "ManySync" then
+		block:call(projection.call(listener, values))
+	else
+		block:call(library.task.spawn(listener, values))
+	end
+end
+
 local function build_event_on(
 	event: hir.Event,
-	event_connections: types.ProjField<any>,
-	data_parameters: { types.Parameter }
+	event_connections: Readable<any>,
+	data_parameters: { types.Parameter },
+	event_queue: Readable<any>
 )
 	local event_call = event.call
 	local is_single = (event_call == "SingleSync" or event_call == "SingleAsync")
@@ -274,6 +304,28 @@ local function build_event_on(
 			if not is_single then
 				listener = block:store(listener)
 			end
+
+			const queue = block:store(event_queue)
+			const size_field = projection.index(queue, constant.from_value("size"))
+			const queue_size = block:store(size_field)
+			block:if_single(condition.greater_than(queue_size, constant.zero), function(block: Builder)
+				local columns = block:store(projection.index(queue, constant.from_value("columns")))
+				const n_columns = (if event.data then #event.data else 0) + 1 -- player
+
+				block:for_numeric(queue_size, function(block: Builder, row)
+					local values = table.create<<any>>(n_columns)
+					for index = 1, n_columns do
+						local column = projection.field(columns, constant.from_value(index))
+						local value = projection.field(column, row)
+						table.insert(values, value)
+					end
+
+					call_listener(block, event_call, listener, values)
+				end)
+
+				const row_field = projection.index(queue, constant.from_value("row"))
+				clear_event_queue(block, size_field, row_field, n_columns, columns)
+			end)
 
 			if is_single then
 				block:if_single(condition.not_equals(event_connections, constant.null), function(block)
@@ -310,40 +362,33 @@ local function build_event_on(
 end
 
 local function build_event_iter(event_queue: types.ProjField<any>, data_returns: { types.Return })
-	local args_count = #data_returns
 	local iter_returns = table.clone(data_returns)
 	table.insert(iter_returns, 1, INDEX_RETURN)
 
 	return fn.anonymous({}, { fn.rreturn(hint.funct({}, iter_returns)) }, function(block)
 		local queue = block:store(event_queue)
-		local row_index = projection.index(queue, constant.from_value("row"))
-		local size_index = projection.index(queue, constant.from_value("size"))
+		local row_field = projection.index(queue, constant.from_value("row"))
+		local size_field = projection.index(queue, constant.from_value("size"))
 
-		local row = block:store<<number>>(row_index)
-		local size = block:store(size_index)
+		local row = block:store<<number>>(row_field)
+		local size = block:store(size_field)
 		local columns = block:store(projection.index(queue, constant.from_value("columns")))
+		const n_columns = #data_returns
 
 		local inner_iter = fn.anonymous({}, iter_returns, function(block)
 			block:capture({ size, row, columns })
 			block:store(binary.add(row, constant.one), row)
 
 			block:if_single(condition.greater_than(row, size), function(block)
-				block:store(constant.zero, size_index)
-				block:store(constant.zero, row_index)
-
-				for index = 1, args_count do
-					local column = projection.field(columns, constant.from_value(index))
-					block:call(library.table.clear(column))
-				end
-
+				clear_event_queue(block, size_field, row_field, n_columns, columns)
 				block:rreturn({ cast.static(constant.null, "any") })
 			end)
 
 			-- store incremented cursor
-			block:store(row, row_index)
+			block:store(row, row_field)
 
 			local values = { row }
-			for index = 1, args_count do
+			for index = 1, n_columns do
 				local column = projection.field(columns, constant.from_value(index))
 				local value = projection.field(column, row)
 				table.insert(values, value)
@@ -565,9 +610,9 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 		end
 	end
 
-	local call = decl.call
+	const call = decl.call
+	const event_queue = projection.field(QUEUES, constant.from_value(event_id))
 	if call == "Polling" then
-		local event_queue = projection.field(QUEUES, constant.from_value(event_id))
 		if is_from_server then
 			iter_client = build_event_iter(event_queue, data_rets)
 		end
@@ -577,10 +622,10 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 	else
 		local event_connections = projection.field(CONNECTIONS, constant.from_value(event_id))
 		if is_from_server then
-			on_client = build_event_on(decl, event_connections, data_params)
+			on_client = build_event_on(decl, event_connections, data_params, event_queue)
 		end
 		if is_from_client then
-			on_server = build_event_on(decl, event_connections, data_params_player)
+			on_server = build_event_on(decl, event_connections, data_params_player, event_queue)
 		end
 	end
 
@@ -627,12 +672,7 @@ local function build_event_receive(ctx: Context, side: Side, block: fn.Builder, 
 	if call == "SingleSync" or call == "SingleAsync" then
 		local connection = projection.field(CONNECTIONS, constant.from_value(event_id))
 		block:if_single(condition.not_equals(connection, constant.null), function(block)
-			if call == "SingleSync" then
-				block:call(projection.call(connection, values))
-			else
-				block:call(library.task.spawn(connection, values))
-			end
-
+			call_listener(block, call, connection, values)
 			block:ccontinue()
 		end)
 	elseif call == "ManySync" or call == "ManyAsync" then
@@ -640,11 +680,7 @@ local function build_event_receive(ctx: Context, side: Side, block: fn.Builder, 
 		local is_connected = condition.greater_than(unary.len(connections), constant.zero)
 		block:if_single(is_connected, function(block)
 			block:for_generic(connections, function(block, _, connection)
-				if call == "ManySync" then
-					block:call(projection.call(connection, values))
-				else
-					block:call(library.task.spawn(connection, values))
-				end
+				call_listener(block, call, connection, values)
 			end)
 
 			block:ccontinue()

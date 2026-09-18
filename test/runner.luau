@@ -35,10 +35,11 @@ local tests = tiniest.collect_tests(function()
 	describe_from_file("validation")
 
 	describe("issues", function()
-		require("./issues/92.test")(tiniest)
-		require("./issues/94.test")(tiniest)
 		require("./issues/90.test")(tiniest)
 		require("./issues/91.test")(tiniest)
+		require("./issues/92.test")(tiniest)
+		require("./issues/93.test")(tiniest)
+		require("./issues/94.test")(tiniest)
 	end)
 end)
 
