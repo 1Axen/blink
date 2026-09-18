@@ -315,18 +315,17 @@ local function build_event_iter(event_queue: types.ProjField<any>, data_returns:
 	table.insert(iter_returns, 1, INDEX_RETURN)
 
 	return fn.anonymous({}, { fn.rreturn(hint.funct({}, iter_returns)) }, function(block)
-		local queue_local = block:store(event_queue)
-		local row_index = projection.index(queue_local, constant.from_value("row"))
-		local size_index = projection.index(queue_local, constant.from_value("size"))
+		local queue = block:store(event_queue)
+		local row_index = projection.index(queue, constant.from_value("row"))
+		local size_index = projection.index(queue, constant.from_value("size"))
 
 		local row = block:store<<number>>(row_index)
 		local size = block:store(size_index)
-		local columns = block:store(projection.index(queue_local, constant.from_value("columns")))
+		local columns = block:store(projection.index(queue, constant.from_value("columns")))
 
 		local inner_iter = fn.anonymous({}, iter_returns, function(block)
 			block:capture({ size, row, columns })
 			block:store(binary.add(row, constant.one), row)
-			block:store(row, row_index)
 
 			block:if_single(condition.greater_than(row, size), function(block)
 				block:store(constant.zero, size_index)
@@ -339,6 +338,9 @@ local function build_event_iter(event_queue: types.ProjField<any>, data_returns:
 
 				block:rreturn({ cast.static(constant.null, "any") })
 			end)
+
+			-- store incremented cursor
+			block:store(row, row_index)
 
 			local values = { row }
 			for index = 1, args_count do
