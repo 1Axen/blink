@@ -38,9 +38,14 @@ local function clone<T>(target: Readable<{ T }>)
 	return projection.call(constant.from_value("table.clone"), { target })
 end
 
+const function remove<T>(target: Readable<{ T }>, index: Readable<number>?): Call<T?>
+	return projection.call(constant.from_value("table.remove"), { target, index :: Readable<any> })
+end
+
 return table.freeze({
 	create = create,
 	insert = insert,
+	remove = remove,
 	find = find,
 	move = move,
 	clear = clear,

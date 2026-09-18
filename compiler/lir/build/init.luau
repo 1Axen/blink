@@ -300,7 +300,7 @@ local function build_event_on(
 
 				local index = block:store(library.table.find(event_connections, listener))
 				block:if_single(condition.not_equals(index, constant.null), function()
-					block:store(constant.null, projection.field(event_connections, index))
+					block:call(library.table.remove(event_connections, index :: Readable<number>))
 				end)
 			end)
 
