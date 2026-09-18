@@ -37,9 +37,12 @@ const FROM_VALUE_METHOD = constant.from_value("FromValue")
 local NAME_FORMAT = ty.string()
 local VALUE_FORMAT = ty.numeral(nil, "16", "u")
 
-local function to_enum_type(ctx: Context, ty: ty.Enum): types.Constant<string>?
-	local enum_type = ty.type
-	return if enum_type then constant.from_value(enum_type.value) else nil
+local function to_enum_type(ctx: Context, ty: ty.Enum): Readable<Enum>?
+	local type_name = ty.type
+	if type_name == nil then
+		return nil
+	end
+	return projection.field(ENUM_GLOBAL, constant.from_ty(type_name))
 end
 
 local function validate(props: WriteProps, block: Builder, ty: ty.Enum, value: Readable<EnumItem>)
@@ -57,7 +60,8 @@ local function validate(props: WriteProps, block: Builder, ty: ty.Enum, value: R
 	local enum_type = projection.index(value, TYPE_FIELD) :: types.ProjIndex<Enum>
 	block:if_single(condition.not_equals(enum_type, expected_enum_type), function(block)
 		local message = library.string.format(
-			`Expected an enum of type "{expected_enum_type.value}", got one of type "%*" instead`,
+			`Expected an enum of type "%*", got one of type "%*" instead`,
+			expected_enum_type,
 			enum_type
 		)
 		block:call(library.error_rvalue(message))
