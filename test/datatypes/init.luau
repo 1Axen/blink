@@ -13,6 +13,7 @@ local single_primitives = {
 	vector = require("@self/vector"),
 	integer = require("@self/integer"),
 	boolean = require("@self/boolean"),
+	Enum = require("@self/enum"),
 	Color3 = require("@self/color3"),
 	CFrame = require("@self/cframe"),
 	DateTime = require("@self/date_time"),

@@ -3,6 +3,7 @@ local cframe_mock = require("./cframe_mock")
 local color3_mock = require("./color3_mock")
 local data_model_mock = require("./data_model_mock")
 local date_time_mock = require("./date_time_mock")
+local enum_mock = require("./enum_mock")
 local task = require("@std/task")
 local typeof_mock = require("./typeof_mock")
 
@@ -32,6 +33,7 @@ return function(data_model: DataModelMock?): Environment
 		tostring = tostring,
 		coroutine = coroutine,
 
+		Enum = enum_mock.ENUMS,
 		typeof = typeof_mock,
 		Color3 = color3_mock,
 		CFrame = cframe_mock,

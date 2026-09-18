@@ -26,6 +26,7 @@ local TEMP_PATH = path.from_string("./temp")
 local PRIMITIVES = datatypes.primitives
 local UNHASHABLE_DATATYPES: { [Datatype]: true? } = {
 	[PRIMITIVES.buffer] = true,
+	[PRIMITIVES.Enum] = true,
 	[PRIMITIVES.CFrame] = true,
 	[PRIMITIVES.Color3] = true,
 	[PRIMITIVES.DateTime] = true,

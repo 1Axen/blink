@@ -3,7 +3,10 @@ local cframe_mock = require("./cframe_mock")
 local color3_mock = require("./color3_mock")
 local data_model_mock = require("./data_model_mock")
 local date_time_mock = require("./date_time_mock")
+local enum_mock = require("./enum_mock")
 
+const ENUM_METATABLE = enum_mock.ENUM_METATABLE
+const ENUM_ITEM_METATABLE = enum_mock.ENUM_ITEM_METATABLE
 local INSTANCE_METATABLE = data_model_mock.INSTANCE_METATABLE
 
 local function get_super_metatable(value: any): any
@@ -31,6 +34,10 @@ local function typeof_mock<T>(value: T): string
 		return "CFrame"
 	elseif metatable == INSTANCE_METATABLE then
 		return "Instance"
+	elseif metatable == ENUM_METATABLE then
+		return "Enum"
+	elseif metatable == ENUM_ITEM_METATABLE then
+		return "EnumItem"
 	end
 
 	return typeof(value)
