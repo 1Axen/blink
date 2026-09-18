@@ -37,7 +37,7 @@ local function luau_typeof<T>(of: Readable<T>): Call<string>
 end
 
 local function luau_tostring<T>(value: Readable<T>): Call<string>
-	return projection.call(constant.from_value("typeof"), { value })
+	return projection.call(constant.from_value("tostring"), { value })
 end
 
 return table.freeze({
