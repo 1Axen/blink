@@ -69,13 +69,16 @@ local function validate(props: WriteProps, block: Builder, ty: ty.Enum, value: R
 end
 
 local function build_read(props: ReadProps, block: Builder, ty: ty.Enum, into: Writeable<any>?): Register<EnumItem>
-	-- Enum[name]
-	local name = ty_string.read(props, block, NAME_FORMAT, attributes)
-	local enum = projection.field(ENUM_GLOBAL, name) :: types.ProjIndex<Enum>
+	local enum_type = to_enum_type(props.ctx, ty) :: Readable<Enum>
+	if enum_type == nil then
+		-- Enum[type_name]
+		const name = ty_string.read(props, block, NAME_FORMAT, attributes)
+		enum_type = projection.field(ENUM_GLOBAL, name) :: types.ProjIndex<Enum>
+	end
 
-	-- enum:FromValue(value)
-	local value = ty_numeral.read(props, block, VALUE_FORMAT, attributes)
-	local enum_item = projection.namecall(enum, FROM_VALUE_METHOD, { value }) :: types.ProjNamecall<EnumItem>
+	-- enum_type:FromValue(value)
+	const value = ty_numeral.read(props, block, VALUE_FORMAT, attributes)
+	const enum_item = projection.namecall(enum_type, FROM_VALUE_METHOD, { value }) :: types.ProjNamecall<EnumItem>
 
 	return block:store(enum_item, into)
 end
@@ -86,9 +89,11 @@ local function build_write(props: WriteProps, block: Builder, ty: ty.Enum, value
 	end
 
 	-- tostring(enum.EnumType)
-	local enum_type = projection.index(value, TYPE_FIELD) :: types.ProjIndex<Enum>
-	local name = block:store(library.tostring(enum_type))
-	ty_string.write(props, block, NAME_FORMAT, name)
+	if to_enum_type(props.ctx, ty) == nil then
+		local enum_type = projection.index(value, TYPE_FIELD) :: types.ProjIndex<Enum>
+		local name = block:store(library.tostring(enum_type))
+		ty_string.write(props, block, NAME_FORMAT, name)
+	end
 
 	-- enum.Value
 	local enum_value = block:store(projection.index(value, VALUE_FIELD) :: types.ProjIndex<number>)
