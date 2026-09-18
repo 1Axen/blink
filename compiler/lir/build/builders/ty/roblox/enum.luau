@@ -78,7 +78,15 @@ local function build_read(props: ReadProps, block: Builder, ty: ty.Enum, into: W
 
 	-- enum_type:FromValue(value)
 	const value = ty_numeral.read(props, block, VALUE_FORMAT, attributes)
-	const enum_item = projection.namecall(enum_type, FROM_VALUE_METHOD, { value }) :: types.ProjNamecall<EnumItem>
+	const enum_item = block:store(projection.namecall(enum_type, FROM_VALUE_METHOD, { value }) :: Readable<EnumItem>)
+	block:if_single(condition.equals(enum_item, constant.null), function(block: fn.Builder)
+		const message = library.string.format("Enum.%* has no enum item with value: %i", enum_type, value)
+		block:call(library.error_rvalue(message))
+	end)
+
+	if not into then
+		return enum_item
+	end
 
 	return block:store(enum_item, into)
 end
