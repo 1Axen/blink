@@ -5,6 +5,7 @@ option server_output = "./out/roblox_server"
 type mesh = Instance<"MeshPart">
 type server_part = StreamedInstance<"Part">
 
+type enum = Enum
 type alpha = Enum<"AlphaMode">
 type location = CFrame<f32, f32>
 
