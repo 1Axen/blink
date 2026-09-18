@@ -49,7 +49,7 @@ function enum.__tostring(self: EnumMock)
 	return self.__name
 end
 
-const function create_enum<T>(name: string, items: { T }): EnumMock<T>
+const function create_enum<T>(name: string, items: { read T | "" }): EnumMock<T>
 	const enum_items = table.create<<EnumItemMock>>(#items)
 	const self = setmetatable({
 		__name = name,
@@ -66,13 +66,9 @@ const function create_enum<T>(name: string, items: { T }): EnumMock<T>
 	return self
 end
 
-const function stringletons<T>(...: T | ""): { T }
-	return { ... }
-end
-
 const ENUMS = table.freeze({
-	Axis = create_enum("Axis", stringletons("X", "Y", "Z")),
-	AlphaMode = create_enum("AlphaMode", stringletons("Overlay", "Transparency", "TintMask", "Opaque")),
+	Axis = create_enum("Axis", { "X", "Y", "Z" }),
+	AlphaMode = create_enum("AlphaMode", { "Overlay", "Transparency", "TintMask", "Opaque" }),
 })
 
 return table.freeze({
