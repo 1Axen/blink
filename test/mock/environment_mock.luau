@@ -28,6 +28,8 @@ return function(data_model: DataModelMock?): Environment
 		buffer = buffer,
 		vector = vector,
 		string = string,
+		tonumber = tonumber,
+		tostring = tostring,
 		coroutine = coroutine,
 
 		typeof = typeof_mock,
