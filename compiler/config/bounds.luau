@@ -1,8 +1,5 @@
 local range = require("@util/range")
 
-local F64 = 2 ^ 53
-local F32 = 2 ^ 24
-
 return table.freeze({
 	map = range.sealed_from_usize(32),
 	array = range.sealed_from_usize(32),
@@ -19,11 +16,11 @@ return table.freeze({
 	i32 = range.sealed_from_size(32),
 	i48 = range.sealed_from_size(48),
 
-	f32 = range.sealed(-F32, F32),
-	f64 = range.sealed(-F64, F64),
+	f32 = range.sealed(-math.huge, math.huge),
+	f64 = range.sealed(-math.huge, math.huge),
 
 	string = range.sealed_from_usize(32),
 	-- https://github.com/luau-lang/luau/blob/d0222bb55465e05f03d4e4a84f7eb53d49c0c3f4/VM/src/lbuffer.h#L7
 	buffer = range.sealed_from_usize(30),
-	vector = range.sealed(-F64, F64),
+	vector = range.sealed(0, math.huge),
 })
