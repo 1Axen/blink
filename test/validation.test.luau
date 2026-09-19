@@ -59,6 +59,12 @@ return function(tiniest: Tiniest)
 	local test = tiniest.test
 	local expect = tiniest.expect
 
+	const function write_invalid<T>(type: TypeAPI, value: T)
+		expect(function()
+			type.write(value)
+		end).fails()
+	end
+
 	const function write_read_checked<T>(type: TypeAPI, value: T)
 		local serialized: buffer
 		expect(function()
@@ -89,9 +95,29 @@ return function(tiniest: Tiniest)
 
 		test("constrained enum accepts only same enum types", function()
 			write_read_checked(exports.axis_enum, ENUMS.Axis.X)
-			expect(function()
-				exports.axis_enum.write(ENUMS.AlphaMode.Opaque)
-			end).fails()
+			write_invalid(exports.axis_enum, ENUMS.AlphaMode.Opaque)
+		end)
+	end
+
+	do
+		--stylua: ignore
+		const exports = setup_test("vector", [[
+			@export
+			type unit_vector = vector(1)
+			@export
+			type bounded_vector = vector(0..1)
+		]])
+
+		test("exact vector", function()
+			write_read_checked(exports.unit_vector, vector.create(1, 0, 0))
+			write_invalid(exports.unit_vector, vector.zero)
+			write_invalid(exports.unit_vector, vector.one)
+		end)
+
+		test("bounded vector", function()
+			write_read_checked(exports.bounded_vector, vector.create(1, 0, 0))
+			write_read_checked(exports.bounded_vector, vector.zero)
+			write_invalid(exports.bounded_vector, vector.one)
 		end)
 	end
 end

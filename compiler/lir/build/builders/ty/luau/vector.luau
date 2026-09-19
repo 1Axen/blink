@@ -65,9 +65,8 @@ local function validate(block: Builder, vec: ty.Vector, value: Readable<vector>)
 
 	local magnitude = block:store(library.vector.magnitude(value))
 	if bounds.min == bounds.max then
-		local exact_length = constant.from_value(bounds.min)
-		local is_exact_length = condition.equals(magnitude, exact_length)
-		block:if_single(is_exact_length, function(block)
+		local expected = constant.from_value(bounds.min)
+		block:if_single(condition.not_equals(magnitude, expected), function(block)
 			local message =
 				library.string.format(`Expected vector length to be exactly {bounds.min}, length is %f`, magnitude)
 			block:call(library.error_rvalue(message))
