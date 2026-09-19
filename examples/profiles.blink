@@ -2,12 +2,15 @@ option types_output = "./out/attributes_types"
 option server_output = "./out/attributes_server"
 option client_output = "./out/attributes_client"
 
-@profile("test")
+-- manually step replication in a test harness
+@profile("test") 
 option manual_replication = true
 
-@profile("dev")
+-- restrict entire features to dev builds
+@profile("dev") 
 from "./libs/debugger" import * as debugger
 
+-- restrict individual items
 @profile("dev")
 type command = union "name" {
 	give {
