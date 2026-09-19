@@ -75,6 +75,10 @@ local function validate(block: Builder, vec: ty.Vector, value: Readable<vector>)
 		return
 	end
 
+	block:if_single(condition.not_equals(magnitude, magnitude), function(block: Builder)
+		block:call(library.error("Expected a finite vector length, got NaN"))
+	end)
+
 	local lower = condition.less_than(magnitude, constant.from_value(bounds.min))
 	local upper = condition.greater_than(magnitude, constant.from_value(bounds.max))
 
