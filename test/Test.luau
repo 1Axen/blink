@@ -1088,6 +1088,10 @@ RunClosure("Ranges should be enforced", function()
 	end
 
 	do
+		local NanSuccess = pcall(function()
+			Client.DecimalRange.Write(math.nan)
+		end)
+
 		local UpperSuccess = pcall(function()
 			Client.DecimalRange.Write(10.6)
 		end)
@@ -1096,7 +1100,7 @@ RunClosure("Ranges should be enforced", function()
 			Client.DecimalRange.Write(-5.6)
 		end)
 
-		if UpperSuccess or LowerSuccess then
+		if UpperSuccess or LowerSuccess or NanSuccess then
 			ErrorPrint("Expected decimal range to be enforced.")
 		end
 	end

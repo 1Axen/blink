@@ -41,10 +41,18 @@ local DOUBLE = 8
 
 local Types = {}
 local Asserts = {
-	number = function(Variable: string, Min: number, Max: number): AssertPrefab
+	float = function(Variable: string, Min: number, Max: number): AssertPrefab
 		return {
-			Lower = `if {Variable} < {Min} then error(\`Expected "{Variable}" to be larger than {Min}, got \{{Variable}} instead.\`) end`,
-			Upper = `if {Variable} > {Max} then error(\`Expected "{Variable}" to be smaller than {Max}, got \{{Variable}} instead.\`) end`,
+			Lower = `if not ({Variable} >= {Min}) then error(\`Expected "{Variable}" to be larger than or equal to {Min}, got \{{Variable}} instead.\`) end`,
+			Upper = `if not ({Variable} <= {Max}) then error(\`Expected "{Variable}" to be smaller than or equal to {Max}, got \{{Variable}} instead.\`) end`,
+			Exact = `if {Variable} ~= {Max} then error(\`Expected "{Variable}" to be equal to {Max}, got \{{Variable}\} instead.\`) end`,
+		}
+	end,
+
+	integer = function(Variable: string, Min: number, Max: number): AssertPrefab
+		return {
+			Lower = `if {Variable} < {Min} then error(\`Expected "{Variable}" to be larger than or equal to {Min}, got \{{Variable}} instead.\`) end`,
+			Upper = `if {Variable} > {Max} then error(\`Expected "{Variable}" to be smaller than or equal to {Max}, got \{{Variable}} instead.\`) end`,
 			Exact = `if {Variable} ~= {Max} then error(\`Expected "{Variable}" to be equal to {Max}, got \{{Variable}\} instead.\`) end`,
 		}
 	end,
@@ -59,8 +67,8 @@ local Asserts = {
 
 	vector = function(Variable: string, Min: number, Max: number): AssertPrefab
 		return {
-			Lower = `if {Variable}.Magnitude < {Min} then error(\`Expected magnitude of "{Variable}" to be larger than or equal to {Min}, got \{{Variable}.Magnitude} instead.\`) end`,
-			Upper = `if {Variable}.Magnitude > {Max} then error(\`Expected magnitude of "{Variable}" to be smaller than or equal to {Max}, got \{{Variable}.Magnitude} instead.\`) end`,
+			Lower = `if not ({Variable}.Magnitude >= {Min}) then error(\`Expected magnitude of "{Variable}" to be larger than or equal to {Min}, got \{{Variable}.Magnitude} instead.\`) end`,
+			Upper = `if not ({Variable}.Magnitude <= {Max}) then error(\`Expected magnitude of "{Variable}" to be smaller than or equal to {Max}, got \{{Variable}.Magnitude} instead.\`) end`,
 			Exact = `if {Variable}.Magnitude ~= {Max} then error(\`Expected magnitude of "{Variable}" to equal to {Max}, got \{{Variable}.Magnitude} instead.\`) end`,
 		}
 	end,
@@ -177,7 +185,11 @@ local function GeneratePrimitivePrefab(Type: string, Prefab: TypePrefab, AssertG
 	end
 end
 
-local function GenerateNumberGenerator(Type: string, Size: number): (TypePrefab, { Type: string, Generate: Generate })
+local function GenerateNumberGenerator(
+	Type: string,
+	Size: number,
+	Assert: AssertGenerator
+): (TypePrefab, { Type: string, Generate: Generate })
 	local Prefab = {
 		Read = function(Variable: string, Block: Block)
 			Block:Line(`{Block:Declare(Variable)} = buffer.read{Type}({RECIEVE_BUFFER}, {Block:Read(Size)})`)
@@ -189,23 +201,23 @@ local function GenerateNumberGenerator(Type: string, Size: number): (TypePrefab,
 
 	local Primitive = {
 		Type = "number",
-		Generate = GeneratePrimitivePrefab("number", Prefab, Asserts.number),
+		Generate = GeneratePrimitivePrefab("number", Prefab, Assert),
 	}
 
 	return Prefab, Primitive
 end
 
 --> Numbers
-Types.u8, Primitives.u8 = GenerateNumberGenerator("u8", BYTE)
-Types.u16, Primitives.u16 = GenerateNumberGenerator("u16", SHORT)
-Types.u32, Primitives.u32 = GenerateNumberGenerator("u32", INTEGER)
+Types.u8, Primitives.u8 = GenerateNumberGenerator("u8", BYTE, Asserts.integer)
+Types.u16, Primitives.u16 = GenerateNumberGenerator("u16", SHORT, Asserts.integer)
+Types.u32, Primitives.u32 = GenerateNumberGenerator("u32", INTEGER, Asserts.integer)
 
-Types.i8, Primitives.i8 = GenerateNumberGenerator("i8", BYTE)
-Types.i16, Primitives.i16 = GenerateNumberGenerator("i16", SHORT)
-Types.i32, Primitives.i32 = GenerateNumberGenerator("i32", INTEGER)
+Types.i8, Primitives.i8 = GenerateNumberGenerator("i8", BYTE, Asserts.integer)
+Types.i16, Primitives.i16 = GenerateNumberGenerator("i16", SHORT, Asserts.integer)
+Types.i32, Primitives.i32 = GenerateNumberGenerator("i32", INTEGER, Asserts.integer)
 
-Types.f32, Primitives.f32 = GenerateNumberGenerator("f32", FLOAT)
-Types.f64, Primitives.f64 = GenerateNumberGenerator("f64", DOUBLE)
+Types.f32, Primitives.f32 = GenerateNumberGenerator("f32", FLOAT, Asserts.float)
+Types.f64, Primitives.f64 = GenerateNumberGenerator("f64", DOUBLE, Asserts.float)
 
 Types.f16 = {
 	Read = function(Variable: string, Block: Block)
@@ -269,7 +281,7 @@ Types.f16 = {
 
 Primitives.f16 = {
 	Type = "number",
-	Generate = GeneratePrimitivePrefab("number", Types.f16, Asserts.number),
+	Generate = GeneratePrimitivePrefab("number", Types.f16, Asserts.float),
 }
 
 --> Boolean
