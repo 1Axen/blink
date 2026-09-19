@@ -1,4 +1,5 @@
 local ast = require("@ast")
+local canonicalize_attributes = require("./canonicalize_attributes")
 local compilation = require("@config/compilation")
 local options = require("@config/options")
 local report = require("@compiler/report")
@@ -36,15 +37,22 @@ local function record_option(file_options: FileOptions, seen_options: SeenOption
 	return nil
 end
 
-local function populate_options(hir: Hir, files: compilation.Files)
+local function populate_options(hir: Hir, files: compilation.Files, profile: compilation.Profile)
 	for file_id, file_ast in files.ast_map do
 		local file_options: FileOptions = {}
 		local seen_options: SeenOptions = {}
 
 		for _, stat in file_ast.body.statements do
-			if stat.kind == "option" then
-				record_option(file_options, seen_options, stat)
+			if stat.kind ~= "option" then
+				continue
 			end
+
+			const attributes = canonicalize_attributes(stat.attributes)
+			if attributes.profile and attributes.profile ~= profile then
+				continue
+			end
+
+			record_option(file_options, seen_options, stat)
 		end
 
 		hir.options[file_id] = file_options

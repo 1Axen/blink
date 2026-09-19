@@ -202,18 +202,20 @@ export type Attribute = {
 export type StatType = {
 	read id: NodeId,
 	read span: vector,
+	read attributes: { Attribute },
 	read kind: "type",
+
 	read name: Identifier,
 	read value: Expression,
 	read generics: GenericsDef?,
-	read attributes: { Attribute },
 }
 
 export type StatEvent = {
 	read id: NodeId,
 	read span: vector,
-	read kind: "event",
 	read attributes: { Attribute },
+	read kind: "event",
+
 	read name: Identifier,
 	read from: Identifier,
 	read type: Identifier,
@@ -221,10 +223,23 @@ export type StatEvent = {
 	read data: ExprPack?,
 }
 
+export type StatFunction = {
+	read id: NodeId,
+	read span: vector,
+	read attributes: { Attribute },
+	read kind: "function",
+
+	read name: Identifier,
+	read data: ExprPack?,
+	read ret: ExprPack?,
+}
+
 export type StatScope = {
 	read id: NodeId,
 	read span: vector,
+	read attributes: { Attribute },
 	read kind: "scope",
+
 	read name: Identifier,
 	read body: Block,
 }
@@ -235,9 +250,10 @@ export type StatScope = {
 export type StatImport = {
 	read id: NodeId,
 	read span: vector,
+	read attributes: { Attribute },
 	read kind: "import",
-	read path: ExprString,
 
+	read path: ExprString,
 	read extra: {
 		read kind: "all",
 		--- as name
@@ -253,19 +269,11 @@ export type StatImport = {
 export type StatOption = {
 	read id: NodeId,
 	read span: vector,
+	read attributes: { Attribute },
 	read kind: "option",
+
 	read name: Identifier,
 	read value: ExprLiteral,
-}
-
-export type StatFunction = {
-	read id: NodeId,
-	read span: vector,
-	read kind: "function",
-	read attributes: { Attribute },
-	read name: Identifier,
-	read data: ExprPack?,
-	read ret: ExprPack?,
 }
 
 --stylua: ignore

@@ -1,0 +1,11 @@
+event pause = {
+	from: Client,
+	type: Reliable,
+	call: SingleSync
+}
+
+event step_frame = {
+	from: Client,
+	type: Reliable,
+	call: SingleSync
+}

@@ -1,5 +1,6 @@
 local ast = require("@ast")
-local attributes = require("./attributes")
+local canonicalize_attributes = require("./canonicalize_attributes")
+local compilation = require("@config/compilation")
 local report = require("@compiler/report")
 local search_path = require("./search_path")
 local store_decl = require("./store_decl")
@@ -18,6 +19,11 @@ type Ast = ast.Ast
 type TyId<T = Ty> = ty.TyId<T>
 type DeclId = types.DeclId
 type ScopeId = types.ScopeId
+
+type Context = {
+	read decls: Decls,
+	read profile: compilation.Profile,
+}
 
 local function assert_identifier_one_of(ident: ast.Identifier, valid: { string }): ast.Identifier
 	local value = ident.value
@@ -48,7 +54,7 @@ local function decl_type(scope: Scope, stat: ast.StatType): types.Type
 		name = stat.name.value,
 		node = stat,
 		scope = scope,
-		attributes = attributes.from_nodes(stat.attributes),
+		attributes = canonicalize_attributes(stat.attributes),
 
 		ty_id = stat.id :: TyId,
 		generics = parameters,
@@ -68,11 +74,11 @@ local function decl_event(scope: Scope, stat: ast.StatEvent): types.Event
 	return {
 		id = stat.id :: DeclId,
 		kind = "event",
+		name = name,
 		node = stat,
 		scope = scope,
-		attributes = attributes.from_nodes(stat.attributes),
+		attributes = canonicalize_attributes(stat.attributes),
 
-		name = name,
 		from = from,
 		type = reliability,
 		call = call,
@@ -83,84 +89,97 @@ local function decl_funct(scope: Scope, stat: ast.StatFunction): types.Function
 	return {
 		id = stat.id :: DeclId,
 		kind = "function",
+		name = stat.name.value,
 		node = stat,
 		scope = scope,
-		attributes = attributes.from_nodes(stat.attributes),
-		name = stat.name.value,
+		attributes = canonicalize_attributes(stat.attributes),
 	}
 end
 
 local function decl_scope(scope: Scope, stat: ast.StatScope): types.Scope
 	return {
-		kind = "scope",
 		id = stat.body.id :: ScopeId,
-		name = stat.name.value,
+		kind = "scope",
 		node = stat,
+		name = stat.name.value,
 		scope = scope,
-		attributes = {},
+		attributes = canonicalize_attributes(stat.attributes),
+
 		values = {},
 		symbols = {},
 	}
 end
 
-local function traverse_block(file_decls: Decls, scope: Scope, block: ast.Block)
+local function traverse_block(ctx: Context, scope: Scope, block: ast.Block)
+	const decls = ctx.decls
 	for _, stat in block.statements do
-		local decl: Decl?
-		if stat.kind == "type" then
-			decl = decl_type(scope, stat)
-		elseif stat.kind == "event" then
-			decl = decl_event(scope, stat)
-		elseif stat.kind == "function" then
-			decl = decl_funct(scope, stat)
-		elseif stat.kind == "scope" then
-			decl = decl_scope(scope, stat)
-		end
+		--stylua: ignore
+		local decl: Decl? = if stat.kind == "type" then 
+				decl_type(scope, stat)
+			elseif stat.kind == "event" then 
+				decl_event(scope, stat)
+			elseif stat.kind == "function" then 
+				decl_funct(scope, stat)
+			elseif stat.kind == "scope" then 
+				decl_scope(scope, stat)
+			else 
+				nil
 
 		if decl == nil then
 			continue
 		end
 
+		const attributes = decl.attributes
+		if attributes.profile and attributes.profile ~= ctx.profile then
+			continue
+		end
+
 		do
 			local name = decl.name
-			local node: typeforge.Drop<index<Decl, "node">, ast.StatImport> = decl.node :: any
+			local node = decl.node :: typeforge.Drop<index<Decl, "node">, ast.StatImport>
 			local _, previous = search_path(scope, { name })
 			if previous then
 				report.shadow(name, node.name, previous)
 			end
 
-			store_decl(scope, file_decls, decl, node.name)
+			store_decl(scope, decls, decl, node.name)
 		end
 
 		if decl.kind == "scope" then
 			local node = decl.node :: ast.StatScope
-			traverse_block(file_decls, decl, node.body)
+			traverse_block(ctx, decl, node.body)
 		end
 	end
 end
 
-local function collect_decls(file_id: number, ast: Ast): Decls
+local function collect_decls(ast: Ast, profile: compilation.Profile): Decls
 	local scope_id = ast.body.id :: ScopeId
-	local root_scope: Scope = {
+	local scope: Scope = {
 		kind = "scope",
 		id = scope_id,
 		name = "",
 		node = ast :: any,
 		scope = nil,
-		attributes = {},
 		values = {},
 		symbols = {},
+		attributes = {},
 	}
 
-	local file_decls: Decls = {
+	local decls: Decls = {
 		types = {},
 		events = {},
 		functs = {},
-		scopes = { [scope_id] = root_scope },
+		scopes = { [scope_id] = scope },
 	}
 
-	traverse_block(file_decls, root_scope, ast.body)
+	const context: Context = {
+		scope = scope,
+		decls = decls,
+		profile = profile,
+	}
 
-	return file_decls
+	traverse_block(context, scope, ast.body)
+	return decls
 end
 
 return collect_decls

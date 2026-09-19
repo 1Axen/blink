@@ -1,0 +1,26 @@
+option types_output = "./out/attributes_types"
+option server_output = "./out/attributes_server"
+option client_output = "./out/attributes_client"
+
+@profile("test")
+option manual_replication = true
+
+@profile("dev")
+from "./libs/debugger" import * as debugger
+
+@profile("dev")
+type command = union "name" {
+	give {
+		item: u32,
+		amount: u8
+	},
+	clear {}
+}
+
+@profile("dev")
+event give_money = {
+	from: Client,
+	type: Reliable,
+	call: SingleSync,
+	data: u32
+}

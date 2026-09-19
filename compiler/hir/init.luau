@@ -22,8 +22,8 @@ export type DeclId = types.DeclId
 export type ScopeId = types.ScopeId
 export type Hir = types.Hir
 
-local function hir_from_files(files: compilation.Files): Hir
-	local hir = build.from_files(files)
+local function hir_from_files(files: compilation.Files, profile: compilation.Profile): Hir
+	local hir = build.from_files(files, profile)
 	instantiation.instantiate(hir)
 	dereferencing.dereference(hir)
 	flattening.flatten(hir)

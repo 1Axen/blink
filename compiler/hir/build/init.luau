@@ -542,15 +542,15 @@ local function build_tys(ctx: Context, decls: Decls)
 end
 
 --- Constructs a HIR from the provided files.
-local function from_files(files: compilation.Files): Hir
+local function from_files(files: compilation.Files, profile: compilation.Profile): Hir
 	local file_decls_map: { [number]: Decls } = {}
 	for _, file_id in files.sorted_ids do
 		local file_ast = files.ast_map[file_id]
-		local file_decls = collect_decls(file_id, file_ast)
+		local file_decls = collect_decls(file_ast, profile)
 		file_decls_map[file_id] = file_decls
 	end
 
-	populate_imports(files, file_decls_map)
+	populate_imports(files, file_decls_map, profile)
 
 	local entry_file = files.sorted_ids[#files.sorted_ids]
 	local entry_decls = file_decls_map[entry_file]
@@ -571,7 +571,7 @@ local function from_files(files: compilation.Files): Hir
 	}
 
 	-- record all file options
-	populate_options(hir, files)
+	populate_options(hir, files, profile)
 
 	for file_id, file_decls in file_decls_map do
 		local file_ast = files.ast_map[file_id]

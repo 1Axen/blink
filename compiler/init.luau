@@ -227,7 +227,7 @@ local function compile_from_path(entry_path: Path, compile_options: CompileOptio
 	local ast_elapsed = (os.clock() - ast_pin)
 
 	local hir_pin = os.clock()
-	local files_hir = hir.from_files(files)
+	local files_hir = hir.from_files(files, profile)
 	local hir_elapsed = (os.clock() - hir_pin)
 
 	local lir_pin = os.clock()
@@ -294,6 +294,7 @@ local function compile_contents(
 	read client: string,
 	read server: string,
 }
+	const profile = compile_options.profile
 	local mock_file = file.from_source("input.blink", contents)
 	local files: Files = {
 		ast_map = { [mock_file.id] = file_to_ast(mock_file) },
@@ -301,8 +302,8 @@ local function compile_contents(
 		imports_map = {},
 	}
 
-	local file_hir = hir.from_files(files)
-	local file_lir = lir.from_hir(file_hir, compile_options.profile)
+	local file_hir = hir.from_files(files, profile)
+	local file_lir = lir.from_hir(file_hir, profile)
 
 	local entry_options = hir.file_options(file_hir, mock_file)
 	local codegen_props: codegen.Props = {

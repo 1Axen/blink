@@ -1,4 +1,5 @@
 local ast = require("@ast")
+local canonicalize_attributes = require("./canonicalize_attributes")
 local compilation = require("@config/compilation")
 local report = require("@compiler/report")
 local search_path = require("./search_path")
@@ -125,7 +126,7 @@ local function parse_import(
 	end
 end
 
-local function populate_imports(files: Files, decls_map: FileDeclsMap)
+local function populate_imports(files: Files, decls_map: FileDeclsMap, profile: compilation.Profile)
 	local ast_map = files.ast_map
 	local imports_map = files.imports_map
 
@@ -147,6 +148,11 @@ local function populate_imports(files: Files, decls_map: FileDeclsMap)
 
 			local source_scope = scope.decl
 			for _, stat in scope.statements do
+				const attributes = canonicalize_attributes(stat.attributes)
+				if attributes.profile and attributes.profile ~= profile then
+					continue
+				end
+
 				if stat.kind == "scope" then
 					table.insert(scopes, {
 						decl = file_decls.scopes[stat.id :: ScopeId],

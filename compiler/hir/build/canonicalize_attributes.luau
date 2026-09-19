@@ -80,7 +80,7 @@ local function attr_any(attribute: AttributeNode): true
 	return true
 end
 
-local function from_nodes(nodes: AttributeNodes): Attributes
+local function canonicalize_attributes(nodes: AttributeNodes): Attributes
 	-- Fix `cannot add indexer` error
 	local attributes: Attributes & { [any]: any } = {}
 
@@ -105,6 +105,4 @@ local function from_nodes(nodes: AttributeNodes): Attributes
 	return attributes
 end
 
-return table.freeze({
-	from_nodes = from_nodes,
-})
+return canonicalize_attributes

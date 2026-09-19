@@ -750,8 +750,8 @@ local function stat_type(ctx: Context): ast.StatType
 	return {
 		id = node_id,
 		span = span.merge(keyword.span, value.span),
-		kind = "type",
 		attributes = attributes,
+		kind = "type",
 
 		name = name,
 		value = value,
@@ -782,8 +782,8 @@ local function stat_event(ctx: Context): ast.StatEvent
 	return {
 		id = node_id,
 		span = span.merge(keyword.span, closer.span),
-		kind = "event",
 		attributes = attributes,
+		kind = "event",
 
 		name = name,
 		from = fields.from,
@@ -795,6 +795,8 @@ end
 
 local function stat_scope(ctx: Context): ast.StatScope
 	local node_id = next_node_id(ctx)
+	local attributes = consume_attributes(ctx)
+
 	local keyword = expect(ctx, "scope")
 	local name = identifier(ctx)
 
@@ -805,6 +807,7 @@ local function stat_scope(ctx: Context): ast.StatScope
 	return {
 		id = node_id,
 		span = span.merge(keyword.span, close.span),
+		attributes = attributes,
 		kind = "scope",
 
 		name = name,
@@ -814,6 +817,8 @@ end
 
 local function stat_option(ctx: Context): ast.StatOption
 	local node_id = next_node_id(ctx)
+	local attributes = consume_attributes(ctx)
+
 	local keyword = expect(ctx, "option")
 	local name = identifier(ctx)
 
@@ -824,6 +829,7 @@ local function stat_option(ctx: Context): ast.StatOption
 	return {
 		id = node_id,
 		span = stat_span,
+		attributes = attributes,
 		kind = "option",
 
 		name = name,
@@ -861,6 +867,8 @@ end
 
 local function stat_import(ctx: Context): ast.StatImport
 	local node_id = next_node_id(ctx)
+	local attributes = consume_attributes(ctx)
+
 	local first = expect(ctx, "from")
 
 	local path_string = expr_string(ctx)
@@ -922,7 +930,9 @@ local function stat_import(ctx: Context): ast.StatImport
 	return {
 		id = node_id,
 		span = full_span,
+		attributes = attributes,
 		kind = "import",
+
 		path = path_string,
 		extra = extra,
 	}
