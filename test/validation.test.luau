@@ -59,13 +59,13 @@ return function(tiniest: Tiniest)
 	local test = tiniest.test
 	local expect = tiniest.expect
 
-	const function write_invalid<T>(type: TypeAPI, value: T)
+	const function write_expect_fails<T>(type: TypeAPI, value: T)
 		expect(function()
 			type.write(value)
 		end).fails()
 	end
 
-	const function write_read_checked<T>(type: TypeAPI, value: T)
+	const function write_read_expect_is<T>(type: TypeAPI, value: T)
 		local serialized: buffer
 		expect(function()
 			serialized = type.write(value)
@@ -89,13 +89,13 @@ return function(tiniest: Tiniest)
 		]])
 
 		test("unconstrained enum accepts all enum types", function()
-			write_read_checked(exports.all_enums, ENUMS.Axis.X)
-			write_read_checked(exports.all_enums, ENUMS.AlphaMode.Opaque)
+			write_read_expect_is(exports.all_enums, ENUMS.Axis.X)
+			write_read_expect_is(exports.all_enums, ENUMS.AlphaMode.Opaque)
 		end)
 
 		test("constrained enum accepts only same enum types", function()
-			write_read_checked(exports.axis_enum, ENUMS.Axis.X)
-			write_invalid(exports.axis_enum, ENUMS.AlphaMode.Opaque)
+			write_read_expect_is(exports.axis_enum, ENUMS.Axis.X)
+			write_expect_fails(exports.axis_enum, ENUMS.AlphaMode.Opaque)
 		end)
 	end
 
@@ -109,15 +109,65 @@ return function(tiniest: Tiniest)
 		]])
 
 		test("exact vector", function()
-			write_read_checked(exports.unit_vector, vector.create(1, 0, 0))
-			write_invalid(exports.unit_vector, vector.zero)
-			write_invalid(exports.unit_vector, vector.one)
+			write_read_expect_is(exports.unit_vector, vector.create(1, 0, 0))
+			write_expect_fails(exports.unit_vector, vector.zero)
+			write_expect_fails(exports.unit_vector, vector.one)
 		end)
 
 		test("bounded vector", function()
-			write_read_checked(exports.bounded_vector, vector.create(1, 0, 0))
-			write_read_checked(exports.bounded_vector, vector.zero)
-			write_invalid(exports.bounded_vector, vector.one)
+			write_read_expect_is(exports.bounded_vector, vector.create(1, 0, 0))
+			write_read_expect_is(exports.bounded_vector, vector.zero)
+			write_expect_fails(exports.bounded_vector, vector.one)
+		end)
+	end
+
+	do
+		--stylua: ignore
+		const exports = setup_test("floats", [[
+			@export
+			type float = f32
+			@export
+			type bounded_float = f32(0..1)
+			@export
+			type lower_bound_float = f32(0..)
+			@export
+			type upper_bound_float = f32(..1)
+		]])
+
+		test("unbounded float", function()
+			do
+				const serialized = exports.float.write(math.nan)
+				const deserialized = exports.float.read(serialized)
+				expect(math.isnan(deserialized)).is_true()
+			end
+			write_read_expect_is(exports.float, 0.5)
+			write_read_expect_is(exports.float, math.huge)
+		end)
+
+		test("bounded float", function()
+			-- upper & lower
+			write_expect_fails(exports.bounded_float, math.nan)
+			write_expect_fails(exports.bounded_float, 2)
+			write_expect_fails(exports.bounded_float, -1)
+			write_read_expect_is(exports.bounded_float, 0)
+			write_read_expect_is(exports.bounded_float, 0.5)
+			write_read_expect_is(exports.bounded_float, 1)
+
+			-- lower
+			write_expect_fails(exports.lower_bound_float, math.nan)
+			write_expect_fails(exports.lower_bound_float, -1)
+			write_read_expect_is(exports.lower_bound_float, 0)
+			write_read_expect_is(exports.lower_bound_float, 0.5)
+			write_read_expect_is(exports.lower_bound_float, 1)
+			write_read_expect_is(exports.lower_bound_float, 2)
+
+			-- upper
+			write_expect_fails(exports.upper_bound_float, math.nan)
+			write_expect_fails(exports.upper_bound_float, 2)
+			write_read_expect_is(exports.upper_bound_float, -1)
+			write_read_expect_is(exports.upper_bound_float, 0)
+			write_read_expect_is(exports.upper_bound_float, 0.5)
+			write_read_expect_is(exports.upper_bound_float, 1)
 		end)
 	end
 end

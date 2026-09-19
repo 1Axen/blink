@@ -141,6 +141,13 @@ local function validate(block: Builder, ty: ty.Numeral, value: Readable<number>)
 		return
 	end
 
+	const format = ty.format
+	if format == "f" then
+		block:if_single(condition.not_equals(value, value), function(block: fn.Builder)
+			block:call(library.error("Expected a finite number, got NaN"))
+		end)
+	end
+
 	local lower = condition.less_than(value, constant.from_value(bounds.min))
 	local upper = condition.greater_than(value, constant.from_value(bounds.max))
 
