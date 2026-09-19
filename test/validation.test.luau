@@ -118,11 +118,7 @@ return function(tiniest: Tiniest)
 		const inf_vector = vector.create(math.huge, 0)
 
 		test("unbounded vector", function()
-			do
-				const serialized = exports.unbounded.write(nan_vector)
-				const deserialized: vector = exports.unbounded.read(serialized)
-				expect(math.isnan(vector.magnitude(deserialized))).is_true()
-			end
+			write_read_expect_is(exports.unbounded, nan_vector)
 			write_read_expect_is(exports.unbounded, inf_vector)
 			write_read_expect_is(exports.unbounded, vector.one)
 			write_read_expect_is(exports.unbounded, vector.zero)
@@ -174,11 +170,7 @@ return function(tiniest: Tiniest)
 		]])
 
 		test("unbounded float", function()
-			do
-				const serialized = exports.unbounded.write(math.nan)
-				const deserialized = exports.unbounded.read(serialized)
-				expect(math.isnan(deserialized)).is_true()
-			end
+			write_read_expect_is(exports.unbounded, math.nan)
 			write_read_expect_is(exports.unbounded, 0.5)
 			write_read_expect_is(exports.unbounded, math.huge)
 		end)
@@ -214,7 +206,7 @@ return function(tiniest: Tiniest)
 		--stylua: ignore
 		const exports = setup_test("floats", [[
 			@export
-			type normal = f64
+			type unbounded = f64
 			@export
 			type bounded = f64(0..1)
 			@export
@@ -224,13 +216,9 @@ return function(tiniest: Tiniest)
 		]])
 
 		test("unbounded double", function()
-			do
-				const serialized = exports.normal.write(math.nan)
-				const deserialized = exports.normal.read(serialized)
-				expect(math.isnan(deserialized)).is_true()
-			end
-			write_read_expect_is(exports.normal, math.pi)
-			write_read_expect_is(exports.normal, math.huge)
+			write_read_expect_is(exports.unbounded, math.nan)
+			write_read_expect_is(exports.unbounded, math.pi)
+			write_read_expect_is(exports.unbounded, math.huge)
 		end)
 
 		test("bounded double", function()

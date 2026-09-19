@@ -18,6 +18,14 @@ local context: Context = {
 	params = {}
 }
 
+const function float_eq(a: number, b: number): boolean
+	if math.isnan(a) and math.isnan(b) then
+		return true
+	end
+
+	return a == b
+end
+
 local function fail(
 	message: string?
 ): never
@@ -71,6 +79,23 @@ function tiniest_expect.expect(
 	function tests.is(
 		b: any
 	)
+		if type(a) == "buffer" and type(b) == "buffer" then
+			local a_contents = buffer.tostring(a)
+			local b_contents = buffer.tostring(b)
+			return if a_contents == b_contents then tests else fail()
+		elseif type(a) == "number" and type(b) == "number" then
+			return if float_eq(a, b) then tests else fail()
+		elseif type(a) == "vector" and type(b) == "vector" then
+			const a_magnitude = vector.magnitude(a)
+			const b_magnitude = vector.magnitude(b)
+			if math.isnan(a_magnitude) and math.isnan(b_magnitude) then
+				return if float_eq(a.x, b.x) and float_eq(a.y, b.y) and float_eq(a.z, b.z) then tests else fail()
+			-- use the work we've already done
+			elseif a_magnitude ~= b_magnitude then
+				return fail()
+			end
+		end
+
 		return if a == b then tests else fail()
 	end
 
