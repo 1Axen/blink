@@ -253,4 +253,99 @@ return function(tiniest: Tiniest)
 			write_read_expect_is(exports.upper_bounded, -math.huge)
 		end)
 	end
+
+	do
+		--stylua: ignore
+		const exports = setup_test("strings", [[
+			@export
+			type unbounded = string
+			@export
+			type exact = string(20)
+			@export
+			type bounded = string(1..20)
+			@export
+			type lower_bounded = string(1..)
+			@export
+			type upper_bounded = string(..20)
+		]])
+
+		test("unbounded strings", function()
+			write_read_expect_is(exports.unbounded, "")
+			write_read_expect_is(exports.unbounded, "Hello!")
+		end)
+
+		test("exact strings", function()
+			write_expect_fails(exports.exact, "")
+			write_expect_fails(exports.exact, "OnlyTwentyCharactersA")
+			write_read_expect_is(exports.exact, "OnlyTwentyCharacters")
+		end)
+
+		test("bounded strings", function()
+			-- upper & lower
+			write_expect_fails(exports.bounded, "")
+			write_expect_fails(exports.bounded, "OnlyTwentyCharactersA")
+			write_read_expect_is(exports.bounded, "a")
+			write_read_expect_is(exports.bounded, "Hello, World!")
+			write_read_expect_is(exports.bounded, "OnlyTwentyCharacters")
+
+			-- lower
+			write_expect_fails(exports.lower_bounded, "")
+			write_read_expect_is(exports.lower_bounded, "a")
+			write_read_expect_is(exports.lower_bounded, "OnlyTwentyCharacters")
+
+			-- upper
+			write_expect_fails(exports.upper_bounded, "OnlyTwentyCharactersA")
+			write_read_expect_is(exports.upper_bounded, "")
+			write_read_expect_is(exports.upper_bounded, "a")
+			write_read_expect_is(exports.upper_bounded, "Hello, World!")
+			write_read_expect_is(exports.upper_bounded, "OnlyTwentyCharacters")
+		end)
+	end
+
+	do
+		--stylua: ignore
+		const exports = setup_test("buffers", [[
+			@export
+			type unbounded = buffer
+			@export
+			type exact = buffer(20)
+			@export
+			type bounded = buffer(1..20)
+			@export
+			type lower_bounded = buffer(1..)
+			@export
+			type upper_bounded = buffer(..20)
+		]])
+
+		test("unbounded buffers", function()
+			write_read_expect_is(exports.unbounded, buffer.create(0))
+			write_read_expect_is(exports.unbounded, buffer.create(20))
+		end)
+
+		test("exact buffers", function()
+			write_expect_fails(exports.exact, buffer.create(0))
+			write_expect_fails(exports.exact, buffer.create(21))
+			write_read_expect_is(exports.exact, buffer.create(20))
+		end)
+
+		test("bounded buffers", function()
+			-- upper & lower
+			write_expect_fails(exports.bounded, buffer.create(0))
+			write_expect_fails(exports.bounded, buffer.create(21))
+			write_read_expect_is(exports.bounded, buffer.create(1))
+			write_read_expect_is(exports.bounded, buffer.create(10))
+			write_read_expect_is(exports.bounded, buffer.create(20))
+
+			-- lower
+			write_expect_fails(exports.lower_bounded, buffer.create(0))
+			write_read_expect_is(exports.lower_bounded, buffer.create(1))
+			write_read_expect_is(exports.lower_bounded, buffer.create(10))
+
+			-- upper
+			write_expect_fails(exports.upper_bounded, buffer.create(21))
+			write_read_expect_is(exports.upper_bounded, buffer.create(0))
+			write_read_expect_is(exports.upper_bounded, buffer.create(10))
+			write_read_expect_is(exports.upper_bounded, buffer.create(20))
+		end)
+	end
 end
