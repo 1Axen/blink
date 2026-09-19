@@ -1,5 +1,5 @@
 name = "1axen/blink"
-version = "1.0.0-pre.8"
+version = "1.0.0-pre.10"
 description = "An IDL for defining structured data that compiles to fast Luau buffer serdes."
 authors = ["1Axen"]
 repository = "https://github.com/1Axen/blink"
