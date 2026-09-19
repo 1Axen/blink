@@ -103,21 +103,60 @@ return function(tiniest: Tiniest)
 		--stylua: ignore
 		const exports = setup_test("vector", [[
 			@export
-			type unit_vector = vector(1)
+			type unbounded = vector
 			@export
-			type bounded_vector = vector(0..1)
+			type exact = vector(1)
+			@export
+			type bounded = vector(0..1)
+			@export
+			type lower_bounded = vector(0..)
+			@export
+			type upper_bounded = vector(..1)
 		]])
 
+		const nan_vector = vector.create(math.nan, 0)
+		const inf_vector = vector.create(math.huge, 0)
+
+		test("unbounded vector", function()
+			do
+				const serialized = exports.unbounded.write(nan_vector)
+				const deserialized: vector = exports.unbounded.read(serialized)
+				expect(math.isnan(vector.magnitude(deserialized))).is_true()
+			end
+			write_read_expect_is(exports.unbounded, inf_vector)
+			write_read_expect_is(exports.unbounded, vector.one)
+			write_read_expect_is(exports.unbounded, vector.zero)
+		end)
+
 		test("exact vector", function()
-			write_read_expect_is(exports.unit_vector, vector.create(1, 0, 0))
-			write_expect_fails(exports.unit_vector, vector.zero)
-			write_expect_fails(exports.unit_vector, vector.one)
+			write_expect_fails(exports.exact, inf_vector)
+			write_expect_fails(exports.exact, nan_vector)
+			write_expect_fails(exports.exact, vector.one)
+			write_expect_fails(exports.exact, vector.zero)
+			write_read_expect_is(exports.exact, vector.create(1, 0, 0))
 		end)
 
 		test("bounded vector", function()
-			write_read_expect_is(exports.bounded_vector, vector.create(1, 0, 0))
-			write_read_expect_is(exports.bounded_vector, vector.zero)
-			write_expect_fails(exports.bounded_vector, vector.one)
+			write_expect_fails(exports.bounded, inf_vector)
+			write_expect_fails(exports.bounded, nan_vector)
+			write_expect_fails(exports.bounded, vector.one)
+			write_read_expect_is(exports.bounded, vector.zero)
+			write_read_expect_is(exports.bounded, vector.create(1, 0, 0))
+
+			-- lower
+			write_expect_fails(exports.lower_bounded, nan_vector)
+			write_read_expect_is(exports.lower_bounded, inf_vector)
+			write_read_expect_is(exports.lower_bounded, vector.zero)
+			write_read_expect_is(exports.lower_bounded, vector.one)
+			write_read_expect_is(exports.lower_bounded, vector.one * 2)
+			write_read_expect_is(exports.lower_bounded, vector.create(0.5, 0, 0))
+
+			-- upper
+			write_expect_fails(exports.upper_bounded, inf_vector)
+			write_expect_fails(exports.upper_bounded, nan_vector)
+			write_expect_fails(exports.upper_bounded, vector.one * 2)
+			write_read_expect_is(exports.upper_bounded, vector.zero)
+			write_read_expect_is(exports.upper_bounded, vector.create(0.5, 0, 0))
 		end)
 	end
 
@@ -125,49 +164,105 @@ return function(tiniest: Tiniest)
 		--stylua: ignore
 		const exports = setup_test("floats", [[
 			@export
-			type float = f32
+			type unbounded = f32
 			@export
-			type bounded_float = f32(0..1)
+			type bounded = f32(0..1)
 			@export
-			type lower_bound_float = f32(0..)
+			type lower_bounded = f32(0..)
 			@export
-			type upper_bound_float = f32(..1)
+			type upper_bounded = f32(..1)
 		]])
 
 		test("unbounded float", function()
 			do
-				const serialized = exports.float.write(math.nan)
-				const deserialized = exports.float.read(serialized)
+				const serialized = exports.unbounded.write(math.nan)
+				const deserialized = exports.unbounded.read(serialized)
 				expect(math.isnan(deserialized)).is_true()
 			end
-			write_read_expect_is(exports.float, 0.5)
-			write_read_expect_is(exports.float, math.huge)
+			write_read_expect_is(exports.unbounded, 0.5)
+			write_read_expect_is(exports.unbounded, math.huge)
 		end)
 
 		test("bounded float", function()
 			-- upper & lower
-			write_expect_fails(exports.bounded_float, math.nan)
-			write_expect_fails(exports.bounded_float, 2)
-			write_expect_fails(exports.bounded_float, -1)
-			write_read_expect_is(exports.bounded_float, 0)
-			write_read_expect_is(exports.bounded_float, 0.5)
-			write_read_expect_is(exports.bounded_float, 1)
+			write_expect_fails(exports.bounded, math.nan)
+			write_expect_fails(exports.bounded, 2)
+			write_expect_fails(exports.bounded, -1)
+			write_read_expect_is(exports.bounded, 0)
+			write_read_expect_is(exports.bounded, 0.5)
+			write_read_expect_is(exports.bounded, 1)
 
 			-- lower
-			write_expect_fails(exports.lower_bound_float, math.nan)
-			write_expect_fails(exports.lower_bound_float, -1)
-			write_read_expect_is(exports.lower_bound_float, 0)
-			write_read_expect_is(exports.lower_bound_float, 0.5)
-			write_read_expect_is(exports.lower_bound_float, 1)
-			write_read_expect_is(exports.lower_bound_float, 2)
+			write_expect_fails(exports.lower_bounded, math.nan)
+			write_expect_fails(exports.lower_bounded, -1)
+			write_read_expect_is(exports.lower_bounded, 0)
+			write_read_expect_is(exports.lower_bounded, 0.5)
+			write_read_expect_is(exports.lower_bounded, 1)
+			write_read_expect_is(exports.lower_bounded, 2)
 
 			-- upper
-			write_expect_fails(exports.upper_bound_float, math.nan)
-			write_expect_fails(exports.upper_bound_float, 2)
-			write_read_expect_is(exports.upper_bound_float, -1)
-			write_read_expect_is(exports.upper_bound_float, 0)
-			write_read_expect_is(exports.upper_bound_float, 0.5)
-			write_read_expect_is(exports.upper_bound_float, 1)
+			write_expect_fails(exports.upper_bounded, math.nan)
+			write_expect_fails(exports.upper_bounded, 2)
+			write_read_expect_is(exports.upper_bounded, -1)
+			write_read_expect_is(exports.upper_bounded, 0)
+			write_read_expect_is(exports.upper_bounded, 0.5)
+			write_read_expect_is(exports.upper_bounded, 1)
+		end)
+	end
+
+	do
+		--stylua: ignore
+		const exports = setup_test("floats", [[
+			@export
+			type normal = f64
+			@export
+			type bounded = f64(0..1)
+			@export
+			type lower_bounded = f64(0..)
+			@export
+			type upper_bounded = f64(..1)
+		]])
+
+		test("unbounded double", function()
+			do
+				const serialized = exports.normal.write(math.nan)
+				const deserialized = exports.normal.read(serialized)
+				expect(math.isnan(deserialized)).is_true()
+			end
+			write_read_expect_is(exports.normal, math.pi)
+			write_read_expect_is(exports.normal, math.huge)
+		end)
+
+		test("bounded double", function()
+			-- upper & lower
+			write_expect_fails(exports.bounded, math.nan)
+			write_expect_fails(exports.bounded, math.huge)
+			write_expect_fails(exports.bounded, -math.huge)
+			write_expect_fails(exports.bounded, 2)
+			write_expect_fails(exports.bounded, -1)
+			write_read_expect_is(exports.bounded, 0)
+			write_read_expect_is(exports.bounded, 0.5)
+			write_read_expect_is(exports.bounded, 1)
+
+			-- lower
+			write_expect_fails(exports.lower_bounded, math.nan)
+			write_expect_fails(exports.lower_bounded, -math.huge)
+			write_expect_fails(exports.lower_bounded, -1)
+			write_read_expect_is(exports.lower_bounded, 0)
+			write_read_expect_is(exports.lower_bounded, 0.5)
+			write_read_expect_is(exports.lower_bounded, 1)
+			write_read_expect_is(exports.lower_bounded, 2)
+			write_read_expect_is(exports.lower_bounded, math.huge)
+
+			-- upper
+			write_expect_fails(exports.upper_bounded, math.nan)
+			write_expect_fails(exports.upper_bounded, math.huge)
+			write_expect_fails(exports.upper_bounded, 2)
+			write_read_expect_is(exports.upper_bounded, -1)
+			write_read_expect_is(exports.upper_bounded, 0)
+			write_read_expect_is(exports.upper_bounded, 0.5)
+			write_read_expect_is(exports.upper_bounded, 1)
+			write_read_expect_is(exports.upper_bounded, -math.huge)
 		end)
 	end
 end
