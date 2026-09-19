@@ -46,7 +46,22 @@ const function append_comment(ctx: Context, comment: string)
 end
 
 local function gen_constant(ctx: Context, constant: lir.Constant)
-	ctx.builder:append(tostring(constant.value))
+	const value = constant.value
+	const builder = ctx.builder
+	if typeof(value) ~= "number" then
+		builder:append(tostring(constant.value))
+		return
+	end
+
+	if math.isinf(value) then
+		const sign = if math.sign(value) == -1 then "-" else ""
+		builder:append(sign)
+		builder:append("math.huge")
+	elseif math.isnan(value) then
+		builder:append("math.nan")
+	else
+		builder:append(tostring(value))
+	end
 end
 
 local function gen_constant_with_qoutes(ctx: Context, constant: lir.Constant)
@@ -56,7 +71,7 @@ local function gen_constant_with_qoutes(ctx: Context, constant: lir.Constant)
 		return
 	end
 
-	builder:append(tostring(constant.value))
+	gen_constant(ctx, constant)
 end
 
 local function gen_projection<T>(ctx: Context, projection: lir.Projection<any>)
