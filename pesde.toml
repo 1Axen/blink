@@ -8,7 +8,7 @@ includes = [
 license = "MIT"
 name = "1axen/blink"
 repository = "https://github.com/1axen/blink"
-version = "0.18.8"
+version = "0.18.9"
 
 [indices]
 default = "https://github.com/pesde-pkg/index"
