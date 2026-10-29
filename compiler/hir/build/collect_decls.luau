@@ -136,7 +136,7 @@ local function traverse_block(ctx: Context, scope: Scope, block: ast.Block)
 
 		do
 			local name = decl.name
-			local node = decl.node :: typeforge.Drop<index<Decl, "node">, ast.StatImport>
+			local node: typeforge.Drop<index<Decl, "node">, ast.StatImport> = decl.node :: any
 			local _, previous = search_path(scope, { name })
 			if previous then
 				report.shadow(name, node.name, previous)

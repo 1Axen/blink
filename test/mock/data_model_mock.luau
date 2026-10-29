@@ -202,7 +202,7 @@ local function create_remote_event(class: "RemoteEvent" | "UnreliableRemoteEvent
 			return
 		end
 
-		local player = players:GetPlayerByUserId(user_id)
+		local player = (players :: any):GetPlayerByUserId(user_id)
 		if player == nil then
 			error(`Cannot find player with UserId: {user_id}`)
 		end

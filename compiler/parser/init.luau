@@ -36,7 +36,7 @@ local statement: (Context) -> ast.Statement
 local expression: (Context) -> ast.Expression
 
 const function coerce<T>(x: T | ""): T
-	return x
+	return x :: T
 end
 
 local function next_node_id(ctx: Context): ast.NodeId

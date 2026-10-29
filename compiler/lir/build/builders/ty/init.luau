@@ -242,7 +242,7 @@ builders.struct = table.freeze({
 		local identity = ty_identity(struct)
 		local templates = props.ctx.templates
 		if templates[identity] == nil then
-			local template_fields = {}
+			local template_fields: { [types.Constant<string>]: Readable<nil> } = {}
 			for _, field in struct.fields do
 				template_fields[constant.from_value(field.name)] = cast.static(constant.null, "any")
 			end

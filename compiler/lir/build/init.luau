@@ -996,8 +996,8 @@ local function from_hir(hhir: Hir, profile: Profile): Lir
 	local server_unreliables: { Receivable } = {}
 
 	do
-		local queues = {}
-		local connections = {}
+		local queues: { [Readable<any>]: Readable<any> } = {}
+		local connections: { [Readable<any>]: Readable<any> } = {}
 		local event_ids = table.create(MAX_EVENT_IDS, 0)
 
 		for index = 1, MAX_EVENT_IDS do
@@ -1101,7 +1101,7 @@ local function from_hir(hhir: Hir, profile: Profile): Lir
 	end)
 
 	do
-		local templates = {}
+		local templates: { [types.Constant<string>]: Readable<any> } = {}
 		for key, template in ctx.templates do
 			templates[constant.from_value(key)] = assert(template, "unreachable")
 		end

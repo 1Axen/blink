@@ -27,7 +27,7 @@ local function ty_from_id<T>(hir: Hir, ty_id: TyId<T>): T
 		return panic(`Expected TyId {ty_id} to map to a ty`)
 	end
 
-	return ty
+	return ty :: T
 end
 
 local function decl_from_id(hir: Hir, decl_id: DeclId): Decl
