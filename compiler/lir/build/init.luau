@@ -116,6 +116,37 @@ local CURSOR_OPTIONAL_PARAMETER = fn.parameter(hint.ty(CURSOR_OPTIONAL_TY), "cur
 
 const ERROR_PARAMETER = fn.parameter(hint.static("any"), "err")
 
+type OutgoingSave = {
+	read buffer: Readable<buffer>,
+	read cursor: Readable<number>,
+	read length: Readable<number>,
+	read unknown: Readable<{ any }>,
+}
+
+const function new_outgoing(block: Builder, capacity: number)
+	local size = constant.from_value(capacity)
+	block:store(library.buffer.create(size), OUTGOING.buffer)
+	block:store(size, OUTGOING.length)
+	block:store(constant.zero, OUTGOING.cursor)
+	block:store(library.table.create(constant.from_value(16)), OUTGOING.unknown)
+end
+
+const function save_outgoing(block: Builder): OutgoingSave
+	return table.freeze({
+		buffer = block:store(OUTGOING.buffer),
+		cursor = block:store(OUTGOING.cursor),
+		length = block:store(OUTGOING.length),
+		unknown = block:store(OUTGOING.unknown),
+	})
+end
+
+const function restore_outgoing(block: Builder, previous: OutgoingSave)
+	block:store(previous.buffer, OUTGOING.buffer)
+	block:store(previous.length, OUTGOING.length)
+	block:store(previous.cursor, OUTGOING.cursor)
+	block:store(previous.unknown, OUTGOING.unknown)
+end
+
 const function blink_trace(message: Readable<string>, level: number?)
 	message = library.string.format("[Blink]: %s", message)
 	return library.debug.traceback(message, constant.from_value(level or 2))
@@ -530,19 +561,12 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 		if is_unreliable then
 			fire_server = fn.anonymous(data_params, {}, function(block)
 				-- take snapshot of outgoing state
-				local prev_buffer = block:store(OUTGOING.buffer)
-				local prev_length = block:store(OUTGOING.length)
-				local prev_cursor = block:store(OUTGOING.cursor)
-				local prev_unknown = block:store(OUTGOING.unknown)
+				local previous_outgoing = save_outgoing(block)
 
 				const write_data = fn.anonymous(data_params, {}, function(block)
 					-- temporary outgoing state
 					-- 296 is 3 1.5x expansions away from 1000 bytes
-					local size = constant.from_value(296)
-					block:store(library.buffer.create(size), OUTGOING.buffer)
-					block:store(size, OUTGOING.length)
-					block:store(constant.zero, OUTGOING.cursor)
-					block:store(library.table.create(constant.from_value(16)), OUTGOING.unknown)
+					new_outgoing(block, 296)
 
 					-- write event payload
 					block:call(library.buffer.u8.write(block:allocate(constant.one), id))
@@ -561,12 +585,7 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 				end
 				const success, err = unpack(block:store_mult(library.xpcall(write_data, serdes_error, unpack(args)), 2))
 
-				-- restore outgoing state
-				block:store(prev_buffer, OUTGOING.buffer)
-				block:store(prev_length, OUTGOING.length)
-				block:store(prev_cursor, OUTGOING.cursor)
-				block:store(prev_unknown, OUTGOING.unknown)
-
+				restore_outgoing(block, previous_outgoing)
 				block:if_single(condition.equals(success, constant.falsity), function(block: builders.Builder)
 					block:call(library.error_rvalue(err))
 				end)
