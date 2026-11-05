@@ -250,29 +250,34 @@ local function build_type(ctx: Context, decl: hir.Type): TypeExport?
 	)
 
 	local write = fn.anonymous({ type_parameter }, { BUFFER_RETURN }, function(block: builders.Builder)
-		block:store(constant.zero, OUTGOING.cursor)
+		const savepoint = save_outgoing(block)
+
+		--TODO: Compute minimum capacity for type
+		new_outgoing(block, 64)
 		block:call_fn(type_fnset.write, { block:parameter(1) }, {})
-		block:rreturn({ copy_outgoing_buffer(block) })
+
+		const trimmed_buffer = trim_outgoing_buffer(block)
+		restore_outgoing(block, savepoint)
+
+		block:rreturn({ trimmed_buffer })
 	end)
 
 	local write_to = fn.anonymous(
 		{ type_parameter, BUFFER_PARAMETER, CURSOR_PARAMETER, LENGTH_PARAMETER },
 		{ BUFFER_RETURN, CURSOR_RETURN },
 		function(block: builders.Builder)
-			local prev_buf = block:store(OUTGOING.buffer)
-			local prev_length = block:store(OUTGOING.length)
+			const savepoint = save_outgoing(block)
 
 			block:store(block:parameter(2), OUTGOING.buffer)
 			block:store(block:parameter(3), OUTGOING.cursor)
 			block:store(block:parameter(4), OUTGOING.length)
-
 			block:call_fn(type_fnset.write, { block:parameter(1) }, {})
-			local trimmed_buffer = trim_outgoing_buffer(block)
 
-			block:store(prev_buf, OUTGOING.buffer)
-			block:store(prev_length, OUTGOING.length)
+			const cursor = block:store(OUTGOING.cursor)
+			const trimmed_buffer = trim_outgoing_buffer(block)
+			restore_outgoing(block, savepoint)
 
-			block:rreturn({ trimmed_buffer, OUTGOING.cursor })
+			block:rreturn({ trimmed_buffer, cursor })
 		end
 	)
 
