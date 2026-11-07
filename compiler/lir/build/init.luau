@@ -250,17 +250,29 @@ local function build_type(ctx: Context, decl: hir.Type): TypeExport?
 		end
 	)
 
+	const write_error = fn.anonymous({ ERROR_PARAMETER }, { ERROR_RETURN }, function(block: builders.Builder)
+		const message = library.string.format(`Error writing type "{decl.name}"\\n%*`, block:parameter(1))
+		block:rreturn({ blink_trace(message, 2) })
+	end)
+
 	local write = fn.anonymous({ type_parameter }, { BUFFER_RETURN }, function(block: builders.Builder)
 		const savepoint = save_outgoing(block)
+		const try_write = fn.anonymous({ type_parameter }, { BUFFER_RETURN }, function(block: builders.Builder)
+			--TODO: Compute minimum capacity for type
+			new_outgoing(block, 64)
+			block:call_fn(type_fnset.write, { block:parameter(1) }, {})
 
-		--TODO: Compute minimum capacity for type
-		new_outgoing(block, 64)
-		block:call_fn(type_fnset.write, { block:parameter(1) }, {})
+			const trimmed_buffer = trim_outgoing_buffer(block)
+			block:rreturn({ trimmed_buffer })
+		end)
 
-		const trimmed_buffer = trim_outgoing_buffer(block)
+		const success, result = unpack(block:store_mult(library.xpcall(try_write, write_error, block:parameter(1)), 2))
 		restore_outgoing(block, savepoint)
+		block:if_single(condition.equals(success, constant.falsity), function(block: builders.Builder)
+			block:call(library.error_rvalue(result))
+		end)
 
-		block:rreturn({ trimmed_buffer })
+		block:rreturn({ result })
 	end)
 
 	local write_to = fn.anonymous(
@@ -268,17 +280,29 @@ local function build_type(ctx: Context, decl: hir.Type): TypeExport?
 		{ BUFFER_RETURN, CURSOR_RETURN },
 		function(block: builders.Builder)
 			const savepoint = save_outgoing(block)
-
 			block:store(block:parameter(2), OUTGOING.buffer)
 			block:store(block:parameter(3), OUTGOING.cursor)
 			block:store(block:parameter(4), OUTGOING.length)
-			block:call_fn(type_fnset.write, { block:parameter(1) }, {})
 
-			const cursor = block:store(OUTGOING.cursor)
-			const trimmed_buffer = trim_outgoing_buffer(block)
+			const try_write = fn.anonymous(
+				{ type_parameter },
+				{ BUFFER_RETURN, CURSOR_RETURN },
+				function(block: builders.Builder)
+					block:call_fn(type_fnset.write, { block:parameter(1) }, {})
+					const cursor = block:store(OUTGOING.cursor)
+					const trimmed_buffer = trim_outgoing_buffer(block)
+					block:rreturn({ trimmed_buffer, cursor })
+				end
+			)
+
+			const success, result, cursor =
+				unpack(block:store_mult(library.xpcall(try_write, write_error, block:parameter(1)), 3))
 			restore_outgoing(block, savepoint)
+			block:if_single(condition.equals(success, constant.falsity), function(block: builders.Builder)
+				block:call(library.error_rvalue(result))
+			end)
 
-			block:rreturn({ trimmed_buffer, cursor })
+			block:rreturn({ result, cursor })
 		end
 	)
 
