@@ -114,6 +114,7 @@ local LENGTH_PARAMETER = fn.parameter(hint.ty(CURSOR_TY), "length")
 local CURSOR_OPTIONAL_TY = ty.union(nil, { CURSOR_TY, ty.nnil(nil) })
 local CURSOR_OPTIONAL_PARAMETER = fn.parameter(hint.ty(CURSOR_OPTIONAL_TY), "cursor")
 
+const ERROR_RETURN = fn.rreturn(hint.static("string"))
 const ERROR_PARAMETER = fn.parameter(hint.static("any"), "err")
 
 type OutgoingSave = {
@@ -558,7 +559,7 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 	end
 
 	if is_from_client then
-		const serdes_error = fn.anonymous({ ERROR_PARAMETER }, {}, function(block: builders.Builder)
+		const serdes_error = fn.anonymous({ ERROR_PARAMETER }, { ERROR_RETURN }, function(block: builders.Builder)
 			const message = library.string.format(`Error serializing event "{decl.name}"\\n%*`, block:parameter(1))
 			block:rreturn({ blink_trace(message, 2) })
 		end)
