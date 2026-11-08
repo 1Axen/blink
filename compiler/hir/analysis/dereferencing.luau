@@ -8,84 +8,95 @@ type TyId<T = Ty> = ty.TyId<T>
 type Hir = types.Hir
 type Context = {
 	read hir: Hir,
+	read cache: { [Ty]: Ty? },
 	read encountered: { [Ty]: true? },
 }
 
-local function transform<T>(ctx: Context, tty: Ty): Ty
-	local encountered = ctx.encountered
-	if encountered[tty] then
-		return tty
+local function transform<T>(ctx: Context, input: Ty): Ty
+	const cache = ctx.cache
+	const encountered = ctx.encountered
+
+	const cached = cache[input]
+	if cached then
+		return cached
 	end
 
-	encountered[tty] = true
+	if encountered[input] then
+		return input
+	end
 
-	if tty.kind == "map" then
-		local index = transform(ctx, tty.index)
-		local value = transform(ctx, tty.value)
-		if index ~= tty.index or value ~= tty.value then
-			return ty.map(tty.node, index, value, tty.size)
-		end
-	elseif tty.kind == "array" then
-		local of = transform(ctx, tty.of)
-		if tty.of ~= of then
-			return ty.array(tty.node, of)
-		end
-	elseif tty.kind == "struct" then
-		local fields = table.clone(tty.fields)
-		local invalidated = false
-		for index, field in fields do
-			local value = transform(ctx, field.value)
-			if value ~= field.value then
-				invalidated = true
-				fields[index] = ty.field(field.node, field.name, value)
+	encountered[input] = true
+
+	const output = (function(): Ty
+		if input.kind == "map" then
+			local index = transform(ctx, input.index)
+			local value = transform(ctx, input.value)
+			if index ~= input.index or value ~= input.value then
+				return ty.map(input.node, index, value, input.size)
 			end
-		end
-
-		if invalidated then
-			return ty.struct(tty.node, fields)
-		end
-	elseif tty.kind == "union" then
-		local components = table.clone(tty.components)
-		local invalidated = false
-		for index, component in components do
-			local transformed = transform(ctx, component)
-			if transformed ~= component then
-				invalidated = true
-				components[index] = transformed
+		elseif input.kind == "array" then
+			local of = transform(ctx, input.of)
+			if input.of ~= of then
+				return ty.array(input.node, of)
 			end
-		end
-
-		if invalidated then
-			return ty.union(tty.node, components)
-		end
-	elseif tty.kind == "discriminated_union" then
-		local variants = table.clone(tty.variants)
-		local invalidated = false
-		for index, variant in variants do
-			local key = transform(ctx, variant.key) :: typeof(variant.key)
-			local value = transform(ctx, variant.value) :: typeof(variant.value)
-			if key ~= variant.key or variant.value ~= value then
-				invalidated = true
-				variants[index] = ty.variant(variant.node, key, value)
+		elseif input.kind == "struct" then
+			local fields = table.clone(input.fields)
+			local invalidated = false
+			for index, field in fields do
+				local value = transform(ctx, field.value)
+				if value ~= field.value then
+					invalidated = true
+					fields[index] = ty.field(field.node, field.name, value)
+				end
 			end
-		end
 
-		if invalidated then
-			return ty.discriminated_union(tty.node, tty.tag, variants)
-		end
-	elseif tty.kind == "type_instantiation" then
-		local body = transform(ctx, tty.body)
-		if tty.body ~= body then
-			return ty.type_instantiation(tty.node, tty.type_function, tty.arguments, body)
-		end
-	elseif tty.kind == "reference" then
-		local to = lookup.ty_from_id(ctx.hir, tty.to)
-		if encountered[to] == nil then
+			if invalidated then
+				return ty.struct(input.node, fields)
+			end
+		elseif input.kind == "union" then
+			local components = table.clone(input.components)
+			local invalidated = false
+			for index, component in components do
+				local transformed = transform(ctx, component)
+				if transformed ~= component then
+					invalidated = true
+					components[index] = transformed
+				end
+			end
+
+			if invalidated then
+				return ty.union(input.node, components)
+			end
+		elseif input.kind == "discriminated_union" then
+			local variants = table.clone(input.variants)
+			local invalidated = false
+			for index, variant in variants do
+				local key = transform(ctx, variant.key) :: typeof(variant.key)
+				local value = transform(ctx, variant.value) :: typeof(variant.value)
+				if key ~= variant.key or variant.value ~= value then
+					invalidated = true
+					variants[index] = ty.variant(variant.node, key, value)
+				end
+			end
+
+			if invalidated then
+				return ty.discriminated_union(input.node, input.tag, variants)
+			end
+		elseif input.kind == "type_instantiation" then
+			local body = transform(ctx, input.body)
+			if input.body ~= body then
+				return ty.type_instantiation(input.node, input.type_function, input.arguments, body)
+			end
+		elseif input.kind == "reference" then
+			local to = lookup.ty_from_id(ctx.hir, input.to)
 			return transform(ctx, to)
 		end
-	end
 
-	return tty
+		return input
+	end)()
+
+	cache[input] = output
+	return output
 end
 
 local function dereference(hir: Hir)
@@ -93,6 +104,7 @@ local function dereference(hir: Hir)
 	for ty_id, tty in tys do
 		local context: Context = {
 			hir = hir,
+			cache = {},
 			encountered = {},
 		}
 		tys[ty_id] = transform(context, tty)

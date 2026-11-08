@@ -33,6 +33,7 @@ local tests = tiniest.collect_tests(function()
 	describe_from_file("diagnostics")
 	describe_from_file("examples")
 	describe_from_file("validation")
+	describe_from_file("dereferencing")
 
 	describe("issues", function()
 		require("./issues/90.test")(tiniest)
