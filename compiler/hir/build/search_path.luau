@@ -20,7 +20,7 @@ local function search_path(from: Scope, path: { string }): (Decl?, Identifier?)
 		local value = scope.values[segment]
 		-- search the parent scope
 		if value == nil then
-			scope = scope.scope
+			scope = scope.parent
 			continue
 		-- search the found scope
 		elseif value.kind == "scope" and index ~= length then

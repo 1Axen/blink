@@ -8,6 +8,7 @@ local types = require("@hir/types")
 type Hir = types.Hir
 type FileOptions = options.FileOptions
 type SeenOptions = { [string]: ast.StatOption }
+type FileOptionsMap = { [number]: FileOptions? }
 
 local function record_option(file_options: FileOptions, seen_options: SeenOptions, stat: ast.StatOption): never?
 	local name = stat.name.value
@@ -37,7 +38,8 @@ local function record_option(file_options: FileOptions, seen_options: SeenOption
 	return nil
 end
 
-local function populate_options(hir: Hir, files: compilation.Files, profile: compilation.Profile)
+local function collect_options(files: compilation.Files, profile: compilation.Profile): FileOptionsMap
+	const file_options_map = {}
 	for file_id, file_ast in files.ast_map do
 		local file_options: FileOptions = {}
 		local seen_options: SeenOptions = {}
@@ -55,8 +57,10 @@ local function populate_options(hir: Hir, files: compilation.Files, profile: com
 			record_option(file_options, seen_options, stat)
 		end
 
-		hir.options[file_id] = file_options
+		file_options_map[file_id] = file_options
 	end
+
+	return file_options_map
 end
 
-return populate_options
+return collect_options

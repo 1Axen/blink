@@ -52,7 +52,6 @@ local function fmt_type(decl: types.Type, fmt_builder: StringBuilder)
 	string_builder.indent(fmt_builder)
 
 	string_builder.append_line(fmt_builder, `{FIELD_STYLE("name:")} {fmt_types.string(decl.name)},`)
-	string_builder.append_line(fmt_builder, `{FIELD_STYLE("scope:")} {id.format(decl.scope.id)},`)
 	string_builder.append_line(fmt_builder, `{FIELD_STYLE("ty:")} {id.format(decl.ty_id)},`)
 
 	if decl.generics then

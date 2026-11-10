@@ -795,7 +795,7 @@ local function populate_type_names(ctx: Context)
 	local type_names = ctx.type_names
 
 	local function next_scope(scope: hir.Scope, prefix: string)
-		if scope.scope ~= nil then
+		if scope.parent ~= nil then
 			prefix = `{prefix}{scope.name}_`
 		end
 

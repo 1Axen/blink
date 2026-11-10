@@ -1,97 +1,63 @@
 local ast = require("@ast")
 local canonicalize_attributes = require("./canonicalize_attributes")
 local compilation = require("@config/compilation")
-local panic = require("@util/panic")
 local report = require("@compiler/report")
 local search_path = require("./search_path")
-local store_decl = require("./store_decl")
 local typeforge = require("@util/typeforge")
 local types = require("@hir/types")
+const assert_panic = require("@util/assert_panic")
+const insert_into_scope = require("./insert_into_scope")
 
 type Decl = types.Decl
 type Scope = types.Scope
-type Decls = types.Decls
 type DeclId = types.DeclId
 type ScopeId = types.ScopeId
 
 type Files = compilation.Files
-type FileDeclsMap = { [number]: Decls }
+type FileScopeMap = { [number]: Scope }
 
 type Extra = index<ast.StatImport, "extra">
 
-local function combine<K, V>(from: { read [K]: V }, into: { [K]: V })
-	for key, value in from do
-		into[key] = value
-	end
-end
-
-const function star_import(
-	into_scope: Scope,
-	into_decls: Decls,
-	from_scope: Scope,
-	from_decls: Decls,
-	extra: typeforge.Pick<Extra, "all">
-)
-	const as = extra.into_scope
-	if as == nil then
-		-- simple case, pull in top level decls
-		for _, decl_map in { from_decls.types, from_decls.events, from_decls.functs, from_decls.scopes } do
-			for _, decl in decl_map do
-				-- only pull in top level decls
-				if decl.scope ~= from_scope then
-					continue
-				end
-
-				local name = decl.name
-				local _, previous = search_path(into_scope, { name })
-				if previous then
-					report.shadow(name, extra.star, previous)
-				end
-
-				store_decl(into_scope, into_decls, decl, extra.star)
+const function star_import(into_scope: Scope, from_scope: Scope, extra: typeforge.Pick<Extra, "all">)
+	const as_symbol = extra.into_scope
+	-- from "<path>" import *
+	if as_symbol == nil then
+		const symbols = from_scope.symbols
+		for name, decl in from_scope.values do
+			const symbol = assert_panic(symbols[name], "scope value should have a corresponding symbol")
+			const _, previous = search_path(into_scope, { name })
+			if previous then
+				report.shadow(name, extra.star, previous)
 			end
+
+			insert_into_scope(into_scope, symbol, decl)
+		end
+	-- from "<path>" import * as <name>
+	else
+		const name = as_symbol.value
+		const _, previous = search_path(into_scope, { name })
+		if previous then
+			report.shadow(name, as_symbol, previous)
 		end
 
-		return
+		const new_scope: Scope = {
+			id = from_scope.id,
+			kind = "scope",
+			name = name,
+			node = from_scope.node,
+			parent = into_scope,
+			attributes = {},
+			values = from_scope.values,
+			symbols = from_scope.symbols,
+		}
+
+		insert_into_scope(into_scope, as_symbol, new_scope)
 	end
-
-	local name = as.value
-	local _, previous = search_path(into_scope, { name })
-	if previous then
-		report.shadow(name, as, previous)
-	end
-
-	local new_scope: Scope = {
-		id = from_scope.id,
-		kind = "scope",
-		name = name,
-		node = from_scope.node,
-		scope = into_scope,
-		attributes = {},
-
-		values = from_scope.values,
-		symbols = from_scope.symbols,
-	}
-
-	for decl_id, child_scope in from_decls.scopes do
-		if child_scope == from_scope then
-			continue
-		end
-
-		into_decls.scopes[decl_id] = child_scope
-	end
-
-	combine(from_decls.types, into_decls.types)
-	combine(from_decls.events, into_decls.events)
-	combine(from_decls.functs, into_decls.functs)
-	store_decl(into_scope, into_decls, new_scope, as)
 end
 
 const function destructured_import(
 	into_scope: Scope,
-	into_decls: Decls,
 	from_scope: Scope,
-	from_decls: Decls,
 	values: index<typeforge.Pick<Extra, "destructured">, "values">
 )
 	for _, value in values do
@@ -124,36 +90,30 @@ const function destructured_import(
 			report.shadow(name, identifier, previous)
 		end
 
-		store_decl(into_scope, into_decls, decl, identifier)
+		insert_into_scope(into_scope, identifier, decl)
 	end
 end
 
-local function perform_import(
-	into_scope: Scope,
-	into_decls: Decls,
-	from_scope: Scope,
-	from_decls: Decls,
-	import_stat: ast.StatImport
-)
+local function perform_import(into_scope: Scope, from_scope: Scope, import_stat: ast.StatImport)
 	local extra = import_stat.extra
 	if extra.kind == "all" then
-		star_import(into_scope, into_decls, from_scope, from_decls, extra)
+		star_import(into_scope, from_scope, extra)
 	elseif extra.kind == "destructured" then
-		destructured_import(into_scope, into_decls, from_scope, from_decls, extra.values)
+		destructured_import(into_scope, from_scope, extra.values)
 	end
 end
 
-local function populate_imports(files: Files, decls_map: FileDeclsMap, profile: compilation.Profile)
+local function populate_imports(files: Files, file_scope_map: FileScopeMap, profile: compilation.Profile)
 	local ast_map = files.ast_map
 	local imports_map = files.imports_map
 
 	for _, file_id in files.sorted_ids do
 		local file_ast = ast_map[file_id]
-		local file_decls = decls_map[file_id]
+		local file_scope = file_scope_map[file_id]
 
 		local queue: { { scope: Scope, statements: { ast.Statement } } } = {}
 		table.insert(queue, {
-			scope = file_decls.scopes[file_ast.body.id :: ScopeId],
+			scope = file_scope,
 			statements = file_ast.body.statements,
 		})
 
@@ -163,32 +123,36 @@ local function populate_imports(files: Files, decls_map: FileDeclsMap, profile: 
 				break
 			end
 
-			local scope = entry.scope
+			local into_scope = entry.scope
+			for _, value in into_scope.values do
+				if value.kind ~= "scope" then
+					continue
+				end
+
+				const node = value.node
+				if node.kind ~= "scope" then
+					continue
+				end
+
+				table.insert(queue, {
+					scope = value,
+					statements = node.body.statements,
+				})
+			end
+
 			for _, stat in entry.statements do
+				if stat.kind ~= "import" then
+					continue
+				end
+
 				const attributes = canonicalize_attributes(stat.attributes)
 				if attributes.profile and attributes.profile ~= profile then
 					continue
 				end
 
-				if stat.kind == "scope" then
-					const next_scope = file_decls.scopes[stat.id :: ScopeId]
-					if next_scope == nil then
-						panic(`scope statement ({stat.name.value}:{stat.id}) wasn't mapped to a scope decl`)
-					end
-
-					table.insert(queue, {
-						scope = next_scope,
-						statements = stat.body.statements,
-					})
-				elseif stat.kind == "import" then
-					local import_file_id = imports_map[stat]
-
-					local import_ast = ast_map[import_file_id]
-					local import_decls = decls_map[import_file_id]
-					local import_scope = import_decls.scopes[import_ast.body.id :: ScopeId]
-
-					perform_import(scope, file_decls, import_scope, import_decls, stat)
-				end
+				local import_file_id = imports_map[stat]
+				local from_scope = file_scope_map[import_file_id]
+				perform_import(into_scope, from_scope, stat)
 			end
 		end
 	end

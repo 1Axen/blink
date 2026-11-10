@@ -21,7 +21,6 @@ export type Type = {
 	read kind: "type",
 	read name: string,
 	read node: ast.StatType,
-	read scope: Scope,
 	read attributes: attributes.Attributes,
 
 	read ty_id: TyId,
@@ -33,7 +32,6 @@ export type Event = {
 	read kind: "event",
 	read name: string,
 	read node: ast.StatEvent,
-	read scope: Scope,
 	read attributes: attributes.Attributes,
 
 	read from: "Server" | "Client" | "Both",
@@ -47,7 +45,6 @@ export type Function = {
 	read kind: "function",
 	read name: string,
 	read node: ast.StatFunction,
-	read scope: Scope,
 	read attributes: attributes.Attributes,
 
 	data: { Parameter }?,
@@ -59,7 +56,7 @@ export type Scope = {
 	read kind: "scope",
 	read name: string,
 	read node: ast.StatScope | ast.StatImport,
-	read scope: Scope?,
+	read parent: Scope?,
 	read attributes: attributes.Attributes,
 
 	read values: { [string]: Decl },
