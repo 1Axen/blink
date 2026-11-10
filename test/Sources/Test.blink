@@ -457,6 +457,13 @@ event InstanceOfType {
     Data: Instance(Sound)
 }
 
+event InstanceOfTypeWithNumber {
+    From: Server,
+    Type: Reliable,
+    Call: SingleSync,
+    Data: Instance(Motor6D)
+}
+
 event InstanceOptional {
     From: Server,
     Type: Reliable,

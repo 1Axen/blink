@@ -1646,7 +1646,15 @@ function Parser.Primitive(self: Parser, Name: Token): Primitive
 
 	if Value == "Instance" then
 		local ClassToken = self:TryConsume("Class")
-		Class = if ClassToken then string.sub(ClassToken.Value, 2, #ClassToken.Value - 1) else "Instance"
+		if ClassToken then
+			Class = string.sub(ClassToken.Value, 2, #ClassToken.Value - 1)
+		elseif self:TryConsume("OpenParentheses") then
+			--> Classes containing numbers aren't lexed as a class, ex: Instance(Motor6D)
+			Class = self:Consume("Identifier").Value
+			self:Consume("CloseParentheses")
+		else
+			Class = "Instance"
+		end
 	end
 
 	return {
