@@ -18,6 +18,8 @@
 	"luau-lsp.fflags.override": {
 		"LuauIntegerType2": "true",
 		"LuauIntegerLibrary": "true",
+		"LuauExperimentalIfLocalSyntax": "true",
+		"LuauExperimentalWhileLocalSyntax": "true"
 	},
 
 	"luau-lsp.platform.type": "roblox",
