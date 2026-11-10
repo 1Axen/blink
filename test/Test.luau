@@ -706,6 +706,7 @@ FireAndExpect("Optional (nil)", Server.OptionalPrimitive, Client.OptionalPrimiti
 FireAndExpect("Instance Any", Server.InstanceAny, Client.InstanceAny, Instance)
 FireAndExpect("Instance Type", Server.InstanceOfType, Client.InstanceOfType, Instance)
 FireAndFail("Instance Type (Fail)", Server.InstanceOfType, Client.InstanceOfType, nil)
+FireAndExpect("Instance Type (number)", Server.InstanceOfTypeWithNumber, Client.InstanceOfTypeWithNumber, Instance)
 FireAndExpect("Instance Optional", Server.InstanceOptional, Client.InstanceOptional, Instance)
 FireAndExpectSeparate(
 	"Instance Optional (nil)",
