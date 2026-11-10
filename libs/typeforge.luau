@@ -36,13 +36,19 @@ export type function StringUnionToStruct(union: type, value: type?)
 end
 
 export type function Writeable(t: type): type
-	local function make_writeable(tbl: type)
-		local copy = types.copy(tbl)
-		for key, property in copy:properties() do
-			copy:setproperty(key, property.read or property.write)
+	local function make_writeable(frozen: type)
+		if not frozen:is("table") then
+			return frozen
 		end
 
-		return copy
+		local writeable = types.copy(frozen)
+		for key, property in writeable:properties() do
+			if property.read and property.write == nil then
+				writeable:setproperty(key, property.read)
+			end
+		end
+
+		return writeable
 	end
 
 	if t:is("union") then
@@ -52,11 +58,9 @@ export type function Writeable(t: type): type
 			writeable_components[index] = make_writeable(component)
 		end
 		return types.unionof(table.unpack(writeable_components))
-	elseif t:is("table") then
-		return make_writeable(t)
-	else
-		error("Expected a table or union type")
 	end
+
+	return make_writeable(t)
 end
 
 export type function Drop(union: type, value: type)
