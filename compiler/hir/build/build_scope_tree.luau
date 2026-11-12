@@ -1,12 +1,12 @@
 const ast = require("@ast")
-const report = require("@compiler/report")
-const compilation = require("@config/compilation")
-const types = require("@hir/types")
-const insert_into_scope = require("./insert_into_scope")
-const search_path = require("./search_path")
 const canonicalize_attributes = require("./canonicalize_attributes")
+const compilation = require("@config/compilation")
+const insert_into_scope = require("./insert_into_scope")
+const report = require("@compiler/report")
+const search_path = require("./search_path")
 const ty = require("@ty")
 const typeforge = require("@util/typeforge")
+const types = require("@hir/types")
 
 type TyId = ty.TyId
 type DeclId = types.DeclId

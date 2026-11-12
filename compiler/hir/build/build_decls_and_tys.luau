@@ -13,7 +13,9 @@ local ty = require("@ty")
 local types = require("@hir/types")
 
 type Ty = ty.Ty
+type Type = types.Type
 type Scope = types.Scope
+type Decls = types.Decls
 
 type TyId<T = Ty> = ty.TyId<T>
 type NodeId = ast.NodeId
@@ -28,7 +30,9 @@ type Generics = {
 type Context = {
 	scope: Scope,
 	generics: Generics?,
-	read ty_map: { [TyId]: Ty },
+
+	read tys: { [TyId]: Ty },
+	read pending_types: { Type },
 }
 
 local expression: (ctx: Context, expr: ast.Expression, node_id: NodeId?, generics: Generics?) -> TyId<any>
@@ -391,7 +395,7 @@ local function ty_reference(ctx: Context, expr: ast.ExprReference): Ty
 	local reference_type = reference_decl :: types.Type
 
 	-- Phase 4:
-	local reference_parameters = reference_type.generics
+	local reference_parameters = reference_type.parameters
 	if reference_parameters then
 		-- Phase 4.1:
 		local n_parameters = #reference_parameters
@@ -410,6 +414,7 @@ local function ty_reference(ctx: Context, expr: ast.ExprReference): Ty
 	end
 
 	-- Phase 5:
+	table.insert(ctx.pending_types, reference_type)
 	return ty.reference(expr, reference_type.ty_id, arguments)
 end
 
@@ -463,65 +468,62 @@ end
 local function expr_pack(ctx: Context, expr: ast.ExprPack): { types.Parameter }
 	local parameters: { types.Parameter } = {}
 	for index, expr in expr.values do
-		local name = if expr.name then expr.name.value else nil
 		local ty_id = expr.id :: TyId
 		local parameter: types.Parameter = {
-			name = name,
+			name = expr.name and expr.name.value,
 			ty_id = ty_id,
 		}
 
-		ctx.ty_map[ty_id] = expression(ctx, expr.value)
+		ctx.tys[ty_id] = expression(ctx, expr.value)
 		table.insert(parameters, parameter)
 	end
 
 	return parameters
 end
 
-local function build_tys(root_scope: Scope): { [TyId]: Ty }
+local function build_decls_and_tys(root_scope: Scope): (Decls, { [TyId]: Ty })
 	const ty_map: { [TyId]: Ty } = {}
-	const context: Context = {
-		scope = root_scope,
-		ty_map = ty_map,
+	const decls: Decls = {
+		types = {},
+		scopes = {},
+		events = {},
+		functs = {},
 	}
 
-	const scope_queue = table.create<<Scope>>(4)
-	table.insert(scope_queue, root_scope)
-	
+	const pending_types = table.create<<Type>>(2)
+	const pending_scopes = table.create<<Scope>>(4)
+	table.insert(pending_scopes, root_scope)
+
+	const context: Context = {
+		scope = root_scope,
+		generics = nil,
+
+		tys = ty_map,
+		pending_types = pending_types,
+	}
+
 	while true do
-		const scope = table.remove(scope_queue)
+		const scope = table.remove(pending_scopes)
 		if scope == nil then
 			break
 		end
 
-		context.scope = scope
 		for _, decl in scope.values do
 			if decl.kind == "scope" then
-				table.insert(scope_queue, decl)
+				decls.scopes[decl.id] = scope
+				table.insert(pending_scopes, decl)
 			elseif decl.kind == "type" then
-				const node = decl.node
-				local ty_id = decl.id :: TyId
-
-				local generics: Generics?
-				local type_parameters = decl.generics
-				if type_parameters then
-					local by_name_map = {}
-					for index, generic in type_parameters do
-						by_name_map[generic.name] = generic
-					end
-
-					generics = {
-						by_name = by_name_map,
-						parameters = type_parameters,
-					}
-				end
-
-				ty_map[ty_id] = expression(context, node.value, generics)
+				table.insert(pending_types, decl)
 			elseif decl.kind == "event" then
-				const node = decl.node
-				if const data = node.data then
+				decls.events[decl.id] = decl
+				context.scope = decl.declared_in
+				if const data = decl.node.data then
 					decl.data = expr_pack(context, data)
 				end
 			elseif decl.kind == "function" then
+				decls.functs[decl.id] = decl
+				context.scope = decl.declared_in
+
 				const node = decl.node
 				if const data = node.data then
 					decl.data = expr_pack(context, data)
@@ -533,7 +535,38 @@ local function build_tys(root_scope: Scope): { [TyId]: Ty }
 		end
 	end
 
-	return ty_map
+	while true do
+		const ttype = table.remove(pending_types)
+		if ttype == nil then
+			break
+		end
+
+		-- alias or recursive reference
+		const id = ttype.id
+		const ty_id = id :: TyId
+		if decls.types[id] or ty_map[ty_id] then
+			continue
+		end
+
+		local generics: Generics?
+		if const parameters = ttype.parameters then
+			local by_name_map = {}
+			for index, generic in parameters do
+				by_name_map[generic.name] = generic
+			end
+
+			generics = {
+				by_name = by_name_map,
+				parameters = parameters,
+			}
+		end
+
+		context.scope = ttype.declared_in
+		ty_map[ty_id] = expression(context, ttype.node.value, generics)
+		decls.types[id] = ttype
+	end
+
+	return decls, ty_map
 end
 
-return build_tys
+return build_decls_and_tys
