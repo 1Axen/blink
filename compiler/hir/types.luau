@@ -22,6 +22,7 @@ export type Type = {
 	read name: string,
 	read node: ast.StatType,
 	read attributes: attributes.Attributes,
+	read declared_in: Scope,
 
 	read ty_id: TyId,
 	read paramaters: { ty.Generic }?,
@@ -33,6 +34,7 @@ export type Event = {
 	read name: string,
 	read node: ast.StatEvent,
 	read attributes: attributes.Attributes,
+	read declared_in: Scope,
 
 	read from: "Server" | "Client" | "Both",
 	read type: "Reliable" | "Unreliable",
@@ -46,6 +48,7 @@ export type Function = {
 	read name: string,
 	read node: ast.StatFunction,
 	read attributes: attributes.Attributes,
+	read declared_in: Scope,
 
 	data: { Parameter }?,
 	ret: { Parameter }?,

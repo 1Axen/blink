@@ -47,13 +47,14 @@ const function type_decl(ctx: Context, stat: ast.StatType): types.Type
 		name = stat.name.value,
 		node = stat,
 		attributes = canonicalize_attributes(stat.attributes),
+		declared_in = ctx.scope,
 
 		ty_id = stat.id :: TyId,
 		paramaters = paramaters,
 	}
 end
 
-const function event_decl(stat: ast.StatEvent): types.Event
+const function event_decl(ctx: Context, stat: ast.StatEvent): types.Event
 	const name = stat.name.value
 	const from = assert_identifier_one_of(stat.from, { "Client", "Server", "Both" }).value :: index<types.Event, "from">
 	const call = assert_identifier_one_of(
@@ -69,6 +70,7 @@ const function event_decl(stat: ast.StatEvent): types.Event
 		name = name,
 		node = stat,
 		attributes = canonicalize_attributes(stat.attributes),
+		declared_in = ctx.scope,
 
 		from = from,
 		type = reliability,
@@ -76,13 +78,14 @@ const function event_decl(stat: ast.StatEvent): types.Event
 	}
 end
 
-const function funct_decl(stat: ast.StatFunction): types.Function
+const function funct_decl(ctx: Context, stat: ast.StatFunction): types.Function
 	return {
 		id = stat.id :: DeclId,
 		kind = "function",
 		name = stat.name.value,
 		node = stat,
 		attributes = canonicalize_attributes(stat.attributes),
+		declared_in = ctx.scope,
 	}
 end
 
@@ -105,11 +108,11 @@ const function traverse_block(ctx: Context, block: ast.Block)
 	for _, statement in block.statements do
 		--stylua: ignore
 		local decl: Decl? = if statement.kind == "type" then 
-				type_decl(statement)
+				type_decl(ctx, statement)
 			elseif statement.kind == "event" then 
-				event_decl(statement)
+				event_decl(ctx, statement)
 			elseif statement.kind == "function" then 
-				funct_decl(statement)
+				funct_decl(ctx, statement)
 			elseif statement.kind == "scope" then 
 				scope_decl(ctx, statement)
 			else 
