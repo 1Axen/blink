@@ -382,7 +382,7 @@ local function gen_terminator(ctx: Context, terminator: lir.Terminator)
 			and cond.left == constant.truth
 			and cond.right == constant.truth
 		then
-			builder:append("else")
+			builder:append("else\n")
 		else
 			if chain_index == 1 then
 				builder:append("if ")
