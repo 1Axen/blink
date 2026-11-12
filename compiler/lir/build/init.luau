@@ -223,7 +223,7 @@ local function toggle_bitset_index(block: fn.Builder, index: Readable<number>, b
 end
 
 local function build_type(ctx: Context, decl: hir.Type): TypeExport?
-	if decl.generics then
+	if decl.paramaters then
 		return nil
 	end
 

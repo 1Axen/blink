@@ -31,14 +31,13 @@ const function assert_identifier_one_of(ident: ast.Identifier, valid: { string }
 	return ident
 end
 
-const function type_decl(stat: ast.StatType): types.Type
-	local generics: { ty.Generic }?
+const function type_decl(ctx: Context, stat: ast.StatType): types.Type
+	local paramaters: { ty.Generic }?
 	if stat.generics then
-		generics = {}
+		paramaters = {}
 		for index, node in stat.generics.values do
 			const name = node.name.value
-			const generic_ty = ty.generic(node :: any, name, index)
-			generics[index] = generic_ty
+			paramaters[index] = ty.generic(node :: any, name, index)
 		end
 	end
 
@@ -50,7 +49,7 @@ const function type_decl(stat: ast.StatType): types.Type
 		attributes = canonicalize_attributes(stat.attributes),
 
 		ty_id = stat.id :: TyId,
-		generics = generics,
+		paramaters = paramaters,
 	}
 end
 
