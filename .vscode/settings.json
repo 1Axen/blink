@@ -19,7 +19,9 @@
 		"LuauIntegerType2": "true",
 		"LuauIntegerLibrary": "true",
 		"LuauExperimentalIfLocalSyntax": "true",
-		"LuauExperimentalWhileLocalSyntax": "true"
+		"LuauExperimentalIfLocalAnalysis": "true",
+		"LuauExperimentalWhileLocalSyntax": "true",
+		"LuauExperimentalWhileLocalAnalysis": "true",
 	},
 
 	"luau-lsp.platform.type": "roblox",
