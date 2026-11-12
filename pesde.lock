@@ -2,7 +2,7 @@
 # It is not intended for manual editing.
 format = 2
 name = "1axen/blink"
-version = "0.1.0"
+version = "1.0.0-pre.1"
 target = "luau"
 
 [graph."4x8matrix/cli_builder@0.1.0-dev.1 luau"]
