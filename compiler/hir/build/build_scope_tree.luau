@@ -18,7 +18,7 @@ type Scope = types.Scope
 type Profile = compilation.Profile
 
 type Context = {
-	scope: Scope,
+	read scope: Scope,
 	read profile: Profile,
 }
 
@@ -138,8 +138,11 @@ const function traverse_block(ctx: Context, block: ast.Block)
 		end
 
 		if decl.kind == "scope" and statement.kind == "scope" then
-			ctx.scope = decl
-			traverse_block(ctx, statement.body)
+			const scope_context: Context = {
+				scope = decl,
+				profile = ctx.profile,
+			}
+			traverse_block(scope_context, statement.body)
 		end
 	end
 end
