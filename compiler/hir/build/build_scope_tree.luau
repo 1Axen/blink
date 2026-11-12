@@ -32,12 +32,12 @@ const function assert_identifier_one_of(ident: ast.Identifier, valid: { string }
 end
 
 const function type_decl(ctx: Context, stat: ast.StatType): types.Type
-	local paramaters: { ty.Generic }?
+	local parameters: { ty.Generic }?
 	if stat.generics then
-		paramaters = {}
+		parameters = {}
 		for index, node in stat.generics.values do
 			const name = node.name.value
-			paramaters[index] = ty.generic(node :: any, name, index)
+			parameters[index] = ty.generic(node :: any, name, index)
 		end
 	end
 
@@ -50,7 +50,7 @@ const function type_decl(ctx: Context, stat: ast.StatType): types.Type
 		declared_in = ctx.scope,
 
 		ty_id = stat.id :: TyId,
-		paramaters = paramaters,
+		parameters = parameters,
 	}
 end
 

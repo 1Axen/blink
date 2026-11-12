@@ -852,9 +852,9 @@ local function from_lir(props: Props, target: compilation.Target): string
 		builder:append("export type ")
 		builder:append(type_name)
 
-		if ttype.paramaters then
+		if ttype.parameters then
 			builder:append("<")
-			for index, generic in ttype.paramaters do
+			for index, generic in ttype.parameters do
 				if index > 1 then
 					builder:append(", ")
 				end

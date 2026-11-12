@@ -25,7 +25,7 @@ export type Type = {
 	read declared_in: Scope,
 
 	read ty_id: TyId,
-	read paramaters: { ty.Generic }?,
+	read parameters: { ty.Generic }?,
 }
 
 export type Event = {

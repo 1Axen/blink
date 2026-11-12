@@ -54,14 +54,14 @@ local function fmt_type(decl: types.Type, fmt_builder: StringBuilder)
 	string_builder.append_line(fmt_builder, `{FIELD_STYLE("name:")} {fmt_types.string(decl.name)},`)
 	string_builder.append_line(fmt_builder, `{FIELD_STYLE("ty:")} {id.format(decl.ty_id)},`)
 
-	if decl.paramaters then
+	if decl.parameters then
 		string_builder.append_indent(fmt_builder)
-		string_builder.append(fmt_builder, `{FIELD_STYLE("paramaters:")} \{`)
+		string_builder.append(fmt_builder, `{FIELD_STYLE("parameters:")} \{`)
 
-		for index, generic in decl.paramaters do
+		for index, generic in decl.parameters do
 			string_builder.append(fmt_builder, ty.format(generic))
 
-			if #decl.paramaters > index then
+			if #decl.parameters > index then
 				string_builder.append(fmt_builder, ", ")
 			end
 		end
