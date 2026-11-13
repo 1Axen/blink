@@ -718,13 +718,12 @@ local function casing_from_export(hhir: Hir, export: lir.Export): Casing
 	return file_options.casing or options.casing.default
 end
 
-local function gen_export(ctx: Context, target: compilation.Target, export: lir.Export)
-	local builder = ctx.builder
+local function gen_export(ctx: Context, export: lir.Export, name: string?)
+	const target = ctx.target
+	const builder = ctx.builder
+	const casing = casing_from_export(ctx.hir, export)
 
-	local name = export.name
-	local is_root = name == ""
-	local casing = casing_from_export(ctx.hir, export)
-
+	const is_root = name == nil
 	if is_root then
 		builder:append_line("{")
 	else
@@ -770,12 +769,12 @@ local function gen_export(ctx: Context, target: compilation.Target, export: lir.
 			append_method(ctx, casing, "invoke", export.invoke_server)
 		end
 	elseif export.kind == "scope" then
-		for _, item in export.items do
-			if (item.kind == "event" or item.kind == "function") and target == "types" then
+		for alias, item in export.items do
+			if target == "types" and (item.kind == "event" or item.kind == "function") then
 				continue
 			end
 
-			gen_export(ctx, target, item)
+			gen_export(ctx, item, alias)
 			builder:append(",\n")
 		end
 	end
@@ -795,22 +794,18 @@ local function populate_type_names(ctx: Context)
 	local type_names = ctx.type_names
 	const exported_types = ctx.exported_types
 
+	-- give names to internal only types
 	for _, ttype in hhir.types do
 		const hash = md5(tostring(ttype.id))
 		type_names[ttype.id] = `{ttype.name}_{string.sub(hash, 1, 12)}`
 	end
 
 	local function next_scope(scope: hir.Scope, prefix: string)
-		if scope.parent ~= nil then
-			prefix = `{prefix}{scope.name}_`
-		end
-
-		for _, decl in scope.values do
+		for alias, decl in scope.values do
 			if decl.kind == "scope" then
-				next_scope(decl, prefix)
+				next_scope(decl, `{prefix}{alias}_`)
 			elseif decl.kind == "type" then
-				local name = `{prefix}{decl.name}`
-				type_names[decl.id] = name
+				type_names[decl.id] = `{prefix}{alias}`
 				exported_types[decl.id] = true
 			end
 		end
@@ -837,6 +832,7 @@ local function from_lir(props: Props, target: compilation.Target): string
 	local ctx: Context = {
 		lir = llir,
 		hir = hhir,
+		target = target,
 		profile = profile,
 		builder = builder,
 
@@ -938,7 +934,7 @@ local function from_lir(props: Props, target: compilation.Target): string
 
 	builder:append_line("")
 	builder:append("return ")
-	gen_export(ctx, target, llir.export)
+	gen_export(ctx, llir.export)
 
 	return string_builder.finalize(builder)
 end

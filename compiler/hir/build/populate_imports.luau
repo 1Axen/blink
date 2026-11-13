@@ -1,12 +1,12 @@
+const assert_panic = require("@util/assert_panic")
 local ast = require("@ast")
 local canonicalize_attributes = require("./canonicalize_attributes")
 local compilation = require("@config/compilation")
+const insert_into_scope = require("./insert_into_scope")
 local report = require("@compiler/report")
 local search_path = require("./search_path")
 local typeforge = require("@util/typeforge")
 local types = require("@hir/types")
-const assert_panic = require("@util/assert_panic")
-const insert_into_scope = require("./insert_into_scope")
 
 type Decl = types.Decl
 type Scope = types.Scope
@@ -74,23 +74,16 @@ const function destructured_import(
 
 		assert(decl, "unreachable")
 
-		local name = decl.name
-		local rename_to = value.rename_to
-		local identifier = rename_to or path.segments[#path.segments]
-
-		if rename_to then
-			local mutable_decl: typeforge.Writeable<Decl> = table.clone(decl) :: any
-			mutable_decl.name = rename_to.value
-			name = mutable_decl.name
-			decl = (mutable_decl :: any) :: Decl
-		end
+		local alias = value.rename_to
+		local name = alias and alias.value or decl.name
+		local symbol = alias or path.segments[#path.segments]
 
 		local _, previous = search_path(into_scope, { name })
 		if previous ~= nil then
-			report.shadow(name, identifier, previous)
+			report.shadow(name, symbol, previous)
 		end
 
-		insert_into_scope(into_scope, identifier, decl)
+		insert_into_scope(into_scope, symbol, decl)
 	end
 end
 

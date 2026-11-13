@@ -309,8 +309,6 @@ local function build_type(ctx: Context, decl: hir.Type): TypeExport?
 	return {
 		type = "export",
 		kind = "type",
-
-		name = decl.name,
 		decl = decl,
 
 		read = read,
@@ -681,8 +679,6 @@ local function build_event(ctx: Context, decl: Event, event_id: number): EventEx
 	return {
 		type = "export",
 		kind = "event",
-
-		name = decl.name,
 		decl = decl,
 
 		server = {
@@ -831,8 +827,6 @@ local function build_function(ctx: Context, decl: Function, event_id: number): F
 	return {
 		type = "export",
 		kind = "function",
-
-		name = decl.name,
 		decl = decl,
 
 		on = on,
@@ -939,23 +933,18 @@ local function build_function_receive(ctx: Context, side: Side, block: fn.Builde
 end
 
 local function build_scope(ctx: Context, scope: hir.Scope, exports_map: ExportsMap): ScopeExport
-	local items: { Export } = {}
-	for _, decl in scope.values do
+	const items: { [string]: Export } = {}
+	for alias, decl in scope.values do
 		if decl.kind == "scope" then
-			table.insert(items, build_scope(ctx, decl, exports_map))
-			continue
-		end
-
-		local export = exports_map[decl.id]
-		if export then
-			table.insert(items, export)
+			items[alias] = build_scope(ctx, decl, exports_map)
+		elseif const export = exports_map[decl.id] then
+			items[alias] = export
 		end
 	end
 
 	return {
 		type = "export",
 		kind = "scope",
-		name = scope.name,
 		decl = scope,
 		items = items,
 	}

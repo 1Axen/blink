@@ -8,6 +8,7 @@ type BasicBlock = lir.BasicBlock
 export type Context = {
 	read lir: lir.Lir,
 	read hir: hir.Hir,
+	read target: compilation.Target,
 	read profile: compilation.Profile,
 	read builder: string_builder.StringBuilder,
 
