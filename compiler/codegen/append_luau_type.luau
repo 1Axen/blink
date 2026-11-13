@@ -1,3 +1,4 @@
+const assert_panic = require("@util/assert_panic")
 local context = require("./context")
 local hir = require("@hir")
 local id = require("@compiler/id")
@@ -136,7 +137,9 @@ local function append_type_instantiation(ctx: Context, instantiation: ty.TypeIns
 	end
 
 	local builder = ctx.builder
-	builder:append(function_type_decl.name)
+	const name =
+		assert_panic(ctx.type_names[function_type_decl.id], "expected type function of instantiation to have a name")
+	builder:append(name)
 
 	local arguments = instantiation.arguments
 	if arguments then

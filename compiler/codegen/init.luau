@@ -793,6 +793,12 @@ end
 local function populate_type_names(ctx: Context)
 	local hhir = ctx.hir
 	local type_names = ctx.type_names
+	const exported_types = ctx.exported_types
+
+	for _, ttype in hhir.types do
+		const hash = md5(tostring(ttype.id))
+		type_names[ttype.id] = `{ttype.name}_{string.sub(hash, 1, 12)}`
+	end
 
 	local function next_scope(scope: hir.Scope, prefix: string)
 		if scope.parent ~= nil then
@@ -805,6 +811,7 @@ local function populate_type_names(ctx: Context)
 			elseif decl.kind == "type" then
 				local name = `{prefix}{decl.name}`
 				type_names[decl.id] = name
+				exported_types[decl.id] = true
 			end
 		end
 	end
@@ -841,15 +848,20 @@ local function from_lir(props: Props, target: compilation.Target): string
 		seen_registers = {},
 
 		type_names = {},
+		exported_types = {},
 	}
 
 	append_headers(builder)
-
 	populate_type_names(ctx)
+
 	for decl_id, ttype in hhir.types do
 		local type_name = assert_panic(ctx.type_names[decl_id], "expected type to have a cached type name") :: string
 
-		builder:append("export type ")
+		if ctx.exported_types[decl_id] then
+			builder:append("export ")
+		end
+
+		builder:append("type ")
 		builder:append(type_name)
 
 		if ttype.parameters then

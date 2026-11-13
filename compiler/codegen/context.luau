@@ -22,6 +22,7 @@ export type Context = {
 	read seen_registers: { [number]: true },
 
 	read type_names: { [hir.DeclId]: string? },
+	read exported_types: { [hir.DeclId]: true? },
 }
 
 --- Attempts to mark a register as seen, returns true if this is the first time this register was seen.
