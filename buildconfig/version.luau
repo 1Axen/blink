@@ -1,1 +1,1 @@
-return "1.0.0-pre.11"
+return "1.0.0-pre.12"
