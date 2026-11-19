@@ -789,29 +789,83 @@ local function gen_export(ctx: Context, export: lir.Export, name: string?)
 	builder:append("}")
 end
 
-local function populate_type_names(ctx: Context)
-	local hhir = ctx.hir
-	local type_names = ctx.type_names
-	const exported_types = ctx.exported_types
+const function gen_type_alias(ctx: Context, ttype: hir.Type, alias: string)
+	const builder = ctx.builder
 
-	-- give names to internal only types
-	for _, ttype in hhir.types do
-		const hash = md5(tostring(ttype.id))
-		type_names[ttype.id] = `{ttype.name}_{string.sub(hash, 1, 12)}`
+	builder:append("type ")
+	builder:append(alias)
+
+	if ttype.parameters then
+		builder:append("<")
+		for index, generic in ttype.parameters do
+			if index > 1 then
+				builder:append(", ")
+			end
+
+			append_luau_type(ctx, generic)
+		end
+		builder:append(">")
 	end
 
-	local function next_scope(scope: hir.Scope, prefix: string)
-		for alias, decl in scope.values do
+	builder:append(" = ")
+
+	local type_ty = hir.ty_from_id(ctx.hir, ttype.ty_id)
+	append_luau_type(ctx, type_ty)
+
+	builder:append("\n")
+end
+
+const function gen_type_aliases(ctx: Context)
+	const hhir = ctx.hir
+	const builder = ctx.builder
+	const type_names = ctx.type_names
+
+	for _, ttype in hhir.types do
+		const hash = md5(tostring(ttype.id))
+		const alias = `{ttype.name}_{string.sub(hash, 1, 12)}`
+		type_names[ttype.id] = alias
+	end
+
+	const enqueued = table.create<<{
+		read scope: hir.Scope,
+		read prefix: string,
+	}>>(4)
+	const internal_types = table.clone(hhir.types)
+	table.insert(enqueued, { scope = hhir.entry_scope, prefix = "" })
+
+	while true do
+		const entry = table.remove(enqueued, 1)
+		if entry == nil then
+			break
+		end
+
+		const prefix = entry.prefix
+		for alias, decl in entry.scope.values do
 			if decl.kind == "scope" then
-				next_scope(decl, `{prefix}{alias}_`)
+				table.insert(enqueued, {
+					scope = decl,
+					prefix = `{prefix}{alias}_`,
+				})
 			elseif decl.kind == "type" then
-				type_names[decl.id] = `{prefix}{alias}`
-				exported_types[decl.id] = true
+				const id = decl.id
+				alias = `{prefix}{alias}`
+
+				if internal_types[id] then
+					type_names[id] = alias
+					internal_types[id] = nil
+				end
+
+				builder:append("export ")
+				gen_type_alias(ctx, decl, alias)
 			end
 		end
 	end
 
-	next_scope(hhir.entry_scope, "")
+	for _, ttype in internal_types do
+		const alias =
+			assert_panic(type_names[ttype.id], `Expected internal type ({id.format(ttype.id)}) to have a type name`)
+		gen_type_alias(ctx, ttype, alias)
+	end
 end
 
 export type Props = {
@@ -844,41 +898,10 @@ local function from_lir(props: Props, target: compilation.Target): string
 		seen_registers = {},
 
 		type_names = {},
-		exported_types = {},
 	}
 
 	append_headers(builder)
-	populate_type_names(ctx)
-
-	for decl_id, ttype in hhir.types do
-		local type_name = assert_panic(ctx.type_names[decl_id], "expected type to have a cached type name") :: string
-
-		if ctx.exported_types[decl_id] then
-			builder:append("export ")
-		end
-
-		builder:append("type ")
-		builder:append(type_name)
-
-		if ttype.parameters then
-			builder:append("<")
-			for index, generic in ttype.parameters do
-				if index > 1 then
-					builder:append(", ")
-				end
-
-				append_luau_type(ctx, generic)
-			end
-			builder:append(">")
-		end
-
-		builder:append(" = ")
-
-		local type_ty = hir.ty_from_id(hhir, ttype.ty_id)
-		append_luau_type(ctx, type_ty)
-
-		builder:append("\n")
-	end
+	gen_type_aliases(ctx)
 
 	builder:append_line("")
 
