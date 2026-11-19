@@ -49,11 +49,6 @@ export type Buffer = {
 	read length: SealedRange?,
 }
 
-export type Integer = {
-	read kind: "integer",
-	read node: Expression?,
-}
-
 export type String = {
 	read kind: "string",
 	read node: Expression?,
@@ -233,7 +228,6 @@ export type Ty =
     | Vector
     | Buffer
     | Boolean
-	| Integer
 	| Nil
 
     | StringLiteral

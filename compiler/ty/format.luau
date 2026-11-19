@@ -53,10 +53,6 @@ local function fmt_vector(ty: types.Vector): string
 	return result
 end
 
-local function fmt_integer(ty: types.Integer): string
-	return PRIMITIVE_STYLE("integer")
-end
-
 local function fmt_buffer(ty: types.Buffer): string
 	return `{PRIMITIVE_STYLE("buffer")}{fmt_opt_range(ty.length)}`
 end
@@ -246,8 +242,6 @@ function fmt_ty(ty: types.Ty): string
 		return fmt_buffer(ty)
 	elseif ty.kind == "vector" then
 		return fmt_vector(ty)
-	elseif ty.kind == "integer" then
-		return fmt_integer(ty)
 	elseif ty.kind == "boolean" then
 		return fmt_boolean(ty)
 	elseif ty.kind == "string_literal" then

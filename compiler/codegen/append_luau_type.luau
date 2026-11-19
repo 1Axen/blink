@@ -179,8 +179,6 @@ function append_ty(ctx: Context, tty: Ty)
 		builder:append("buffer")
 	elseif tty.kind == "vector" then
 		builder:append("vector")
-	elseif tty.kind == "integer" then
-		builder:append("integer")
 	elseif tty.kind == "boolean" then
 		builder:append("boolean")
 	elseif tty.kind == "string_literal" then

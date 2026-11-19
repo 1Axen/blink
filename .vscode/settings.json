@@ -16,8 +16,6 @@
 	"luau-lsp.fflags.enableNewSolver": true,
 	"luau-lsp.fflags.enableByDefault": false,
 	"luau-lsp.fflags.override": {
-		"LuauIntegerType2": "true",
-		"LuauIntegerLibrary": "true",
 		"LuauExperimentalIfLocalSyntax": "true",
 		"LuauExperimentalIfLocalAnalysis": "true",
 		"LuauExperimentalWhileLocalSyntax": "true",

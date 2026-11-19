@@ -24,8 +24,6 @@ type i_48 = i48
 type float = f32
 type double = f64
 
-type int64 = integer
-
 type blob = buffer
 type fixed_blob = buffer(32)
 
